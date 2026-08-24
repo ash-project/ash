@@ -819,6 +819,22 @@ defmodule Ash.Test.Filter.FilterTest do
         Ash.Filter.parse_input!(Profile, private: "private")
       end)
     end
+
+    test "parse_input rejects `lazy`, which would otherwise run an arbitrary MFA" do
+      Ash.Filter.parse!(Profile, lazy: {{Kernel, :+, [1, 1]}})
+
+      assert_raise(Ash.Error.Query.NoSuchField, fn ->
+        Ash.Filter.parse_input!(Profile, lazy: {{Kernel, :+, [1, 1]}})
+      end)
+    end
+
+    test "parse_input rejects `error`, which would otherwise call `exception/1` on an arbitrary module" do
+      Ash.Filter.parse!(Profile, error: {Ash.Error.Query.NotFound, []})
+
+      assert_raise(Ash.Error.Query.NoSuchField, fn ->
+        Ash.Filter.parse_input!(Profile, error: {Ash.Error.Query.NotFound, []})
+      end)
+    end
   end
 
   describe "base_filter" do

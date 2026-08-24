@@ -8,6 +8,8 @@ defmodule Ash.Query.BooleanExpression do
 
   defstruct [:op, :left, :right]
 
+  @max_simplification_depth Application.compile_env(:ash, :max_simplification_depth, 50)
+
   alias Ash.Query.Operator.{Eq, In, NotEq}
   alias Ash.Query.Ref
 
@@ -173,33 +175,15 @@ defmodule Ash.Query.BooleanExpression do
 
   def optimized_new(
         :and,
-        %__MODULE__{op: :and, left: left, right: right} = left_expr,
+        %__MODULE__{op: :and} = left_expr,
         right_expr
       ) do
     case right_expr do
       %In{} = in_op ->
-        with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, in_op), false, true)},
-             {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, in_op), false, true)} do
-          do_new(:and, left_expr, in_op)
-        else
-          {:left, _} ->
-            %{left_expr | left: optimized_new(:and, left, in_op)}
-
-          {:right, _} ->
-            %{left_expr | right: optimized_new(:and, right, in_op)}
-        end
+        merge_simplifiable(left_expr, in_op)
 
       %Eq{} = eq_op ->
-        with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, eq_op), false, true)},
-             {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, eq_op), false, true)} do
-          do_new(:and, left_expr, eq_op)
-        else
-          {:left, _} ->
-            %{left_expr | left: optimized_new(:and, left, eq_op)}
-
-          {:right, _} ->
-            %{left_expr | right: optimized_new(:and, right, eq_op)}
-        end
+        merge_simplifiable(left_expr, eq_op)
 
       _ ->
         do_new(:and, left_expr, right_expr)
@@ -208,6 +192,36 @@ defmodule Ash.Query.BooleanExpression do
 
   def optimized_new(op, left, right) do
     do_new(op, left, right)
+  end
+
+  defp merge_simplifiable(expr, op) do
+    case do_merge_simplifiable(expr, op, @max_simplification_depth) do
+      :no_match -> do_new(:and, expr, op)
+      merged -> merged
+    end
+  end
+
+  defp do_merge_simplifiable(_expr, _op, 0), do: :no_match
+
+  defp do_merge_simplifiable(%__MODULE__{op: :and, left: left, right: right} = expr, op, depth) do
+    case do_merge_simplifiable(left, op, depth - 1) do
+      :no_match ->
+        case do_merge_simplifiable(right, op, depth - 1) do
+          :no_match -> :no_match
+          merged -> %{expr | right: merged}
+        end
+
+      merged ->
+        %{expr | left: merged}
+    end
+  end
+
+  defp do_merge_simplifiable(expr, op, _depth) do
+    if Ash.Filter.find(expr, &simplify?(&1, op), false, true) do
+      optimized_new(:and, expr, op)
+    else
+      :no_match
+    end
   end
 
   defp simplify?(

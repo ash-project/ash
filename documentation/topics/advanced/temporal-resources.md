@@ -8,13 +8,12 @@ SPDX-License-Identifier: MIT
 
 > ### Experimental {: .warning}
 >
-> Temporal resources are experimental and currently require `ash_postgres`
-> running against **PostgreSQL 19+** (which provides SQL:2011 application-time
-> period tables — `PRIMARY KEY (... WITHOUT OVERLAPS)`, `PERIOD` foreign keys,
-> and `UPDATE/DELETE ... FOR PORTION OF`). The API may change.
-> This documentation is very PostgreSQL specific given that this
-> is the only target we support currently.
-> PostgreSQL 19 itself is still in beta as well
+> Temporal resources are experimental and the API may change. In production
+> they require `ash_postgres` running against **PostgreSQL 19+** (which provides
+> SQL:2011 application-time period tables — `PRIMARY KEY (... WITHOUT OVERLAPS)`,
+> `PERIOD` foreign keys, and `UPDATE/DELETE ... FOR PORTION OF`), which is still
+> in beta itself. This documentation is written against PostgreSQL for that
+> reason. `Ash.DataLayer.Ets` supports temporal resources too, in memory.
 
 A *temporal* resource keeps a full history of each row over time instead of
 overwriting it. Every row is valid for a *period* — a half-open range
@@ -136,10 +135,15 @@ A temporal write establishes validity *from `as_of` onward* — the new row is
   with neither, a single `now` is pinned for the write so the period, any
   `&DateTime.utc_now/0` defaults (e.g. `create_timestamp`), and the stamped
   `as_of` all share the exact same instant.
-- **Updates and destroys split the period.** Updating "as of" an instant
-  truncates the currently-valid row at that instant and writes a new row with
-  the new values for `[as_of, ∞)`, using `FOR PORTION OF`. The prior version is
-  preserved as history.
+- **An update splits the period.** Updating "as of" an instant truncates the
+  currently-valid record at that instant and writes a new one carrying the new
+  values from there **to wherever the old version ended** — `[as_of, ∞)` only when
+  the version it split was itself open-ended. Splitting at the instant a version
+  began leaves nothing before it, so that update reads as an ordinary overwrite.
+- **A destroy ends validity; it does not delete history.** Destroying "as of" an
+  instant truncates the currently-valid record to `[lower, as_of)`. The record is
+  gone from that instant onward and unchanged before it. Destroying at the instant
+  the version began removes it entirely.
 
 ```elixir
 # create the current version, valid from now on
@@ -160,6 +164,38 @@ sub
 > **action option** (`for_create(:create, input, as_of: ...)`), not via
 > `Ash.Changeset.as_of/2` after building the changeset. Those run while the
 > changeset is being constructed, so the instant must be set before then.
+
+### When no version is valid at that instant
+
+An update or destroy acts on the version valid at `as_of`. When none is, there is
+nothing to split and the write is refused as a stale record — whether the last
+version has already ended, the only one has not begun, or `as_of` falls in a gap
+between two.
+
+A record whose history has run out is brought back by **creating** it again, not by
+updating it: the create opens a fresh `[now, ∞)` alongside the closed history, which
+stays readable at its own instants.
+
+### Scheduling a change ahead of now
+
+A create always opens `[as_of, ∞)`, so two of them always overlap and you cannot
+create a record "now" while a version dated later already exists. Only an update
+produces a bounded period, by inheriting the end of the version it splits, so a
+future-dated change is expressed as an update:
+
+```elixir
+# splits into [now, 2027-01-01) and [2027-01-01, ∞)
+sub
+|> Ash.Changeset.for_update(:change_plan, %{plan: "gold"}, as_of: ~U[2027-01-01 00:00:00Z])
+|> Ash.update!()
+```
+
+> ### A future version that was created has to be unwound {: .warning}
+>
+> If the later version was *created* rather than scheduled as an update, it holds
+> `[its instant, ∞)` and nothing can be written before it. Recovering means
+> destroying that version, creating the present one, and re-applying the future
+> change as an update.
 
 ## Relationships
 
@@ -246,8 +282,16 @@ you loaded.)
 
 ## Limitations
 
-- **PostgreSQL 19+ via `ash_postgres` only.** Other data layers report
-  `Ash.DataLayer.can?(:temporal)` as `false`.
+- **`ash_postgres` on PostgreSQL 19+, or `Ash.DataLayer.Ets`.** Every other data
+  layer reports `Ash.DataLayer.can?(:temporal)` as `false`, and a resource that
+  declares itself temporal on one fails to compile. The two behave the same on
+  every point above, by different mechanisms: Postgres keys the table
+  `PRIMARY KEY (id, valid_at WITHOUT OVERLAPS)` and splits with `FOR PORTION OF`,
+  where ETS puts the period in its storage key and rewrites the affected versions.
+- **`Ash.DataLayer.Ets` writes are not transactional.** A split deletes the version
+  and writes both halves, in that order, so a concurrent reader can see the record
+  absent but never as two versions at once. Non-overlap is checked rather than
+  locked: two concurrent creates can both land.
 - **No "all history" reads.** Every read is a single point in time. Querying
   across multiple periods of the same record at once is not supported.
 - **Manual actions bypass temporal handling** — the data layer is never

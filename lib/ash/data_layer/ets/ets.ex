@@ -77,14 +77,24 @@ defmodule Ash.DataLayer.Ets do
     @moduledoc false
     use GenServer
 
-    def start(resource, tenant) do
-      table =
-        if tenant && Ash.Resource.Info.multitenancy_strategy(resource) == :context do
-          Module.concat(to_string(Ash.DataLayer.Ets.Info.table(resource)), to_string(tenant))
-        else
-          Ash.DataLayer.Ets.Info.table(resource)
-        end
+    def start(resource, tenant, create? \\ true) do
+      case Ash.DataLayer.Ets.table_name(resource, tenant, create?) do
+        :no_table ->
+          :no_table
 
+        {:ok, table} ->
+          start_table(resource, table, create?)
+      end
+    end
+
+    defp start_table(_resource, table, false) do
+      case ETS.Set.wrap_existing(table) do
+        {:error, :table_not_found} -> :no_table
+        other -> other
+      end
+    end
+
+    defp start_table(resource, table, true) do
       if Ash.DataLayer.Ets.Info.private?(resource) do
         do_wrap_existing(resource, table)
       else
@@ -143,8 +153,31 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
+  @doc false
+  # Tenant values are routinely derived from user input, and atoms are never garbage
+  # collected, so we only intern a new table name when we are actually going to create
+  # the table. Otherwise we look the atom up, and treat a name that was never interned
+  # the same as a table that doesn't exist.
   # sobelow_skip ["DOS.StringToAtom"]
+  def table_name(resource, tenant, create?) do
+    table = Ash.DataLayer.Ets.Info.table(resource)
+
+    if tenant && Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+      if create? do
+        {:ok, Module.concat(to_string(table), to_string(tenant))}
+      else
+        try do
+          {:ok, Module.safe_concat(to_string(table), to_string(tenant))}
+        rescue
+          ArgumentError -> :no_table
+        end
+      end
+    else
+      {:ok, table}
+    end
+  end
+
+  @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
   def stop(resource, tenant \\ nil) do
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
@@ -152,7 +185,7 @@ defmodule Ash.DataLayer.Ets do
       end
 
     if Ash.DataLayer.Ets.Info.private?(resource) do
-      case Process.get({:ash_ets_table, resource, tenant}) do
+      case Process.get({:ash_ets_table, Ash.DataLayer.Ets.Info.table(resource), tenant}) do
         nil ->
           :ok
 
@@ -160,21 +193,18 @@ defmodule Ash.DataLayer.Ets do
           ETS.Set.delete(table)
       end
     else
-      table =
-        if tenant && Ash.Resource.Info.multitenancy_strategy(resource) == :context do
-          String.to_atom(to_string(tenant) <> to_string(resource))
-        else
-          resource
-        end
-
-      name = Module.concat(table, TableManager)
-
-      case Process.whereis(name) do
-        nil ->
+      case table_name(resource, tenant, false) do
+        :no_table ->
           :ok
 
-        pid ->
-          Process.exit(pid, :shutdown)
+        {:ok, table} ->
+          case Process.whereis(Module.concat(table, TableManager)) do
+            nil ->
+              :ok
+
+            pid ->
+              Process.exit(pid, :shutdown)
+          end
       end
     end
   end
@@ -1111,10 +1141,18 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp get_records(resource, [], _parent, tenant) do
-    with {:ok, table} <- wrap_or_create_table(resource, tenant),
-         {:ok, record_tuples} <- ETS.Set.to_list(table),
-         records <- Enum.map(record_tuples, &elem(&1, 1)) do
-      cast_records(records, resource)
+    case wrap_or_create_table(resource, tenant, false) do
+      :no_table ->
+        {:ok, []}
+
+      {:ok, table} ->
+        with {:ok, record_tuples} <- ETS.Set.to_list(table),
+             records <- Enum.map(record_tuples, &elem(&1, 1)) do
+          cast_records(records, resource)
+        end
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -2059,41 +2097,82 @@ defmodule Ash.DataLayer.Ets do
       changeset.tenant,
       filter,
       changeset.domain,
-      changeset.context[:private][:actor]
+      changeset.context[:private][:actor],
+      supersession(resource, changeset)
     )
   end
 
-  defp do_destroy(resource, record, tenant, filter, domain, actor) do
-    with {:ok, table} <- wrap_or_create_table(resource, tenant) do
-      pkey = pkey_map(resource, record)
+  defp do_destroy(resource, record, tenant, filter, domain, actor, supersede) do
+    case wrap_or_create_table(resource, tenant, false) do
+      {:ok, table} ->
+        do_destroy(table, resource, record, tenant, filter, domain, actor, supersede)
 
-      if has_filter?(filter) do
-        case ETS.Set.get(table, pkey) do
-          {:ok, {_key, record}} when is_map(record) ->
-            with {:ok, record} <- cast_record(record, resource),
-                 {:ok, [_]} <- filter_matches([record], filter, domain, tenant, actor) do
-              with {:ok, _} <- ETS.Set.delete(table, pkey) do
-                :ok
-              end
-            else
-              {:ok, []} ->
-                {:error,
-                 Ash.Error.Changes.StaleRecord.exception(
-                   resource: resource,
-                   filter: filter
-                 )}
-
-              {:error, error} ->
-                {:error, error}
-            end
-
-          {:error, error} ->
-            {:error, error}
-        end
-      else
-        with {:ok, _} <- ETS.Set.delete(table, pkey) do
+      # Nothing has ever been written for this tenant, so there is nothing to destroy.
+      :no_table ->
+        if has_filter?(filter) do
+          {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, filter: filter)}
+        else
           :ok
         end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp do_destroy(table, resource, record, tenant, filter, domain, actor, supersede) do
+    pkey = pkey_map(resource, record)
+
+    if has_filter?(filter) do
+      case ETS.Set.get(table, pkey) do
+        {:ok, {_key, record}} when is_map(record) ->
+          with {:ok, record} <- cast_record(record, resource),
+               {:ok, [_]} <- filter_matches([record], filter, domain, tenant, actor) do
+            retire(table, pkey, resource, supersede)
+          else
+            {:ok, []} ->
+              {:error,
+               Ash.Error.Changes.StaleRecord.exception(
+                 resource: resource,
+                 filter: filter
+               )}
+
+            {:error, error} ->
+              {:error, error}
+          end
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      retire(table, pkey, resource, supersede)
+    end
+  end
+
+  defp retire(table, pkey, resource, supersede) do
+    case {supersede, ETS.Set.get(table, pkey)} do
+      {{period, as_of}, {:ok, {_key, stored}}} when is_map(stored) ->
+        close_version(table, pkey, stored, resource, period, as_of)
+
+      _ ->
+        with {:ok, _} <- ETS.Set.delete(table, pkey), do: :ok
+    end
+  end
+
+  # A destroy ends validity at the instant of the write. Closing a version at the
+  # instant it began leaves nothing to keep, so it goes.
+  defp close_version(table, pkey, stored, resource, period, as_of) do
+    with {:ok, closed} <- close_at(Map.get(pkey, period), as_of, resource, period),
+         {:ok, table} <- ETS.Set.delete(table, pkey) do
+      case closed do
+        nil ->
+          :ok
+
+        closed ->
+          with {:ok, version} <- version(resource, pkey, period, stored, closed),
+               {:ok, _} <- ETS.Set.put(table, [version]) do
+            :ok
+          end
       end
     end
   end
@@ -2162,7 +2241,9 @@ defmodule Ash.DataLayer.Ets do
   def update(resource, changeset, pkey \\ nil, from_bulk? \\ false) do
     pkey = pkey || pkey_map(resource, changeset.data)
 
-    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+    supersede = supersession(resource, changeset)
+
+    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant, false),
          _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
          {:ok, record} <-
            do_update(
@@ -2171,13 +2252,15 @@ defmodule Ash.DataLayer.Ets do
              changeset.domain,
              changeset.tenant,
              resource,
-             changeset.context[:private][:actor]
+             changeset.context[:private][:actor],
+             supersede
            ),
          {:ok, record} <- cast_record(record, resource),
          record <- retain_fields(record, changeset) do
       new_pkey = pkey_map(resource, record)
 
-      if new_pkey != pkey do
+      # A supersession has already retired the old key, so it must not be destroyed.
+      if is_nil(supersede) && new_pkey != pkey do
         case destroy(resource, changeset) do
           :ok ->
             {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
@@ -2189,8 +2272,26 @@ defmodule Ash.DataLayer.Ets do
         {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
       end
     else
+      # Nothing has ever been written for this tenant, so the record cannot exist.
+      :no_table ->
+        {:error,
+         Ash.Error.Changes.StaleRecord.exception(
+           resource: resource,
+           filter: changeset.filter
+         )}
+
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  # `nil` writes in place: no period, or a period with no now to supersede at.
+  defp supersession(resource, changeset) do
+    with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
+         {:ok, as_of} <- write_instant(resource, changeset) do
+      {period, as_of}
+    else
+      _ -> nil
     end
   end
 
@@ -2242,7 +2343,8 @@ defmodule Ash.DataLayer.Ets do
          domain,
          tenant,
          resource,
-         actor
+         actor,
+         supersede
        ) do
     attributes = resource |> Ash.Resource.Info.attributes()
 
@@ -2257,12 +2359,12 @@ defmodule Ash.DataLayer.Ets do
                 empty when empty in [nil, []] ->
                   data = Map.merge(record, casted)
 
-                  put_data(table, pkey, data)
+                  write_version(table, pkey, record, data, resource, supersede)
 
                 atomics ->
                   with {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_record) do
                     data = record |> Map.merge(casted) |> Map.merge(atomics)
-                    put_data(table, pkey, data)
+                    write_version(table, pkey, record, data, resource, supersede)
                   end
               end
             else
@@ -2290,6 +2392,63 @@ defmodule Ash.DataLayer.Ets do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  defp write_version(table, pkey, _prior, data, _resource, nil), do: put_data(table, pkey, data)
+
+  # The new half ends where the old one did: an edit must not extend a closed version to
+  # forever. No transaction here, so the delete goes first — a reader sees the record
+  # absent, never twice.
+  defp write_version(table, pkey, prior_data, data, resource, {period, as_of}) do
+    prior = Map.get(pkey, period)
+
+    with {:ok, closed} <- close_at(prior, as_of, resource, period),
+         {:ok, {_key, opened_data} = opened} <-
+           version(resource, pkey, period, data, %{prior | lower: as_of}),
+         {:ok, retained} <- retained(resource, pkey, period, prior_data, closed),
+         {:ok, table} <- ETS.Set.delete(table, pkey),
+         {:ok, _table} <- ETS.Set.put(table, retained ++ [opened]) do
+      {:ok, opened_data}
+    end
+  end
+
+  # An instant the version does not hold cannot split it. `nil` drops a half holding none.
+  defp close_at(%Ash.Range{} = prior, as_of, resource, period) do
+    closed = %{prior | upper: as_of}
+
+    cond do
+      not Ash.Range.contains?(prior, as_of) ->
+        {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
+
+      Ash.Range.empty?(closed) ->
+        {:ok, nil}
+
+      true ->
+        {:ok, closed}
+    end
+  end
+
+  defp close_at(_prior, _as_of, resource, period) do
+    {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
+  end
+
+  defp retained(_resource, _pkey, _period, _prior_data, nil), do: {:ok, []}
+
+  defp retained(resource, pkey, period, prior_data, closed) do
+    with {:ok, version} <- version(resource, pkey, period, prior_data, closed) do
+      {:ok, [version]}
+    end
+  end
+
+  # Cast in the key, dumped in the data, as every other write leaves it.
+  defp version(resource, pkey, period, data, range) do
+    attribute = Ash.Resource.Info.temporal_period(resource)
+
+    case Ash.Type.dump_to_native(attribute.type, range, attribute.constraints) do
+      {:ok, dumped} -> {:ok, {%{pkey | period => range}, Map.put(data, period, dumped)}}
+      :error -> {:error, "could not store the period #{inspect(range)}"}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -2336,8 +2495,10 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
-  # sobelow_skip ["DOS.StringToAtom"]
-  defp wrap_or_create_table(resource, tenant) do
+  # Returns `:no_table` when `create?` is false and no table has been created yet.
+  # Callers must treat that as "the table exists but is empty", rather than creating
+  # one, so that reads against unknown tenants allocate nothing. See `table_name/3`.
+  defp wrap_or_create_table(resource, tenant, create? \\ true) do
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
         tenant
@@ -2348,24 +2509,28 @@ defmodule Ash.DataLayer.Ets do
 
       case Process.get({:ash_ets_table, configured_table, tenant}) do
         nil ->
-          case ETS.Set.new(
-                 protection: :private,
-                 ordered: true,
-                 read_concurrency: true
-               ) do
-            {:ok, table} ->
-              Process.put({:ash_ets_table, configured_table, tenant}, table)
-              {:ok, table}
+          if create? do
+            case ETS.Set.new(
+                   protection: :private,
+                   ordered: true,
+                   read_concurrency: true
+                 ) do
+              {:ok, table} ->
+                Process.put({:ash_ets_table, configured_table, tenant}, table)
+                {:ok, table}
 
-            {:error, error} ->
-              {:error, error}
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            :no_table
           end
 
         tab ->
           {:ok, tab}
       end
     else
-      TableManager.start(resource, tenant)
+      TableManager.start(resource, tenant, create?)
     end
   end
 

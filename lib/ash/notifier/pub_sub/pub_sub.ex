@@ -464,7 +464,7 @@ defmodule Ash.Notifier.PubSub do
             args
 
           dispatcher ->
-            args ++ dispatcher
+            args ++ [dispatcher]
         end
 
       apply(Ash.Notifier.PubSub.Info.module(notification.resource), :broadcast, args)

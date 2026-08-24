@@ -204,7 +204,7 @@ defmodule Ash.TemporalTest do
     # `fill_template` runs on already-hydrated expressions, so it matches the
     # `%Function.Now/Ago/FromNow{}` structs (not the raw `%Ash.Query.Call{}` that `expr/1`
     # produces). Construct the hydrated structs directly to exercise the anchoring.
-    alias Ash.Query.Function.{Ago, FromNow, Now}
+    alias Ash.Query.Function.{Ago, FromNow, Now, Today}
 
     @anchor ~U[2026-06-15 12:00:00.000000Z]
 
@@ -223,11 +223,24 @@ defmodule Ash.TemporalTest do
       assert anchored(%FromNow{arguments: [7, :day]}) == Ago.datetime_add(@anchor, 7, :day)
     end
 
+    test "ago(duration) resolves to as_of shifted into the past" do
+      duration = Duration.new!(day: 7)
+
+      assert anchored(%Ago{arguments: [duration]}) ==
+               Ago.datetime_add(@anchor, Duration.negate(duration))
+    end
+
+    test "today() resolves to the date of as_of" do
+      assert anchored(%Today{arguments: []}) == DateTime.to_date(@anchor)
+    end
+
     test "with no as_of in context, relative time is left intact (wall-clock fallback)" do
       no_ctx = [context: %{}]
       assert %Now{arguments: []} = Ash.Expr.fill_template(%Now{arguments: []}, no_ctx)
       assert %Ago{} = Ash.Expr.fill_template(%Ago{arguments: [7, :day]}, no_ctx)
+      assert %Ago{} = Ash.Expr.fill_template(%Ago{arguments: [Duration.new!(day: 7)]}, no_ctx)
       assert %FromNow{} = Ash.Expr.fill_template(%FromNow{arguments: [7, :day]}, no_ctx)
+      assert %Today{} = Ash.Expr.fill_template(%Today{arguments: []}, no_ctx)
     end
   end
 

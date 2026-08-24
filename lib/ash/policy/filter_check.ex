@@ -166,6 +166,7 @@ defmodule Ash.Policy.FilterCheck do
       defp references_relative_time?(expr) do
         Ash.Expr.template_references?(expr, fn
           %Ash.Query.Function.Now{} -> true
+          %Ash.Query.Function.Today{} -> true
           %Ash.Query.Function.Ago{} -> true
           %Ash.Query.Function.FromNow{} -> true
           _ -> false
