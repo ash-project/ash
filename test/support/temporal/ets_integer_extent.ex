@@ -2,12 +2,12 @@
 #
 # SPDX-License-Identifier: MIT
 
-defmodule Ash.Test.Temporal.EtsVersioned do
+defmodule Ash.Test.Temporal.EtsIntegerExtent do
   @moduledoc """
-  A temporal resource on the ETS data layer.
+  A temporal resource whose extent is an integer range rather than a period.
 
-  The period is never action input, so a test that needs a particular one seeds it
-  with `Ash.Seed.seed!/2`.
+  Temporal requires an `Ash.Type.Range` with inclusive-exclusive bounds and says
+  nothing about the inner type.
   """
   use Ash.Resource,
     domain: Ash.Test.Domain,
@@ -19,7 +19,7 @@ defmodule Ash.Test.Temporal.EtsVersioned do
 
   temporal do
     strategy :context
-    attribute :valid_at
+    attribute :valid_over
   end
 
   actions do
@@ -34,15 +34,14 @@ defmodule Ash.Test.Temporal.EtsVersioned do
       primary? true
       accept [:name]
     end
-
-    create :upsert do
-      accept [:id, :name]
-      upsert? true
-    end
   end
 
   attributes do
     attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
     attribute :name, :string, public?: true
+
+    attribute :valid_over, Ash.Type.Range,
+      allow_nil?: false,
+      constraints: [inner_type: :integer, lower: [inclusive?: true], upper: [inclusive?: false]]
   end
 end

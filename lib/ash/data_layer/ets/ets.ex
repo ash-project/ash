@@ -1507,6 +1507,7 @@ defmodule Ash.DataLayer.Ets do
       |> resource_to_query(changeset.domain)
       |> Map.put(:filter, query.filter)
       |> Map.put(:tenant, changeset.tenant)
+      |> Map.put(:as_of, upsert_instant(resource, changeset))
       |> run_query(resource)
       |> case do
         {:ok, []} ->
@@ -1531,7 +1532,7 @@ defmodule Ash.DataLayer.Ets do
             resource
             |> update(
               %{changeset | action_type: :update, filter: nil},
-              Map.take(result, pkey),
+              pkey_map(resource, result),
               from_bulk_create?
             )
             |> set_upsert_action(:update)
@@ -1673,15 +1674,24 @@ defmodule Ash.DataLayer.Ets do
     else
       with {:ok, table} <- wrap_or_create_table(resource, options.tenant) do
         Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
-          with {:ok, pkey} <- get_valid_pkey(resource, changeset),
+          with :ok <- validate_pkey(resource, changeset),
                {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
                {:ok, record} <- apply_atomics(changeset, resource, record),
-               record <- unload_relationships(resource, record) do
+               {:ok, record} <- establish_period(record, resource, changeset),
+               record <- unload_relationships(resource, record),
+               :ok <- check_non_empty(resource, record),
+               :ok <-
+                 check_non_overlapping(
+                   table,
+                   resource,
+                   record,
+                   Enum.map(results, fn {key, _index, _ref, _record} -> key end)
+                 ) do
             {:cont,
              {:ok,
               [
-                {pkey, changeset.context.bulk_create.index, changeset.context.bulk_create.ref,
-                 record}
+                {pkey_map(resource, record), changeset.context.bulk_create.index,
+                 changeset.context.bulk_create.ref, record}
                 | results
               ]}}
           else
@@ -1716,13 +1726,17 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def create(resource, changeset, from_bulk_create? \\ false) do
-    with {:ok, pkey} <- get_valid_pkey(resource, changeset),
+    with :ok <- validate_pkey(resource, changeset),
          {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          {:ok, record} <- apply_atomics(changeset, resource, record),
+         {:ok, record} <- establish_period(record, resource, changeset),
          record <- unload_relationships(resource, record),
-         {:ok, record} <- put_or_insert_new(table, {pkey, record}, resource) do
+         :ok <- check_non_empty(resource, record),
+         :ok <- check_non_overlapping(table, resource, record),
+         {:ok, record} <-
+           put_or_insert_new(table, {pkey_map(resource, record), record}, resource) do
       {:ok, set_loaded(record)}
     else
       {:error, error} -> {:error, error}
@@ -1741,6 +1755,136 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp apply_atomics(_changeset, _resource, record), do: {:ok, record}
+
+  # The instant is this layer's: a core `now()` resolved earlier could precede the record.
+  defp establish_period(record, resource, changeset) do
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil ->
+        {:ok, record}
+
+      attribute ->
+        {:ok,
+         put_established_period(
+           record,
+           attribute,
+           Map.get(record, attribute),
+           resource,
+           changeset
+         )}
+    end
+  end
+
+  defp check_non_empty(resource, record) do
+    with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
+         %Ash.Range{} = value <- Map.get(record, period),
+         true <- Ash.Range.empty?(value) do
+      {:error,
+       Ash.Error.Changes.InvalidAttribute.exception(
+         field: period,
+         value: value,
+         message: "is empty, so the record could not be read at any point in time"
+       )}
+    else
+      _ -> :ok
+    end
+  end
+
+  # Not a lock: the look and the write are separate, so concurrent creates can both land.
+  defp check_non_overlapping(table, resource, record, pending \\ []) do
+    with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
+         %Ash.Range{} = period_value <- Map.get(record, period),
+         {:ok, keys} <- stored_keys(table) do
+      primary_key = Map.take(record, Ash.Resource.Info.primary_key(resource))
+
+      if Enum.any?(keys ++ pending, &overlapping?(&1, primary_key, period, period_value)) do
+        {:error,
+         Ash.Error.Changes.InvalidAttribute.exception(
+           field: period,
+           value: period_value,
+           message: "overlaps the period of an existing version of this record"
+         )}
+      else
+        :ok
+      end
+    else
+      {:error, error} -> {:error, error}
+      _ -> :ok
+    end
+  end
+
+  defp overlapping?(key, primary_key, period, period_value) do
+    Map.take(key, Map.keys(primary_key)) == primary_key and
+      match?(%Ash.Range{}, Map.get(key, period)) and
+      Ash.Range.intersects?(Map.get(key, period), period_value)
+  end
+
+  defp stored_keys(table) do
+    case ETS.Set.to_list(table) do
+      {:ok, stored} -> {:ok, Enum.map(stored, fn {key, _data} -> key end)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp put_established_period(record, _attribute, %Ash.Range{}, _resource, _changeset), do: record
+
+  defp put_established_period(record, attribute, nil, resource, changeset) do
+    case write_instant(resource, changeset) do
+      {:ok, as_of} -> Map.put(record, attribute, %Ash.Range{lower: as_of})
+      :error -> record
+    end
+  end
+
+  defp put_established_period(record, _attribute, _other, _resource, _changeset), do: record
+
+  # Without an instant the query sees every version, not the one holding it.
+  defp upsert_instant(resource, changeset) do
+    case write_instant(resource, changeset) do
+      {:ok, instant} -> instant
+      :error -> nil
+    end
+  end
+
+  # Casting through the inner type settles precision: `:datetime` is second-resolution.
+  defp write_instant(resource, changeset) do
+    inner_type = Ash.Resource.Info.temporal_inner_type(resource)
+
+    with {:ok, raw} <- raw_instant(changeset, inner_type),
+         {:ok, instant} <-
+           Ash.Type.cast_input(
+             inner_type,
+             raw,
+             Ash.Resource.Info.temporal_inner_constraints(resource) || []
+           ) do
+      {:ok, instant}
+    else
+      _ -> :error
+    end
+  end
+
+  defp raw_instant(%{as_of: %DateTime{} = as_of}, _inner_type), do: {:ok, as_of}
+
+  defp raw_instant(%{as_of: as_of}, inner_type) when as_of in [nil, :now],
+    do: now_for(inner_type)
+
+  defp raw_instant(_changeset, _inner_type), do: :error
+
+  # Resolved through `get_type/1`: an inner type reads back as a module, and matching the
+  # short names alone silently answers `:error`.
+  defp now_for(inner_type) do
+    case Ash.Type.get_type(inner_type) do
+      type when type in [Ash.Type.DateTime, Ash.Type.UtcDatetime, Ash.Type.UtcDatetimeUsec] ->
+        {:ok, DateTime.utc_now()}
+
+      Ash.Type.NaiveDatetime ->
+        {:ok, NaiveDateTime.utc_now()}
+
+      Ash.Type.Date ->
+        {:ok, Date.utc_today()}
+
+      _ ->
+        :error
+    end
+  end
 
   defp set_loaded(%resource{} = record) do
     %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}
@@ -1815,7 +1959,7 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp get_valid_pkey(resource, changeset) do
+  defp validate_pkey(resource, changeset) do
     pkey =
       resource
       |> Ash.Resource.Info.primary_key()
@@ -1826,7 +1970,7 @@ defmodule Ash.DataLayer.Ets do
     if !Enum.empty?(pkey) && Enum.any?(pkey, fn {_, v} -> is_nil(v) end) do
       {:error, InvalidPrimaryKey.exception(resource: resource, value: pkey)}
     else
-      {:ok, pkey}
+      :ok
     end
   end
 
@@ -1921,7 +2065,7 @@ defmodule Ash.DataLayer.Ets do
 
   defp do_destroy(resource, record, tenant, filter, domain, actor) do
     with {:ok, table} <- wrap_or_create_table(resource, tenant) do
-      pkey = Map.take(record, Ash.Resource.Info.primary_key(resource))
+      pkey = pkey_map(resource, record)
 
       if has_filter?(filter) do
         case ETS.Set.get(table, pkey) do
@@ -2077,10 +2221,19 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   def pkey_map(resource, data) do
     resource
-    |> Ash.Resource.Info.primary_key()
+    |> key_fields()
     |> Enum.into(%{}, fn attr ->
       {attr, Map.get(data, attr)}
     end)
+  end
+
+  defp key_fields(resource) do
+    primary_key = Ash.Resource.Info.primary_key(resource)
+
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil -> primary_key
+      period -> primary_key ++ [period]
+    end
   end
 
   defp do_update(
