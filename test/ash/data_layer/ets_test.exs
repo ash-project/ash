@@ -525,6 +525,86 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsMultitenantTestUser do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    multitenancy do
+      strategy :context
+    end
+
+    actions do
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+  end
+
+  # Tenant values are usually request-derived. Reading an unknown tenant must not
+  # intern an atom, create an ETS table, or spawn a table manager, because none of
+  # those are ever reclaimed. See GHSA-2x3m-xq2g-j5v2.
+  describe "context multitenancy does not allocate for unknown tenants" do
+    setup do
+      # warm up lazy module loading so it does not pollute the measurements
+      Ash.read!(EtsMultitenantTestUser, tenant: "warmup")
+      on_exit(fn -> Ash.DataLayer.Ets.stop(EtsMultitenantTestUser, "warmup") end)
+      :ok
+    end
+
+    test "reading an unknown tenant allocates nothing and returns no records" do
+      before_atoms = :erlang.system_info(:atom_count)
+      before_processes = :erlang.system_info(:process_count)
+      before_tables = length(:ets.all())
+
+      for i <- 1..50 do
+        assert [] = Ash.read!(EtsMultitenantTestUser, tenant: "unknown-tenant-#{i}")
+      end
+
+      assert :erlang.system_info(:atom_count) == before_atoms
+      assert :erlang.system_info(:process_count) == before_processes
+      assert length(:ets.all()) == before_tables
+    end
+
+    test "writing a tenant still creates its table, and reads then see the data" do
+      on_exit(fn -> Ash.DataLayer.Ets.stop(EtsMultitenantTestUser, "written") end)
+
+      user =
+        EtsMultitenantTestUser
+        |> Ash.Changeset.for_create(:create, %{name: "Mike"}, tenant: "written")
+        |> Ash.create!()
+
+      assert [%{name: "Mike"}] = Ash.read!(EtsMultitenantTestUser, tenant: "written")
+      assert [] = Ash.read!(EtsMultitenantTestUser, tenant: "not-written")
+
+      user
+      |> Ash.Changeset.for_update(:update, %{name: "Zach"}, tenant: "written")
+      |> Ash.update!()
+
+      assert [%{name: "Zach"}] = Ash.read!(EtsMultitenantTestUser, tenant: "written")
+    end
+
+    test "updating a record in a tenant that was never written is a stale record" do
+      user = struct(EtsMultitenantTestUser, id: Ash.UUID.generate(), name: "Ghost")
+
+      user = %{
+        user
+        | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: EtsMultitenantTestUser}
+      }
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+               user
+               |> Ash.Changeset.for_update(:update, %{name: "Zach"}, tenant: "never-written")
+               |> Ash.update()
+
+      assert :ok =
+               user
+               |> Ash.Changeset.for_destroy(:destroy, %{}, tenant: "never-written")
+               |> Ash.destroy()
+    end
+  end
+
   defp filter_users(filter) do
     EtsTestUser
     |> Ash.Query.new()

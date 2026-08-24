@@ -1811,7 +1811,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.AttributesByName,
     Ash.Resource.Transformers.ValidationsAndChangesForType,
     Ash.Resource.Transformers.CacheUniqueKeys,
-    Ash.Resource.Transformers.CacheActionInputs
+    Ash.Resource.Transformers.CacheActionInputs,
+    Ash.Resource.Transformers.SetActionTransactions
   ]
 
   @verifiers [

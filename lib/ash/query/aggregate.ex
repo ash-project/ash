@@ -707,7 +707,15 @@ defmodule Ash.Query.Aggregate do
   def aggregate_type(resource, aggregate) do
     {field_type, field_constraints} =
       if aggregate.field do
-        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
+        related =
+          case aggregate do
+            %{related?: false, resource: unrelated_resource}
+            when not is_nil(unrelated_resource) ->
+              unrelated_resource
+
+            _ ->
+              Ash.Resource.Info.related(resource, aggregate.relationship_path)
+          end
 
         case Ash.Resource.Info.field(related, aggregate.field) do
           %Ash.Resource.Aggregate{} = nested_agg ->
