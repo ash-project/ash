@@ -129,6 +129,26 @@ defmodule Ash.Test.ExprTest do
 
       assert [{{:array, Ash.Type.UUID}, items: []}, {{:array, Ash.Type.UUID}, items: []}] = types
     end
+
+    test "a long chain of the same operator resolves in linear time" do
+      # Each operand used to be re-resolved once per candidate signature, so a
+      # chain nested `d` deep cost `signature_count ^ d`. With the 16 signatures
+      # that `+` declares for the duration overloads, an 8-term sum took ~83s and
+      # anything longer never finished.
+      count = fn name ->
+        %Ash.Query.Aggregate{name: name, kind: :count, type: Ash.Type.Integer, constraints: []}
+      end
+
+      chain =
+        Enum.reduce(2..40, count.(:c1), fn n, acc ->
+          %Ash.Query.Operator.Basic.Plus{left: acc, right: count.(:"c#{n}")}
+        end)
+
+      {microseconds, result} = :timer.tc(fn -> Ash.Expr.determine_type(chain) end)
+
+      assert {:ok, {Ash.Type.Integer, []}} = result
+      assert microseconds < 1_000_000
+    end
   end
 
   describe "string interpolation" do
