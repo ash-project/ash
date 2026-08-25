@@ -1174,7 +1174,31 @@ defmodule Ash.Expr do
 
     overloads = Ash.Query.Operator.operator_overloads(name) || %{}
 
-    if types == :var_args || returns == :no_return || returns == :unknown do
+    no_signatures? = types == :var_args || returns == :no_return || returns == :unknown
+
+    # `determine_type/1` is a pure function of the operand: it does not depend on
+    # which candidate signature is being considered. Calling it from inside the
+    # loop over signatures below re-derived every operand once per signature, and
+    # because an operand may itself be an operator, the cost compounded with
+    # nesting depth as `signature_count ^ depth`.
+    #
+    # That stayed invisible while `+` and `-` had one signature each, but they now
+    # declare 16 (the duration overloads), which made a plain chain of integer
+    # additions unusable: a 6-term sum took ~0.3s, 7 took ~5s and 8 took ~83s.
+    # `/` (9 signatures) has had the same behaviour all along.
+    #
+    # Resolving each operand once here and indexing into the result keeps the walk
+    # linear in the size of the expression tree. Skipped when there are no
+    # signatures to consider, so operands of `:var_args` functions such as
+    # `fragment/1` are still never inspected.
+    value_types =
+      if no_signatures? do
+        {}
+      else
+        values |> Enum.map(&determine_type/1) |> List.to_tuple()
+      end
+
+    if no_signatures? do
       []
     else
       {more_match_types, overload_cast_as_types, overload_returns} =
@@ -1294,8 +1318,8 @@ defmodule Ash.Expr do
           last_resort?: false
         },
         fn
-          {{vague_type, value}, index}, acc when vague_type in [:any, :same] ->
-            case determine_type(value) do
+          {{vague_type, _value}, index}, acc when vague_type in [:any, :same] ->
+            case elem(value_types, index) do
               {:ok, {type, constraints}} ->
                 case acc[:basis] do
                   nil ->
@@ -1323,8 +1347,8 @@ defmodule Ash.Expr do
                 {:cont, Map.update!(acc, :must_adopt_basis, &[{index, fn x -> x end} | &1])}
             end
 
-          {{{:array, vague_type}, value}, index}, acc when vague_type in [:any, :same] ->
-            case determine_type(value) do
+          {{{:array, vague_type}, _value}, index}, acc when vague_type in [:any, :same] ->
+            case elem(value_types, index) do
               {:ok, {{:array, type}, constraints}} ->
                 case acc[:basis] do
                   nil ->
@@ -1375,8 +1399,8 @@ defmodule Ash.Expr do
                  )}
             end
 
-          {{{type, constraints}, value}, _index}, acc ->
-            determined_type = determine_type(value)
+          {{{type, constraints}, value}, index}, acc ->
+            determined_type = elem(value_types, index)
 
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
@@ -1423,8 +1447,8 @@ defmodule Ash.Expr do
                 end
             end
 
-          {{type, value}, _index}, acc ->
-            determined_type = determine_type(value)
+          {{type, value}, index}, acc ->
+            determined_type = elem(value_types, index)
 
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
