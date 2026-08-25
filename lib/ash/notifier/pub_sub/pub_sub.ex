@@ -8,6 +8,7 @@ defmodule Ash.Notifier.PubSub do
   @publish %Spark.Dsl.Entity{
     name: :publish,
     target: Ash.Notifier.PubSub.Publication,
+    no_depend_modules: [:dispatcher],
     transform: {Ash.Notifier.PubSub.Publication, :transform, []},
     describe: "Configure a given action to publish its results over a given topic.",
     examples: [
@@ -24,6 +25,7 @@ defmodule Ash.Notifier.PubSub do
   @publish_all %Spark.Dsl.Entity{
     name: :publish_all,
     target: Ash.Notifier.PubSub.Publication,
+    no_depend_modules: [:dispatcher],
     transform: {Ash.Notifier.PubSub.Publication, :transform, []},
     describe: """
     Works the same as `publish`, except that it takes a type and publishes all actions of that type.
