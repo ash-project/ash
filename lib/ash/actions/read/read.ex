@@ -4731,6 +4731,15 @@ defmodule Ash.Actions.Read do
             end
         end
 
+      expr =
+        Ash.Expr.fill_template(
+          expr,
+          actor: actor,
+          tenant: tenant,
+          args: calc.context.arguments,
+          context: calc.context.source_context
+        )
+
       {:ok, expr} =
         Ash.Filter.hydrate_refs(
           expr,
