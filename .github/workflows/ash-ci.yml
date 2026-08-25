@@ -41,6 +41,12 @@ on:
       sobelow:
         type: boolean
         default: true
+      deps-audit:
+        type: boolean
+        default: true
+      hex-audit:
+        type: boolean
+        default: true
       postgres:
         type: boolean
         default: false
@@ -182,7 +188,9 @@ jobs:
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-hex-audit@325af91762b51931c459503300c22c057251b3cf # main
+        if: ${{ inputs.hex-audit }}
       - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+        if: ${{ inputs.deps-audit }}
         with:
           task: deps.audit
   changelog-lint:
