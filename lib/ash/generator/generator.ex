@@ -1177,7 +1177,7 @@ defmodule Ash.Generator do
   defp to_generators(generators) do
     Map.new(generators, fn {key, value} ->
       case value do
-        %StreamData{} ->
+        value when is_struct(value, StreamData) ->
           {key, value}
 
         value ->
