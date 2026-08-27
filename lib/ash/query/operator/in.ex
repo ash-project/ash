@@ -50,7 +50,7 @@ defmodule Ash.Query.Operator.In do
       ) do
     cond do
       MapSet.equal?(mapset_left, mapset_right) -> :mutually_inclusive
-      MapSet.disjoint?(mapset_left, mapset_right) -> :mutually_exclusive
+      semantically_disjoint?(mapset_left, mapset_right) -> :mutually_exclusive
       true -> :unknown
     end
   end
@@ -63,7 +63,7 @@ defmodule Ash.Query.Operator.In do
         %__MODULE__{left: left, right: %MapSet{} = mapset},
         %Ash.Query.Operator.Eq{left: left, right: value}
       ) do
-    if MapSet.member?(mapset, value) do
+    if semantic_member?(mapset, value) do
       :left_includes_right
     else
       :mutually_exclusive
@@ -72,6 +72,16 @@ defmodule Ash.Query.Operator.In do
 
   def compare(_, _) do
     :unknown
+  end
+
+  defp semantic_member?(mapset, value) do
+    MapSet.member?(mapset, value) or Enum.any?(mapset, &Comp.equal?(&1, value))
+  end
+
+  defp semantically_disjoint?(mapset_left, mapset_right) do
+    not Enum.any?(mapset_left, fn left ->
+      Enum.any?(mapset_right, &Comp.equal?(left, &1))
+    end)
   end
 
   def to_string(%{left: left, right: %MapSet{} = mapset}, opts) do
