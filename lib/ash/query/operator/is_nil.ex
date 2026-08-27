@@ -86,7 +86,7 @@ defmodule Ash.Query.Operator.IsNil do
   def compare(%__MODULE__{left: %Ref{} = same_ref, right: false}, %Ash.Query.Operator.Eq{
         left: %Ref{} = same_ref
       }) do
-    :right_includes_left
+    :left_includes_right
   end
 
   def compare(%__MODULE__{left: %Ref{} = same_ref, right: true}, %__MODULE__{

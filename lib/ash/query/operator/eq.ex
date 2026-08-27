@@ -70,5 +70,12 @@ defmodule Ash.Query.Operator.Eq do
     end
   end
 
+  def compare(%__MODULE__{} = left, %Ash.Query.Operator.IsNil{} = right) do
+    case Ash.Query.Operator.IsNil.compare(right, left) do
+      :left_includes_right -> :right_includes_left
+      other -> other
+    end
+  end
+
   def compare(_, _), do: :unknown
 end
