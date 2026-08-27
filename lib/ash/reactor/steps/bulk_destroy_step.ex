@@ -114,7 +114,7 @@ defmodule Ash.Reactor.BulkDestroyStep do
         false
 
       :outside_transaction ->
-        !DataLayer.in_transaction?(options[:resource]) || options[:transaction] != false
+        !DataLayer.in_transaction?(options[:resource])
     end
   end
 
