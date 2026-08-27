@@ -35,6 +35,8 @@ defmodule Ash.Actions.Read.Stream do
         query.action.pagination.default_limit || query.action.pagination.max_page_size || 250
       )
 
+    batch_size = validate_batch_size!(batch_size, query)
+
     query = Ash.Query.set_context(query, %{private: %{bypass_max_page_size?: true}})
 
     Stream.resource(
@@ -95,6 +97,8 @@ defmodule Ash.Actions.Read.Stream do
         query.action.pagination.default_limit || query.action.pagination.max_page_size || 250
       )
 
+    limit = validate_batch_size!(limit, query)
+
     query = Ash.Query.set_context(query, %{private: %{bypass_max_page_size?: true}})
 
     Stream.resource(
@@ -131,6 +135,8 @@ defmodule Ash.Actions.Read.Stream do
            (query.action.pagination.default_limit ||
               query.action.pagination.max_page_size)) || 250
       )
+
+    limit = validate_batch_size!(limit, query)
 
     query = Ash.Query.set_context(query, %{private: %{bypass_max_page_size?: true}})
 
@@ -251,6 +257,22 @@ defmodule Ash.Actions.Read.Stream do
 
   defp can_keyset?(query) do
     query.action.pagination && query.action.pagination.keyset?
+  end
+
+  defp validate_batch_size!(batch_size, query) do
+    unless is_integer(batch_size) and batch_size > 0 do
+      raise ArgumentError,
+            "Invalid `:batch_size` #{inspect(batch_size)} for streaming #{inspect(query.resource)}. " <>
+              "`:batch_size` must be a positive integer."
+    end
+
+    max_page_size = query.action.pagination && query.action.pagination.max_page_size
+
+    if max_page_size do
+      min(batch_size, max_page_size)
+    else
+      batch_size
+    end
   end
 
   defp take_query_limit(stream, query) do
