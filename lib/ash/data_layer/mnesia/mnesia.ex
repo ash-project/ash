@@ -88,7 +88,6 @@ defmodule Ash.DataLayer.Mnesia do
   @impl true
   def can?(_, :async_engine), do: true
   def can?(_, :bulk_create), do: true
-  def can?(_, :multitenancy), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
   def can?(_, :create), do: true
