@@ -4,6 +4,7 @@
 
 defmodule Ash.Actions.Update.UpdateMany do
   @moduledoc false
+  require Ash.Expr
   # Updates many records, each with its own input.
   #
   # The `:strategy` option controls how the work is executed (default `[:atomic_batches]`):
@@ -36,16 +37,26 @@ defmodule Ash.Actions.Update.UpdateMany do
     strategy = List.wrap(opts[:strategy] || [:atomic_batches])
     changeset_opts = changeset_opts(domain, opts)
 
-    inputs
-    |> batches(resource, action, strategy, opts)
-    |> Enum.reduce(initial_accumulator(opts), fn batch, acc ->
-      {records, errors, notifications} =
-        run_batch(resource, action, pkey, strategy, changeset_opts, batch, opts)
+    case Ash.Actions.Helpers.Bulk.validate_multitenancy(resource, action, opts) do
+      {:error, error} ->
+        %Ash.BulkResult{
+          status: :error,
+          error_count: 1,
+          errors: [Ash.Error.to_error_class(error)]
+        }
 
-      accumulate(acc, records, errors, notifications, opts)
-    end)
-    |> finalize(opts)
-    |> process_notifications(resource, action, opts)
+      :ok ->
+        inputs
+        |> batches(resource, action, strategy, opts)
+        |> Enum.reduce(initial_accumulator(opts), fn batch, acc ->
+          {records, errors, notifications} =
+            run_batch(resource, action, pkey, strategy, changeset_opts, batch, opts)
+
+          accumulate(acc, records, errors, notifications, opts)
+        end)
+        |> finalize(opts)
+        |> process_notifications(resource, action, opts)
+    end
   end
 
   # Only `:atomic_batches` chunks the input. Otherwise the whole input is handled in a single pass
@@ -68,12 +79,13 @@ defmodule Ash.Actions.Update.UpdateMany do
     built =
       Enum.map(targets, fn target ->
         changeset =
-          Ash.Changeset.fully_atomic_changeset(
-            resource,
+          resource
+          |> Ash.Changeset.fully_atomic_changeset(
             action,
             target.input,
             Keyword.put(changeset_opts, :data, target.record)
           )
+          |> apply_attribute_multitenancy()
 
         Map.put(target, :changeset, changeset)
       end)
@@ -541,4 +553,20 @@ defmodule Ash.Actions.Update.UpdateMany do
 
   defp maybe_put(opts, _key, nil), do: opts
   defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp apply_attribute_multitenancy(%Ash.Changeset{} = changeset) do
+    if changeset.tenant &&
+         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute &&
+         Map.get(changeset.action, :multitenancy) not in [:bypass, :bypass_all] do
+      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
+      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
+      attribute_value = apply(m, f, [changeset.to_tenant | a])
+
+      Ash.Changeset.filter(changeset, Ash.Expr.expr(^Ash.Expr.ref(attribute) == ^attribute_value))
+    else
+      changeset
+    end
+  end
+
+  defp apply_attribute_multitenancy(other), do: other
 end
