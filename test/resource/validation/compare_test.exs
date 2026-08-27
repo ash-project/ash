@@ -360,6 +360,38 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
       )
     end
 
+    test "validates against another field with {:ref, field} syntax" do
+      {:ok, opts} =
+        Compare.init(attribute: :number_one, less_than_or_equal_to: {:ref, :number_two})
+
+      assert_validation_success(create_changeset(%{number_one: 5, number_two: 10}), opts)
+      assert_validation_success(create_changeset(%{number_one: 10, number_two: 10}), opts)
+
+      assert_validation_error(
+        create_changeset(%{number_one: 1_000_000, number_two: 10}),
+        opts,
+        "must be less than or equal to number_two"
+      )
+
+      {:ok, opts} = Compare.init(attribute: :number_one, less_than: {:ref, :number_two})
+      assert_validation_success(create_changeset(%{number_one: 5, number_two: 10}), opts)
+
+      assert_validation_error(
+        create_changeset(%{number_one: 10, number_two: 10}),
+        opts,
+        "must be less than number_two"
+      )
+
+      {:ok, opts} = Compare.init(attribute: :number_one, greater_than: {:ref, :number_two})
+      assert_validation_success(create_changeset(%{number_one: 100, number_two: 10}), opts)
+
+      assert_validation_error(
+        create_changeset(%{number_one: 1, number_two: 10}),
+        opts,
+        "must be greater than number_two"
+      )
+    end
+
     test "validates with different numeric types" do
       {:ok, opts} = Compare.init(attribute: :number_three, greater_than: 0)
       assert_validation_success(create_changeset(%{number_three: Decimal.new(1)}), opts)
@@ -477,6 +509,53 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
         opts,
         "must be greater than 42"
       )
+    end
+  end
+
+  defmodule AtomicPost do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*]
+
+      update :set_amount do
+        accept [:amount]
+        require_atomic? true
+        validate compare(:amount, less_than_or_equal_to: {:ref, :credit_limit})
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :amount, :integer, public?: true
+      attribute :credit_limit, :integer, public?: true
+    end
+  end
+
+  describe "atomic path with {:ref, field}" do
+    test "compares against the referenced field rather than a literal tuple" do
+      post =
+        AtomicPost
+        |> Ash.Changeset.for_create(:create, %{amount: 1, credit_limit: 10})
+        |> Ash.create!()
+
+      assert {:ok, _} =
+               post
+               |> Ash.Changeset.for_update(:set_amount, %{amount: 5})
+               |> Ash.update()
+
+      assert {:error, error} =
+               post
+               |> Ash.Changeset.for_update(:set_amount, %{amount: 1_000_000})
+               |> Ash.update()
+
+      assert Exception.message(error) =~ "must be less than or equal to"
     end
   end
 
