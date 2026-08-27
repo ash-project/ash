@@ -260,7 +260,7 @@ defmodule Ash.Actions.Read.Stream do
   end
 
   defp validate_batch_size!(batch_size, query) do
-    unless is_integer(batch_size) and batch_size > 0 do
+    if !(is_integer(batch_size) and batch_size > 0) do
       raise ArgumentError,
             "Invalid `:batch_size` #{inspect(batch_size)} for streaming #{inspect(query.resource)}. " <>
               "`:batch_size` must be a positive integer."
