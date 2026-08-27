@@ -83,6 +83,59 @@ defmodule Ash.Test.Actions.StreamTest do
     end
   end
 
+  defmodule CappedPost do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:destroy, create: :*, update: :*]
+
+      read :read do
+        primary? true
+        pagination keyset?: true, offset?: true, required?: false, max_page_size: 2
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+    end
+  end
+
+  test "a batch_size above the action's max_page_size still streams every record" do
+    1..10
+    |> Stream.map(&%{title: "title#{&1}"})
+    |> Ash.bulk_create!(CappedPost, :create)
+
+    count =
+      CappedPost
+      |> Ash.stream!(batch_size: 1_000)
+      |> Enum.count()
+
+    assert count == 10
+  end
+
+  test "a non-positive batch_size is rejected rather than looping forever" do
+    assert_raise ArgumentError, ~r/must be a positive integer/, fn ->
+      Post
+      |> Ash.stream!(batch_size: 0)
+      |> Enum.to_list()
+    end
+
+    assert_raise ArgumentError, ~r/must be a positive integer/, fn ->
+      Post
+      |> Ash.stream!(batch_size: -5, stream_with: :offset)
+      |> Enum.to_list()
+    end
+  end
+
   test "records can be streamed" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
