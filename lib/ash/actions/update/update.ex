@@ -91,10 +91,18 @@ defmodule Ash.Actions.Update do
             {{:not_atomic, "atomic upgrade was disabled with opts"}, nil}
 
           true ->
+            private_argument_names =
+              action.arguments
+              |> Enum.reject(& &1.public?)
+              |> Enum.map(& &1.name)
+
+            {private_arguments, arguments} =
+              Map.split(changeset.arguments, private_argument_names)
+
             params =
               changeset.casted_attributes
-              |> Map.merge(changeset.arguments)
-              |> Map.merge(changeset.casted_arguments)
+              |> Map.merge(arguments)
+              |> Map.merge(Map.drop(changeset.casted_arguments, private_argument_names))
 
             res =
               Ash.Changeset.fully_atomic_changeset(
@@ -108,6 +116,7 @@ defmodule Ash.Actions.Update do
                   data: changeset.data,
                   assume_casted?: true,
                   no_atomic_constraints: changeset.no_atomic_constraints,
+                  private_arguments: private_arguments,
                   atomics:
                     Keyword.merge(
                       changeset.atomic_changes,

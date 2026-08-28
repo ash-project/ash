@@ -125,6 +125,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :create_with_private, action: :create_with_private
       define :update_with_private, action: :update_with_private
       define :atomic_update_with_private, action: :atomic_update_with_private
+      define :assign_with_private, action: :assign_with_private
       define :destroy_with_private, action: :destroy_with_private
       define :soft_destroy_with_private, action: :soft_destroy_with_private
 
@@ -246,6 +247,19 @@ defmodule Ash.Test.CodeInterfaceTest do
         accept [:first_name, :last_name]
 
         change atomic_update(:last_name, expr(^arg(:private_flag) <> "_flagged"))
+      end
+
+      update :assign_with_private do
+        argument :trigger_side_effect?, :boolean,
+          allow_nil?: false,
+          public?: false,
+          default: true
+
+        accept [:first_name]
+
+        change set_attribute(:last_name, "side_effect") do
+          where argument_equals(:trigger_side_effect?, true)
+        end
       end
 
       destroy :destroy_with_private do
@@ -1048,6 +1062,20 @@ defmodule Ash.Test.CodeInterfaceTest do
       User.atomic_update_with_private!(user, %{}, private_arguments: %{private_flag: "updated"})
 
     assert updated.last_name == "updated_flagged"
+  end
+
+  test "private arguments survive the atomic upgrade on a `require_atomic?` update" do
+    user = User.create!("john")
+
+    updated =
+      User.assign_with_private!(user, %{}, private_arguments: %{trigger_side_effect?: false})
+
+    refute updated.last_name == "side_effect"
+
+    updated =
+      User.assign_with_private!(user, %{}, private_arguments: %{trigger_side_effect?: true})
+
+    assert updated.last_name == "side_effect"
   end
 
   test "private arguments can be passed through code interface for atomic bulk_update" do
