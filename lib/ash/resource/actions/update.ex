@@ -11,6 +11,7 @@ defmodule Ash.Resource.Actions.Update do
     :description,
     :error_handler,
     :multitenancy,
+    :filter,
     accept: nil,
     require_attributes: [],
     allow_nil_input: [],
@@ -27,6 +28,7 @@ defmodule Ash.Resource.Actions.Update do
     skip_global_validations?: false,
     arguments: [],
     changes: [],
+    filters: [],
     reject: [],
     metadata: [],
     transaction?: true,
@@ -41,6 +43,8 @@ defmodule Ash.Resource.Actions.Update do
           name: atom,
           manual: module | nil,
           multitenancy: atom,
+          filter: any,
+          filters: [any],
           skip_unknown_inputs: list(atom | String.t()),
           atomic_upgrade?: boolean(),
           action_select: list(atom) | nil,
@@ -115,8 +119,23 @@ defmodule Ash.Resource.Actions.Update do
   def opt_schema, do: @opt_schema
 
   def transform(%{manual: manual} = action) when not is_nil(manual) do
-    {:ok, %{action | require_atomic?: false}}
+    {:ok, %{action | require_atomic?: false} |> concat_filters()}
   end
 
-  def transform(action), do: {:ok, action}
+  def transform(action), do: {:ok, concat_filters(action)}
+
+  defp concat_filters(%{filters: [filter]} = action) do
+    %{action | filter: filter.filter}
+  end
+
+  defp concat_filters(%{filters: [first | rest]} = action) do
+    filter =
+      Enum.reduce(rest, first.filter, fn filter, acc ->
+        Ash.Query.BooleanExpression.new(:and, filter.filter, acc)
+      end)
+
+    %{action | filter: filter}
+  end
+
+  defp concat_filters(action), do: action
 end
