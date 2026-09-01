@@ -377,6 +377,11 @@ defmodule Ash.Test.Manifest.Todo do
         allow_nil? true
         default nil
       end
+
+      argument :grouping, Ash.Test.Manifest.Todo.DateGrouping do
+        allow_nil? true
+        default nil
+      end
     end
   end
 
