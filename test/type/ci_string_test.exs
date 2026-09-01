@@ -56,7 +56,19 @@ defmodule Ash.Test.Type.CiString do
         allow_nil?: true,
         constraints: [match: ~r/^string_[a-z]+$/i],
         public?: true
+
+      attribute :string_upper, :ci_string,
+        allow_nil?: true,
+        constraints: [max_length: 3, casing: :upper],
+        public?: true
     end
+  end
+
+  test "validates length against the case-folded value" do
+    assert {:error, %Ash.Error.Invalid{}} =
+             Post
+             |> Ash.Changeset.for_create(:create, %{string_upper: "ßßß"})
+             |> Ash.create()
   end
 
   test "it handles non-empty values" do

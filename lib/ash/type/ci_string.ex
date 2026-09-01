@@ -128,6 +128,8 @@ defmodule Ash.Type.CiString do
   def apply_constraints(nil, _), do: {:ok, nil}
 
   def apply_constraints(value, constraints) do
+    value = casefold(value, constraints[:casing])
+
     {value, errors} =
       return_value(
         Keyword.get(constraints, :allow_empty?, false),
@@ -142,6 +144,10 @@ defmodule Ash.Type.CiString do
       errors -> {:error, errors}
     end
   end
+
+  defp casefold(value, :lower) when is_binary(value), do: String.downcase(value)
+  defp casefold(value, :upper) when is_binary(value), do: String.upcase(value)
+  defp casefold(value, _casing), do: value
 
   defp return_value(false, true, value, constraints) do
     trimmed = String.trim(value)
