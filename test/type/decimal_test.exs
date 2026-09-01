@@ -97,6 +97,24 @@ defmodule Ash.Test.Type.DecimalTest do
     end
   end
 
+  test "rejects non-finite values in cast_input/cast_stored" do
+    for value <- ["Infinity", "-Infinity", "Inf", "-Inf", "NaN", "sNaN"] do
+      assert :error = Ash.Type.Decimal.cast_input(value, [])
+      assert :error = Ash.Type.Decimal.cast_stored(value, [])
+    end
+  end
+
+  test "rejects a non-finite amount submitted through an action" do
+    for bad <- ["Infinity", "-Inf", "NaN"] do
+      invalid_attrs = @valid_attrs |> Map.put(:amount, bad)
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Balance
+               |> Ash.Changeset.for_create(:create, invalid_attrs)
+               |> Ash.create()
+    end
+  end
+
   test "treat two decimals same when value is same" do
     assert Ash.Type.Decimal.equal?(Decimal.new("1.0"), Decimal.new("1.00"))
   end

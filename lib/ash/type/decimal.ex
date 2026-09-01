@@ -276,7 +276,7 @@ defmodule Ash.Type.Decimal do
   def cast_input(value, _constraints) when is_binary(value) do
     case Decimal.parse(value) do
       {decimal, ""} ->
-        {:ok, decimal}
+        ensure_finite(decimal)
 
       _ ->
         :error
@@ -287,7 +287,7 @@ defmodule Ash.Type.Decimal do
   def cast_input(value, _constraints) do
     case Ecto.Type.cast(:decimal, value) do
       {:ok, decimal} ->
-        {:ok, decimal}
+        ensure_finite(decimal)
 
       error ->
         error
@@ -299,7 +299,7 @@ defmodule Ash.Type.Decimal do
   def cast_stored(value, _) when is_binary(value) do
     case Decimal.parse(value) do
       {decimal, ""} ->
-        {:ok, decimal}
+        ensure_finite(decimal)
 
       _ ->
         :error
@@ -310,8 +310,15 @@ defmodule Ash.Type.Decimal do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, _) do
-    Ecto.Type.load(:decimal, value)
+    case Ecto.Type.load(:decimal, value) do
+      {:ok, decimal} -> ensure_finite(decimal)
+      other -> other
+    end
   end
+
+  defp ensure_finite(%Decimal{coef: coef} = decimal) when is_integer(coef), do: {:ok, decimal}
+  defp ensure_finite(%Decimal{}), do: :error
+  defp ensure_finite(other), do: {:ok, other}
 
   @impl true
   @spec dump_to_native(any, any) :: :error | {:ok, any}
