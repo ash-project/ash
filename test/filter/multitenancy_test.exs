@@ -11,6 +11,10 @@ defmodule Ash.Test.MultitenancyTest do
   defmodule MultiTenant do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
+    ets do
+      private?(true)
+    end
+
     multitenancy do
       strategy :attribute
       attribute :owner
@@ -44,6 +48,10 @@ defmodule Ash.Test.MultitenancyTest do
 
   defmodule MultiTenantRelated do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     multitenancy do
       strategy :attribute
@@ -106,6 +114,10 @@ defmodule Ash.Test.MultitenancyTest do
 
   defmodule NonMultiTenant do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     attributes do
       attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true

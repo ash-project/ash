@@ -17,16 +17,21 @@ defmodule Ash.DataLayer.MnesiaTest do
     :ok
   end
 
+  @no_pkey_test_table :test_events
+
   setup do
     # Clean up any existing tables before each test
-    try do
-      :mnesia.delete_table(@default_test_table)
-    catch
-      :exit, {:aborted, {:no_exists, _}} -> :ok
+    for table <- [@default_test_table, @no_pkey_test_table] do
+      try do
+        :mnesia.delete_table(table)
+      catch
+        :exit, {:aborted, {:no_exists, _}} -> :ok
+      end
     end
 
-    # Create fresh table for each test
+    # Create fresh tables for each test
     :mnesia.create_table(@default_test_table, attributes: [:id, :val])
+    :mnesia.create_table(@no_pkey_test_table, attributes: [:id, :val])
     :ok
   end
 
@@ -61,6 +66,22 @@ defmodule Ash.DataLayer.MnesiaTest do
     end
   end
 
+  defmodule MnesiaNoPkEvent do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
+
+    mnesia do
+      table :test_events
+    end
+
+    actions do
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      attribute :name, :string, public?: true
+    end
+  end
+
   describe "create/2" do
     test "it creates a user" do
       resource = MnesiaTestUser
@@ -76,6 +97,36 @@ defmodule Ash.DataLayer.MnesiaTest do
                title: "Developer",
                roles: [:admin, :user]
              } = created_user
+    end
+
+    test "it rejects a create whose primary key already exists" do
+      id = Ash.UUID.generate()
+
+      assert {:ok, _} =
+               MnesiaTestUser
+               |> Ash.Changeset.for_create(:create, %{id: id, name: "John"})
+               |> Ash.create()
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               MnesiaTestUser
+               |> Ash.Changeset.for_create(:create, %{id: id, name: "Jane"})
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "has already been taken"
+
+      assert {:ok, %MnesiaTestUser{name: "John"}} = Ash.get(MnesiaTestUser, id)
+    end
+
+    test "it allows duplicate rows for a resource without a primary key" do
+      for name <- ["a", "b", "a"] do
+        assert {:ok, _} =
+                 MnesiaNoPkEvent
+                 |> Ash.Changeset.for_create(:create, %{name: name})
+                 |> Ash.create()
+      end
+
+      names = MnesiaNoPkEvent |> Ash.read!() |> Enum.map(& &1.name) |> Enum.sort()
+      assert names == ["a", "a", "b"]
     end
   end
 

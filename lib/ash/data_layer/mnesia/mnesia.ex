@@ -469,11 +469,13 @@ defmodule Ash.DataLayer.Mnesia do
     with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          {:ok, record} <- apply_create_atomics(changeset, resource, record) do
       pkey =
-        resource
-        |> Ash.Resource.Info.primary_key()
-        |> Enum.map(fn attr ->
-          Map.get(record, attr)
-        end)
+        case Ash.Resource.Info.primary_key(resource) do
+          [] ->
+            {:__ash_synthetic_key__, make_ref()}
+
+          fields ->
+            Enum.map(fields, fn attr -> Map.get(record, attr) end)
+        end
 
       resource
       |> Ash.Resource.Info.attributes()
@@ -490,6 +492,12 @@ defmodule Ash.DataLayer.Mnesia do
             # If with_transaction is false, we are in a transaction and will only return :ok
             :ok ->
               {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+
+            :already_exists ->
+              {:error, pkey_already_taken_error(resource)}
+
+            {:atomic, :already_exists} ->
+              {:error, pkey_already_taken_error(resource)}
 
             {:atomic, _} ->
               {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
@@ -530,13 +538,25 @@ defmodule Ash.DataLayer.Mnesia do
   # This allows for writing to Mnesia without a transaction in case one was
   # started elsewhere. This was explicitly created for `bulk_create/3`.
   defp do_write(table, pkey, values, with_transaction) do
-    if with_transaction && !Mnesia.is_transaction() do
-      Mnesia.transaction(fn ->
-        Mnesia.write({table, pkey, values})
-      end)
-    else
-      Mnesia.write({table, pkey, values})
+    write = fn ->
+      case Mnesia.read({table, pkey}) do
+        [] -> Mnesia.write({table, pkey, values})
+        _ -> :already_exists
+      end
     end
+
+    if with_transaction && !Mnesia.is_transaction() do
+      Mnesia.transaction(write)
+    else
+      write.()
+    end
+  end
+
+  defp pkey_already_taken_error(resource) do
+    Ash.Error.Changes.InvalidChanges.exception(
+      fields: Ash.Resource.Info.primary_key(resource),
+      message: "has already been taken"
+    )
   end
 
   @doc false
