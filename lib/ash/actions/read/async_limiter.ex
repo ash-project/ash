@@ -77,34 +77,39 @@ defmodule Ash.Actions.Read.AsyncLimiter do
   def await_at_least_one([]), do: {[], []}
 
   def await_at_least_one(list) do
-    list
-    |> Enum.map(fn
-      %Task{} = task ->
-        case Task.yield(task, 0) do
-          {:ok, {:__exception__, e, stacktrace}} ->
-            reraise e, stacktrace
+    {non_tasks, tasks} = Enum.split_with(list, &(!match?(%Task{}, &1)))
 
-          {:ok, term} ->
-            term
+    case tasks do
+      [] ->
+        {non_tasks, []}
 
-          {:exit, term} ->
-            {:error, term}
+      tasks ->
+        {complete, pending} = collect_yielded(Task.yield_many(tasks, timeout: 0))
 
-          nil ->
-            task
+        case non_tasks ++ complete do
+          [] ->
+            collect_yielded(Task.yield_many(pending, limit: 1, timeout: :infinity))
+
+          complete ->
+            {complete, pending}
         end
-
-      other ->
-        other
-    end)
-    |> Enum.split_with(&(!match?(%Task{}, &1)))
-    |> case do
-      {[], remaining} ->
-        await_at_least_one(remaining)
-
-      {complete, remaining} ->
-        {complete, remaining}
     end
+  end
+
+  defp collect_yielded(results) do
+    Enum.reduce(results, {[], []}, fn
+      {_task, {:ok, {:__exception__, e, stacktrace}}}, _acc ->
+        reraise e, stacktrace
+
+      {_task, {:ok, term}}, {complete, pending} ->
+        {[term | complete], pending}
+
+      {_task, {:exit, term}}, {complete, pending} ->
+        {[{:error, term} | complete], pending}
+
+      {task, nil}, {complete, pending} ->
+        {complete, [task | pending]}
+    end)
   end
 
   defp in_transaction?(query) do
