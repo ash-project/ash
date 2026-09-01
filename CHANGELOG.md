@@ -8,6 +8,81 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.32.2](https://github.com/ash-project/ash/compare/v3.32.1...v3.32.2) (2026-09-01)
+
+
+
+
+### Bug Fixes:
+
+* hold AsyncLimiter concurrency slot until the task completes by [@zachdaniel](https://github.com/zachdaniel)
+
+* treat literal boolean/nil bounds in compare as values, not field names by [@zachdaniel](https://github.com/zachdaniel)
+
+* enforce outer constraints and handle nil for nested arrays by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82740)
+
+* stream relationship flattening in runtime filters to bound memory by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82742)
+
+* block instead of busy-spinning while awaiting async reads by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82743)
+
+* authorize atomic update_many by merging the policy filter into each changeset by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82746)
+
+* forbid records whose policy scenarios are all impossible in runtime checks by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82747)
+
+* force the configured tag when dumping a map_with_tag union arm by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82741)
+
+* authorize aggregates under the same action they run under by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82748)
+
+* fail closed when a parent() relationship filter reference is unavailable by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82749)
+
+* reject duplicate primary keys on create in the ETS and Mnesia data layers by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82745)
+
+* fail closed when a reactor change step's where guard raises by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82744)
+
+* load stored non-v7 uuids leniently instead of erroring on read by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82738)
+
+* reject vectors exceeding the 65,535 dimension limit by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82737)
+
+* don't leak the stored field value in atomic confirm mismatch errors by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82739)
+
+* case-fold ci_string before validating length and match constraints by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82736)
+
+* skip string match regex once a length constraint is violated by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82735)
+
+* reject non-finite (Infinity/NaN) decimal values by [@zachdaniel](https://github.com/zachdaniel) (CVE-2026-82734)
+
+* ensure private arguments survive atomic upgrade by [@zachdaniel](https://github.com/zachdaniel)
+
+* require and apply tenant in atomic update_many by [@zachdaniel](https://github.com/zachdaniel) [(#2908)](https://github.com/ash-project/ash/pull/2908)
+
+* error on parent() relationship filters in manage_relationship lookups by [@zachdaniel](https://github.com/zachdaniel) [(#2908)](https://github.com/ash-project/ash/pull/2908)
+
+* validate and cap batch_size in Ash.stream! by [@zachdaniel](https://github.com/zachdaniel) [(#2908)](https://github.com/ash-project/ash/pull/2908)
+
+* don't claim multitenancy support in the mnesia data layer by [@zachdaniel](https://github.com/zachdaniel) [(#2908)](https://github.com/ash-project/ash/pull/2908)
+
+* honor outside_transaction undo guard in reactor bulk steps by [@zachdaniel](https://github.com/zachdaniel) [(#2908)](https://github.com/ash-project/ash/pull/2908)
+
+* resolve {:ref, field} targets in the compare validation by [@zachdaniel](https://github.com/zachdaniel) [(#2908)](https://github.com/ash-project/ash/pull/2908)
+
+* correct is_nil vs equality subset direction by [@zachdaniel](https://github.com/zachdaniel) [(#2908)](https://github.com/ash-project/ash/pull/2908)
+
+* use semantic equality when comparing in predicates for subset checks by [@zachdaniel](https://github.com/zachdaniel) [(#2908)](https://github.com/ash-project/ash/pull/2908)
+
+* fill arguments in calculations by [@zachdaniel](https://github.com/zachdaniel)
+
+* avoid unnecessary compile dependencies for runtime DSL modules by [@zachdaniel](https://github.com/zachdaniel) [(#2885)](https://github.com/ash-project/ash/pull/2885)
+
+* preserve compile dependencies for reactor inputs by Jechol Lee [(#2885)](https://github.com/ash-project/ash/pull/2885)
+
+* avoid unnecessary compile dependencies for runtime DSL modules by Jechol Lee [(#2885)](https://github.com/ash-project/ash/pull/2885)
+
+### Performance Improvements:
+
+* resolve each operand once in determine_types by [@zachdaniel](https://github.com/zachdaniel) [(#2905)](https://github.com/ash-project/ash/pull/2905)
+
+* resolve each operand once in determine_types by Diogo Martins [(#2905)](https://github.com/ash-project/ash/pull/2905)
+
 ## [v3.32.1](https://github.com/ash-project/ash/compare/v3.32.0...v3.32.1) (2026-08-23)
 
 
