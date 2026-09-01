@@ -40,16 +40,16 @@ defmodule Ash.Actions.Read.AsyncLimiter do
           end)
 
         if claimed? do
-          try do
-            Ash.ProcessHelpers.async(
-              fn ->
+          Ash.ProcessHelpers.async(
+            fn ->
+              try do
                 func.()
-              end,
-              opts
-            )
-          after
-            release(async_limiter)
-          end
+              after
+                release(async_limiter)
+              end
+            end,
+            opts
+          )
         else
           func.()
         end
