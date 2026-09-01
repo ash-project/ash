@@ -125,7 +125,7 @@ defmodule Ash.Filter.Runtime do
       |> Ash.Filter.relationship_paths()
 
     record
-    |> flatten_relationships(relationship_paths)
+    |> stream_relationships(relationship_paths)
     |> Enum.reduce_while({:ok, false}, fn scenario, {:ok, false} ->
       case do_match(
              scenario,
@@ -151,10 +151,20 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp flatten_relationships(record, relationship_paths) do
+    record
+    |> do_flatten_relationships(relationship_paths, &Enum.flat_map/2)
+    |> Enum.to_list()
+  end
+
+  defp stream_relationships(record, relationship_paths) do
+    do_flatten_relationships(record, relationship_paths, &Stream.flat_map/2)
+  end
+
+  defp do_flatten_relationships(record, relationship_paths, flat_map) do
     relationship_paths
     |> Enum.reject(&(&1 == []))
     |> Enum.reduce([record], fn [rel | rest], records ->
-      Enum.flat_map(records, fn record ->
+      flat_map.(records, fn record ->
         case Map.get(record, rel) do
           nil ->
             [record]
