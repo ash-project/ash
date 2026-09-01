@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.32.3](https://github.com/ash-project/ash/compare/v3.32.2...v3.32.3) (2026-09-01)
+
+
+
+
+### Bug Fixes:
+
+* include calculation arguments in manifest reachability by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.32.2](https://github.com/ash-project/ash/compare/v3.32.1...v3.32.2) (2026-09-01)
 
 
