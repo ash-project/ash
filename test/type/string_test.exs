@@ -118,4 +118,14 @@ defmodule Ash.Test.Type.StringTest do
       |> Ash.create!()
     end)
   end
+
+  test "does not run the match regex once a length constraint is violated" do
+    constraints = [max_length: 3, match: ~r/^\d+$/]
+
+    assert {:error, error} = Ash.Type.String.apply_constraints("abcd", constraints)
+    errors = if Keyword.keyword?(error), do: [error], else: error
+
+    assert Enum.any?(errors, &(&1[:message] =~ "less than or equal"))
+    refute Enum.any?(errors, &(&1[:message] =~ "must match"))
+  end
 end
