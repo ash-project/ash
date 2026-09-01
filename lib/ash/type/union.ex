@@ -1068,12 +1068,12 @@ defmodule Ash.Type.Union do
               {:ok, nil}
 
             {:ok, value} ->
-              if Map.has_key?(value, config[:tag]) ||
-                   (is_atom(config[:tag]) && Map.has_key?(value, to_string(config[:tag]))) do
-                {:ok, value}
-              else
-                {:ok, Map.put(value, config[:tag], config[:tag_value])}
-              end
+              value =
+                value
+                |> Map.drop([config[:tag], to_string(config[:tag])])
+                |> Map.put(config[:tag], config[:tag_value])
+
+              {:ok, value}
           end
       end
     else

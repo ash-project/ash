@@ -407,6 +407,28 @@ defmodule Ash.Test.Filter.UnionTest do
     assert {:error, _} = Ash.Type.cast_input(:union, 11, constraints)
   end
 
+  test "map_with_tag cannot smuggle a conflicting tag to reload as another arm" do
+    constraints = [
+      storage: :map_with_tag,
+      types: [
+        user: [type: :map, tag: :type, tag_value: "user"],
+        admin: [type: :map, tag: :type, tag_value: "admin"]
+      ]
+    ]
+
+    {:ok, %{constraints: constraints}} =
+      Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+    input = %{"_union_type" => "user", "type" => "admin", "name" => "eve"}
+
+    assert {:ok, %Ash.Union{type: :user} = union} =
+             Ash.Type.cast_input(:union, input, constraints)
+
+    assert {:ok, dumped} = Ash.Type.dump_to_native(:union, union, constraints)
+
+    assert {:ok, %Ash.Union{type: :user}} = Ash.Type.cast_stored(:union, dumped, constraints)
+  end
+
   test "it handles changes between native types" do
     constraints = [
       types: [
