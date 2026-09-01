@@ -1983,7 +1983,7 @@ defmodule Ash.Policy.Authorizer do
         |> Enum.reject(&scenario_impossible?(&1, authorizer, record))
         |> case do
           [] ->
-            {[record | data], authorizer, any_forbidden?}
+            {data, authorizer, true}
 
           scenarios ->
             case do_check_result(scenarios, authorizer, record) do
