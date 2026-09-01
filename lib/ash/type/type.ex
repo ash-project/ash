@@ -1263,9 +1263,50 @@ defmodule Ash.Type do
   Confirms if a casted value matches the provided constraints.
   """
   @spec apply_constraints(t(), term, constraints()) :: {:ok, term} | {:error, term()}
-  def apply_constraints({:array, {:array, type}}, term, constraints) do
-    type = get_type(type)
-    map_while_ok(term, &apply_constraints({:array, type}, &1, item_constraints(constraints)))
+  def apply_constraints({:array, {:array, _}}, nil, _constraints), do: {:ok, nil}
+
+  def apply_constraints({:array, {:array, type}}, term, constraints) when is_list(term) do
+    inner_type = {:array, get_type(type)}
+    item_constraints = item_constraints(constraints)
+    nil_items? = Keyword.get(constraints, :nil_items?, false)
+    remove_nil_items? = Keyword.get(constraints, :remove_nil_items?, false)
+
+    {terms, errors} =
+      term
+      |> Enum.with_index()
+      |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
+        case apply_constraints(inner_type, item, item_constraints) do
+          {:ok, value} ->
+            maybe_handle_nil_item(value, index, items, errors, nil_items?, remove_nil_items?)
+
+          {:error, new_errors} ->
+            new_errors =
+              new_errors
+              |> List.wrap()
+              |> Ash.Helpers.flatten_preserving_keywords()
+              |> Enum.map(fn
+                string when is_binary(string) ->
+                  [message: string, index: index]
+
+                vars ->
+                  Keyword.put(vars, :index, index)
+              end)
+
+            {[item | items], List.wrap(new_errors) ++ errors}
+        end
+      end)
+
+    case errors ++ list_constraint_errors(terms, constraints) do
+      [] ->
+        {:ok, Enum.reverse(terms)}
+
+      errors ->
+        {:error, errors}
+    end
+  end
+
+  def apply_constraints({:array, {:array, _}}, _term, _constraints) do
+    {:error, "must be a list"}
   end
 
   def apply_constraints({:array, type}, term, constraints) when is_list(term) do

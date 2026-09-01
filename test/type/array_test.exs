@@ -50,4 +50,36 @@ defmodule Ash.Test.Type.ArrayTest do
                )
              )
   end
+
+  describe "nested arrays ({:array, {:array, type}})" do
+    test "returns {:ok, nil} for a nil value instead of raising" do
+      assert {:ok, nil} =
+               Ash.Type.apply_constraints({:array, {:array, :string}}, nil, max_length: 2)
+    end
+
+    test "enforces the outer array's max_length" do
+      assert {:error, _} =
+               Ash.Type.apply_constraints(
+                 {:array, {:array, :string}},
+                 [["a"], ["b"], ["c"]],
+                 max_length: 2
+               )
+    end
+
+    test "enforces the outer array's nil_items? constraint" do
+      assert {:error, _} =
+               Ash.Type.apply_constraints(
+                 {:array, {:array, :string}},
+                 [["a"], nil],
+                 nil_items?: false
+               )
+    end
+
+    test "accepts a valid nested array within the outer constraints" do
+      assert {:ok, [["a"], ["b"]]} =
+               Ash.Type.apply_constraints({:array, {:array, :string}}, [["a"], ["b"]],
+                 max_length: 2
+               )
+    end
+  end
 end
