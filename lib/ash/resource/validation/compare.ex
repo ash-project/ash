@@ -363,7 +363,8 @@ defmodule Ash.Resource.Validation.Compare do
     Ash.Subject.get_argument_or_attribute(subject, attribute)
   end
 
-  defp attribute_value(subject, attribute) when is_atom(attribute) do
+  defp attribute_value(subject, attribute)
+       when is_atom(attribute) and attribute not in [true, false, nil] do
     Ash.Subject.get_argument_or_attribute(subject, attribute)
   end
 
@@ -377,7 +378,8 @@ defmodule Ash.Resource.Validation.Compare do
     atomic_ref(attribute)
   end
 
-  defp atomic_value(attribute) when is_atom(attribute) do
+  defp atomic_value(attribute)
+       when is_atom(attribute) and attribute not in [true, false, nil] do
     atomic_ref(attribute)
   end
 

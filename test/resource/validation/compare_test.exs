@@ -95,6 +95,18 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
     end
   end
 
+  describe "literal boolean/nil bounds" do
+    test "a literal boolean bound is compared as a value, not treated as a field name" do
+      {:ok, opts} = Compare.init(attribute: :boolean_value, is_not_equal: true)
+
+      changeset = create_changeset(%{boolean_value: false})
+      assert_validation_success(changeset, opts)
+
+      changeset = create_changeset(%{boolean_value: true})
+      assert_validation_error(changeset, opts, "must not be equal to true")
+    end
+  end
+
   describe "is_equal validation" do
     test "validates equality with numbers" do
       {:ok, opts} = Compare.init(attribute: :number_one, is_equal: 100)
