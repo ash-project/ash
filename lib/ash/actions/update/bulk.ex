@@ -1707,7 +1707,8 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp authorize_atomic_changeset(query, changeset, opts) do
+  @doc false
+  def authorize_atomic_changeset(query, changeset, opts) do
     if opts[:authorize?] do
       case Ash.can(
              changeset,
