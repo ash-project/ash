@@ -120,4 +120,30 @@ defmodule Ash.Test.ReactorChangeTest do
     {:ok, changeset} = Reactor.run(SimpleWhereChangeReactor, %{changeset: with_title_changeset})
     assert Ash.Changeset.get_attribute(changeset, :title) == "Explicit title"
   end
+
+  defmodule RaisingWhereGuard do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(_changeset, _opts, _context), do: raise("boom in where guard")
+  end
+
+  test "a `where` guard that raises fails the step closed instead of skipping the change" do
+    defmodule RaisingWhereReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :changeset
+
+      change :set_title, set_attribute(:title, "Default title") do
+        initial(input(:changeset))
+        where [RaisingWhereGuard]
+      end
+    end
+
+    changeset = Ash.Changeset.for_create(Post, :create, %{})
+
+    assert {:error, _} = Reactor.run(RaisingWhereReactor, %{changeset: changeset})
+  end
 end
