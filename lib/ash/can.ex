@@ -830,75 +830,25 @@ defmodule Ash.Can do
           {:ok, true, subject}
 
         authorizers ->
-          authorizers
-          |> Enum.reduce(
-            {:ok, true, subject},
-            fn authorizer, {:ok, true, subject} ->
-              authorizer_state =
-                Ash.Authorizer.initial_state(
-                  authorizer,
-                  actor,
-                  subject.resource,
-                  subject.action,
-                  domain
-                )
-
-              context = %{
-                actor: actor,
-                tenant: subject.to_tenant,
-                domain: domain,
-                resource: subject.resource,
-                query: nil,
-                changeset: nil,
-                action_input: nil,
-                subject: subject
-              }
-
-              context =
-                case subject do
-                  %Ash.Query{} -> Map.put(context, :query, subject)
-                  %Ash.Changeset{} -> Map.put(context, :changeset, subject)
-                  %Ash.ActionInput{} -> Map.put(context, :action_input, subject)
-                end
-
-              case subject do
-                %Ash.Query{} = query ->
-                  alter_query(query, authorizer, authorizer_state, context, opts)
-
-                %Ash.Changeset{} = changeset ->
-                  context = Map.put(context, :changeset, changeset)
-
-                  with {:ok, changeset, authorizer_state} <-
-                         Ash.Authorizer.add_calculations(
-                           authorizer,
-                           changeset,
-                           authorizer_state,
-                           context
-                         ) do
-                    if opts[:base_query] do
-                      case alter_query(
-                             opts[:base_query],
-                             authorizer,
-                             authorizer_state,
-                             context,
-                             opts
-                           ) do
-                        {:ok, true, query} ->
-                          {:ok, true, changeset, query}
-
-                        other ->
-                          other
-                      end
-                    else
-                      {:ok, true, changeset}
-                    end
-                  end
-
-                %Ash.ActionInput{} = subject ->
-                  {:ok, true, subject}
+          Enum.reduce_while(authorizers, {:ok, true, subject}, fn authorizer, acc ->
+            {subject, base_query} =
+              case acc do
+                {:ok, true, subject} -> {subject, opts[:base_query]}
+                {:ok, true, subject, query} -> {subject, query}
               end
+
+            case alter_subject(
+                   subject,
+                   authorizer,
+                   domain,
+                   actor,
+                   Keyword.put(opts, :base_query, base_query)
+                 ) do
+              {:ok, true, _subject} = altered -> {:cont, altered}
+              {:ok, true, _subject, _query} = altered -> {:cont, altered}
+              other -> {:halt, other}
             end
-          )
+          end)
       end
     else
       {:ok, true}
@@ -906,6 +856,59 @@ defmodule Ash.Can do
   end
 
   defp alter_source(other, _, _, _, _), do: other
+
+  defp alter_subject(subject, authorizer, domain, actor, opts) do
+    authorizer_state =
+      Ash.Authorizer.initial_state(
+        authorizer,
+        actor,
+        subject.resource,
+        subject.action,
+        domain
+      )
+
+    context = %{
+      actor: actor,
+      tenant: subject.to_tenant,
+      domain: domain,
+      resource: subject.resource,
+      query: nil,
+      changeset: nil,
+      action_input: nil,
+      subject: subject
+    }
+
+    case subject do
+      %Ash.Query{} = query ->
+        alter_query(query, authorizer, authorizer_state, context, opts)
+
+      %Ash.Changeset{} = changeset ->
+        context = Map.put(context, :changeset, changeset)
+
+        with {:ok, changeset, authorizer_state} <-
+               Ash.Authorizer.add_calculations(
+                 authorizer,
+                 changeset,
+                 authorizer_state,
+                 context
+               ) do
+          if opts[:base_query] do
+            case alter_query(opts[:base_query], authorizer, authorizer_state, context, opts) do
+              {:ok, true, query} ->
+                {:ok, true, changeset, query}
+
+              other ->
+                other
+            end
+          else
+            {:ok, true, changeset}
+          end
+        end
+
+      %Ash.ActionInput{} = action_input ->
+        {:ok, true, action_input}
+    end
+  end
 
   defp alter_query(query, authorizer, authorizer_state, context, opts) do
     context = Map.put(context, :query, query)
