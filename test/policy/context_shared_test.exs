@@ -166,13 +166,14 @@ defmodule Ash.Test.Policy.ContextSharedTest do
     # Pins the intentional aggregate-vs-calc divergence in the same setup.
     # See "filter policies bypassed for calculations" in
     # `test/policy/simple_test.exs` — calc paths bypass child read policies
-    # on purpose.
+    # on purpose, so the calculation sees both children while the aggregate
+    # only sums the child matching the policy.
     test "calculation referencing children diverges from aggregate (intentional bypass)",
          %{parent: parent, ash_opts: ash_opts} do
       loaded = Ash.load!(parent, [:children_total, :has_any_child], ash_opts)
 
       assert loaded.children_total == 11_000
-      assert loaded.has_any_child == false
+      assert loaded.has_any_child == true
     end
   end
 end

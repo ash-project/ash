@@ -240,6 +240,11 @@ There are three access types, and they determine the _latest point in the proces
   read; for updates/destroys they're evaluated against the original record; for creates they're evaluated
   post-insert inside the action's transaction.
 - `runtime` - This allows checks to be run _after_ the data has been read. It is exceedingly rare that you would need to use this access type.
+  For update and destroy actions, runtime checks are evaluated against the original record inside the action's
+  transaction, before the record is written. This requires a data layer that supports transactions and an action
+  with `transaction? true` (the default). Because `before_transaction` and `around_transaction` hooks run outside
+  of the transaction and would run before authorization, Ash refuses to run runtime checks on actions that have them
+  unless the action is already running inside a transaction you opened yourself.
 
 For example, given this policy:
 
@@ -507,6 +512,69 @@ Now, that filter will be applied in such a way that produces an error if any rec
 
 So a forbidden read of the `:author` relationship will never produce a `nil` value, nor will it produce an `{:error, %Ash.Error.Forbidden{}}`
 result. Instead, the value of `:author` will be `%Ash.ForbiddenField{}`!
+
+### Composing policies across resources with `can_read`
+
+Policies on related resources are not automatically applied when authorizing a record. For example, if a `Comment`
+belongs to a `Post`, a policy on `Comment` that says "readable if the post is public" does not know anything about
+the read policies on `Post`. It is common to want to say "you can access this record if you can read the record it
+belongs to", and to have that automatically stay in sync with the related resource's policies.
+
+The `can_read/2` check does exactly that. It authorizes the related resource's read action for the current actor,
+and turns the resulting authorization filter into an `exists/2` filter over the relationship.
+
+```elixir
+# In `MyApp.Comment`
+policies do
+  policy action_type(:read) do
+    # comments are readable if the actor can read the post they belong to
+    authorize_if can_read(:post)
+  end
+end
+
+# In `MyApp.Post`
+policies do
+  policy action_type(:read) do
+    authorize_if expr(public == true)
+    authorize_if relates_to_actor_via(:author)
+  end
+end
+```
+
+With the above, reading comments as a given actor produces a filter equivalent to
+`exists(post, public == true or author_id == ^actor(:id))`. If the policies on `MyApp.Post` change, the comment
+policies follow along. Because `can_read/2` is a filter check, it also works for update and destroy actions (applied to
+the original record), and it can be chained: the policies on `MyApp.Post` may themselves use `can_read/2`.
+
+Some things to keep in mind:
+
+- For to-one relationships, the check only passes if the related record exists *and* is readable. For to-many
+  relationships, it passes if *any* related record is readable.
+- You can pick a specific read action with `can_read(:post, action: :published)`. Otherwise the relationship's
+  `read_action` is used, falling back to the primary read action. The action's own filter is included.
+- The related resource's policies must be resolvable to a filter using filter checks and simple checks. If they
+  require runtime checks (`access_type :runtime`), an error is raised. Read actions with required arguments cannot be
+  used.
+
+#### Short-circuiting with `accessing_from`
+
+`can_read/2` adds an `exists` subquery over the relationship to the query. When the related records are being
+loaded *through* the relationship (e.g `Ash.load!(post, :comments)`), the parent record has already been authorized,
+so that subquery is redundant work. Put an `accessing_from/2` check above `can_read/2` in the same policy to skip it:
+
+```elixir
+policy action_type(:read) do
+  # already authorized via the post, no need to build the post query
+  authorize_if accessing_from(MyApp.Post, :comments)
+  authorize_if can_read(:post)
+end
+```
+
+Checks in a policy are evaluated in order, and `accessing_from/2` is a simple check that resolves statically, so when
+comments are loaded from a post the policy passes without the related read action ever being authorized or the
+`exists` filter being added to the query.
+
+See `Ash.Policy.Check.Builtins.can_read/2` for more.
 
 
 ## Checks
