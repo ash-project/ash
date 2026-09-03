@@ -177,6 +177,84 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
     refute output =~ "incompatible types given"
   end
 
+  test "a dispatched change retains the Ash changeset struct shape" do
+    suffix = System.unique_integer([:positive])
+    change_module = "DispatchedChangesetShapeChange#{suffix}"
+    resource_module = "DispatchedChangesetShapeResource#{suffix}"
+
+    source = """
+    defmodule #{change_module} do
+      use Ash.Resource.Change
+
+      @impl true
+      def change(changeset, _opts, _context) do
+        _ = changeset.not_a_changeset_field
+        changeset
+      end
+    end
+
+    defmodule #{resource_module} do
+      use Ash.Resource, domain: nil
+
+      resource do
+        require_primary_key? false
+      end
+
+      actions do
+        create :create do
+          argument :amount, :integer, allow_nil?: false
+          change #{change_module}
+        end
+      end
+    end
+    """
+
+    {warning, 0} = compile_dispatched_source(source)
+
+    assert warning =~ "not_a_changeset_field"
+    assert warning =~ "%Ash.Changeset{"
+  end
+
+  test "a dispatched change retains generated default argument wrappers" do
+    suffix = System.unique_integer([:positive])
+    change_module = "DispatchedDefaultArgumentChange#{suffix}"
+    resource_module = "DispatchedDefaultArgumentResource#{suffix}"
+
+    source = """
+    defmodule #{change_module} do
+      use Ash.Resource.Change
+
+      @impl true
+      def change(changeset, _opts, _context), do: apply_change(changeset)
+
+      defp apply_change(changeset, marker \\\\ nil) do
+        _ = marker
+        _ = changeset.not_a_changeset_field
+        changeset
+      end
+    end
+
+    defmodule #{resource_module} do
+      use Ash.Resource, domain: nil
+
+      resource do
+        require_primary_key? false
+      end
+
+      actions do
+        create :create do
+          change #{change_module}
+        end
+      end
+    end
+    """
+
+    {warning, 0} = compile_dispatched_source(source)
+
+    assert warning =~ "not_a_changeset_field"
+    refute warning =~ "super must be called"
+  end
+
   test "Spark carries the resource attribute shape into a dispatched change module" do
     suffix = System.unique_integer([:positive])
     change_module = "DispatchedAcceptedAttributeChange#{suffix}"

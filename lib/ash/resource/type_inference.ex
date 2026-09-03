@@ -121,6 +121,7 @@ defmodule Ash.Resource.TypeInference do
       definitions =
         definitions
         |> Enum.flat_map(&definition_ast/1)
+        |> Enum.map(&rewrite_default_wrapper_super/1)
         |> Enum.map(&rewrite_self_reference(&1, change_module, witness_module))
         |> Enum.map(&normalize_compiler_metadata/1)
 
@@ -153,8 +154,13 @@ defmodule Ash.Resource.TypeInference do
 
   defp local_witness_clause(action_name, arguments, attributes) do
     quote generated: false do
-      def __ash_type_witness__(unquote(action_name), raw_changeset, opts, context) do
-        changeset = %{
+      def __ash_type_witness__(
+            unquote(action_name),
+            %Ash.Changeset{} = raw_changeset,
+            opts,
+            context
+          ) do
+        changeset = %Ash.Changeset{
           raw_changeset
           | arguments: unquote(arguments),
             attributes: unquote(attributes)
@@ -199,6 +205,26 @@ defmodule Ash.Resource.TypeInference do
     Macro.prewalk(definition, fn
       ^original_module -> witness_module
       node -> node
+    end)
+  end
+
+  defp rewrite_default_wrapper_super(definition) do
+    Macro.prewalk(definition, fn
+      {:super, metadata, arguments} = super_call when is_list(metadata) ->
+        if metadata[:default] == true do
+          case metadata[:super] do
+            {_visibility, name} when is_atom(name) ->
+              {name, Keyword.drop(metadata, [:default, :super]), arguments}
+
+            _ ->
+              super_call
+          end
+        else
+          super_call
+        end
+
+      node ->
+        node
     end)
   end
 
