@@ -83,12 +83,7 @@ defmodule Ash.Filter.Runtime do
           resource
       end
 
-    refs_to_load =
-      filter
-      |> Ash.Filter.list_refs(false, false, true)
-      |> Enum.map(&(&1.relationship_path ++ [&1.attribute]))
-      |> Enum.reject(&Ash.Resource.loaded?(records, &1))
-      |> Enum.map(&path_to_load(resource, &1))
+    refs_to_load = paths_to_load(filter, resource, records)
 
     records =
       case refs_to_load do
@@ -125,7 +120,7 @@ defmodule Ash.Filter.Runtime do
       |> Ash.Filter.relationship_paths()
 
     record
-    |> flatten_relationships(relationship_paths)
+    |> stream_relationships(relationship_paths)
     |> Enum.reduce_while({:ok, false}, fn scenario, {:ok, false} ->
       case do_match(
              scenario,
@@ -151,10 +146,20 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp flatten_relationships(record, relationship_paths) do
+    record
+    |> do_flatten_relationships(relationship_paths, &Enum.flat_map/2)
+    |> Enum.to_list()
+  end
+
+  defp stream_relationships(record, relationship_paths) do
+    do_flatten_relationships(record, relationship_paths, &Stream.flat_map/2)
+  end
+
+  defp do_flatten_relationships(record, relationship_paths, flat_map) do
     relationship_paths
     |> Enum.reject(&(&1 == []))
     |> Enum.reduce([record], fn [rel | rest], records ->
-      Enum.flat_map(records, fn record ->
+      flat_map.(records, fn record ->
         case Map.get(record, rel) do
           nil ->
             [record]
@@ -210,12 +215,7 @@ defmodule Ash.Filter.Runtime do
         tenant \\ nil
       ) do
     if domain && record do
-      refs_to_load =
-        expression
-        |> Ash.Filter.list_refs(false, false, true)
-        |> Enum.map(&(&1.relationship_path ++ [&1.attribute]))
-        |> Enum.reject(&Ash.Resource.loaded?(record, &1))
-        |> Enum.map(&path_to_load(resource, &1))
+      refs_to_load = paths_to_load(expression, resource, record)
 
       record =
         case refs_to_load do
@@ -320,6 +320,39 @@ defmodule Ash.Filter.Runtime do
           other
       end
     end
+  end
+
+  # Relationships referenced by refs are loaded along with the referenced field.
+  # `exists/2` expressions whose inner expression contains no refs (e.g `exists(posts, true)`)
+  # still need their relationship path loaded in order to be evaluated.
+  defp paths_to_load(expression, resource, records) do
+    ref_paths =
+      expression
+      |> Ash.Filter.list_refs(false, false, true)
+      |> Enum.map(&(&1.relationship_path ++ [&1.attribute]))
+
+    exists_paths =
+      expression
+      |> exists_paths()
+      |> Enum.reject(fn path ->
+        Enum.any?(ref_paths, &List.starts_with?(&1, path))
+      end)
+
+    (ref_paths ++ exists_paths)
+    |> Enum.uniq()
+    |> Enum.reject(&Ash.Resource.loaded?(records, &1))
+    |> Enum.map(&path_to_load(resource, &1))
+  end
+
+  defp exists_paths(expression, prefix \\ []) do
+    Ash.Filter.flat_map(expression, fn
+      %Ash.Query.Exists{related?: true, at_path: at_path, path: path, expr: expr} ->
+        full_path = prefix ++ at_path ++ path
+        [full_path | exists_paths(expr, full_path)]
+
+      _ ->
+        []
+    end)
   end
 
   defp load_all(query, paths) do

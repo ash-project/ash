@@ -39,7 +39,7 @@ defmodule Ash.Actions.Aggregate do
     |> Enum.reduce_while({:ok, %{}}, fn
       {{agg_authorize?, read_action}, aggregates}, {:ok, acc} ->
         action =
-          opts[:action] || read_action ||
+          read_action ||
             Ash.Resource.Info.primary_action!(query.resource, :read).name
 
         query =

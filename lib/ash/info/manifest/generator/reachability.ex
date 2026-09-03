@@ -98,7 +98,19 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
           {found_r, found_t, new_visited} =
             traverse_type(type, constraints, visited, opts)
 
-          {resources ++ found_r, types ++ found_t, new_visited}
+          {arg_resources, arg_types, new_visited} =
+            Enum.reduce(
+              calculation_arguments(field),
+              {[], [], new_visited},
+              fn argument, {resources, types, visited} ->
+                {found_r, found_t, new_visited} =
+                  traverse_type(argument.type, argument.constraints || [], visited, opts)
+
+                {resources ++ found_r, types ++ found_t, new_visited}
+              end
+            )
+
+          {resources ++ found_r ++ arg_resources, types ++ found_t ++ arg_types, new_visited}
         end)
 
       # Walk relationship destinations
@@ -428,6 +440,9 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
   defp get_field_type_and_constraints(field) do
     {Map.get(field, :type), Map.get(field, :constraints, []) || []}
   end
+
+  defp calculation_arguments(%Ash.Resource.Calculation{arguments: arguments}), do: arguments
+  defp calculation_arguments(_field), do: []
 
   defp is_resource?(module) when is_atom(module) do
     Code.ensure_loaded?(module) == true and Ash.Resource.Info.resource?(module)

@@ -794,26 +794,40 @@ defmodule Ash.Can do
   end
 
   defp alter_source({:ok, true, query}, domain, actor, %Ash.Changeset{} = subject, opts) do
-    pending = get_in(query.context || %{}, [:private, :create_authorize_results_pending])
+    create_pending = get_in(query.context || %{}, [:private, :create_authorize_results_pending])
 
-    if pending && subject.action_type == :create do
-      subject = install_create_authorize_results(subject, pending)
+    changeset_pending =
+      get_in(query.context || %{}, [:private, :changeset_authorize_results_pending])
 
-      case alter_source({:ok, true}, domain, actor, subject, opts) do
-        {:ok, true, new_subject} -> {:ok, true, new_subject}
-        other -> other
-      end
-    else
-      case alter_source(
-             {:ok, true},
-             domain,
-             actor,
-             subject,
-             Keyword.put(opts, :base_query, query)
-           ) do
-        {:ok, true, new_subject} -> {:ok, true, new_subject, query}
-        other -> other
-      end
+    cond do
+      create_pending && subject.action_type == :create ->
+        subject = install_create_authorize_results(subject, create_pending)
+
+        case alter_source({:ok, true}, domain, actor, subject, opts) do
+          {:ok, true, new_subject} -> {:ok, true, new_subject}
+          other -> other
+        end
+
+      changeset_pending && subject.action_type in [:update, :destroy] ->
+        subject =
+          install_changeset_authorize_results(subject, actor, opts, changeset_pending, query)
+
+        case alter_source({:ok, true}, domain, actor, subject, opts) do
+          {:ok, true, new_subject} -> {:ok, true, new_subject}
+          other -> other
+        end
+
+      true ->
+        case alter_source(
+               {:ok, true},
+               domain,
+               actor,
+               subject,
+               Keyword.put(opts, :base_query, query)
+             ) do
+          {:ok, true, new_subject} -> {:ok, true, new_subject, query}
+          other -> other
+        end
     end
   end
 
@@ -830,75 +844,25 @@ defmodule Ash.Can do
           {:ok, true, subject}
 
         authorizers ->
-          authorizers
-          |> Enum.reduce(
-            {:ok, true, subject},
-            fn authorizer, {:ok, true, subject} ->
-              authorizer_state =
-                Ash.Authorizer.initial_state(
-                  authorizer,
-                  actor,
-                  subject.resource,
-                  subject.action,
-                  domain
-                )
-
-              context = %{
-                actor: actor,
-                tenant: subject.to_tenant,
-                domain: domain,
-                resource: subject.resource,
-                query: nil,
-                changeset: nil,
-                action_input: nil,
-                subject: subject
-              }
-
-              context =
-                case subject do
-                  %Ash.Query{} -> Map.put(context, :query, subject)
-                  %Ash.Changeset{} -> Map.put(context, :changeset, subject)
-                  %Ash.ActionInput{} -> Map.put(context, :action_input, subject)
-                end
-
-              case subject do
-                %Ash.Query{} = query ->
-                  alter_query(query, authorizer, authorizer_state, context, opts)
-
-                %Ash.Changeset{} = changeset ->
-                  context = Map.put(context, :changeset, changeset)
-
-                  with {:ok, changeset, authorizer_state} <-
-                         Ash.Authorizer.add_calculations(
-                           authorizer,
-                           changeset,
-                           authorizer_state,
-                           context
-                         ) do
-                    if opts[:base_query] do
-                      case alter_query(
-                             opts[:base_query],
-                             authorizer,
-                             authorizer_state,
-                             context,
-                             opts
-                           ) do
-                        {:ok, true, query} ->
-                          {:ok, true, changeset, query}
-
-                        other ->
-                          other
-                      end
-                    else
-                      {:ok, true, changeset}
-                    end
-                  end
-
-                %Ash.ActionInput{} = subject ->
-                  {:ok, true, subject}
+          Enum.reduce_while(authorizers, {:ok, true, subject}, fn authorizer, acc ->
+            {subject, base_query} =
+              case acc do
+                {:ok, true, subject} -> {subject, opts[:base_query]}
+                {:ok, true, subject, query} -> {subject, query}
               end
+
+            case alter_subject(
+                   subject,
+                   authorizer,
+                   domain,
+                   actor,
+                   Keyword.put(opts, :base_query, base_query)
+                 ) do
+              {:ok, true, _subject} = altered -> {:cont, altered}
+              {:ok, true, _subject, _query} = altered -> {:cont, altered}
+              other -> {:halt, other}
             end
-          )
+          end)
       end
     else
       {:ok, true}
@@ -906,6 +870,59 @@ defmodule Ash.Can do
   end
 
   defp alter_source(other, _, _, _, _), do: other
+
+  defp alter_subject(subject, authorizer, domain, actor, opts) do
+    authorizer_state =
+      Ash.Authorizer.initial_state(
+        authorizer,
+        actor,
+        subject.resource,
+        subject.action,
+        domain
+      )
+
+    context = %{
+      actor: actor,
+      tenant: subject.to_tenant,
+      domain: domain,
+      resource: subject.resource,
+      query: nil,
+      changeset: nil,
+      action_input: nil,
+      subject: subject
+    }
+
+    case subject do
+      %Ash.Query{} = query ->
+        alter_query(query, authorizer, authorizer_state, context, opts)
+
+      %Ash.Changeset{} = changeset ->
+        context = Map.put(context, :changeset, changeset)
+
+        with {:ok, changeset, authorizer_state} <-
+               Ash.Authorizer.add_calculations(
+                 authorizer,
+                 changeset,
+                 authorizer_state,
+                 context
+               ) do
+          if opts[:base_query] do
+            case alter_query(opts[:base_query], authorizer, authorizer_state, context, opts) do
+              {:ok, true, query} ->
+                {:ok, true, changeset, query}
+
+              other ->
+                other
+            end
+          else
+            {:ok, true, changeset}
+          end
+        end
+
+      %Ash.ActionInput{} = action_input ->
+        {:ok, true, action_input}
+    end
+  end
 
   defp alter_query(query, authorizer, authorizer_state, context, opts) do
     context = Map.put(context, :query, query)
@@ -1147,15 +1164,17 @@ defmodule Ash.Can do
                         Keyword.put(opts, :create_filter_kind, :filter_and_continue)
                       ), [{authorizer, authorizer_state, context} | authorizers]}}
 
-                  opts[:no_check?] || !match?(%Ash.Query{}, subject) ->
-                    {:error, {authorizer, authorizer_state, context},
-                     Ash.Authorizer.exception(
-                       authorizer,
-                       :must_pass_strict_check,
-                       authorizer_state
-                     )}
+                  opts[:no_check?] ->
+                    {:halt,
+                     opts[:on_must_pass_strict_check] ||
+                       {:error, {authorizer, authorizer_state, context},
+                        Ash.Authorizer.exception(
+                          authorizer,
+                          :must_pass_strict_check,
+                          authorizer_state
+                        )}}
 
-                  opts[:alter_source?] ->
+                  opts[:alter_source?] || !match?(%Ash.Query{}, subject) ->
                     query_with_hook =
                       query
                       |> apply_filter(
@@ -1193,7 +1212,7 @@ defmodule Ash.Can do
                   opts[:maybe_is] == false ->
                     {:halt,
                      {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state),
-                      authorizer}}
+                      {authorizer, authorizer_state, context}}}
 
                   true ->
                     {:halt,
@@ -1204,6 +1223,10 @@ defmodule Ash.Can do
         )
         |> case do
           {:error, _authorizer, error} ->
+            {:error, error}
+
+          # `on_must_pass_strict_check` values are returned as-is
+          {:error, error} ->
             {:error, error}
 
           {true, nil, _} ->
@@ -1235,6 +1258,164 @@ defmodule Ash.Can do
             end
         end
     end
+  end
+
+  defp run_changeset_query(
+         %Ash.Changeset{data: data, resource: resource, tenant: tenant} = changeset,
+         actor,
+         opts,
+         authorizers,
+         query
+       ) do
+    subject = changeset
+    pkey = Ash.Resource.Info.primary_key(resource)
+    pkey_value = Map.take(data, pkey)
+
+    query =
+      Map.update!(query, :filter, fn filter ->
+        Ash.Expr.fill_template(
+          filter,
+          actor: actor,
+          tenant: changeset.to_tenant,
+          args: changeset.arguments,
+          context: changeset.context,
+          changeset: changeset
+        )
+      end)
+
+    if pkey_value |> Map.values() |> Enum.any?(&is_nil/1) do
+      {:ok, :maybe}
+    else
+      query
+      |> Ash.Query.do_filter(pkey_value)
+      |> Ash.Query.set_tenant(tenant)
+      |> Ash.Query.select([])
+      |> Ash.Actions.Read.add_calc_context_to_query(
+        actor,
+        true,
+        query.tenant,
+        opts[:tracer],
+        query.domain,
+        expand?: false,
+        parent_stack: Ash.Actions.Read.parent_stack_from_context(subject.context),
+        source_context: subject.context
+      )
+      |> Ash.Query.data_layer_query()
+      |> case do
+        {:ok, data_layer_query} ->
+          data_layer_query
+          |> Ash.DataLayer.run_query(resource)
+          |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
+          |> case do
+            {:ok, results} ->
+              case Ash.Actions.Read.run_authorize_results(query, results) do
+                {:ok, []} ->
+                  if opts[:return_forbidden_error?] do
+                    {:ok, false, authorizer_exception(authorizers)}
+                  else
+                    {:ok, false}
+                  end
+
+                {:ok, [_]} ->
+                  {:ok, true}
+
+                {:error, error} ->
+                  if opts[:return_forbidden_error?] do
+                    {:ok, false, error}
+                  else
+                    {:ok, false}
+                  end
+              end
+
+            {:error, error} ->
+              {:error, error}
+
+            _ ->
+              if opts[:return_forbidden_error?] do
+                {:ok, false, authorizer_exception(authorizers)}
+              else
+                {:ok, false}
+              end
+          end
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+  end
+
+  defp defer_changeset_authorization?(changeset, query, opts) do
+    cond do
+      !opts[:alter_source?] ->
+        false
+
+      query.authorize_results == [] ->
+        false
+
+      Ash.DataLayer.in_transaction?(changeset.resource) ->
+        false
+
+      !Ash.DataLayer.data_layer_can?(changeset.resource, :transact) ->
+        false
+
+      changeset.action && changeset.action.transaction? == false ->
+        false
+
+      changeset.before_transaction != [] or changeset.around_transaction != [] ->
+        raise """
+        Cannot run runtime policy checks for #{inspect(changeset.resource)}.#{changeset.action.name}
+
+        Runtime checks (`access_type :runtime`) on update and destroy actions are evaluated inside the
+        action's transaction, but this changeset has `before_transaction` or `around_transaction` hooks,
+        which run outside of the transaction and would run before authorization.
+
+        Either remove those hooks, wrap the action in a transaction yourself (e.g `Ash.transaction/2`),
+        or restructure the policy to use only filter and/or strict checks.
+        """
+
+      true ->
+        true
+    end
+  end
+
+  defp stash_changeset_pending(query, authorizers) do
+    Ash.Query.set_context(query, %{
+      private: %{changeset_authorize_results_pending: authorizers}
+    })
+  end
+
+  defp install_changeset_authorize_results(changeset, actor, opts, authorizers, query) do
+    Ash.Changeset.before_action(
+      changeset,
+      fn changeset ->
+        # `transaction?: false` can still be passed when running the action, in which
+        # case runtime checks can't be evaluated safely. Fail loudly rather than
+        # silently authorize.
+        if Ash.DataLayer.in_transaction?(changeset.resource) do
+          case run_changeset_query(changeset, actor, opts, authorizers, query) do
+            {:ok, true} ->
+              changeset
+
+            {:ok, false, error} ->
+              Ash.Changeset.add_error(changeset, error)
+
+            {:ok, _} ->
+              Ash.Changeset.add_error(changeset, authorizer_exception(authorizers))
+
+            {:error, error} ->
+              Ash.Changeset.add_error(changeset, error)
+          end
+        else
+          raise """
+          Cannot run runtime policy checks for #{inspect(changeset.resource)}.#{changeset.action.name}
+
+          Runtime checks (`access_type :runtime`) on update and destroy actions must be evaluated inside
+          the action's transaction, but the action is not running in a transaction.
+          """
+        end
+      end,
+      prepend?: true
+    )
   end
 
   defp apply_filter(query, subject, domain, filter, authorizer, authorizer_state, context, opts) do
@@ -1362,82 +1543,11 @@ defmodule Ash.Can do
           {:ok, true}
         end
 
-      %Ash.Changeset{data: data, action_type: type, resource: resource, tenant: tenant} =
-          changeset
-      when type in [:update, :destroy] ->
-        pkey = Ash.Resource.Info.primary_key(resource)
-        pkey_value = Map.take(data, pkey)
-
-        query =
-          Map.update!(query, :filter, fn filter ->
-            Ash.Expr.fill_template(
-              filter,
-              actor: actor,
-              actor: changeset.to_tenant,
-              args: changeset.arguments,
-              context: changeset.context,
-              changeset: changeset
-            )
-          end)
-
-        if pkey_value |> Map.values() |> Enum.any?(&is_nil/1) do
-          {:ok, :maybe}
+      %Ash.Changeset{action_type: type} = changeset when type in [:update, :destroy] ->
+        if defer_changeset_authorization?(changeset, query, opts) do
+          {:ok, true, stash_changeset_pending(query, authorizers)}
         else
-          query
-          |> Ash.Query.do_filter(pkey_value)
-          |> Ash.Query.set_tenant(tenant)
-          |> Ash.Query.select([])
-          |> Ash.Actions.Read.add_calc_context_to_query(
-            actor,
-            true,
-            query.tenant,
-            opts[:tracer],
-            query.domain,
-            expand?: false,
-            parent_stack: Ash.Actions.Read.parent_stack_from_context(subject.context),
-            source_context: subject.context
-          )
-          |> Ash.Query.data_layer_query()
-          |> case do
-            {:ok, data_layer_query} ->
-              data_layer_query
-              |> Ash.DataLayer.run_query(resource)
-              |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
-              |> case do
-                {:ok, results} ->
-                  case Ash.Actions.Read.run_authorize_results(query, results) do
-                    {:ok, []} ->
-                      if opts[:return_forbidden_error?] do
-                        {:ok, false, authorizer_exception(authorizers)}
-                      else
-                        {:ok, false}
-                      end
-
-                    {:ok, [_]} ->
-                      {:ok, true}
-
-                    {:error, error} ->
-                      if opts[:return_forbidden_error?] do
-                        {:ok, false, error}
-                      else
-                        {:ok, false}
-                      end
-                  end
-
-                {:error, error} ->
-                  {:error, error}
-
-                _ ->
-                  if opts[:return_forbidden_error?] do
-                    {:ok, false, authorizer_exception(authorizers)}
-                  else
-                    {:ok, false}
-                  end
-              end
-
-            {:error, error} ->
-              {:error, error}
-          end
+          run_changeset_query(changeset, actor, opts, authorizers, query)
         end
 
       %Ash.Changeset{action_type: :create} = changeset ->

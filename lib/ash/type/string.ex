@@ -254,27 +254,38 @@ defmodule Ash.Type.String do
         end
 
       {:match, regex}, errors ->
-        regex =
-          case regex do
-            {m, f, a} ->
-              apply(m, f, a)
+        if length_ok?(value, constraints) do
+          regex =
+            case regex do
+              {m, f, a} ->
+                apply(m, f, a)
 
-            regex ->
-              regex
+              regex ->
+                regex
+            end
+
+          if Regex.match?(regex, value) do
+            errors
+          else
+            [
+              [message: error_message("must match the pattern %{regex}"), regex: inspect(regex)]
+              | errors
+            ]
           end
-
-        if Regex.match?(regex, value) do
-          errors
         else
-          [
-            [message: error_message("must match the pattern %{regex}"), regex: inspect(regex)]
-            | errors
-          ]
+          errors
         end
 
       _, errors ->
         errors
     end)
+  end
+
+  defp length_ok?(value, constraints) do
+    length = String.length(value)
+
+    (is_nil(constraints[:max_length]) or length <= constraints[:max_length]) and
+      (is_nil(constraints[:min_length]) or length >= constraints[:min_length])
   end
 
   @impl true

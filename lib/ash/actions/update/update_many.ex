@@ -96,7 +96,8 @@ defmodule Ash.Actions.Update.UpdateMany do
     # `Ash.bulk_update`, which enforces the strategy and runs those hooks the same atomic way.
     use_update_many? =
       Ash.DataLayer.data_layer_can?(resource, :update_many) and
-        (:atomic in strategy or :atomic_batches in strategy)
+        (:atomic in strategy or :atomic_batches in strategy) and
+        (!opts[:authorize?] or Ash.DataLayer.data_layer_can?(resource, :changeset_filter))
 
     {atomic, fallback} =
       if use_update_many? do
@@ -132,6 +133,69 @@ defmodule Ash.Actions.Update.UpdateMany do
   defp run_atomic(_resource, _action, _pkey, [], _opts), do: {[], [], []}
 
   defp run_atomic(resource, action, pkey, atomic, opts) do
+    case authorize_atomic(atomic, opts) do
+      {:ok, atomic} ->
+        do_run_atomic(resource, action, pkey, atomic, opts)
+
+      {:error, error} ->
+        {[], [Ash.Error.to_ash_error(error)], []}
+    end
+  end
+
+  # Authorization must run per changeset: the policy filter can depend on the full changeset
+  # (arguments, context, non-atomic state), not just its atomics, so two rows that share atomics
+  # can still authorize differently. `do_run_atomic` regroups by `{atomics, filter}` afterward, so
+  # rows that received different authorization filters naturally split into separate statements.
+  defp authorize_atomic(atomic, opts) do
+    if opts[:authorize?] do
+      atomic
+      |> Enum.reduce_while({:ok, []}, fn target, {:ok, acc} ->
+        case authorized_filter(target.changeset, opts) do
+          {:ok, nil} ->
+            {:cont, {:ok, [target | acc]}}
+
+          {:ok, filter} ->
+            target = %{target | changeset: Ash.Changeset.filter(target.changeset, filter)}
+            {:cont, {:ok, [target | acc]}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+      |> case do
+        {:ok, acc} -> {:ok, Enum.reverse(acc)}
+        {:error, error} -> {:error, error}
+      end
+    else
+      {:ok, atomic}
+    end
+  end
+
+  defp authorized_filter(changeset, opts) do
+    read_action =
+      Ash.Actions.Update.Bulk.get_read_action(changeset.resource, changeset.action, opts).name
+
+    base_query =
+      changeset.resource
+      |> Ash.Query.for_read(read_action, %{},
+        actor: opts[:actor],
+        authorize?: false,
+        tenant: changeset.tenant,
+        tracer: opts[:tracer],
+        context: Map.put(changeset.context, :query_for, :bulk_update)
+      )
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+    case Ash.Actions.Update.Bulk.authorize_atomic_changeset(base_query, changeset, opts) do
+      {:ok, authorized_changeset, query} ->
+        {:ok, Ash.Query.do_filter(query, authorized_changeset.filter).filter}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp do_run_atomic(resource, action, pkey, atomic, opts) do
     notify? = notify?(opts)
 
     # after_action hooks (and notification subscribers) need the full updated record, not just pkeys.

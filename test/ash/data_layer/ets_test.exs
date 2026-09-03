@@ -50,8 +50,28 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsNoPrimaryKeyTestEvent do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      attribute :name, :string, public?: true
+    end
+  end
+
   defmodule EtsIntegerPrimaryKeyTestUser do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
 
     actions do
       defaults [:read, :destroy, create: :*]
@@ -150,6 +170,33 @@ defmodule Ash.DataLayer.EtsTest do
     assert %EtsTestUser{id: id, name: "Mike"} = create_user(%{name: "Mike"})
 
     assert [{%{id: ^id}, %EtsTestUser{name: "Mike", id: ^id}}] = user_table()
+  end
+
+  test "create rejects a duplicate primary key instead of overwriting" do
+    id = Ash.UUID.generate()
+
+    assert %EtsTestUser{id: ^id, name: "Mike"} = create_user(%{id: id, name: "Mike"})
+
+    assert {:error, %Ash.Error.Invalid{} = error} =
+             EtsTestUser
+             |> Ash.Changeset.for_create(:create, %{id: id, name: "Joe"})
+             |> Ash.create()
+
+    assert Exception.message(error) =~ "has already been taken"
+
+    assert [{%{id: ^id}, %EtsTestUser{name: "Mike", id: ^id}}] = user_table()
+  end
+
+  test "create allows duplicate rows for a resource without a primary key" do
+    for name <- ["a", "b", "a"] do
+      assert {:ok, _} =
+               EtsNoPrimaryKeyTestEvent
+               |> Ash.Changeset.for_create(:create, %{name: name})
+               |> Ash.create()
+    end
+
+    names = EtsNoPrimaryKeyTestEvent |> Ash.read!() |> Enum.map(& &1.name) |> Enum.sort()
+    assert names == ["a", "a", "b"]
   end
 
   test "update" do

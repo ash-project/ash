@@ -87,7 +87,7 @@ defmodule Ash.Resource.Validation.Confirm do
            Ash.Resource.Validation.should_redact?(changeset, opts[:field]) do
         Ash.Helpers.redact(nil)
       else
-        value
+        confirmation
       end
 
     {:atomic, [opts[:confirmation], opts[:field]], Ash.Expr.expr(^confirmation != ^value),

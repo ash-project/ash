@@ -1780,18 +1780,23 @@ defmodule Ash.DataLayer.Ets do
 
     case dump_to_native(record, attributes) do
       {:ok, casted} ->
-        case ETS.Set.put(table, {pkey, casted}) do
-          {:ok, set} ->
-            {_key, record} = ETS.Set.get!(set, pkey)
-            cast_record(record, resource)
-
-          other ->
-            other
+        if :ets.insert_new(table.table, {pkey, casted}) do
+          {_key, record} = ETS.Set.get!(table, pkey)
+          cast_record(record, resource)
+        else
+          {:error, pkey_already_taken_error(resource)}
         end
 
       other ->
         other
     end
+  end
+
+  defp pkey_already_taken_error(resource) do
+    Ash.Error.Changes.InvalidChanges.exception(
+      fields: Ash.Resource.Info.primary_key(resource),
+      message: "has already been taken"
+    )
   end
 
   defp put_or_insert_new_batch(table, records, resource, return_records?) do
@@ -1845,17 +1850,21 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp get_valid_pkey(resource, changeset) do
-    pkey =
-      resource
-      |> Ash.Resource.Info.primary_key()
-      |> Enum.into(%{}, fn attr ->
-        {attr, Ash.Changeset.get_attribute(changeset, attr)}
-      end)
+    case Ash.Resource.Info.primary_key(resource) do
+      [] ->
+        {:ok, %{__ash_synthetic_key__: make_ref()}}
 
-    if !Enum.empty?(pkey) && Enum.any?(pkey, fn {_, v} -> is_nil(v) end) do
-      {:error, InvalidPrimaryKey.exception(resource: resource, value: pkey)}
-    else
-      {:ok, pkey}
+      pkey_fields ->
+        pkey =
+          Enum.into(pkey_fields, %{}, fn attr ->
+            {attr, Ash.Changeset.get_attribute(changeset, attr)}
+          end)
+
+        if Enum.any?(pkey, fn {_, v} -> is_nil(v) end) do
+          {:error, InvalidPrimaryKey.exception(resource: resource, value: pkey)}
+        else
+          {:ok, pkey}
+        end
     end
   end
 

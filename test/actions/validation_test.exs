@@ -520,6 +520,49 @@ defmodule Ash.Test.Actions.ValidationTest do
 
       assert error.value == "blart"
     end
+
+    defmodule ConfirmResource do
+      @moduledoc false
+      use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private? true
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, create: :*]
+
+        update :confirm_secret_atomic do
+          require_atomic? true
+          argument :confirm_secret, :string, allow_nil?: false
+          validate confirm(:secret, :confirm_secret)
+        end
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :secret, :string, public?: true
+      end
+    end
+
+    test "atomic confirm mismatch does not render the stored field value" do
+      record =
+        ConfirmResource
+        |> Ash.Changeset.for_create(:create, %{secret: "TOP-SECRET-VALUE"})
+        |> Ash.create!()
+
+      %Ash.BulkResult{errors: [%Ash.Error.Invalid{errors: errors}]} =
+        Ash.bulk_update([record], :confirm_secret_atomic, %{confirm_secret: "wrong-guess"},
+          return_errors?: true
+        )
+
+      assert errors != []
+
+      for error <- errors do
+        refute inspect(error) =~ "TOP-SECRET-VALUE"
+      end
+    end
   end
 
   describe "conditional present validation with where clause" do

@@ -26,11 +26,18 @@ defmodule Ash.Vector do
     new(:erlang.binary_to_list(binary))
   end
 
+  @max_dimensions 65_535
+
   def new(list) when is_list(list) do
     dim = list |> length()
-    bin = for v <- list, into: "", do: <<v::float-32>>
 
-    {:ok, %Ash.Vector{data: <<dim::unsigned-16, 0::unsigned-16>> <> bin, dimensions: dim}}
+    if dim > @max_dimensions do
+      {:error, :invalid_vector}
+    else
+      bin = for v <- list, into: "", do: <<v::float-32>>
+
+      {:ok, %Ash.Vector{data: <<dim::unsigned-16, 0::unsigned-16>> <> bin, dimensions: dim}}
+    end
   rescue
     _ ->
       {:error, :invalid_vector}
