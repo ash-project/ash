@@ -128,14 +128,13 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
 
     {warning, 0} = compile_dispatched_source(source)
 
-    assert warning =~ "incompatible types given to"
+    assert warning =~ "unknown key .missing"
 
     assert warning =~
              "Ash.TypeWitness.#{change_module}.#{resource_module}.__ash_type_witness__/4"
 
     assert warning =~ "amount: integer()"
     assert warning =~ "reference: nil or binary()"
-    assert warning =~ "missing: term()"
   end
 
   test "a dispatched change accepting a declared argument does not warn" do
@@ -294,14 +293,13 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
 
     {warning, 0} = compile_dispatched_source(source)
 
-    assert warning =~ "incompatible types given to"
+    assert warning =~ "unknown key .missing"
 
     assert warning =~
              "Ash.TypeWitness.#{change_module}.#{resource_module}.__ash_type_witness__/4"
 
     assert warning =~ "accepted: nil or binary()"
     assert warning =~ "not_accepted: nil or binary()"
-    assert warning =~ "missing: term()"
   end
 
   test "a dispatched change can access a real resource attribute excluded from accept" do
@@ -395,7 +393,7 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
 
     assert warning =~ "address: %#{embedded_module}{}"
     assert warning =~ "previous_addresses: list(%#{embedded_module}{})"
-    assert warning =~ "missing: term()"
+    assert warning =~ "unknown key .missing"
   end
 
   test "a managed relationship argument retains destination action input types" do
@@ -484,7 +482,7 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
     assert warning =~ "details: %#{details_module}{} or nil"
     assert warning =~ "name: nil or binary()"
     assert warning =~ "note: nil or binary()"
-    assert warning =~ "missing: term()"
+    assert warning =~ "unknown key .missing"
   end
 
   test "a specialized change witness checks separate modules through private helpers" do
@@ -560,6 +558,204 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
     assert warning =~ "name: nil or binary()"
     assert warning =~ "missing: term()"
     refute warning =~ "underscored variable"
+  end
+
+  test "dispatched change options retain their literal keyword shape" do
+    suffix = System.unique_integer([:positive])
+    change_module = "TypedOptionsChange#{suffix}"
+    resource_module = "TypedOptionsResource#{suffix}"
+
+    source = """
+    defmodule #{change_module} do
+      use Ash.Resource.Change
+
+      def change(changeset, opts, _context) do
+        _ = opts.missing
+        changeset
+      end
+    end
+
+    defmodule #{resource_module} do
+      use Ash.Resource, domain: nil
+      resource do require_primary_key? false end
+
+      actions do
+        create :create do
+          change {#{change_module}, role: :seller}
+        end
+      end
+    end
+    """
+
+    {warning, 0} = compile_dispatched_source(source)
+    assert warning =~ "non_empty_list({:role, :seller})"
+    assert warning =~ "missing"
+  end
+
+  test "the custom compiler renders Ash-aware changeset diagnostics" do
+    suffix = System.unique_integer([:positive])
+    change_module = "FriendlyDiagnosticChange#{suffix}"
+    resource_module = "FriendlyDiagnosticResource#{suffix}"
+
+    Code.compile_string("""
+    defmodule #{change_module} do
+      use Ash.Resource.Change
+      def change(changeset, _opts, _context), do: changeset
+    end
+
+    defmodule #{resource_module} do
+      use Ash.Resource, domain: nil
+      resource do require_primary_key? false end
+
+      attributes do
+        attribute :status, :atom, public?: true
+      end
+
+      actions do
+        create :dispatch do
+          accept [:status]
+          argument :allocations, {:array, :map}, allow_nil?: false
+          change #{change_module}
+        end
+      end
+    end
+    """)
+
+    diagnostic = %{
+      message: "unknown key .value_test in expression:\n\n    changeset.value_test\n",
+      file: "nofile",
+      source: "nofile",
+      severity: :warning,
+      position: 1,
+      span: nil,
+      details: nil,
+      stacktrace: []
+    }
+
+    formatted =
+      Mix.Tasks.Compile.AshTypeInference.to_mix_diagnostic(diagnostic, %{
+        key: {Module.concat([resource_module]), :change, Module.concat([change_module])}
+      })
+
+    assert formatted.message =~ "Unknown Ash.Changeset field :value_test"
+    assert formatted.message =~ "#{change_module}.change/3"
+    assert formatted.message =~ "Action arguments: [:allocations]"
+    assert formatted.message =~ "Accepted attributes: [:status]"
+  end
+
+  test "constrained map arguments retain their nested field types" do
+    suffix = System.unique_integer([:positive])
+    change_module = "ConstrainedMapChange#{suffix}"
+    resource_module = "ConstrainedMapResource#{suffix}"
+
+    source = """
+    defmodule #{change_module} do
+      use Ash.Resource.Change
+
+      def change(changeset, _opts, _context) do
+        _ = changeset.arguments.payload.missing
+        changeset
+      end
+    end
+
+    defmodule #{resource_module} do
+      use Ash.Resource, domain: nil
+      resource do require_primary_key? false end
+
+      actions do
+        create :create do
+          argument :payload, :map,
+            allow_nil?: false,
+            constraints: [fields: [name: [type: :string, allow_nil?: false]]]
+
+          change #{change_module}
+        end
+      end
+    end
+    """
+
+    {warning, 0} = compile_dispatched_source(source)
+    assert warning =~ "payload: %{name: binary()}"
+    assert warning =~ "missing"
+  end
+
+  test "atomic-only and batch-only change callbacks receive typed changesets" do
+    suffix = System.unique_integer([:positive])
+    atomic_module = "AtomicOnlyChange#{suffix}"
+    batch_module = "BatchOnlyChange#{suffix}"
+    resource_module = "AtomicBatchResource#{suffix}"
+
+    source = """
+    defmodule #{atomic_module} do
+      use Ash.Resource.Change
+      def atomic(changeset, _opts, _context), do: changeset.arguments.atomic_missing
+    end
+
+    defmodule #{batch_module} do
+      use Ash.Resource.Change
+      def batch_change([changeset | _], _opts, _context), do: [changeset.arguments.batch_missing]
+    end
+
+    defmodule #{resource_module} do
+      use Ash.Resource, domain: nil
+      resource do require_primary_key? false end
+
+      actions do
+        create :create do
+          argument :amount, :integer, allow_nil?: false
+          change #{atomic_module}
+          change #{batch_module}
+        end
+      end
+    end
+    """
+
+    {warning, 0} = compile_dispatched_source(source)
+    assert warning =~ "atomic_missing"
+    assert warning =~ "batch_missing"
+    assert warning =~ "amount: integer()"
+  end
+
+  test "validation and preparation modules receive typed action arguments" do
+    suffix = System.unique_integer([:positive])
+    validation_module = "TypedValidation#{suffix}"
+    preparation_module = "TypedPreparation#{suffix}"
+    resource_module = "ValidationPreparationResource#{suffix}"
+
+    source = """
+    defmodule #{validation_module} do
+      use Ash.Resource.Validation
+      def validate(input, _opts, _context), do: input.arguments.validation_missing
+    end
+
+    defmodule #{preparation_module} do
+      use Ash.Resource.Preparation
+      def prepare(query, _opts, _context), do: query.arguments.preparation_missing
+    end
+
+    defmodule #{resource_module} do
+      use Ash.Resource, domain: nil
+      resource do require_primary_key? false end
+
+      actions do
+        create :create do
+          argument :amount, :integer, allow_nil?: false
+          validate #{validation_module}
+        end
+
+        read :read do
+          argument :needle, :string, allow_nil?: false
+          prepare #{preparation_module}
+        end
+      end
+    end
+    """
+
+    {warning, 0} = compile_dispatched_source(source)
+    assert warning =~ "validation_missing"
+    assert warning =~ "preparation_missing"
+    assert warning =~ "amount: integer()"
+    assert warning =~ "needle: binary()"
   end
 
   defp compile_dispatched_source(source) do

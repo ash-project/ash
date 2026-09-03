@@ -202,8 +202,16 @@ defmodule Ash.Resource.Validation do
     end
   end
 
-  defmacro __before_compile__(_) do
+  defmacro __before_compile__(env) do
+    type_inference_definitions =
+      Ash.Resource.TypeInference.capture_definitions(env.module)
+
     quote do
+      @doc false
+      def __ash_type_inference_definitions__ do
+        unquote(Macro.escape(type_inference_definitions))
+      end
+
       if Module.defines?(__MODULE__, {:validate, 2}, :def) or
            Module.defines?(__MODULE__, {:validate, 3}, :def) do
         @impl true

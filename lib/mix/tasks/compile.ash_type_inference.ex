@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
   use Mix.Task.Compiler
 
   @recursive true
-  @manifest_version 1
+  @manifest_version 2
 
   @impl true
   def run(_args) do
@@ -12,19 +12,26 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
     entries = project_resources() |> Ash.Resource.TypeInference.witness_entries()
     changed = Enum.reject(entries, &(previous[&1.key] == &1.fingerprint))
 
-    changed
-    |> Task.async_stream(&Code.compile_quoted(&1.definition),
-      max_concurrency: System.schedulers_online(),
-      ordered: false,
-      timeout: :infinity
-    )
-    |> Enum.each(fn
-      {:ok, _compiled} -> :ok
-      {:exit, reason} -> exit(reason)
-    end)
+    diagnostics =
+      changed
+      |> Task.async_stream(
+        fn entry ->
+          {_compiled, diagnostics} =
+            Code.with_diagnostics(fn -> Code.compile_quoted(entry.definition) end)
+
+          Enum.map(diagnostics, &to_mix_diagnostic(&1, entry))
+        end,
+        max_concurrency: System.schedulers_online(),
+        ordered: false,
+        timeout: :infinity
+      )
+      |> Enum.flat_map(fn
+        {:ok, diagnostics} -> diagnostics
+        {:exit, reason} -> exit(reason)
+      end)
 
     write_manifest(manifest_path, Map.new(entries, &{&1.key, &1.fingerprint}))
-    if changed == [], do: {:noop, []}, else: {:ok, []}
+    if changed == [], do: {:noop, diagnostics}, else: {:ok, diagnostics}
   end
 
   defp project_resources do
@@ -54,5 +61,104 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
   defp write_manifest(path, values) do
     File.mkdir_p!(Path.dirname(path))
     File.write!(path, :erlang.term_to_binary({@manifest_version, values}, [:compressed]))
+  end
+
+  @doc false
+  def to_mix_diagnostic(diagnostic, entry) do
+    diagnostic = improve_diagnostic(diagnostic, entry)
+
+    struct!(
+      Mix.Task.Compiler.Diagnostic,
+      Map.take(diagnostic, [
+        :file,
+        :source,
+        :severity,
+        :message,
+        :position,
+        :span,
+        :details,
+        :stacktrace
+      ])
+      |> Map.put(:compiler_name, "Ash type inference")
+    )
+  end
+
+  defp improve_diagnostic(diagnostic, %{key: {resource, :change, change_module}}) do
+    case unknown_changeset_field(diagnostic.message) do
+      nil ->
+        add_action_context(diagnostic, resource, change_module)
+
+      field ->
+        actions = change_actions(resource, change_module)
+
+        %{
+          diagnostic
+          | file: module_source(change_module) || diagnostic.file,
+            message: """
+            Unknown Ash.Changeset field :#{field}
+
+            In:
+              #{inspect(change_module)}.change/3
+
+            Ash.Changeset has no field named :#{field}.
+            #{format_action_inputs(actions)}
+            """
+        }
+    end
+  end
+
+  defp improve_diagnostic(diagnostic, _entry), do: diagnostic
+
+  defp unknown_changeset_field(message) do
+    case Regex.run(
+           ~r/(?:accessing|unknown key )\.([a-zA-Z_][a-zA-Z0-9_]*).*?expression:\s+changeset\.\1\b/s,
+           message
+         ) do
+      [_, field] -> field
+      _ -> nil
+    end
+  end
+
+  defp add_action_context(diagnostic, resource, change_module) do
+    context = format_action_inputs(change_actions(resource, change_module))
+    %{diagnostic | message: diagnostic.message <> "\nAsh action context:\n" <> context <> "\n"}
+  end
+
+  defp change_actions(resource, change_module) do
+    resource
+    |> Ash.Resource.Info.actions()
+    |> Enum.filter(fn action ->
+      resource
+      |> Ash.Resource.Info.action_changes(action)
+      |> Enum.any?(fn
+        %{change: {^change_module, _opts}} -> true
+        _ -> false
+      end)
+    end)
+  end
+
+  defp format_action_inputs([action]) do
+    "Action arguments: #{inspect(Enum.map(action.arguments, & &1.name))}\n" <>
+      "Accepted attributes: #{inspect(accepted_attributes(action))}"
+  end
+
+  defp format_action_inputs(actions) do
+    Enum.map_join(actions, "\n", fn action ->
+      "#{inspect(action.name)} — arguments: #{inspect(Enum.map(action.arguments, & &1.name))}; " <>
+        "accepted attributes: #{inspect(accepted_attributes(action))}"
+    end)
+  end
+
+  defp accepted_attributes(action), do: action |> Map.get(:accept, []) |> List.wrap()
+
+  defp module_source(module) do
+    module.module_info(:compile)
+    |> Keyword.get(:source)
+    |> case do
+      nil -> nil
+      source -> List.to_string(source)
+    end
+  rescue
+    _ -> nil
   end
 end
