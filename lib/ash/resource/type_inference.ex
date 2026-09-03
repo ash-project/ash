@@ -286,6 +286,11 @@ defmodule Ash.Resource.TypeInference do
     Enum.reduce(clauses, MapSet.new(), fn {_metadata, patterns, guards, body}, calls ->
       [patterns, guards, body]
       |> Macro.prewalk(calls, fn
+        {:&, _, [{:/, _, [{name, _, context}, arity]}]} = node, calls
+        when is_atom(name) and is_atom(context) and is_integer(arity) ->
+          key = {name, arity}
+          {node, if(Map.has_key?(definitions, key), do: MapSet.put(calls, key), else: calls)}
+
         {name, _, arguments} = node, calls when is_atom(name) and is_list(arguments) ->
           key = {name, length(arguments)}
           {node, if(Map.has_key?(definitions, key), do: MapSet.put(calls, key), else: calls)}
@@ -588,10 +593,16 @@ defmodule Ash.Resource.TypeInference do
         namespace -> Module.concat([Ash.TypeWitness, namespace, callback_module, resource])
       end
 
+    local_definitions =
+      MapSet.new(definitions, fn {{name, arity}, _visibility, _metadata, _clauses} ->
+        {name, arity}
+      end)
+
     definitions =
       definitions
       |> Enum.flat_map(&definition_ast/1)
       |> Enum.map(&rewrite_default_wrapper_super/1)
+      |> Enum.map(&rewrite_invoked_local_capture(&1, local_definitions))
       |> Enum.map(&rewrite_self_reference(&1, callback_module, witness_module))
       |> Enum.map(&normalize_compiler_metadata/1)
 
@@ -601,6 +612,22 @@ defmodule Ash.Resource.TypeInference do
         unquote_splicing(clauses)
       end
     end
+  end
+
+  defp rewrite_invoked_local_capture(definition, local_definitions) do
+    Macro.prewalk(definition, fn
+      {{:., dot_metadata, [{:&, _, [{:/, _, [{name, _, context}, arity]}]}]}, call_metadata,
+       arguments} = node
+      when is_atom(name) and is_atom(context) and is_integer(arity) and is_list(arguments) ->
+        if length(arguments) == arity and MapSet.member?(local_definitions, {name, arity}) do
+          {name, Keyword.merge(dot_metadata, call_metadata), arguments}
+        else
+          node
+        end
+
+      node ->
+        node
+    end)
   end
 
   defp change_definitions(module) do

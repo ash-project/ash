@@ -643,6 +643,68 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
     assert formatted.message =~ "Accepted attributes: [:status]"
   end
 
+  test "an inline CRUD local capture retains its private helper and argument shape" do
+    suffix = System.unique_integer([:positive])
+    resource_module = Module.concat(["InlineCaptureResource#{suffix}"])
+
+    compiler_options = Code.compiler_options()
+    Code.compiler_options(debug_info: true)
+
+    modules =
+      Code.compile_string("""
+      defmodule #{inspect(resource_module)} do
+        use Ash.Resource, domain: nil
+        resource do require_primary_key? false end
+
+        actions do
+          create :create do
+            argument :amount, :integer, allow_nil?: false
+            change &apply_change/2
+          end
+        end
+
+        defp apply_change(changeset, _context) do
+          _ = changeset.arguments.missing
+          changeset
+        end
+      end
+      """)
+
+    Code.compiler_options(compiler_options)
+
+    directory =
+      Path.join(System.tmp_dir!(), "ash-inline-capture-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(directory)
+    on_exit(fn -> File.rm_rf!(directory) end)
+
+    Enum.each(modules, fn {module, binary} ->
+      File.write!(Path.join(directory, "#{module}.beam"), binary)
+    end)
+
+    :code.add_patha(String.to_charlist(directory))
+
+    Enum.each(modules, fn {module, _binary} ->
+      :code.purge(module)
+      :code.delete(module)
+
+      beam = directory |> Path.join("#{module}") |> String.to_charlist()
+      {:module, ^module} = :code.load_abs(beam)
+    end)
+
+    entries = Ash.Resource.TypeInference.witness_entries([resource_module])
+    assert [%{key: {^resource_module, :inline_change}}] = entries
+
+    {_compiled, diagnostics} =
+      Code.with_diagnostics(fn ->
+        Enum.each(entries, &Code.compile_quoted(&1.definition))
+      end)
+
+    assert Enum.any?(diagnostics, fn diagnostic ->
+             diagnostic.message =~ "missing" and diagnostic.message =~ "amount: integer()"
+           end)
+  end
+
   test "constrained map arguments retain their nested field types" do
     suffix = System.unique_integer([:positive])
     change_module = "ConstrainedMapChange#{suffix}"
