@@ -3,6 +3,22 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Resource.Dsl do
+  # Opt-in for now. A type that references other types without implementing
+  # `c:Ash.Type.referenced_types/1` still relies on `constraints` creating compile
+  # dependencies, so suppressing them by default would leave its initialized state stale.
+  # Intended to default to `true` in 4.0, where reporting referenced types becomes the
+  # contract for getting compile dependencies on constraints.
+  @constraint_modules if Application.compile_env(
+                           :ash,
+                           :constraint_dependencies_from_referenced_types?,
+                           false
+                         ),
+                         do: [:constraints],
+                         else: []
+
+  @doc false
+  def constraint_dependencies_from_referenced_types?, do: @constraint_modules != []
+
   defmodule Filter do
     @moduledoc "Introspection target for a filter for read actions and relationships"
     defstruct [:filter, __spark_metadata__: nil]
@@ -47,6 +63,7 @@ defmodule Ash.Resource.Dsl do
     ],
     transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
+    no_depend_modules: @constraint_modules,
     args: [:name, :type],
     schema: Ash.Resource.Attribute.attribute_schema()
   }
@@ -71,6 +88,7 @@ defmodule Ash.Resource.Dsl do
       "create_timestamp :inserted_at"
     ],
     target: Ash.Resource.Attribute,
+    no_depend_modules: @constraint_modules,
     args: [:name],
     schema: Ash.Resource.Attribute.create_timestamp_schema(),
     transform: {Ash.Resource.Attribute, :transform, []}
@@ -97,6 +115,7 @@ defmodule Ash.Resource.Dsl do
       "update_timestamp :updated_at"
     ],
     target: Ash.Resource.Attribute,
+    no_depend_modules: @constraint_modules,
     schema: Ash.Resource.Attribute.update_timestamp_schema(),
     args: [:name],
     transform: {Ash.Resource.Attribute, :transform, []}
@@ -125,6 +144,7 @@ defmodule Ash.Resource.Dsl do
     ],
     args: [:name],
     target: Ash.Resource.Attribute,
+    no_depend_modules: @constraint_modules,
     schema: Ash.Resource.Attribute.integer_primary_key_schema(),
     auto_set_fields: [allow_nil?: false],
     transform: {Ash.Resource.Attribute, :transform, []}
@@ -151,6 +171,7 @@ defmodule Ash.Resource.Dsl do
     ],
     args: [:name],
     target: Ash.Resource.Attribute,
+    no_depend_modules: @constraint_modules,
     schema: Ash.Resource.Attribute.uuid_primary_key_schema(),
     auto_set_fields: [allow_nil?: false],
     transform: {Ash.Resource.Attribute, :transform, []}
@@ -180,6 +201,7 @@ defmodule Ash.Resource.Dsl do
     ],
     args: [:name],
     target: Ash.Resource.Attribute,
+    no_depend_modules: @constraint_modules,
     schema: Ash.Resource.Attribute.uuid_v7_primary_key_schema(),
     auto_set_fields: [allow_nil?: false],
     transform: {Ash.Resource.Attribute, :transform, []}
@@ -443,6 +465,7 @@ defmodule Ash.Resource.Dsl do
       "argument :password_confirmation, :string"
     ],
     target: Ash.Resource.Actions.Argument,
+    no_depend_modules: @constraint_modules,
     args: [:name, :type],
     transform: {Ash.Type, :set_type_transformation, []},
     schema: Ash.Resource.Actions.Argument.schema()
@@ -463,6 +486,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     target: Ash.Resource.Actions.Metadata,
+    no_depend_modules: @constraint_modules,
     args: [:name, :type],
     schema: Ash.Resource.Actions.Metadata.schema(),
     transform: {Ash.Type, :set_type_transformation, []}
@@ -623,7 +647,7 @@ defmodule Ash.Resource.Dsl do
       Ash.Expr
     ],
     target: Ash.Resource.Actions.Action,
-    no_depend_modules: [:touches_resources, :error_handler],
+    no_depend_modules: [:touches_resources, :error_handler] ++ @constraint_modules,
     schema: Ash.Resource.Actions.Action.opt_schema(),
     transform: {Ash.Resource.Actions.Action, :transform, []},
     entities: [
@@ -1030,6 +1054,7 @@ defmodule Ash.Resource.Dsl do
     ],
     singleton_entity_keys: [:transform],
     target: Ash.Resource.Interface.CustomInput,
+    no_depend_modules: @constraint_modules,
     args: [:name, :type],
     schema: Ash.Resource.Interface.CustomInput.schema(),
     transform: {Ash.Type, :set_type_transformation, []}
@@ -1597,6 +1622,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     target: Ash.Resource.Calculation.Argument,
+    no_depend_modules: @constraint_modules,
     args: [:name, :type],
     schema: Ash.Resource.Calculation.Argument.schema(),
     transform: {Ash.Type, :set_type_transformation, []}
@@ -1642,7 +1668,7 @@ defmodule Ash.Resource.Dsl do
       }
     ],
     target: Ash.Resource.Calculation,
-    no_depend_modules: [:calculation],
+    no_depend_modules: [:calculation] ++ @constraint_modules,
     args: [:name, :type, {:optional, :calculation}],
     entities: [
       arguments: [@argument]
@@ -1769,6 +1795,7 @@ defmodule Ash.Resource.Dsl do
   @persisters [
     Ash.Resource.Transformers.CacheRelationships,
     Ash.Resource.Transformers.ResolveAutoTypes,
+    Ash.Resource.Transformers.TrackConstraintTypeDependencies,
     Ash.Resource.Transformers.CacheCalculations,
     Ash.Resource.Transformers.AttributesByName,
     Ash.Resource.Transformers.ValidationsAndChangesForType,

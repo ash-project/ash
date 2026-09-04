@@ -272,3 +272,37 @@ the destination record (using the given action) and the join record (using the
 primary destroy action on the join resource). This makes the 2-tuple behavior
 consistent with the `:destroy` shorthand and the explicit 3-tuple
 `{:destroy, :dest_action, :join_action}`.
+
+## constraint_dependencies_from_referenced_types?
+
+```elixir
+config :ash, constraint_dependencies_from_referenced_types?: true
+```
+
+### Old Behavior
+
+Every module named inside a field's `constraints` created a compile-time dependency,
+including ones that are only read at runtime. With
+
+```elixir
+attribute :line, :struct do
+  constraints instance_of: MyApp.Invoice
+end
+```
+
+the resource recompiled whenever `MyApp.Invoice` changed, even though `instance_of` is
+only consulted by `cast_input/2` and friends.
+
+### New Behavior
+
+`constraints` no longer creates compile dependencies on its own. They are registered
+instead for the types a type reports from `c:Ash.Type.referenced_types/1` — the ones
+`Ash.Type.init/2` consumes while the DSL is compiled, such as a nested `type:` in
+`fields`. Runtime-only references like `instance_of` drop out.
+
+A custom type that reaches other types through its constraints must implement
+`c:Ash.Type.referenced_types/1` for compile dependencies on them to be kept.
+
+The installer does not set this one. A type from a dependency that does not implement
+that callback loses the compile dependencies it has today, and a new application can
+depend on such a type from the start.
