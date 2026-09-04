@@ -3,14 +3,20 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
   use Mix.Task.Compiler
 
   @recursive true
-  @manifest_version 3
+  @manifest_version 4
 
   @impl true
   def run(args) do
     manifest_path = manifest_path()
     previous = read_manifest(manifest_path)
     entries = project_resources() |> Ash.Resource.TypeInference.witness_entries()
-    changed = Enum.reject(entries, &(get_in(previous, [&1.key, :fingerprint]) == &1.fingerprint))
+
+    changed =
+      if "--force" in args or "--force-ash-type-inference" in args do
+        entries
+      else
+        Enum.reject(entries, &(get_in(previous, [&1.key, :fingerprint]) == &1.fingerprint))
+      end
 
     changed_diagnostics =
       changed
@@ -46,7 +52,12 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
         {entry.key, %{fingerprint: entry.fingerprint, diagnostics: diagnostics}}
       end)
 
-    diagnostics = current |> Map.values() |> Enum.flat_map(& &1.diagnostics)
+    diagnostics =
+      current
+      |> Map.values()
+      |> Enum.flat_map(& &1.diagnostics)
+      |> Enum.uniq_by(&diagnostic_identity/1)
+
     warnings_as_errors? = "--warnings-as-errors" in args
     return_errors? = "--return-errors" in args
     errors? = Enum.any?(diagnostics, &(&1.severity == :error))
