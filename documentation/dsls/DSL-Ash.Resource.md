@@ -1110,7 +1110,7 @@ validate present([:first_name, :last_name], at_least: 1)
 | [`only_when_valid?`](#actions-action-validate-only_when_valid?){: #actions-action-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-action-validate-message){: #actions-action-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-action-validate-description){: #actions-action-validate-description } | `String.t` |  | An optional description for the validation |
-| [`before_action?`](#actions-action-validate-before_action?){: #actions-action-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+| [`before_action?`](#actions-action-validate-before_action?){: #actions-action-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook, i.e. when the action is executed (inside the transaction) rather than when the changeset is built. Useful for validations that run queries or are otherwise expensive. Cannot be used with atomic actions. |
 
 
 
@@ -1311,7 +1311,7 @@ validate changing(:email)
 | [`only_when_valid?`](#actions-create-validate-only_when_valid?){: #actions-create-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-create-validate-message){: #actions-create-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-create-validate-description){: #actions-create-validate-description } | `String.t` |  | An optional description for the validation |
-| [`before_action?`](#actions-create-validate-before_action?){: #actions-create-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+| [`before_action?`](#actions-create-validate-before_action?){: #actions-create-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook, i.e. when the action is executed (inside the transaction) rather than when the changeset is built. Useful for validations that run queries or are otherwise expensive. Cannot be used with atomic actions. |
 | [`always_atomic?`](#actions-create-validate-always_atomic?){: #actions-create-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -1637,7 +1637,7 @@ validate present([:first_name, :last_name], at_least: 1)
 | [`only_when_valid?`](#actions-read-validate-only_when_valid?){: #actions-read-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-read-validate-message){: #actions-read-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-read-validate-description){: #actions-read-validate-description } | `String.t` |  | An optional description for the validation |
-| [`before_action?`](#actions-read-validate-before_action?){: #actions-read-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+| [`before_action?`](#actions-read-validate-before_action?){: #actions-read-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook, i.e. when the action is executed (inside the transaction) rather than when the changeset is built. Useful for validations that run queries or are otherwise expensive. Cannot be used with atomic actions. |
 
 
 
@@ -1947,7 +1947,7 @@ validate changing(:email)
 | [`only_when_valid?`](#actions-update-validate-only_when_valid?){: #actions-update-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-update-validate-message){: #actions-update-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-update-validate-description){: #actions-update-validate-description } | `String.t` |  | An optional description for the validation |
-| [`before_action?`](#actions-update-validate-before_action?){: #actions-update-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+| [`before_action?`](#actions-update-validate-before_action?){: #actions-update-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook, i.e. when the action is executed (inside the transaction) rather than when the changeset is built. Useful for validations that run queries or are otherwise expensive. Cannot be used with atomic actions. |
 | [`always_atomic?`](#actions-update-validate-always_atomic?){: #actions-update-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -2240,7 +2240,7 @@ validate changing(:email)
 | [`only_when_valid?`](#actions-destroy-validate-only_when_valid?){: #actions-destroy-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-destroy-validate-message){: #actions-destroy-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-destroy-validate-description){: #actions-destroy-validate-description } | `String.t` |  | An optional description for the validation |
-| [`before_action?`](#actions-destroy-validate-before_action?){: #actions-destroy-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+| [`before_action?`](#actions-destroy-validate-before_action?){: #actions-destroy-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook, i.e. when the action is executed (inside the transaction) rather than when the changeset is built. Useful for validations that run queries or are otherwise expensive. Cannot be used with atomic actions. |
 | [`always_atomic?`](#actions-destroy-validate-always_atomic?){: #actions-destroy-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -3027,7 +3027,7 @@ validate present([:first_name, :last_name], at_least: 1)
 | [`only_when_valid?`](#validations-validate-only_when_valid?){: #validations-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#validations-validate-message){: #validations-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#validations-validate-description){: #validations-validate-description } | `String.t` |  | An optional description for the validation |
-| [`before_action?`](#validations-validate-before_action?){: #validations-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+| [`before_action?`](#validations-validate-before_action?){: #validations-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook, i.e. when the action is executed (inside the transaction) rather than when the changeset is built. Useful for validations that run queries or are otherwise expensive. Cannot be used with atomic actions. |
 | [`always_atomic?`](#validations-validate-always_atomic?){: #validations-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -3185,7 +3185,7 @@ validate changing(:email)
 | [`only_when_valid?`](#pipelines-pipeline-validate-only_when_valid?){: #pipelines-pipeline-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#pipelines-pipeline-validate-message){: #pipelines-pipeline-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#pipelines-pipeline-validate-description){: #pipelines-pipeline-validate-description } | `String.t` |  | An optional description for the validation |
-| [`before_action?`](#pipelines-pipeline-validate-before_action?){: #pipelines-pipeline-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+| [`before_action?`](#pipelines-pipeline-validate-before_action?){: #pipelines-pipeline-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook, i.e. when the action is executed (inside the transaction) rather than when the changeset is built. Useful for validations that run queries or are otherwise expensive. Cannot be used with atomic actions. |
 | [`always_atomic?`](#pipelines-pipeline-validate-always_atomic?){: #pipelines-pipeline-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
 
 
