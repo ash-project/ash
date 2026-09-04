@@ -252,6 +252,38 @@ validations do
 end
 ```
 
+## before_action? Option
+
+By default, validations run while the changeset, query, or action input is being *built*, i.e. inside `Ash.Changeset.for_create/4`, `Ash.Changeset.for_update/4`, `Ash.Query.for_read/4` and friends. That happens before the action is executed and outside of any transaction. Setting `before_action? true` defers a validation into a `before_action` hook instead, so it runs when the action is actually executed with `Ash.create/2`, `Ash.update/2`, etc.
+
+```elixir
+actions do
+  update :assign_worker do
+    argument :worker_id, :uuid, allow_nil?: false
+
+    # Runs a query, so only run it on execution, inside the transaction
+    validate MyApp.Validations.WorkerIsActive do
+      before_action? true
+      only_when_valid? true
+    end
+  end
+end
+```
+
+There are two reasons to do this:
+
+1. **The validation is expensive, and changesets are built more often than they are executed.** A validation that runs a query or calls an external service will otherwise run every time the changeset is built. For example, `AshPhoenix.Form.validate/3` rebuilds the changeset on every form change event, so a querying validation would hit the database on every keystroke. With `before_action? true` it only runs on submit.
+
+2. **The validation needs to see the state at execution time.** `before_action` hooks run *inside* the data layer transaction, immediately before the data layer operation. A check made at build time can be stale by the time the action runs. Running inside the transaction means the validation observes the same state as the write that follows it. Note that this does not by itself lock rows, so for guarantees like uniqueness you still want an identity or a database constraint.
+
+Things to keep in mind:
+
+- **Errors surface later.** A `before_action?` validation is not run by `Ash.Changeset.for_create/4` and friends, so its errors will not be shown during live form validation, only once the action is submitted.
+- **It cannot be atomic.** Because it runs Elixir code inside a hook, an update or destroy action with `require_atomic? true` will fail with an error explaining this. Bulk actions fall back to the `:stream` strategy. Set `require_atomic? false` on the action if you need this.
+- **It runs after `before_transaction` and `around_transaction` hooks.** Those hooks run outside the transaction, before any `before_action?` validation. See the action lifecycle in `d:Ash.Resource.Dsl.actions` for the full hook order.
+- **`only_when_valid?` is checked at hook time.** Combining both options, as in the example above, skips the expensive check if any earlier validation or change has already added an error.
+- **`delay_global_validations?`** on an action is equivalent to setting `before_action? true` on every validation from the global `validations` block for that action.
+
 ## Atomic Validations
 
 To make a validation atomic, you have to implement the `c:Ash.Resource.Validation.atomic/3` callback. This callback returns an atomic instruction, or a list of atomic instructions, or an error/indication that the validation cannot be done atomically. For our `IsPrime` example above, this would look something like:
