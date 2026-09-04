@@ -35,9 +35,14 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
       )
 
     changed =
-      refreshed_entries
-      |> Map.values()
-      |> Enum.reject(&(get_in(previous.entries, [&1.key, :fingerprint]) == &1.fingerprint))
+      if force? do
+        Map.values(refreshed_entries)
+      else
+        Enum.reject(
+          Map.values(refreshed_entries),
+          &(get_in(previous.entries, [&1.key, :fingerprint]) == &1.fingerprint)
+        )
+      end
 
     changed_diagnostics =
       changed
