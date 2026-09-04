@@ -19,7 +19,12 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
           {_compiled, diagnostics} =
             Code.with_diagnostics(fn -> Code.compile_quoted(entry.definition) end)
 
-          {entry.key, Enum.map(diagnostics, &to_mix_diagnostic(&1, entry))}
+          diagnostics =
+            diagnostics
+            |> Enum.map(&to_mix_diagnostic(&1, entry))
+            |> Enum.uniq_by(&diagnostic_identity/1)
+
+          {entry.key, diagnostics}
         end,
         max_concurrency: System.schedulers_online(),
         ordered: false,
@@ -84,6 +89,10 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
     |> Map.from_struct()
     |> Map.delete(:compiler_name)
     |> Code.print_diagnostic()
+  end
+
+  defp diagnostic_identity(diagnostic) do
+    {diagnostic.file, diagnostic.position, diagnostic.severity, diagnostic.message}
   end
 
   defp project_resources do
