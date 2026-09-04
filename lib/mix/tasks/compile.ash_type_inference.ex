@@ -47,9 +47,12 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
       end)
 
     diagnostics = current |> Map.values() |> Enum.flat_map(& &1.diagnostics)
-    fresh_diagnostics = changed_diagnostics |> Map.values() |> List.flatten()
     warnings_as_errors? = "--warnings-as-errors" in args
-    diagnostics_to_print = if warnings_as_errors?, do: diagnostics, else: fresh_diagnostics
+
+    diagnostics_to_print =
+      if warnings_as_errors?,
+        do: diagnostics,
+        else: Map.values(changed_diagnostics) |> List.flatten()
 
     Enum.each(diagnostics_to_print, &print_diagnostic/1)
     write_manifest(manifest_path, current)
@@ -84,15 +87,20 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
   defp manifest_path,
     do: Path.join(Mix.Project.manifest_path(), "compile.ash_type_inference")
 
+  defp diagnostic_identity(diagnostic) do
+    {diagnostic.file, diagnostic_line(diagnostic.position), diagnostic.severity,
+     diagnostic.message}
+  end
+
+  defp diagnostic_line({line, _column}), do: line
+  defp diagnostic_line(line) when is_integer(line), do: line
+  defp diagnostic_line(_position), do: nil
+
   defp print_diagnostic(diagnostic) do
     diagnostic
     |> Map.from_struct()
     |> Map.delete(:compiler_name)
     |> Code.print_diagnostic()
-  end
-
-  defp diagnostic_identity(diagnostic) do
-    {diagnostic.file, diagnostic.position, diagnostic.severity, diagnostic.message}
   end
 
   defp project_resources do
