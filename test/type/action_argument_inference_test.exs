@@ -676,7 +676,11 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
       Path.join(System.tmp_dir!(), "ash-inline-capture-#{System.unique_integer([:positive])}")
 
     File.mkdir_p!(directory)
-    on_exit(fn -> File.rm_rf!(directory) end)
+
+    on_exit(fn ->
+      :code.del_path(String.to_charlist(directory))
+      File.rm_rf!(directory)
+    end)
 
     Enum.each(modules, fn {module, binary} ->
       File.write!(Path.join(directory, "#{module}.beam"), binary)

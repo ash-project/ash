@@ -3,35 +3,87 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
   use Mix.Task.Compiler
 
   @recursive true
-  @manifest_version 2
+  @manifest_version 3
 
   @impl true
-  def run(_args) do
-    manifest_path = Path.join(Mix.Project.manifest_path(), "compile.ash_type_inference")
+  def run(args) do
+    manifest_path = manifest_path()
     previous = read_manifest(manifest_path)
     entries = project_resources() |> Ash.Resource.TypeInference.witness_entries()
-    changed = Enum.reject(entries, &(previous[&1.key] == &1.fingerprint))
+    changed = Enum.reject(entries, &(get_in(previous, [&1.key, :fingerprint]) == &1.fingerprint))
 
-    diagnostics =
+    changed_diagnostics =
       changed
       |> Task.async_stream(
         fn entry ->
           {_compiled, diagnostics} =
             Code.with_diagnostics(fn -> Code.compile_quoted(entry.definition) end)
 
-          Enum.map(diagnostics, &to_mix_diagnostic(&1, entry))
+          {entry.key, Enum.map(diagnostics, &to_mix_diagnostic(&1, entry))}
         end,
         max_concurrency: System.schedulers_online(),
         ordered: false,
         timeout: :infinity
       )
       |> Enum.flat_map(fn
-        {:ok, diagnostics} -> diagnostics
+        {:ok, result} -> [result]
         {:exit, reason} -> exit(reason)
       end)
+      |> Map.new()
 
-    write_manifest(manifest_path, Map.new(entries, &{&1.key, &1.fingerprint}))
-    if changed == [], do: {:noop, diagnostics}, else: {:ok, diagnostics}
+    current =
+      Map.new(entries, fn entry ->
+        diagnostics =
+          Map.get_lazy(changed_diagnostics, entry.key, fn ->
+            get_in(previous, [entry.key, :diagnostics]) || []
+          end)
+
+        {entry.key, %{fingerprint: entry.fingerprint, diagnostics: diagnostics}}
+      end)
+
+    diagnostics = current |> Map.values() |> Enum.flat_map(& &1.diagnostics)
+    fresh_diagnostics = changed_diagnostics |> Map.values() |> List.flatten()
+    warnings_as_errors? = "--warnings-as-errors" in args
+    diagnostics_to_print = if warnings_as_errors?, do: diagnostics, else: fresh_diagnostics
+
+    Enum.each(diagnostics_to_print, &print_diagnostic/1)
+    write_manifest(manifest_path, current)
+
+    errors? = Enum.any?(diagnostics, &(&1.severity == :error))
+    warnings? = Enum.any?(diagnostics, &(&1.severity == :warning))
+
+    cond do
+      errors? or (warnings_as_errors? and warnings?) -> {:error, diagnostics}
+      changed == [] -> {:noop, diagnostics}
+      true -> {:ok, diagnostics}
+    end
+  end
+
+  @impl true
+  def diagnostics do
+    manifest_path()
+    |> read_manifest()
+    |> Map.values()
+    |> Enum.flat_map(& &1.diagnostics)
+  end
+
+  @impl true
+  def manifests, do: [manifest_path()]
+
+  @impl true
+  def clean do
+    File.rm(manifest_path())
+    :ok
+  end
+
+  defp manifest_path,
+    do: Path.join(Mix.Project.manifest_path(), "compile.ash_type_inference")
+
+  defp print_diagnostic(diagnostic) do
+    diagnostic
+    |> Map.from_struct()
+    |> Map.delete(:compiler_name)
+    |> Code.print_diagnostic()
   end
 
   defp project_resources do
