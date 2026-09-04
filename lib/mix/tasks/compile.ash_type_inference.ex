@@ -48,20 +48,24 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
 
     diagnostics = current |> Map.values() |> Enum.flat_map(& &1.diagnostics)
     warnings_as_errors? = "--warnings-as-errors" in args
+    return_errors? = "--return-errors" in args
+    errors? = Enum.any?(diagnostics, &(&1.severity == :error))
+    warnings? = Enum.any?(diagnostics, &(&1.severity == :warning))
+    failed? = errors? or (warnings_as_errors? and warnings?)
 
     diagnostics_to_print =
-      if warnings_as_errors?,
-        do: diagnostics,
-        else: Map.values(changed_diagnostics) |> List.flatten()
+      cond do
+        failed? and return_errors? -> []
+        failed? -> diagnostics
+        true -> Map.values(changed_diagnostics) |> List.flatten()
+      end
 
     Enum.each(diagnostics_to_print, &print_diagnostic/1)
     write_manifest(manifest_path, current)
 
-    errors? = Enum.any?(diagnostics, &(&1.severity == :error))
-    warnings? = Enum.any?(diagnostics, &(&1.severity == :warning))
-
     cond do
-      errors? or (warnings_as_errors? and warnings?) -> {:error, diagnostics}
+      failed? and return_errors? -> {:error, diagnostics}
+      failed? -> {:error, []}
       changed == [] -> {:noop, diagnostics}
       true -> {:ok, diagnostics}
     end
