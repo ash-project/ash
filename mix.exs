@@ -20,6 +20,7 @@ defmodule Ash.MixProject do
       consolidate_protocols: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
+      compilers: Mix.compilers() ++ [:ash_type_inference],
       package: package(),
       deps: deps(),
       # Workaround for Elixir dialyzer opaque type bug: https://github.com/elixir-lang/elixir/issues/14837#issuecomment-3452772021
@@ -382,7 +383,8 @@ defmodule Ash.MixProject do
     [
       {:usage_rules, "~> 1.1", only: [:dev]},
       # DSLs
-      {:spark, ">= 2.6.0"},
+      {:spark,
+       github: "alt-ios/spark", branch: "feature/typed-action-input-inference", override: true},
       # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.14"},
       # Used by the ETS data layer
