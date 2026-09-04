@@ -3,20 +3,41 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
   use Mix.Task.Compiler
 
   @recursive true
-  @manifest_version 4
+  @manifest_version 7
 
   @impl true
   def run(args) do
     manifest_path = manifest_path()
     previous = read_manifest(manifest_path)
-    entries = project_resources() |> Ash.Resource.TypeInference.witness_entries()
+    beams = project_beams()
+    force? = "--force" in args or "--force-ash-type-inference" in args
+
+    {invalidated_resources, resources_to_refresh} =
+      invalidated_resources(previous, beams, force?)
+
+    refreshed_entries = Ash.Resource.TypeInference.witness_entries(resources_to_refresh)
+
+    retained_entries =
+      if force? do
+        %{}
+      else
+        Map.reject(previous.entries, fn {key, _entry} ->
+          entry_resource(key) in invalidated_resources
+        end)
+      end
+
+    refreshed_entries = Map.new(refreshed_entries, &{&1.key, &1})
+
+    entries =
+      retained_entries
+      |> Map.merge(
+        Map.new(refreshed_entries, fn {key, entry} -> {key, stored_entry(key, entry)} end)
+      )
 
     changed =
-      if "--force" in args or "--force-ash-type-inference" in args do
-        entries
-      else
-        Enum.reject(entries, &(get_in(previous, [&1.key, :fingerprint]) == &1.fingerprint))
-      end
+      refreshed_entries
+      |> Map.values()
+      |> Enum.reject(&(get_in(previous.entries, [&1.key, :fingerprint]) == &1.fingerprint))
 
     changed_diagnostics =
       changed
@@ -42,18 +63,24 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
       end)
       |> Map.new()
 
-    current =
-      Map.new(entries, fn entry ->
+    current_entries =
+      Map.new(entries, fn {key, entry} ->
         diagnostics =
-          Map.get_lazy(changed_diagnostics, entry.key, fn ->
-            get_in(previous, [entry.key, :diagnostics]) || []
+          Map.get_lazy(changed_diagnostics, key, fn ->
+            get_in(previous.entries, [key, :diagnostics]) || entry.diagnostics || []
           end)
 
-        {entry.key, %{fingerprint: entry.fingerprint, diagnostics: diagnostics}}
+        {key, %{entry | diagnostics: diagnostics}}
       end)
 
+    current = %{
+      beams: beams,
+      entries: current_entries,
+      resources: resource_dependencies(current_entries)
+    }
+
     diagnostics =
-      current
+      current_entries
       |> Map.values()
       |> Enum.flat_map(& &1.diagnostics)
       |> Enum.uniq_by(&diagnostic_identity/1)
@@ -86,6 +113,7 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
   def diagnostics do
     manifest_path()
     |> read_manifest()
+    |> Map.fetch!(:entries)
     |> Map.values()
     |> Enum.flat_map(& &1.diagnostics)
   end
@@ -118,27 +146,121 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
     |> Code.print_diagnostic()
   end
 
-  defp project_resources do
+  defp project_beams do
     Mix.Project.compile_path()
     |> Path.join("*.beam")
     |> Path.wildcard()
-    |> Enum.flat_map(fn path ->
-      case :beam_lib.info(String.to_charlist(path)) do
-        info when is_list(info) -> [Keyword.fetch!(info, :module)]
-        _ -> []
-      end
+    |> Map.new(fn path ->
+      {:ok, {module, digest}} = :beam_lib.md5(String.to_charlist(path))
+      {module, digest}
     end)
-    |> Enum.filter(fn module ->
+  end
+
+  defp invalidated_resources(previous, beams, force?) do
+    if force? or map_size(previous.beams) == 0 do
+      resources = resource_modules(Map.keys(beams))
+      {Map.keys(previous.resources) |> Enum.concat(resources) |> Enum.uniq(), resources}
+    else
+      changed_modules =
+        Map.keys(previous.beams)
+        |> Enum.concat(Map.keys(beams))
+        |> Enum.uniq()
+        |> Enum.filter(&(Map.get(previous.beams, &1) != Map.get(beams, &1)))
+        |> MapSet.new()
+
+      affected =
+        previous.resources
+        |> Enum.filter(fn {_resource, dependencies} ->
+          not MapSet.disjoint?(MapSet.new(dependencies), changed_modules)
+        end)
+        |> Enum.map(&elem(&1, 0))
+
+      new_resources =
+        changed_modules
+        |> Enum.filter(&Map.has_key?(beams, &1))
+        |> resource_modules()
+
+      invalidated = (affected ++ new_resources) |> Enum.uniq()
+      refresh = Enum.filter(invalidated, &Map.has_key?(beams, &1))
+      {invalidated, refresh}
+    end
+  end
+
+  defp resource_modules(modules) do
+    Enum.filter(modules, fn module ->
       Code.ensure_loaded?(module) && Ash.Resource.Info.resource?(module)
     end)
   end
 
+  defp resource_dependencies(entries) do
+    entries
+    |> Enum.group_by(fn {key, _entry} -> entry_resource(key) end)
+    |> Map.new(fn {resource, resource_entries} ->
+      dependencies =
+        resource_entries
+        |> Enum.flat_map(fn {_key, entry} -> entry.dependencies end)
+        |> Enum.concat([resource])
+        |> Enum.uniq()
+
+      {resource, dependencies}
+    end)
+  end
+
+  defp entry_resource({resource, _kind}), do: resource
+  defp entry_resource({resource, _kind, _module}), do: resource
+
+  defp stored_entry(key, entry) do
+    %{
+      fingerprint: entry.fingerprint,
+      diagnostics: [],
+      dependencies:
+        key
+        |> entry_modules()
+        |> Enum.concat(resource_relationship_modules(entry_resource(key)))
+        |> Enum.concat(definition_modules(entry.definition))
+        |> Enum.uniq()
+    }
+  end
+
+  defp entry_modules({resource, _kind}), do: [resource]
+  defp entry_modules({resource, _kind, callback_module}), do: [resource, callback_module]
+
+  defp resource_relationship_modules(resource) do
+    resource
+    |> Ash.Resource.Info.relationships()
+    |> Enum.flat_map(fn relationship ->
+      [relationship.destination, Map.get(relationship, :through)]
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp definition_modules(definition) do
+    {_definition, modules} =
+      Macro.prewalk(definition, MapSet.new(), fn
+        module, modules when is_atom(module) ->
+          if module_name?(module) do
+            {module, MapSet.put(modules, module)}
+          else
+            {module, modules}
+          end
+
+        node, modules ->
+          {node, modules}
+      end)
+
+    MapSet.to_list(modules)
+  end
+
+  defp module_name?(module), do: module |> Atom.to_string() |> String.starts_with?("Elixir.")
+
   defp read_manifest(path) do
     with {:ok, binary} <- File.read(path),
-         {@manifest_version, values} when is_map(values) <- :erlang.binary_to_term(binary) do
+         {@manifest_version, %{beams: beams, entries: entries, resources: resources} = values}
+         when is_map(beams) and is_map(entries) and is_map(resources) <-
+           :erlang.binary_to_term(binary) do
       values
     else
-      _ -> %{}
+      _ -> %{beams: %{}, entries: %{}, resources: %{}}
     end
   end
 
