@@ -115,21 +115,25 @@ defmodule Ash.Resource.TypeInference do
         |> Enum.flat_map(fn action ->
           managed_inputs = managed_relationship_inputs(resource, action)
 
-          action
-          |> then(&Ash.Resource.Info.action_changes(resource, &1))
-          |> Enum.flat_map(fn
-            %{change: {^change_module, opts}} ->
-              arguments =
-                typed_map(quote(do: raw_changeset), :arguments, action.arguments, managed_inputs)
+          opts =
+            action
+            |> then(&Ash.Resource.Info.action_changes(resource, &1))
+            |> Enum.flat_map(fn
+              %{change: {^change_module, opts}} -> [opts]
+              _ -> []
+            end)
 
-              attributes = typed_map(quote(do: raw_changeset), :attributes, attributes)
-              [local_witness_clause(action.name, arguments, attributes, opts, definitions)]
+          if opts == [] do
+            []
+          else
+            arguments =
+              typed_map(quote(do: raw_changeset), :arguments, action.arguments, managed_inputs)
 
-            _ ->
-              []
-          end)
+            action_attributes = typed_map(quote(do: raw_changeset), :attributes, attributes)
+
+            [local_witness_clause(action.name, arguments, action_attributes, opts, definitions)]
+          end
         end)
-        |> Enum.uniq()
 
       if clauses == [] do
         nil
@@ -311,16 +315,17 @@ defmodule Ash.Resource.TypeInference do
         resource
         |> Ash.Resource.Info.actions()
         |> Enum.flat_map(fn action ->
-          validation_occurrences(resource, action)
-          |> Enum.flat_map(fn
-            %{module: ^validation_module, opts: opts} ->
-              [validation_witness_clause(action, attributes, opts, definitions)]
+          opts =
+            validation_occurrences(resource, action)
+            |> Enum.flat_map(fn
+              %{module: ^validation_module, opts: opts} -> [opts]
+              _ -> []
+            end)
 
-            _ ->
-              []
-          end)
+          if opts == [],
+            do: [],
+            else: [validation_witness_clause(action, attributes, opts, definitions)]
         end)
-        |> Enum.uniq()
 
       if clauses == [] do
         nil
@@ -345,16 +350,15 @@ defmodule Ash.Resource.TypeInference do
         resource
         |> Ash.Resource.Info.actions()
         |> Enum.flat_map(fn action ->
-          preparation_occurrences(resource, action)
-          |> Enum.flat_map(fn
-            %{preparation: {^preparation_module, opts}} ->
-              [preparation_witness_clause(action, opts, definitions)]
+          opts =
+            preparation_occurrences(resource, action)
+            |> Enum.flat_map(fn
+              %{preparation: {^preparation_module, opts}} -> [opts]
+              _ -> []
+            end)
 
-            _ ->
-              []
-          end)
+          if opts == [], do: [], else: [preparation_witness_clause(action, opts, definitions)]
         end)
-        |> Enum.uniq()
 
       if clauses == [] do
         nil
@@ -400,18 +404,20 @@ defmodule Ash.Resource.TypeInference do
     |> Enum.uniq()
   end
 
-  defp local_witness_clause(action_name, arguments, attributes, opts, definitions) do
+  defp local_witness_clause(action_name, arguments, attributes, all_opts, definitions) do
     calls =
-      [
-        {:change, [quote(do: changeset), Macro.escape(opts), quote(do: context)]},
-        {:atomic, [quote(do: changeset), Macro.escape(opts), quote(do: context)]},
-        {:batch_change, [[quote(do: changeset)], Macro.escape(opts), quote(do: context)]}
-      ]
-      |> Enum.flat_map(fn {name, callback_arguments} ->
-        case inline_callback_invocation(definitions, name, callback_arguments) do
-          nil -> []
-          invocation -> [invocation]
-        end
+      Enum.flat_map(all_opts, fn opts ->
+        [
+          {:change, [quote(do: changeset), Macro.escape(opts), quote(do: context)]},
+          {:atomic, [quote(do: changeset), Macro.escape(opts), quote(do: context)]},
+          {:batch_change, [[quote(do: changeset)], Macro.escape(opts), quote(do: context)]}
+        ]
+        |> Enum.flat_map(fn {name, callback_arguments} ->
+          case inline_callback_invocation(definitions, name, callback_arguments) do
+            nil -> []
+            invocation -> [invocation]
+          end
+        end)
       end)
 
     quote generated: false do
@@ -457,7 +463,7 @@ defmodule Ash.Resource.TypeInference do
     end
   end
 
-  defp validation_witness_clause(action, attributes, opts, definitions) do
+  defp validation_witness_clause(action, attributes, all_opts, definitions) do
     {source, source_kind} =
       case action.type do
         type when type in [:create, :update, :destroy] ->
@@ -497,23 +503,25 @@ defmodule Ash.Resource.TypeInference do
       end
 
     calls =
-      [:validate, :atomic, :batch_validate]
-      |> Enum.flat_map(fn
-        :batch_validate when source_kind != :changeset ->
-          []
+      Enum.flat_map(all_opts, fn opts ->
+        [:validate, :atomic, :batch_validate]
+        |> Enum.flat_map(fn
+          :batch_validate when source_kind != :changeset ->
+            []
 
-        callback ->
-          first_argument =
-            if callback == :batch_validate, do: [quote(do: source)], else: quote(do: source)
+          callback ->
+            first_argument =
+              if callback == :batch_validate, do: [quote(do: source)], else: quote(do: source)
 
-          case inline_callback_invocation(
-                 definitions,
-                 callback,
-                 [first_argument, Macro.escape(opts), quote(do: context)]
-               ) do
-            nil -> []
-            invocation -> [invocation]
-          end
+            case inline_callback_invocation(
+                   definitions,
+                   callback,
+                   [first_argument, Macro.escape(opts), quote(do: context)]
+                 ) do
+              nil -> []
+              invocation -> [invocation]
+            end
+        end)
       end)
 
     quote generated: false do
@@ -525,7 +533,7 @@ defmodule Ash.Resource.TypeInference do
     end
   end
 
-  defp preparation_witness_clause(action, opts, definitions) do
+  defp preparation_witness_clause(action, all_opts, definitions) do
     arguments = typed_map(quote(do: raw_source), :arguments, action.arguments)
 
     source =
@@ -545,13 +553,20 @@ defmodule Ash.Resource.TypeInference do
       def __ash_type_witness__(unquote(action.name), raw_source, _opts, context) do
         source = unquote(source)
 
-        unquote(
-          inline_callback_invocation(
-            definitions,
-            :prepare,
-            [quote(do: source), Macro.escape(opts), quote(do: context)]
-          )
+        unquote_splicing(
+          Enum.flat_map(all_opts, fn opts ->
+            case inline_callback_invocation(
+                   definitions,
+                   :prepare,
+                   [quote(do: source), Macro.escape(opts), quote(do: context)]
+                 ) do
+              nil -> []
+              invocation -> [invocation]
+            end
+          end)
         )
+
+        source
       end
     end
   end

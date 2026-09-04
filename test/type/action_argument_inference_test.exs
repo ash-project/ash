@@ -643,6 +643,43 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
     assert formatted.message =~ "Accepted attributes: [:status]"
   end
 
+  test "repeated uses of a dispatched change share one witness clause per action" do
+    suffix = System.unique_integer([:positive])
+    resource = Module.concat(["RepeatedDispatchedChangeResource#{suffix}"])
+
+    Code.compile_string("""
+    defmodule #{inspect(resource)} do
+      use Ash.Resource, domain: nil
+      resource do require_primary_key? false end
+
+      attributes do
+        attribute :status, :atom, public?: true
+      end
+
+      actions do
+        create :create do
+          change set_attribute(:status, :first)
+          change set_attribute(:status, :second)
+        end
+      end
+    end
+    """)
+
+    entry =
+      [resource]
+      |> Ash.Resource.TypeInference.witness_entries()
+      |> Enum.find(fn entry ->
+        entry.key == {resource, :change, Ash.Resource.Change.SetAttribute}
+      end)
+
+    assert entry
+
+    {_compiled, diagnostics} =
+      Code.with_diagnostics(fn -> Code.compile_quoted(entry.definition) end)
+
+    refute Enum.any?(diagnostics, &(&1.message =~ "clause is redundant"))
+  end
+
   test "an inline CRUD local capture retains its private helper and argument shape" do
     suffix = System.unique_integer([:positive])
     resource_module = Module.concat(["InlineCaptureResource#{suffix}"])
