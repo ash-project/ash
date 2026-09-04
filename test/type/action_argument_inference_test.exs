@@ -594,15 +594,10 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
 
   test "the custom compiler renders Ash-aware changeset diagnostics" do
     suffix = System.unique_integer([:positive])
-    change_module = "FriendlyDiagnosticChange#{suffix}"
+    change_module = Ash.Test.TypeInference.PrivateChange
     resource_module = "FriendlyDiagnosticResource#{suffix}"
 
     Code.compile_string("""
-    defmodule #{change_module} do
-      use Ash.Resource.Change
-      def change(changeset, _opts, _context), do: changeset
-    end
-
     defmodule #{resource_module} do
       use Ash.Resource, domain: nil
       resource do require_primary_key? false end
@@ -615,7 +610,7 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
         create :dispatch do
           accept [:status]
           argument :allocations, {:array, :map}, allow_nil?: false
-          change #{change_module}
+          change #{inspect(change_module)}
         end
       end
     end
@@ -626,7 +621,7 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
       file: "nofile",
       source: "nofile",
       severity: :warning,
-      position: 1,
+      position: 5,
       span: nil,
       details: nil,
       stacktrace: []
@@ -634,13 +629,16 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
 
     formatted =
       Mix.Tasks.Compile.AshTypeInference.to_mix_diagnostic(diagnostic, %{
-        key: {Module.concat([resource_module]), :change, Module.concat([change_module])}
+        key: {Module.concat([resource_module]), :change, change_module}
       })
 
     assert formatted.message =~ "Unknown Ash.Changeset field :value_test"
-    assert formatted.message =~ "#{change_module}.change/3"
+    assert formatted.message =~ "#{inspect(change_module)}.change/3"
     assert formatted.message =~ "Action arguments: [:allocations]"
     assert formatted.message =~ "Accepted attributes: [:status]"
+    assert formatted.file == Path.expand("test/support/type_inference/private_change.ex")
+    assert formatted.position == {5, 1}
+    assert [{^change_module, :change, 3, _location}] = formatted.stacktrace
   end
 
   test "repeated uses of a dispatched change share one witness clause per action" do
@@ -734,16 +732,30 @@ defmodule Ash.Type.ActionArgumentInferenceTest do
     end)
 
     entries = Ash.Resource.TypeInference.witness_entries([resource_module])
-    assert [%{key: {^resource_module, :inline_change}}] = entries
+
+    assert [%{key: {^resource_module, :inline_change}} = entry] = entries
+    assert entry.diagnostic_functions == [apply_change: 2]
+    assert [{generated_name, 2}] = entry.generated_functions
+
+    assert generated_name |> Atom.to_string() |> String.starts_with?("change_0_generated_")
 
     {_compiled, diagnostics} =
       Code.with_diagnostics(fn ->
         Enum.each(entries, &Code.compile_quoted(&1.definition))
       end)
 
-    assert Enum.any?(diagnostics, fn diagnostic ->
-             diagnostic.message =~ "missing" and diagnostic.message =~ "amount: integer()"
-           end)
+    diagnostic =
+      Enum.find(diagnostics, fn diagnostic ->
+        diagnostic.message =~ "missing" and diagnostic.message =~ "amount: integer()"
+      end)
+
+    assert diagnostic
+
+    formatted = Mix.Tasks.Compile.AshTypeInference.to_mix_diagnostic(diagnostic, entry)
+
+    assert formatted.message =~ "apply_change/2"
+    refute formatted.message =~ Atom.to_string(generated_name)
+    assert [{^resource_module, :apply_change, 2, _location}] = formatted.stacktrace
   end
 
   test "constrained map arguments retain their nested field types" do

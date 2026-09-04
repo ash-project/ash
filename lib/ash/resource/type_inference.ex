@@ -225,7 +225,12 @@ defmodule Ash.Resource.TypeInference do
       definition =
         witness_module_definition(resource, resource, InlineChange, definitions, clauses)
 
-      [witness_entry({resource, :inline_change}, definition)]
+      [
+        witness_entry({resource, :inline_change}, definition,
+          diagnostic_functions: inline_diagnostic_functions(definitions, roots),
+          generated_functions: roots
+        )
+      ]
     else
       _ -> []
     end
@@ -249,6 +254,44 @@ defmodule Ash.Resource.TypeInference do
   end
 
   defp inline_callback(_, _resource), do: []
+
+  defp inline_diagnostic_functions(definitions, roots) do
+    functions =
+      roots
+      |> Enum.flat_map(fn root ->
+        case Enum.find(definitions, fn {key, _visibility, _metadata, _clauses} -> key == root end) do
+          {_key, _visibility, _metadata, clauses} -> direct_local_captures(clauses)
+          nil -> []
+        end
+      end)
+      |> Enum.uniq()
+
+    if functions == [], do: roots, else: functions
+  end
+
+  defp direct_local_captures(clauses) do
+    Enum.flat_map(clauses, fn {_metadata, _patterns, _guards, body} ->
+      direct_local_call(body)
+    end)
+  end
+
+  defp direct_local_call({:__block__, _metadata, [body]}), do: direct_local_call(body)
+
+  defp direct_local_call(
+         {{:., _, [{:&, _, [{:/, _, [{name, _, context}, arity]}]}]}, _metadata, _arguments}
+       )
+       when is_atom(name) and is_atom(context) and is_integer(arity),
+       do: [{name, arity}]
+
+  defp direct_local_call({:&, _, [{:/, _, [{name, _, context}, arity]}]})
+       when is_atom(name) and is_atom(context) and is_integer(arity),
+       do: [{name, arity}]
+
+  defp direct_local_call({name, _metadata, arguments})
+       when is_atom(name) and is_list(arguments),
+       do: [{name, length(arguments)}]
+
+  defp direct_local_call(_body), do: []
 
   defp definition_closure(definitions, roots) do
     definitions_by_name =
@@ -593,12 +636,15 @@ defmodule Ash.Resource.TypeInference do
 
   defp preparation_occurrences(_resource, _action), do: []
 
-  defp witness_entry(key, definition) do
-    %{
-      key: key,
-      fingerprint: :crypto.hash(:sha256, :erlang.term_to_binary(definition)),
-      definition: definition
-    }
+  defp witness_entry(key, definition, metadata \\ []) do
+    Map.merge(
+      %{
+        key: key,
+        fingerprint: :crypto.hash(:sha256, :erlang.term_to_binary(definition)),
+        definition: definition
+      },
+      Map.new(metadata)
+    )
   end
 
   defp witness_module_definition(callback_module, resource, namespace, definitions, clauses) do

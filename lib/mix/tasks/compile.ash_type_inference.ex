@@ -149,7 +149,7 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
 
   @doc false
   def to_mix_diagnostic(diagnostic, entry) do
-    diagnostic = improve_diagnostic(diagnostic, entry)
+    diagnostic = diagnostic |> remap_diagnostic(entry) |> improve_diagnostic(entry)
 
     struct!(
       Mix.Task.Compiler.Diagnostic,
@@ -167,6 +167,110 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
     )
   end
 
+  defp remap_diagnostic(diagnostic, entry) do
+    module = diagnostic_module(entry)
+    file = module && module_source(module)
+
+    if file do
+      {original_line, column} = diagnostic_position(diagnostic.position)
+      {name, arity, definition_line} = diagnostic_function(module, file, original_line, entry)
+      line = if original_line > 0, do: original_line, else: definition_line
+
+      diagnostic
+      |> Map.put(:file, file)
+      |> Map.put(:source, file)
+      |> Map.put(:position, {line, column})
+      |> Map.put(:stacktrace, [
+        {module, name, arity,
+         [file: String.to_charlist(file), line: line, column: column, no_parens: true]}
+      ])
+      |> Map.update!(:message, &String.replace(&1, ~r/# from: nofile(?=:|\n)/, "# from: #{file}"))
+      |> remap_generated_function(entry, name, arity)
+    else
+      diagnostic
+    end
+  end
+
+  defp diagnostic_module(%{key: {_resource, kind, module}})
+       when kind in [:change, :validation, :preparation],
+       do: module
+
+  defp diagnostic_module(%{key: {resource, :inline_change}}), do: resource
+  defp diagnostic_module(_entry), do: nil
+
+  defp diagnostic_position({line, column}), do: {line, column}
+  defp diagnostic_position(line) when is_integer(line), do: {line, 1}
+  defp diagnostic_position(_position), do: {1, 1}
+
+  defp diagnostic_function(_module, file, line, entry \\ %{}) do
+    locations = source_locations(file)
+
+    locations
+    |> diagnostic_function_location(entry, line)
+    |> then(fn {definition_line, name, arity} -> {name, arity, definition_line} end)
+  end
+
+  defp remap_generated_function(diagnostic, %{generated_functions: generated}, name, arity) do
+    Enum.reduce(generated, diagnostic, fn {generated_name, generated_arity}, diagnostic ->
+      Map.update!(diagnostic, :message, fn message ->
+        message
+        |> String.replace("#{generated_name}/#{generated_arity}", "#{name}/#{arity}")
+        |> String.replace(Atom.to_string(generated_name), Atom.to_string(name))
+      end)
+    end)
+  end
+
+  defp remap_generated_function(diagnostic, _entry, _name, _arity), do: diagnostic
+
+  defp diagnostic_function_location([], %{diagnostic_functions: [{name, arity} | _]}, line),
+    do: {line, name, arity}
+
+  defp diagnostic_function_location(locations, %{diagnostic_functions: functions}, line) do
+    locations
+    |> Enum.filter(fn {_definition_line, name, arity} -> {name, arity} in functions end)
+    |> nearest_definition(line)
+    |> then(&(&1 || {line, :unknown, 0}))
+  end
+
+  defp diagnostic_function_location(locations, _entry, line) do
+    nearest_definition(locations, line) || {line, :unknown, 0}
+  end
+
+  defp nearest_definition(locations, line) do
+    locations
+    |> Enum.filter(fn {definition_line, _name, _arity} -> definition_line <= line end)
+    |> Enum.max_by(&elem(&1, 0), fn -> List.first(locations) end)
+  end
+
+  defp source_locations(file) do
+    with {:ok, source} <- File.read(file),
+         {:ok, ast} <- Code.string_to_quoted(source, columns: true) do
+      ast
+      |> Macro.prewalk([], fn
+        {visibility, metadata, [head, _body]} = node, locations
+        when visibility in [:def, :defp] ->
+          case source_function_head(head) do
+            {name, arity} -> {node, [{metadata[:line] || 1, name, arity} | locations]}
+            nil -> {node, locations}
+          end
+
+        node, locations ->
+          {node, locations}
+      end)
+      |> elem(1)
+    else
+      _ -> []
+    end
+  end
+
+  defp source_function_head({:when, _metadata, [head | _guards]}), do: source_function_head(head)
+
+  defp source_function_head({name, _metadata, arguments})
+       when is_atom(name) and is_list(arguments),
+       do: {name, length(arguments)}
+
+  defp source_function_head(_head), do: nil
+
   defp improve_diagnostic(diagnostic, %{key: {resource, :change, change_module}}) do
     case unknown_changeset_field(diagnostic.message) do
       nil ->
@@ -175,14 +279,20 @@ defmodule Mix.Tasks.Compile.AshTypeInference do
       field ->
         actions = change_actions(resource, change_module)
 
+        {name, arity, _line} =
+          diagnostic_function(
+            change_module,
+            module_source(change_module),
+            diagnostic_line(diagnostic.position) || 1
+          )
+
         %{
           diagnostic
-          | file: module_source(change_module) || diagnostic.file,
-            message: """
+          | message: """
             Unknown Ash.Changeset field :#{field}
 
             In:
-              #{inspect(change_module)}.change/3
+              #{inspect(change_module)}.#{name}/#{arity}
 
             Ash.Changeset has no field named :#{field}.
             #{format_action_inputs(actions)}
