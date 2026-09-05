@@ -1311,7 +1311,8 @@ defmodule Ash.Actions.Read.Relationships do
        ) do
     %Ash.Page.Unpaged{
       related_records: related_records,
-      opts: opts
+      opts: opts,
+      more_by_source: more_by_source
     } = unpaged
 
     attach_fun =
@@ -1327,7 +1328,8 @@ defmodule Ash.Actions.Read.Relationships do
           # just fetch the entries related to this record
           related_query =
             Ash.Query.set_context(related_query, %{
-              data_layer: %{lateral_join_source: {[record], lateral_join_source_path}}
+              data_layer: %{lateral_join_source: {[record], lateral_join_source_path}},
+              pagination_more_by_source: more_by_source
             })
 
           page =

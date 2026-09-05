@@ -166,4 +166,67 @@ defmodule Ash.Test.PageTest do
                Keyset.filter(query, cursor, sort, :after)
     end
   end
+
+  describe "after_action hooks do not see the extra pagination row" do
+    test "offset pagination", %{ids: ids} do
+      page = ThisTest.Domain.list_objs!(page: [offset: 0, limit: 3])
+
+      assert Process.get(:after_action_result_count) == 3
+      assert %Ash.Page.Offset{results: [_, _, _], more?: true} = page
+      assert Enum.map(page.results, & &1.id) == Enum.take(ids, 3)
+    end
+
+    test "keyset pagination", %{ids: ids} do
+      page = ThisTest.Domain.list_objs!(page: [limit: 3])
+      assert Process.get(:after_action_result_count) == 3
+      assert %Ash.Page.Keyset{more?: true} = page
+
+      next = Ash.page!(page, :next)
+      assert Process.get(:after_action_result_count) == 3
+      assert %{more?: true} = next
+      assert Enum.map(next.results, & &1.id) == ids |> Enum.drop(3) |> Enum.take(3)
+    end
+
+    test "keyset pagination going backwards", %{ids: ids} do
+      # Page forward twice so that the `before:` cursor has more records behind
+      # it than the limit -- otherwise there is no extra row to leak.
+      third_page =
+        ThisTest.Domain.list_objs!(page: [limit: 3])
+        |> Ash.page!(:next)
+        |> Ash.page!(:next)
+
+      assert Enum.map(third_page.results, & &1.id) == ids |> Enum.drop(6) |> Enum.take(3)
+
+      previous = Ash.page!(third_page, :prev)
+
+      assert Process.get(:after_action_result_count) == 3
+      assert %{more?: true} = previous
+      assert Enum.map(previous.results, & &1.id) == ids |> Enum.drop(3) |> Enum.take(3)
+    end
+
+    test "the last page sees only the records that exist", %{ids: ids} do
+      last =
+        ThisTest.Domain.list_objs!(page: [offset: 9, limit: 3])
+
+      assert Process.get(:after_action_result_count) == 1
+      assert %Ash.Page.Offset{results: [_], more?: false} = last
+      assert Enum.map(last.results, & &1.id) == Enum.drop(ids, 9)
+    end
+
+    test "an exactly-full last page reports more?: false" do
+      page = ThisTest.Domain.list_objs!(page: [offset: 5, limit: 5])
+
+      assert Process.get(:after_action_result_count) == 5
+      assert %Ash.Page.Offset{more?: false} = page
+    end
+
+    test "read_one skips pagination entirely, so the hook sees every record" do
+      assert {:error, %Ash.Error.Invalid{}} =
+               ThisTest.Obj
+               |> Ash.Query.for_read(:list_objs)
+               |> Ash.read_one()
+
+      assert Process.get(:after_action_result_count) == 10
+    end
+  end
 end

@@ -820,6 +820,7 @@ defmodule Ash.Actions.Read do
                      :ok <- validate_get(results, query.action, query),
                      results <- add_keysets(query, results, query.sort),
                      {:ok, results} <- run_authorize_results(query, results),
+                     {query, results} <- drop_pagination_extra(query, results, opts),
                      {:ok, results, after_notifications} <- run_after_action(query, results),
                      {:ok, count} <- maybe_await(count, query.timeout) do
                   notify_callback.(query, before_notifications ++ after_notifications)
@@ -2976,7 +2977,11 @@ defmodule Ash.Actions.Read do
         data
 
       opts[:return_unpaged?] && original_query.page[:limit] ->
-        Ash.Page.Unpaged.new(data, opts)
+        Ash.Page.Unpaged.new(
+          data,
+          opts,
+          new_query.context[:pagination_more_by_source] || %{}
+        )
 
       original_query.page[:limit] ->
         to_page(data, action, count, sort, original_query, new_query, opts)
@@ -3014,7 +3019,31 @@ defmodule Ash.Actions.Read do
         last_record = List.last(data)
         not is_nil(last_record) && not is_nil(last_record.__metadata__[:keyset])
       else
-        not Enum.empty?(rest)
+        # The extra row is dropped before `after_action` hooks run, so `more?`
+        # comes from the query, or from the records when a relationship load
+        # builds its pages from a different one.
+        cond do
+          is_boolean(new_query.context[:pagination_more?]) ->
+            new_query.context[:pagination_more?]
+
+          is_map(new_query.context[:pagination_more_by_source]) ->
+            # A relationship load: one answer per source record, keyed by the
+            # `__lateral_join_source__` these rows carry.
+            case data do
+              [record | _] ->
+                Map.get(
+                  new_query.context[:pagination_more_by_source],
+                  record.__lateral_join_source__,
+                  false
+                )
+
+              [] ->
+                false
+            end
+
+          true ->
+            not Enum.empty?(rest)
+        end
       end
 
     if page_opts[:offset] do
@@ -3056,6 +3085,67 @@ defmodule Ash.Actions.Read do
     else
       data
     end
+  end
+
+  # Pagination fetches one row beyond the requested limit so that `more?` can be
+  # determined. That row is an implementation detail that must never reach an
+  # `after_action` hook or the caller, so it is dropped as soon as the data
+  # layer has returned. `more?` is remembered on the query, which is where a
+  # fact about the page belongs.
+  defp drop_pagination_extra(query, results, opts) do
+    cond do
+      not paginated?(query, opts) ->
+        {query, results}
+
+      match?(%{data_layer: %{lateral_join_source: {_, _}}}, query.context) ->
+        # A lateral join fetches `limit + 1` rows *per source record*, so both
+        # the extra row and `more?` are per parent.
+        drop_pagination_extra_per_parent(query, results, query.page[:limit])
+
+      opts[:return_unpaged?] ->
+        {query, results}
+
+      true ->
+        {results, more?} = take_page(results, query.page[:limit])
+        {Ash.Query.set_context(query, %{pagination_more?: more?}), results}
+    end
+  end
+
+  # The page for each parent is built later, by `Ash.Actions.Read.to_page/7`, from
+  # a query this read never reaches. `more?` travels there on the query and then
+  # in the `Ash.Page.Unpaged` opts, keyed by the same `__lateral_join_source__`
+  # the rows themselves carry.
+  defp drop_pagination_extra_per_parent(query, results, limit) do
+    groups =
+      results
+      |> Enum.with_index()
+      |> Enum.group_by(fn {record, _index} -> record.__lateral_join_source__ end)
+
+    more_by_source =
+      Map.new(groups, fn {source, records} -> {source, length(records) > limit} end)
+
+    results =
+      groups
+      |> Enum.flat_map(fn {_source, records} -> Enum.take(records, limit) end)
+      |> Enum.sort_by(&elem(&1, 1))
+      |> Enum.map(&elem(&1, 0))
+
+    # Replaced rather than merged: a rerun for a single parent must not keep the
+    # answers of its siblings from the original load.
+    {%{query | context: Map.put(query.context, :pagination_more_by_source, more_by_source)},
+     results}
+  end
+
+  defp take_page(results, limit) do
+    {results, extra} = Enum.split(results, limit)
+    {results, extra != []}
+  end
+
+  defp paginated?(query, opts) do
+    page_opts = query.page
+
+    not (opts[:skip_pagination?] || query.action.pagination == false ||
+           page_opts in [nil, false] || is_nil(page_opts[:limit]))
   end
 
   defp remove_already_selected(fields, %struct{results: results})
