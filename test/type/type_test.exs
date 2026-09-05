@@ -147,6 +147,6 @@ defmodule Ash.Test.Type.TypeTest do
     assert {:error, error} = Ash.Type.init(:map, invalid_constraints)
 
     assert error =~
-             "unknown options [:something], valid options are: [:max_length, :min_length, :match, :trim?, :allow_empty?]"
+             "unknown options [:something], valid options are: [:max_length, :min_length, :length_count, :match, :trim?, :allow_empty?]"
   end
 end

@@ -253,6 +253,45 @@ replaced with a redacted placeholder. This applies to both
 the non-atomic (`validate/3`) and atomic (`atomic/3`) code paths across all built-in
 validations.
 
+## default_string_length_count
+
+```elixir
+config :ash, default_string_length_count: :codepoints
+```
+
+Unlike the other settings in this guide, this one is **required**. Compiling any
+resource fails until it is set to one of `:codepoints` or `:mixed`.
+
+### Old Behavior
+
+The `min_length` and `max_length` constraints on `:string` and `:ci_string`, the
+`string_length` validation, and the `string_length/1` expression function all counted
+graphemes (`String.length/1`) when evaluated in Elixir. A single grapheme can be made
+up of an unbounded number of codepoints (a base character followed by many combining
+marks), so `max_length` placed no effective limit on the size of a value. Meanwhile,
+SQL data layers counted codepoints, so atomic and non-atomic validation disagreed.
+
+To keep this behavior, set the value to `:mixed`:
+
+```elixir
+config :ash, default_string_length_count: :mixed
+```
+
+### New Behavior
+
+With `:codepoints`, length is counted in codepoints everywhere, matching SQL data
+layers and bounding the size of a value. This is what the installer configures for
+new applications.
+
+Individual attributes and validations can still choose a unit with the `length_count`
+constraint or the `count` validation option, using `:graphemes`, `:codepoints`, or
+`:bytes`. Data layers cannot count graphemes, so when `:graphemes` is chosen explicitly
+for an attribute or validation, the length constraints only apply to literal values and
+are not atomic when the value is an expression.
+
+Extensions may also read this configuration, via `Ash.Type.String.default_length_count/0`,
+to decide how to count string length.
+
 ## many_to_many_destroy_destination_on_match?
 
 ```elixir

@@ -200,4 +200,57 @@ defmodule Ash.Test.Type.CiString do
              |> Ash.Changeset.for_create(:create, %{string_h: "string"})
              |> Ash.create()
   end
+
+  describe "length_count constraint" do
+    @combining "a" <> String.duplicate("\u0301", 1_000)
+
+    test "defaults to the configured unit (codepoints in the test config)" do
+      assert {:error, _} = Ash.Type.CiString.apply_constraints(@combining, max_length: 2)
+
+      assert {:ok, _} =
+               Ash.Type.CiString.apply_constraints(@combining,
+                 max_length: 2,
+                 length_count: :graphemes
+               )
+    end
+
+    test "counts codepoints or bytes when configured" do
+      assert {:error, _} =
+               Ash.Type.CiString.apply_constraints(@combining,
+                 max_length: 2,
+                 length_count: :codepoints
+               )
+
+      assert {:error, _} =
+               Ash.Type.CiString.apply_constraints(@combining,
+                 max_length: 2,
+                 length_count: :bytes
+               )
+
+      assert {:error, _} =
+               Ash.Type.CiString.apply_constraints(Ash.CiString.new("héllo"),
+                 max_length: 5,
+                 length_count: :bytes
+               )
+
+      assert {:ok, %Ash.CiString{}} =
+               Ash.Type.CiString.apply_constraints(Ash.CiString.new("héllo"),
+                 max_length: 5,
+                 length_count: :codepoints
+               )
+    end
+
+    test "the generator respects the configured count" do
+      for count <- [:graphemes, :codepoints, :bytes] do
+        constraints = [min_length: 2, max_length: 5, length_count: count, trim?: false]
+
+        Ash.Type.CiString.generator(constraints)
+        |> Enum.take(50)
+        |> Enum.each(fn value ->
+          assert {:ok, _} = Ash.Type.CiString.apply_constraints(value, constraints),
+                 "generated #{inspect(value)} violates #{inspect(constraints)}"
+        end)
+      end
+    end
+  end
 end
