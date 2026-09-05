@@ -262,6 +262,13 @@ config :ash, default_string_length_count: :codepoints
 Unlike the other settings in this guide, this one is **required**. Compiling any
 resource fails until it is set to one of `:codepoints` or `:mixed`.
 
+This was added to resolve a [DoS security
+issue](https://github.com/ash-project/ash/security/advisories/GHSA-cwjv-574p-59f6)
+that allowed external interfaces to write arbitrarily large
+strings into limited length strings, as well as to fix an
+inconsistency in how length was applied in Elixir vs the data
+layer.
+
 ### Old Behavior
 
 The `min_length` and `max_length` constraints on `:string` and `:ci_string`, the
