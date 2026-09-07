@@ -13,8 +13,11 @@ defmodule ThisTest.Obj do
     defaults [:read, create: :*]
 
     read :list_objs do
-      prepare after_action(fn _, results, _ ->
-                Process.put(:after_action_result_count, length(results))
+      prepare after_action(fn query, results, _ ->
+                if pid = query.context[:test_pid] do
+                  send(pid, {:after_action_count, length(results)})
+                end
+
                 {:ok, results}
               end)
 
@@ -83,10 +86,10 @@ defmodule Ash.Test.PageTest do
 
   describe "offset" do
     test "pass", %{ids: ids} do
-      p1 = ThisTest.Domain.list_objs!(page: [offset: 0])
+      p1 = ThisTest.Domain.list_objs!(page: [offset: 0], context: %{test_pid: self()})
 
       # Default limit is 3
-      assert Process.get(:after_action_result_count) == 3
+      assert_received {:after_action_count, 3}
 
       assert %Ash.Page.Offset{results: [_, _, _], more?: true} = p1
       assert p1.results |> Enum.map(& &1.id) == Enum.drop(ids, 0) |> Enum.take(3)
@@ -168,55 +171,62 @@ defmodule Ash.Test.PageTest do
   end
 
   describe "after_action hooks do not see the extra pagination row" do
-    test "offset pagination", %{ids: ids} do
-      page = ThisTest.Domain.list_objs!(page: [offset: 0, limit: 3])
+    setup do
+      %{opts: [context: %{test_pid: self()}]}
+    end
 
-      assert Process.get(:after_action_result_count) == 3
+    test "offset pagination", %{ids: ids, opts: opts} do
+      page = ThisTest.Domain.list_objs!([page: [offset: 0, limit: 3]] ++ opts)
+
+      assert_received {:after_action_count, 3}
       assert %Ash.Page.Offset{results: [_, _, _], more?: true} = page
       assert Enum.map(page.results, & &1.id) == Enum.take(ids, 3)
     end
 
-    test "keyset pagination", %{ids: ids} do
-      page = ThisTest.Domain.list_objs!(page: [limit: 3])
-      assert Process.get(:after_action_result_count) == 3
+    test "keyset pagination", %{ids: ids, opts: opts} do
+      page = ThisTest.Domain.list_objs!([page: [limit: 3]] ++ opts)
+      assert_received {:after_action_count, 3}
       assert %Ash.Page.Keyset{more?: true} = page
 
       next = Ash.page!(page, :next)
-      assert Process.get(:after_action_result_count) == 3
+      assert_received {:after_action_count, 3}
       assert %{more?: true} = next
       assert Enum.map(next.results, & &1.id) == ids |> Enum.drop(3) |> Enum.take(3)
     end
 
-    test "keyset pagination going backwards", %{ids: ids} do
+    test "keyset pagination going backwards", %{ids: ids, opts: opts} do
       # Page forward twice so that the `before:` cursor has more records behind
       # it than the limit -- otherwise there is no extra row to leak.
       third_page =
-        ThisTest.Domain.list_objs!(page: [limit: 3])
+        ThisTest.Domain.list_objs!([page: [limit: 3]] ++ opts)
         |> Ash.page!(:next)
         |> Ash.page!(:next)
 
       assert Enum.map(third_page.results, & &1.id) == ids |> Enum.drop(6) |> Enum.take(3)
+      # One message per page fetched so far.
+      assert_received {:after_action_count, 3}
+      assert_received {:after_action_count, 3}
+      assert_received {:after_action_count, 3}
 
       previous = Ash.page!(third_page, :prev)
 
-      assert Process.get(:after_action_result_count) == 3
+      assert_received {:after_action_count, 3}
       assert %{more?: true} = previous
       assert Enum.map(previous.results, & &1.id) == ids |> Enum.drop(3) |> Enum.take(3)
     end
 
-    test "the last page sees only the records that exist", %{ids: ids} do
-      last =
-        ThisTest.Domain.list_objs!(page: [offset: 9, limit: 3])
+    test "the last page sees only the records that exist", %{ids: ids, opts: opts} do
+      last = ThisTest.Domain.list_objs!([page: [offset: 9, limit: 3]] ++ opts)
 
-      assert Process.get(:after_action_result_count) == 1
+      assert_received {:after_action_count, 1}
       assert %Ash.Page.Offset{results: [_], more?: false} = last
       assert Enum.map(last.results, & &1.id) == Enum.drop(ids, 9)
     end
 
-    test "an exactly-full last page reports more?: false" do
-      page = ThisTest.Domain.list_objs!(page: [offset: 5, limit: 5])
+    test "an exactly-full last page reports more?: false", %{opts: opts} do
+      page = ThisTest.Domain.list_objs!([page: [offset: 5, limit: 5]] ++ opts)
 
-      assert Process.get(:after_action_result_count) == 5
+      assert_received {:after_action_count, 5}
       assert %Ash.Page.Offset{more?: false} = page
     end
 
@@ -224,9 +234,10 @@ defmodule Ash.Test.PageTest do
       assert {:error, %Ash.Error.Invalid{}} =
                ThisTest.Obj
                |> Ash.Query.for_read(:list_objs)
+               |> Ash.Query.set_context(%{test_pid: self()})
                |> Ash.read_one()
 
-      assert Process.get(:after_action_result_count) == 10
+      assert_received {:after_action_count, 10}
     end
   end
 end

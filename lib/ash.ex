@@ -2978,6 +2978,17 @@ defmodule Ash do
   @doc """
   Gets the full query and any runtime calculations that would be loaded
 
+  ## Pagination and hooks
+
+  When the query is paginated, the data layer query fetches one row beyond the
+  page limit so that `more?` can be determined. `run` returns those raw rows,
+  including the extra one, and any `authorize_results` and `after_action` hooks
+  run on that list. `load` then drops the extra row and builds the page.
+
+  This differs from `Ash.read/2`, where the extra row is removed before any hook
+  runs. It is kept here because `run` only returns the rows, so `load` has no
+  other way to know whether a next page exists.
+
   ## Examples
 
       iex> query = MyApp.Post |> Ash.Query.filter(published: true)

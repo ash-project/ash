@@ -818,9 +818,9 @@ defmodule Ash.Actions.Read do
                          query
                        ),
                      :ok <- validate_get(results, query.action, query),
+                     {query, results} <- drop_pagination_extra(query, results, opts),
                      results <- add_keysets(query, results, query.sort),
                      {:ok, results} <- run_authorize_results(query, results),
-                     {query, results} <- drop_pagination_extra(query, results, opts),
                      {:ok, results, after_notifications} <- run_after_action(query, results),
                      {:ok, count} <- maybe_await(count, query.timeout) do
                   notify_callback.(query, before_notifications ++ after_notifications)
@@ -1163,6 +1163,11 @@ defmodule Ash.Actions.Read do
                         query
                       ),
                     :ok <- validate_get(results, query.action, query),
+                    # Unlike the main read pipeline, the extra pagination row is
+                    # *not* dropped before the hooks here. `run` only returns
+                    # the rows, so `load` (below) needs the extra row to compute
+                    # `more?` in `add_page`. See the docs of
+                    # `Ash.data_layer_query/2`.
                     results <- add_keysets(query, results, query.sort),
                     {:ok, results} <- run_authorize_results(query, results),
                     {:ok, results, after_notifications} <- run_after_action(query, results) do
@@ -2967,27 +2972,18 @@ defmodule Ash.Actions.Read do
   @doc false
   def add_page(data, action, count, sort, original_query, new_query, opts) do
     cond do
-      opts[:skip_pagination?] ->
+      not paginated?(original_query, action, opts) ->
         data
 
-      action.pagination == false ->
-        data
-
-      original_query.page == false ->
-        data
-
-      opts[:return_unpaged?] && original_query.page[:limit] ->
+      opts[:return_unpaged?] ->
         Ash.Page.Unpaged.new(
           data,
           opts,
           new_query.context[:pagination_more_by_source] || %{}
         )
 
-      original_query.page[:limit] ->
-        to_page(data, action, count, sort, original_query, new_query, opts)
-
       true ->
-        data
+        to_page(data, action, count, sort, original_query, new_query, opts)
     end
   end
 
@@ -3089,21 +3085,21 @@ defmodule Ash.Actions.Read do
 
   # Pagination fetches one row beyond the requested limit so that `more?` can be
   # determined. That row is an implementation detail that must never reach an
-  # `after_action` hook or the caller, so it is dropped as soon as the data
-  # layer has returned. `more?` is remembered on the query, which is where a
-  # fact about the page belongs.
+  # `authorize_results` or `after_action` hook, or the caller, so it is dropped
+  # right after the data layer returns, before any of those run. `more?` is
+  # remembered on the query, which is where a fact about the page belongs.
+  #
+  # A paginated relationship load is always a lateral join, so the unpaged
+  # (`return_unpaged?`) case is covered by the per-parent clause below.
   defp drop_pagination_extra(query, results, opts) do
     cond do
-      not paginated?(query, opts) ->
+      not paginated?(query, query.action, opts) ->
         {query, results}
 
       match?(%{data_layer: %{lateral_join_source: {_, _}}}, query.context) ->
         # A lateral join fetches `limit + 1` rows *per source record*, so both
         # the extra row and `more?` are per parent.
         drop_pagination_extra_per_parent(query, results, query.page[:limit])
-
-      opts[:return_unpaged?] ->
-        {query, results}
 
       true ->
         {results, more?} = take_page(results, query.page[:limit])
@@ -3112,9 +3108,14 @@ defmodule Ash.Actions.Read do
   end
 
   # The page for each parent is built later, by `Ash.Actions.Read.to_page/7`, from
-  # a query this read never reaches. `more?` travels there on the query and then
-  # in the `Ash.Page.Unpaged` opts, keyed by the same `__lateral_join_source__`
-  # the rows themselves carry.
+  # a query this read never reaches. `more?` travels there on the query context,
+  # then in `Ash.Page.Unpaged.more_by_source`, and is copied back onto the
+  # per-parent query by `Ash.Actions.Read.Relationships`. It is keyed by the raw
+  # `__lateral_join_source__` the rows carry: every row of one parent gets an
+  # identical copy of that parent's value, so rows only ever need to be compared
+  # with rows, never with the parent record itself. That is why no key
+  # normalization is needed here, unlike when rows are matched to parents in
+  # `Ash.Actions.Read.Relationships.attach_lateral_join_related_records/4`.
   defp drop_pagination_extra_per_parent(query, results, limit) do
     groups =
       results
@@ -3141,10 +3142,10 @@ defmodule Ash.Actions.Read do
     {results, extra != []}
   end
 
-  defp paginated?(query, opts) do
-    page_opts = query.page
-
-    not (opts[:skip_pagination?] || query.action.pagination == false ||
+  # Whether this read produces a page at all. Shared by `add_page/7` and
+  # `drop_pagination_extra/3` so the two can't disagree about it.
+  defp paginated?(%{page: page_opts}, action, opts) do
+    not (opts[:skip_pagination?] || action.pagination == false ||
            page_opts in [nil, false] || is_nil(page_opts[:limit]))
   end
 
