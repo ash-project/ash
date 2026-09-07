@@ -79,7 +79,7 @@ defmodule Ash.Resource.Validation.Present do
           changes_error(opts, count)
         else
           if count == 1 do
-            attribute_error(subject, opts, count)
+            attribute_error(subject, opts, present < opts[:exactly])
           else
             changes_error(opts, count)
           end
@@ -87,14 +87,14 @@ defmodule Ash.Resource.Validation.Present do
 
       opts[:at_least] && present < opts[:at_least] ->
         if count == 1 do
-          attribute_error(subject, opts, count)
+          attribute_error(subject, opts, true)
         else
           changes_error(opts, count)
         end
 
       opts[:at_most] && present > opts[:at_most] ->
         if count == 1 do
-          attribute_error(subject, opts, count)
+          attribute_error(subject, opts, false)
         else
           changes_error(opts, count)
         end
@@ -236,14 +236,18 @@ defmodule Ash.Resource.Validation.Present do
      |> InvalidChanges.exception()}
   end
 
-  defp attribute_error(subject, opts, _count) do
+  # `required?` marks the error as reporting an absent value, which a changeset
+  # drops for a field that already failed to cast. Without it, a value too long
+  # for its constraints reads as both invalid and missing.
+  defp attribute_error(subject, opts, required?) do
     {:error,
      opts[:attributes]
      |> List.wrap()
      |> Enum.map(fn attribute ->
        [
          field: attribute,
-         value: Ash.Subject.get_attribute(subject, attribute)
+         value: Ash.Subject.get_attribute(subject, attribute),
+         required?: required?
        ]
        |> with_description(opts)
        |> InvalidAttribute.exception()

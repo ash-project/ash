@@ -7748,11 +7748,21 @@ defmodule Ash.Changeset do
     |> handle_error(changeset)
   end
 
-  defp handle_error(error, %{handle_errors: nil} = changeset) do
+  defp handle_error(error, changeset) when is_struct(error, Ash.Error.Changes.InvalidAttribute) do
+    if error.required? and error.field in changeset.invalid_keys do
+      changeset
+    else
+      do_handle_error(error, changeset)
+    end
+  end
+
+  defp handle_error(error, changeset), do: do_handle_error(error, changeset)
+
+  defp do_handle_error(error, %{handle_errors: nil} = changeset) do
     %{changeset | valid?: false, errors: [error | changeset.errors]}
   end
 
-  defp handle_error(error, changeset) do
+  defp do_handle_error(error, changeset) do
     changeset
     |> changeset.handle_errors.(error)
     |> case do
