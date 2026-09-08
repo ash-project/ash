@@ -1599,6 +1599,7 @@ defmodule Ash.Actions.Read do
                 resource: query.resource,
                 action: query.action.name
               },
+              tenant: query.tenant,
               data_layer_context: query.context[:data_layer]
             },
             rollback_on_error?: false

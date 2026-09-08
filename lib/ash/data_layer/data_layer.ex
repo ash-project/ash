@@ -16,6 +16,7 @@ defmodule Ash.DataLayer do
           %{
             required(:type) => :create,
             required(:metadata) => %{resource: Ash.Resource.t(), action: atom},
+            optional(:tenant) => term(),
             optional(:data_layer_context) => %{}
           }
           | %{
@@ -26,6 +27,7 @@ defmodule Ash.DataLayer do
                 record: Ash.Resource.Record.t(),
                 actor: term()
               },
+              optional(:tenant) => term(),
               optional(:data_layer_context) => %{}
             }
           | %{
@@ -36,6 +38,7 @@ defmodule Ash.DataLayer do
                 record: Ash.Resource.Record.t(),
                 actor: term()
               },
+              optional(:tenant) => term(),
               optional(:data_layer_context) => %{}
             }
           | %{
@@ -45,6 +48,7 @@ defmodule Ash.DataLayer do
                 query: Ash.Query.t(),
                 actor: term()
               },
+              optional(:tenant) => term(),
               optional(:data_layer_context) => %{}
             }
           | %{
@@ -55,6 +59,7 @@ defmodule Ash.DataLayer do
                 action: atom,
                 actor: term()
               },
+              optional(:tenant) => term(),
               optional(:data_layer_context) => %{}
             }
           | %{
@@ -64,6 +69,7 @@ defmodule Ash.DataLayer do
                 flow: module(),
                 actor: term()
               },
+              optional(:tenant) => term(),
               optional(:data_layer_context) => %{}
             }
           | %{required(:type) => :custom, required(:metadata) => map()}

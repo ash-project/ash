@@ -80,6 +80,7 @@ defmodule Ash.Actions.Create.Bulk do
                 action: action.name,
                 actor: opts[:actor]
               },
+              tenant: opts[:tenant],
               data_layer_context: opts[:data_layer_context] || %{}
             },
             rollback_on_error?: false
@@ -671,6 +672,7 @@ defmodule Ash.Actions.Create.Bulk do
               action: action.name,
               actor: opts[:actor]
             },
+            tenant: opts[:tenant],
             data_layer_context: opts[:data_layer_context] || context
           },
           rollback_on_error?: false
