@@ -763,7 +763,29 @@ defmodule Ash do
   @doc false
   def destroy_opts, do: @destroy_opts_schema
 
-  @aggregate_opts [] |> Spark.Options.merge(@global_opts, "Global Options")
+  @aggregate_opts [
+                    authorize_fields?: [
+                      type: :boolean,
+                      default: false,
+                      doc: """
+                      Apply field policies to the field each aggregate reads. Only takes effect when `authorize?: true`.
+
+                      Aggregates return raw values rather than records, so field-policy redaction (which
+                      replaces forbidden fields with `%Ash.ForbiddenField{}` on returned records) does not
+                      apply to them. With this option, aggregating over a field the actor may not see under
+                      the resource's field policies is refused (for a static policy) or scoped to the rows
+                      where the field is visible (for a filter policy). The referenced field's own policy is
+                      checked, so an aggregate over another aggregate/calculation is governed by that
+                      field's policy.
+
+                      Defaults to `false` to preserve existing behavior. Enable it when exposing ad-hoc
+                      aggregates over arbitrary fields to end users (for example `AshLua`/`AshAi`), where a
+                      `list`/`min`/`max`/`first`/`sum`/`avg` could otherwise reveal a field-policy-protected
+                      value.
+                      """
+                    ]
+                  ]
+                  |> Spark.Options.merge(@global_opts, "Global Options")
 
   @calculate_opts [
     args: [
