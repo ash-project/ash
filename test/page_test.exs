@@ -240,4 +240,76 @@ defmodule Ash.Test.PageTest do
       assert_received {:after_action_count, 10}
     end
   end
+
+  describe "data_layer_query/2" do
+    defp data_layer_query(page_opts) do
+      ThisTest.Obj
+      |> Ash.Query.for_read(:list_objs)
+      |> Ash.Query.set_context(%{test_pid: self()})
+      |> Ash.Query.page(page_opts)
+      |> Ash.data_layer_query!()
+    end
+
+    test "run returns an offset page without the extra row", %{ids: ids} do
+      %{run: run, query: query} = data_layer_query(offset: 0, limit: 3)
+
+      assert {:ok, %Ash.Page.Offset{results: [_, _, _], more?: true, count: nil} = page} =
+               run.(query)
+
+      assert Enum.map(page.results, & &1.id) == Enum.take(ids, 3)
+      assert_received {:after_action_count, 3}
+    end
+
+    test "run resolves the count when it is requested" do
+      %{run: run, query: query} = data_layer_query(offset: 0, limit: 3, count: true)
+
+      assert {:ok, %Ash.Page.Offset{count: 10}} = run.(query)
+    end
+
+    test "run returns a keyset page that can be paged from", %{ids: ids} do
+      %{run: run, query: query} = data_layer_query(limit: 3)
+
+      assert {:ok, %Ash.Page.Keyset{results: [_, _, _], more?: true} = page} = run.(query)
+      assert Enum.all?(page.results, &(&1.__metadata__.keyset != nil))
+      assert_received {:after_action_count, 3}
+
+      next = Ash.page!(page, :next)
+      assert Enum.map(next.results, & &1.id) == ids |> Enum.drop(3) |> Enum.take(3)
+    end
+
+    test "run reports more?: false on the last pages", %{ids: ids} do
+      %{run: run, query: query} = data_layer_query(offset: 5, limit: 5)
+      assert {:ok, %Ash.Page.Offset{results: [_, _, _, _, _], more?: false}} = run.(query)
+      assert_received {:after_action_count, 5}
+
+      %{run: run, query: query} = data_layer_query(offset: 9, limit: 3)
+      assert {:ok, %Ash.Page.Offset{results: [last], more?: false}} = run.(query)
+      assert last.id == List.last(ids)
+      assert_received {:after_action_count, 1}
+    end
+
+    test "load accepts the page run returned and gives back a page" do
+      %{run: run, load: load, query: query, ash_query: ash_query} =
+        data_layer_query(offset: 0, limit: 3, count: true)
+
+      assert {:ok, %Ash.Page.Offset{} = page} = run.(query)
+      assert {:ok, %Ash.Page.Offset{} = loaded} = load.(ash_query, page)
+
+      assert loaded.results == page.results
+      assert loaded.more? == page.more?
+      assert loaded.count == page.count
+    end
+
+    test "load builds the page from raw rows that still contain the extra row", %{ids: ids} do
+      %{load: load, query: query, ash_query: ash_query} = data_layer_query(offset: 0, limit: 3)
+
+      {:ok, raw_rows} = Ash.DataLayer.run_query(query, ThisTest.Obj)
+      assert length(raw_rows) == 4
+
+      assert {:ok, %Ash.Page.Offset{results: [_, _, _], more?: true} = page} =
+               load.(ash_query, raw_rows)
+
+      assert Enum.map(page.results, & &1.id) == Enum.take(ids, 3)
+    end
+  end
 end
