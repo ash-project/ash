@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.1](https://github.com/ash-project/ash/compare/v3.33.0...v3.33.1) (2026-09-08)
+
+
+
+
+### Improvements:
+
+* add `authorize_field?` option to `Ash.aggregate` by [@zachdaniel](https://github.com/zachdaniel)
+
+* allow more errors to be seen as "required errors" by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.33.0](https://github.com/ash-project/ash/compare/v3.32.3...v3.33.0) (2026-09-05)
 
 
