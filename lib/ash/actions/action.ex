@@ -216,6 +216,7 @@ defmodule Ash.Actions.Action do
                 input: input,
                 actor: opts[:actor]
               },
+              tenant: input.tenant,
               data_layer_context: input.context[:data_layer] || %{}
             },
             rollback_on_error?: false

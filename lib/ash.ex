@@ -4242,6 +4242,12 @@ defmodule Ash do
   end
 
   @transaction_opts_schema [
+    tenant: [
+      type: {:protocol, Ash.ToTenant},
+      doc: """
+      The tenant, placed on the transaction reason for data layers that select a connection per tenant.
+      """
+    ],
     timeout: [
       type: :timeout,
       doc: """
@@ -4328,7 +4334,7 @@ defmodule Ash do
                resource_or_resources,
                func,
                opts[:timeout],
-               %{type: :custom, metadata: %{}}
+               %{type: :custom, metadata: %{}, tenant: opts[:tenant]}
              ) do
         if opts[:return_notifications?] do
           notifications = Process.delete(:ash_notifications) || []
@@ -4431,7 +4437,7 @@ defmodule Ash do
                resource_or_resources,
                func,
                opts[:timeout],
-               %{type: :custom, metadata: %{}},
+               %{type: :custom, metadata: %{}, tenant: opts[:tenant]},
                rollback_on_error?: true
              ) do
         if opts[:return_notifications?] do

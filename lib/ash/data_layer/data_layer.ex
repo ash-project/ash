@@ -72,8 +72,16 @@ defmodule Ash.DataLayer do
               optional(:tenant) => term(),
               optional(:data_layer_context) => %{}
             }
-          | %{required(:type) => :custom, required(:metadata) => map()}
-          | %{required(:type) => atom, required(:metadata) => map()}
+          | %{
+              required(:type) => :custom,
+              required(:metadata) => map(),
+              optional(:tenant) => term()
+            }
+          | %{
+              required(:type) => atom,
+              required(:metadata) => map(),
+              optional(:tenant) => term()
+            }
 
   @type combination_type :: :union | :union_all | :intersection
 
