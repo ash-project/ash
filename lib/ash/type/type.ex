@@ -371,6 +371,12 @@ defmodule Ash.Type do
   `via` is a small term describing how this reference is reached — used for
   error messages. Conventionally `{:field, name, declared_type}` for composite
   fields and `:subtype_of` for `Ash.Type.NewType`.
+
+  It is called both before `c:init/1`, for the cycle check, and after it, to
+  register compile dependencies, so it must report the same types either way.
+  A type whose `c:init/1` drops a constraint it reads here would report nothing
+  the second time. The built-in composite types normalise such constraints in
+  place rather than removing them.
   """
   @callback referenced_types(constraints) ::
               [{type :: t(), constraints :: Keyword.t(), via :: term()}]
@@ -2528,22 +2534,42 @@ defmodule Ash.Type do
 
   @doc false
   def detect_type_cycle!(type, constraints) do
-    walk_type_graph!(type, constraints, :root, MapSet.new(), [])
+    walk_type_graph!(type, constraints, :root, MapSet.new(), [], MapSet.new())
     :ok
   end
 
-  defp walk_type_graph!({:array, type}, constraints, via, seen, path) do
-    walk_type_graph!(type, item_constraints(constraints), via, seen, path)
+  @doc false
+  # The types reachable from `constraints`, excluding `type` itself: the ones `init/2`
+  # consumes while the DSL is compiled. Callers use this to register compile dependencies on
+  # those modules. Module references that are only read at runtime, such as the `instance_of`
+  # constraint of `Ash.Type.Struct`, are not reported by `c:referenced_types/1` and so are
+  # deliberately absent.
+  def constraint_referenced_types(type, constraints) do
+    {root_type, root_constraints} = unwrap_array(type, constraints)
+
+    type
+    |> walk_type_graph!(constraints, :root, MapSet.new(), [], MapSet.new())
+    |> MapSet.delete({get_type(root_type), root_constraints})
+    |> MapSet.to_list()
   end
 
-  defp walk_type_graph!(type, constraints, via, seen, path) do
+  defp unwrap_array({:array, type}, constraints),
+    do: unwrap_array(type, item_constraints(constraints))
+
+  defp unwrap_array(type, constraints), do: {type, constraints}
+
+  defp walk_type_graph!({:array, type}, constraints, via, seen, path, acc) do
+    walk_type_graph!(type, item_constraints(constraints), via, seen, path, acc)
+  end
+
+  defp walk_type_graph!(type, constraints, via, seen, path, acc) do
     type = get_type(type)
     key = {type, constraints}
     entry = {type, via}
 
     cond do
       not is_atom(type) or is_nil(type) ->
-        :ok
+        acc
 
       match?({:error, _}, Code.ensure_compiled(type)) ->
         raise ArgumentError, format_unloadable(type, path ++ [entry])
@@ -2555,13 +2581,14 @@ defmodule Ash.Type do
       function_exported?(type, :referenced_types, 1) ->
         seen = MapSet.put(seen, key)
         path = path ++ [entry]
+        acc = MapSet.put(acc, key)
 
-        Enum.each(type.referenced_types(constraints), fn {t, c, v} ->
-          walk_type_graph!(t, c, v, seen, path)
+        Enum.reduce(type.referenced_types(constraints), acc, fn {t, c, v}, acc ->
+          walk_type_graph!(t, c, v, seen, path, acc)
         end)
 
       true ->
-        :ok
+        MapSet.put(acc, key)
     end
   end
 
