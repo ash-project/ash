@@ -4685,11 +4685,9 @@ defmodule Ash.Changeset do
               end
             end,
             changeset.timeout || :infinity,
-            Map.put(
-              opts[:transaction_metadata],
-              :data_layer_context,
-              changeset.context[:data_layer] || %{}
-            ),
+            opts[:transaction_metadata]
+            |> Map.put(:data_layer_context, changeset.context[:data_layer] || %{})
+            |> Map.put(:tenant, changeset.tenant),
             rollback_on_error?: false
           )
           |> case do
