@@ -1710,35 +1710,30 @@ defmodule Ash.DataLayer.Ets do
         other -> other
       end
     else
-      with {:ok, table} <- wrap_or_create_table(resource, options.tenant) do
-        Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
+      with {:ok, table} <- wrap_or_create_table(resource, options.tenant),
+           {:ok, stored} <- stored_index(table, resource) do
+        Enum.reduce_while(stream, {:ok, [], stored}, fn changeset, {:ok, results, known} ->
           with :ok <- validate_pkey(resource, changeset),
                {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
                {:ok, record} <- apply_atomics(changeset, resource, record),
                {:ok, record} <- establish_period(record, resource, changeset),
                record <- unload_relationships(resource, record),
                :ok <- check_non_empty(resource, record),
-               :ok <-
-                 check_non_overlapping(
-                   table,
-                   resource,
-                   record,
-                   Enum.map(results, fn {key, _index, _ref, _record} -> key end)
-                 ) do
+               :ok <- check_non_overlapping(resource, record, known) do
             {:cont,
              {:ok,
               [
                 {pkey_map(resource, record), changeset.context.bulk_create.index,
                  changeset.context.bulk_create.ref, record}
                 | results
-              ]}}
+              ], remember_period(known, resource, record)}}
           else
             {:error, error} ->
               {:halt, {:error, error}}
           end
         end)
         |> case do
-          {:ok, records} ->
+          {:ok, records, _known} ->
             case put_or_insert_new_batch(table, records, resource, options.return_records?) do
               :ok ->
                 :ok
@@ -1772,7 +1767,8 @@ defmodule Ash.DataLayer.Ets do
          {:ok, record} <- establish_period(record, resource, changeset),
          record <- unload_relationships(resource, record),
          :ok <- check_non_empty(resource, record),
-         :ok <- check_non_overlapping(table, resource, record),
+         {:ok, stored} <- stored_periods(table, resource, record),
+         :ok <- check_non_overlapping(resource, record, stored),
          {:ok, record} <-
            put_or_insert_new(table, {pkey_map(resource, record), record}, resource) do
       {:ok, set_loaded(record)}
@@ -1828,39 +1824,69 @@ defmodule Ash.DataLayer.Ets do
   end
 
   # Not a lock: the look and the write are separate, so concurrent creates can both land.
-  defp check_non_overlapping(table, resource, record, pending \\ []) do
+  defp check_non_overlapping(resource, record, known) do
     with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
          %Ash.Range{} = period_value <- Map.get(record, period),
-         {:ok, keys} <- stored_keys(table) do
-      primary_key = Map.take(record, Ash.Resource.Info.primary_key(resource))
-
-      if Enum.any?(keys ++ pending, &overlapping?(&1, primary_key, period, period_value)) do
-        {:error,
-         Ash.Error.Changes.InvalidAttribute.exception(
-           field: period,
-           value: period_value,
-           message: "overlaps the period of an existing version of this record"
-         )}
-      else
-        :ok
-      end
+         periods = Map.get(known, primary_key(resource, record), []),
+         true <- Enum.any?(periods, &overlapping?(&1, period_value)) do
+      {:error,
+       Ash.Error.Changes.InvalidAttribute.exception(
+         field: period,
+         value: period_value,
+         message: "overlaps the period of an existing version of this record"
+       )}
     else
-      {:error, error} -> {:error, error}
       _ -> :ok
     end
   end
 
-  defp overlapping?(key, primary_key, period, period_value) do
-    Map.take(key, Map.keys(primary_key)) == primary_key and
-      match?(%Ash.Range{}, Map.get(key, period)) and
-      Ash.Range.intersects?(Map.get(key, period), period_value)
+  defp overlapping?(stored, period_value) do
+    match?(%Ash.Range{}, stored) and Ash.Range.intersects?(stored, period_value)
   end
 
-  defp stored_keys(table) do
-    case ETS.Set.to_list(table) do
-      {:ok, stored} -> {:ok, Enum.map(stored, fn {key, _data} -> key end)}
-      {:error, error} -> {:error, error}
+  # A map pattern matches keys containing it, so only this record's versions are read.
+  defp stored_periods(table, resource, record) do
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil ->
+        {:ok, %{}}
+
+      period ->
+        primary_key = primary_key(resource, record)
+
+        with {:ok, periods} <-
+               ETS.Set.select(table, [{{Map.put(primary_key, period, :"$1"), :_}, [], [:"$1"]}]) do
+          {:ok, %{primary_key => periods}}
+        end
     end
+  end
+
+  # Nothing is written until the reduce ends, so one read covers the batch.
+  defp stored_index(table, resource) do
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil ->
+        {:ok, %{}}
+
+      period ->
+        with {:ok, keys} <- ETS.Set.select(table, [{{:"$1", :_}, [], [:"$1"]}]) do
+          {:ok, Enum.group_by(keys, &Map.drop(&1, [period]), &Map.get(&1, period))}
+        end
+    end
+  end
+
+  # Versions earlier in the batch are not in the table yet.
+  defp remember_period(known, resource, record) do
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil ->
+        known
+
+      period ->
+        value = Map.get(record, period)
+        Map.update(known, primary_key(resource, record), [value], &[value | &1])
+    end
+  end
+
+  defp primary_key(resource, record) do
+    Map.take(record, Ash.Resource.Info.primary_key(resource))
   end
 
   defp put_established_period(record, _attribute, %Ash.Range{}, _resource, _changeset), do: record
