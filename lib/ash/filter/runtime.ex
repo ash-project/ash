@@ -52,8 +52,8 @@ defmodule Ash.Filter.Runtime do
   the BEAM. Records are returned untouched when the resource is not temporal or there
   is no instant to narrow to, and a record carrying no period is dropped.
   """
-  @spec as_of_matches([Ash.Resource.record()], Ash.Resource.t(), term()) ::
-          [Ash.Resource.record()]
+  @spec as_of_matches([Ash.Resource.Record.t()], Ash.Resource.t(), term()) ::
+          [Ash.Resource.Record.t()]
   def as_of_matches(records, resource, as_of)
   def as_of_matches(records, _resource, nil), do: records
 
