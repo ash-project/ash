@@ -344,6 +344,9 @@ defmodule Ash.Resource.Validation.Compare do
       {:value, val} ->
         val
 
+      {:ref, field} when is_atom(field) ->
+        field
+
       _ ->
         items = value |> Tuple.to_list() |> Enum.map_join(", ", &format_value/1)
         "{#{items}}"
@@ -356,7 +359,12 @@ defmodule Ash.Resource.Validation.Compare do
     attribute.()
   end
 
-  defp attribute_value(subject, attribute) when is_atom(attribute) do
+  defp attribute_value(subject, {:ref, attribute}) when is_atom(attribute) do
+    Ash.Subject.get_argument_or_attribute(subject, attribute)
+  end
+
+  defp attribute_value(subject, attribute)
+       when is_atom(attribute) and attribute not in [true, false, nil] do
     Ash.Subject.get_argument_or_attribute(subject, attribute)
   end
 
@@ -366,7 +374,12 @@ defmodule Ash.Resource.Validation.Compare do
     attribute.()
   end
 
-  defp atomic_value(attribute) when is_atom(attribute) do
+  defp atomic_value({:ref, attribute}) when is_atom(attribute) do
+    atomic_ref(attribute)
+  end
+
+  defp atomic_value(attribute)
+       when is_atom(attribute) and attribute not in [true, false, nil] do
     atomic_ref(attribute)
   end
 

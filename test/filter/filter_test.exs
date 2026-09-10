@@ -698,6 +698,14 @@ defmodule Ash.Test.Filter.FilterTest do
       assert Filter.strict_subset_of?(candidate, filter)
     end
 
+    test "`not is_nil(field)` is a superset of `field == value`, never a subset" do
+      not_nil = Filter.parse!(Post, points: [is_nil: false])
+      specific = Filter.parse!(Post, points: 1)
+
+      assert Filter.strict_subset_of?(not_nil, specific)
+      refute Filter.strict_subset_of?(specific, not_nil)
+    end
+
     test "can detect a more complicated scenario" do
       filter = Filter.parse!(Post, or: [[points: [in: [1, 2, 3]]], [points: 4], [points: 5]])
 

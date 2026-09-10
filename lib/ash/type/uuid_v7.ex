@@ -8,7 +8,7 @@ defmodule Ash.Type.UUIDv7 do
       type: :boolean,
       default: false,
       doc: """
-      Requires the value to actually be a version 7 UUID. Recommended for externally-supplied values: without it, any well-formed UUID passes input casting, but non-v7 values cannot be loaded back from storage.
+      Requires the value to actually be a version 7 UUID. Recommended for externally-supplied values: without it, any well-formed UUID (not only version 7) passes input casting and is stored and loaded back as-is, so a caller can persist a non-v7 UUID in a field meant to hold v7 UUIDs.
       """
     ]
   ]
@@ -109,6 +109,7 @@ defmodule Ash.Type.UUIDv7 do
 
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
+  def cast_stored(<<_::128>> = value, _), do: {:ok, Ash.UUIDv7.encode(value)}
   def cast_stored(value, constraints), do: cast_input(value, constraints)
 
   @impl true

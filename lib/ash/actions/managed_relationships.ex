@@ -2019,23 +2019,31 @@ defmodule Ash.Actions.ManagedRelationships do
   end
 
   defp sort_and_filter(query, relationship) do
-    # We cannot use relationship filters that reference the `parent`
-    # because the parent is not yet related.
-    if Ash.Actions.Read.Relationships.do_has_parent_expr?(relationship.filter) do
-      query
-    else
-      filter =
-        Ash.Expr.fill_template(
-          relationship.filter,
-          actor: query.context[:private][:actor],
-          tenant: query.to_tenant,
-          args: %{},
-          context: query.context
+    query =
+      if Ash.Actions.Read.Relationships.do_has_parent_expr?(relationship.filter) do
+        Ash.Query.add_error(
+          query,
+          Ash.Error.Changes.InvalidRelationship.exception(
+            relationship: relationship.name,
+            message:
+              "cannot be managed with `manage_relationship` because its filter references `parent(...)`, " <>
+                "which is not available when looking up records to relate"
+          )
         )
+      else
+        filter =
+          Ash.Expr.fill_template(
+            relationship.filter,
+            actor: query.context[:private][:actor],
+            tenant: query.to_tenant,
+            args: %{},
+            context: query.context
+          )
 
-      Ash.Query.do_filter(query, filter, parent_stack: relationship.source)
-    end
-    |> Ash.Query.sort(relationship.sort, prepend?: true)
+        Ash.Query.do_filter(query, filter, parent_stack: relationship.source)
+      end
+
+    Ash.Query.sort(query, relationship.sort, prepend?: true)
   end
 
   defp do_handle_found(

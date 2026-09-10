@@ -263,6 +263,74 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
+  This check passes if the actor could read the related record(s) at the given relationship path.
+
+  This lets you compose policies across resources. Instead of duplicating the read policies of a
+  related resource, you can say "the actor can access this record if they can read the related record".
+
+  The related resource's read action is authorized for the current actor and tenant, and the resulting
+  authorization filter is applied to the related records with `exists/2`. This means:
+
+  - For to-one relationships, the check passes if the related record exists *and* the actor can read it.
+    It does not pass when the relationship is empty.
+  - For to-many relationships, the check passes if *any* related record can be read by the actor.
+  - The related read action's own filter (including filters added by its preparations) is included, so
+    the check answers "would this read action return the related record for this actor?".
+  - The related resource's policies must be resolvable to a filter. Filter checks (`expr/1`,
+    `relates_to_actor_via/2`, other `can_read/2` checks, etc.) and simple checks
+    (`actor_attribute_equals/2`, `actor_present/0`, etc.) are supported. If a runtime check is
+    required, an error is raised.
+  - The related read action is built with no arguments, so read actions with required arguments
+    cannot be used.
+
+  For `update` & `destroy` actions, this check will apply to *the original data* before the changes are applied.
+
+  ## Options
+
+  - `:action` - the read action on the related resource to authorize against. Defaults to the
+    relationship's `read_action`, falling back to the related resource's primary read action.
+
+  ## Example
+
+  ```elixir
+  # In `MyApp.Comment`
+  policies do
+    policy action_type(:read) do
+      # comments are readable if the actor can read the post they belong to
+      authorize_if can_read(:post)
+    end
+  end
+
+  # In `MyApp.Post`
+  policies do
+    policy action_type(:read) do
+      # posts are readable if the actor can read the project they belong to,
+      # according to the project's `:visible` read action
+      authorize_if can_read(:project, action: :visible)
+    end
+  end
+  ```
+
+  ## Short-circuiting with `accessing_from/2`
+
+  This check adds an `exists` subquery over the relationship. When records are loaded *through* that
+  relationship (e.g `Ash.load!(post, :comments)`), the parent has already been authorized, so the subquery
+  is redundant. Place an `accessing_from/2` check above it to skip building the related query entirely:
+
+  ```elixir
+  policy action_type(:read) do
+    authorize_if accessing_from(MyApp.Post, :comments)
+    authorize_if can_read(:post)
+  end
+  ```
+  """
+  @spec can_read(atom | list(atom), keyword) :: Ash.Policy.Check.ref()
+  def can_read(relationship_path, opts \\ []) do
+    {Ash.Policy.Check.CanRead,
+     relationship_path: List.wrap(relationship_path), action: Keyword.get(opts, :action)}
+  end
+
+  @doc """
   This check is true when the value of the specified attribute of the actor equals the specified value.
 
   This check will *never* pass if the actor does not have the specified key. For example,

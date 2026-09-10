@@ -12,6 +12,23 @@ defmodule Ash.Type.CiString do
       type: :non_neg_integer,
       doc: "Enforces a minimum length on the value"
     ],
+    length_count: [
+      type: {:one_of, [:graphemes, :codepoints, :bytes]},
+      doc: """
+      The unit used by `min_length` and `max_length`. Defaults to the unit implied by
+      `config :ash, :default_string_length_count` (`:codepoints`, or `:graphemes` for `:mixed`).
+
+      `:graphemes` matches `String.length/1`. `:codepoints` matches how most SQL data layers count
+      string length. `:bytes` matches `byte_size/1`.
+
+      A single grapheme may contain an unbounded number of codepoints (a base character followed by
+      many combining marks), so `:graphemes` places no effective limit on the size of a value.
+      Prefer `:codepoints` or `:bytes` when `max_length` is used as a storage or safety limit.
+
+      Data layers cannot count graphemes, so with an explicit `:graphemes` the length constraints
+      can only be applied to literal values, not atomically to expressions.
+      """
+    ],
     match: [
       type: :regex_as_mfa,
       doc: "Enforces that the string matches a passed in regex"
@@ -63,20 +80,23 @@ defmodule Ash.Type.CiString do
 
   @impl true
   def generator(constraints) do
-    StreamData.string(
-      :printable,
-      Keyword.take(constraints, [:max_length, :min_length])
-    )
+    constraints
+    |> Ash.Type.String.length_generator()
     |> then(fn generator ->
       cond do
         constraints[:trim?] && constraints[:min_length] ->
           StreamData.filter(generator, fn value ->
-            value |> String.trim() |> String.length() |> Kernel.>=(constraints[:min_length])
+            value
+            |> String.trim()
+            |> Ash.Type.String.string_length(constraints)
+            |> Kernel.>=(constraints[:min_length])
           end)
 
         constraints[:min_length] ->
           StreamData.filter(generator, fn value ->
-            value |> String.length() |> Kernel.>=(constraints[:min_length])
+            value
+            |> Ash.Type.String.string_length(constraints)
+            |> Kernel.>=(constraints[:min_length])
           end)
 
         true ->
@@ -128,6 +148,8 @@ defmodule Ash.Type.CiString do
   def apply_constraints(nil, _), do: {:ok, nil}
 
   def apply_constraints(value, constraints) do
+    value = casefold(value, constraints[:casing])
+
     {value, errors} =
       return_value(
         Keyword.get(constraints, :allow_empty?, false),
@@ -142,6 +164,10 @@ defmodule Ash.Type.CiString do
       errors -> {:error, errors}
     end
   end
+
+  defp casefold(value, :lower) when is_binary(value), do: String.downcase(value)
+  defp casefold(value, :upper) when is_binary(value), do: String.upcase(value)
+  defp casefold(value, _casing), do: value
 
   defp return_value(false, true, value, constraints) do
     trimmed = String.trim(value)
@@ -172,7 +198,7 @@ defmodule Ash.Type.CiString do
   defp validate(value, constraints) do
     Enum.reduce(constraints, [], fn
       {:max_length, max_length}, errors ->
-        if String.length(value) > max_length do
+        if Ash.Type.String.string_length(value, constraints) > max_length do
           [
             [
               message: error_message("length must be less than or equal to %{max}"),
@@ -185,7 +211,7 @@ defmodule Ash.Type.CiString do
         end
 
       {:min_length, min_length}, errors ->
-        if String.length(value) < min_length do
+        if Ash.Type.String.string_length(value, constraints) < min_length do
           [
             [
               message: error_message("length must be greater than or equal to %{min}"),

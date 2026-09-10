@@ -39,7 +39,7 @@ defmodule Ash.Actions.Aggregate do
     |> Enum.reduce_while({:ok, %{}}, fn
       {{agg_authorize?, read_action}, aggregates}, {:ok, acc} ->
         action =
-          opts[:action] || read_action ||
+          read_action ||
             Ash.Resource.Info.primary_action!(query.resource, :read).name
 
         query =
@@ -84,7 +84,14 @@ defmodule Ash.Actions.Aggregate do
             with {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
                  {:ok, %{valid?: true} = query} <-
                    authorize_query(query, opts, agg_authorize?),
-                 {:ok, aggregates} <- validate_aggregates(query, aggregates, opts) do
+                 {:ok, aggregates} <- validate_aggregates(query, aggregates, opts),
+                 {:ok, aggregates} <-
+                   authorize_aggregate_fields(
+                     query,
+                     aggregates,
+                     opts,
+                     agg_authorize? && Keyword.get(opts, :authorize_fields?, false)
+                   ) do
               # Group aggregates by bypass vs tenant-specific
               {bypass_aggs, tenant_aggs} =
                 Enum.split_with(aggregates, &(&1.multitenancy == :bypass))
@@ -148,6 +155,79 @@ defmodule Ash.Actions.Aggregate do
         end
     end)
   end
+
+  defp authorize_aggregate_fields(_query, aggregates, _opts, false), do: {:ok, aggregates}
+
+  defp authorize_aggregate_fields(query, aggregates, opts, true) do
+    aggregates
+    |> Enum.reduce_while({:ok, []}, fn aggregate, {:ok, acc} ->
+      case authorize_aggregate_field(query, aggregate, opts) do
+        {:ok, aggregate} -> {:cont, {:ok, [aggregate | acc]}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, aggregates} -> {:ok, Enum.reverse(aggregates)}
+      other -> other
+    end
+  end
+
+  defp authorize_aggregate_field(_query, %{field: nil} = aggregate, _opts), do: {:ok, aggregate}
+
+  defp authorize_aggregate_field(query, aggregate, opts) do
+    target_resource = Ash.Resource.Info.related(query.resource, aggregate.relationship_path)
+    field_name = referenced_field_name(aggregate.field)
+
+    cond do
+      Ash.Policy.Info.field_policies(target_resource) == [] ->
+        {:ok, aggregate}
+
+      is_nil(field_name) || is_nil(Ash.Resource.Info.field(target_resource, field_name)) ->
+        {:ok, aggregate}
+
+      true ->
+        read_action =
+          aggregate.read_action || Ash.Resource.Info.primary_action!(target_resource, :read).name
+
+        subject =
+          Ash.Query.for_read(target_resource, read_action, %{},
+            actor: opts[:actor],
+            tenant: opts[:tenant],
+            authorize?: true
+          )
+
+        case Ash.Can.evaluate_field_policies(subject, query.domain, opts[:actor], [field_name],
+               tenant: opts[:tenant],
+               domain: query.domain,
+               run_queries?: false
+             ) do
+          {:ok, results} ->
+            case Map.get(results, field_name) do
+              result when result in [true, nil] ->
+                {:ok, aggregate}
+
+              false ->
+                {:error, Ash.Error.Forbidden.exception([])}
+
+              {:filter, expr} ->
+                base = aggregate.query || Ash.Query.new(target_resource)
+                {:ok, %{aggregate | query: Ash.Query.do_filter(base, expr)}}
+            end
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
+  end
+
+  defp referenced_field_name(field) when is_atom(field), do: field
+  defp referenced_field_name(%Ash.Query.Aggregate{name: name}) when is_atom(name), do: name
+  defp referenced_field_name(%Ash.Query.Calculation{name: name}) when is_atom(name), do: name
+
+  defp referenced_field_name(%Ash.Query.Calculation{calc_name: name}) when is_atom(name),
+    do: name
+
+  defp referenced_field_name(_), do: nil
 
   defp authorize_query(query, opts, agg_authorize?) do
     if agg_authorize? do

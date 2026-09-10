@@ -23,6 +23,21 @@ defmodule Ash.Resource.Validation.StringLength do
       type: :non_neg_integer,
       doc: "String must be this length exactly"
     ],
+    count: [
+      type: {:one_of, [:graphemes, :codepoints, :bytes]},
+      doc: """
+      The unit to count length in. `:graphemes` matches `String.length/1`, `:codepoints` matches
+      how most SQL data layers count string length, and `:bytes` matches `byte_size/1`.
+      Defaults to the unit implied by `config :ash, :default_string_length_count`
+      (`:codepoints`, or `:graphemes` for `:mixed`).
+
+      A single grapheme may contain an unbounded number of codepoints, so prefer `:codepoints` or
+      `:bytes` when `max` is used as a storage or safety limit.
+
+      Data layers cannot count graphemes, so with an explicit `:graphemes` this validation is not
+      atomic when the attribute is being changed with an expression.
+      """
+    ],
     attribute: [
       type: :atom,
       required: true,
@@ -60,99 +75,128 @@ defmodule Ash.Resource.Validation.StringLength do
         :ok
 
       value ->
-        result =
-          try do
-            {:ok, to_string(value)}
-          rescue
-            _ ->
-              {:error,
-               InvalidAttribute.exception(
-                 value: Ash.Resource.Validation.maybe_redact(subject, opts[:attribute], value),
-                 field: opts[:attribute],
-                 message: error_message("could not be parsed")
-               )}
-          end
+        validate_value(subject, value, opts)
+    end
+  end
 
-        case result do
-          {:ok, str_value} ->
-            do_validate(subject, str_value, Enum.into(opts, %{}))
+  defp validate_value(_subject, nil, _opts), do: :ok
 
-          {:error, error} ->
-            {:error, error}
-        end
+  defp validate_value(subject, value, opts) do
+    result =
+      try do
+        {:ok, to_string(value)}
+      rescue
+        _ ->
+          {:error,
+           InvalidAttribute.exception(
+             value: Ash.Resource.Validation.maybe_redact(subject, opts[:attribute], value),
+             field: opts[:attribute],
+             message: error_message("could not be parsed")
+           )}
+      end
+
+    case result do
+      {:ok, str_value} ->
+        do_validate(subject, str_value, Enum.into(opts, %{}))
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
   @impl true
   def atomic(changeset, opts, context) do
-    case Ash.Changeset.fetch_argument(changeset, opts[:attribute]) do
-      {:ok, _} ->
+    # `nil` means neither the option nor the application config chose a unit, in which
+    # case we keep the legacy behavior of `string_length/1`, whatever the data layer counts.
+    count = Ash.Type.String.explicit_length_count(length_count: opts[:count])
+
+    with :error <- Ash.Changeset.fetch_argument(changeset, opts[:attribute]),
+         {:graphemes, {:ok, value}} <- {count, Keyword.fetch(changeset.atomics, opts[:attribute])} do
+      # Data layers cannot count graphemes, so we can only validate literal values
+      if Ash.Expr.expr?(value) do
+        {:not_atomic,
+         "can't atomically run string length validation counting graphemes on attribute `#{opts[:attribute]}` that is being atomically changed. Use `count: :codepoints` or `count: :bytes`."}
+      else
+        validate_value(changeset, value, opts)
+      end
+    else
+      {:ok, _argument} ->
         validate(changeset, opts, context)
 
-      :error ->
-        error_value =
-          if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
-            Ash.Helpers.redact(nil)
-          else
-            atomic_ref(opts[:attribute])
-          end
+      {:graphemes, :error} ->
+        # Not being changed atomically, so validate the literal (or current) value
+        validate(changeset, opts, context)
 
-        opts
-        |> Keyword.delete(:attribute)
-        |> Enum.map(fn
-          {:min, min} ->
-            {:atomic, [opts[:attribute]],
-             expr(string_length(^atomic_ref(opts[:attribute])) < ^min),
-             expr(
-               error(
-                 Ash.Error.Changes.InvalidAttribute,
-                 %{
-                   field: ^opts[:attribute],
-                   value: ^error_value,
-                   message:
-                     ^(context.message || error_message("must have length of at least %{min}")),
-                   vars: %{min: ^min}
-                 }
-               )
-             )}
-
-          {:max, max} ->
-            {:atomic, [opts[:attribute]],
-             expr(string_length(^atomic_ref(opts[:attribute])) > ^max),
-             expr(
-               error(
-                 Ash.Error.Changes.InvalidAttribute,
-                 %{
-                   field: ^opts[:attribute],
-                   value: ^error_value,
-                   message:
-                     ^(context.message || error_message("must have length of at most %{max}")),
-                   vars: %{max: ^max}
-                 }
-               )
-             )}
-
-          {:exact, exact} ->
-            {:atomic, [opts[:attribute]],
-             expr(string_length(^atomic_ref(opts[:attribute])) != ^exact),
-             expr(
-               error(
-                 Ash.Error.Changes.InvalidAttribute,
-                 %{
-                   field: ^opts[:attribute],
-                   value: ^error_value,
-                   message:
-                     ^(context.message || error_message("must have length of exactly %{exact}")),
-                   vars: %{exact: ^exact}
-                 }
-               )
-             )}
-        end)
+      {_count, _} ->
+        atomic_expression(changeset, opts, context, count)
     end
   end
 
+  defp atomic_expression(changeset, opts, context, count) do
+    length =
+      case count do
+        nil -> expr(string_length(^atomic_ref(opts[:attribute])))
+        count -> expr(string_length(^atomic_ref(opts[:attribute]), ^count))
+      end
+
+    error_value =
+      if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
+        Ash.Helpers.redact(nil)
+      else
+        atomic_ref(opts[:attribute])
+      end
+
+    opts
+    |> Keyword.drop([:attribute, :count])
+    |> Enum.map(fn
+      {:min, min} ->
+        {:atomic, [opts[:attribute]], expr(^length < ^min),
+         expr(
+           error(
+             Ash.Error.Changes.InvalidAttribute,
+             %{
+               field: ^opts[:attribute],
+               value: ^error_value,
+               message:
+                 ^(context.message || error_message("must have length of at least %{min}")),
+               vars: %{min: ^min}
+             }
+           )
+         )}
+
+      {:max, max} ->
+        {:atomic, [opts[:attribute]], expr(^length > ^max),
+         expr(
+           error(
+             Ash.Error.Changes.InvalidAttribute,
+             %{
+               field: ^opts[:attribute],
+               value: ^error_value,
+               message: ^(context.message || error_message("must have length of at most %{max}")),
+               vars: %{max: ^max}
+             }
+           )
+         )}
+
+      {:exact, exact} ->
+        {:atomic, [opts[:attribute]], expr(^length != ^exact),
+         expr(
+           error(
+             Ash.Error.Changes.InvalidAttribute,
+             %{
+               field: ^opts[:attribute],
+               value: ^error_value,
+               message:
+                 ^(context.message || error_message("must have length of exactly %{exact}")),
+               vars: %{exact: ^exact}
+             }
+           )
+         )}
+    end)
+  end
+
   defp do_validate(subject, value, %{exact: exact} = opts) do
-    if String.length(value) == exact do
+    if string_length(value, opts) == exact do
       :ok
     else
       {:error, exception(subject, value, opts)}
@@ -160,7 +204,7 @@ defmodule Ash.Resource.Validation.StringLength do
   end
 
   defp do_validate(subject, value, %{min: min, max: max} = opts) do
-    string_length = String.length(value)
+    string_length = string_length(value, opts)
 
     if string_length >= min and string_length <= max do
       :ok
@@ -170,7 +214,7 @@ defmodule Ash.Resource.Validation.StringLength do
   end
 
   defp do_validate(subject, value, %{min: min} = opts) do
-    if String.length(value) >= min do
+    if string_length(value, opts) >= min do
       :ok
     else
       {:error, exception(subject, value, opts)}
@@ -178,11 +222,16 @@ defmodule Ash.Resource.Validation.StringLength do
   end
 
   defp do_validate(subject, value, %{max: max} = opts) do
-    if String.length(value) <= max do
+    if string_length(value, opts) <= max do
       :ok
     else
       {:error, exception(subject, value, opts)}
     end
+  end
+
+  defp string_length(value, opts) do
+    count = Map.get(opts, :count) || Ash.Type.String.default_length_count()
+    Ash.Query.Function.StringLength.string_length(value, count)
   end
 
   defp exception(subject, value, opts) do

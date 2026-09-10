@@ -232,6 +232,7 @@ defmodule Ash.Error do
         |> Map.to_list()
         |> Keyword.put(:message, message)
         |> Keyword.put(:value, Map.get(error, :value))
+        |> Keyword.put(:required?, Map.get(error, :required?, false))
         |> Ash.Error.Changes.InvalidAttribute.exception()
 
       %{fields: fields} when fields not in [nil, []] ->

@@ -286,7 +286,46 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
   end
 
+  defmodule ScopedCount do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+
+      read :public_only do
+        prepare build(filter: [public: true])
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :public, :boolean, public?: true, default: false
+    end
+  end
+
   describe "Ash.aggregate" do
+    test "an aggregate's read_action filter is not bypassed by a supplied `action`" do
+      ScopedCount |> Ash.Changeset.for_create(:create, %{public: true}) |> Ash.create!()
+      ScopedCount |> Ash.Changeset.for_create(:create, %{public: false}) |> Ash.create!()
+
+      assert %{c: 1} =
+               Ash.aggregate!(ScopedCount, {:c, :count, [read_action: :public_only]},
+                 authorize?: false
+               )
+
+      assert %{c: 1} =
+               Ash.aggregate!(ScopedCount, {:c, :count, [read_action: :public_only]},
+                 action: :read,
+                 authorize?: false
+               )
+    end
+
     test "allows counting records" do
       assert %{count: 0} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
 

@@ -42,6 +42,12 @@ defmodule Ash.Test.Info.Manifest.Generator.ReachabilityTest do
       assert Ash.Test.Manifest.Todo.Status in types
     end
 
+    test "finds named types used only as calculation arguments" do
+      {_resources, types} = Reachability.find_reachable([Ash.Test.Manifest.Todo])
+
+      assert Ash.Test.Manifest.Todo.DateGrouping in types
+    end
+
     test "multiple root resources are all included" do
       {resources, _types} =
         Reachability.find_reachable([

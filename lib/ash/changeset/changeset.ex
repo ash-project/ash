@@ -4727,11 +4727,9 @@ defmodule Ash.Changeset do
               end
             end,
             changeset.timeout || :infinity,
-            Map.put(
-              opts[:transaction_metadata],
-              :data_layer_context,
-              changeset.context[:data_layer] || %{}
-            ),
+            opts[:transaction_metadata]
+            |> Map.put(:data_layer_context, changeset.context[:data_layer] || %{})
+            |> Map.put(:tenant, changeset.tenant),
             rollback_on_error?: false
           )
           |> case do
@@ -7820,11 +7818,21 @@ defmodule Ash.Changeset do
     |> handle_error(changeset)
   end
 
-  defp handle_error(error, %{handle_errors: nil} = changeset) do
+  defp handle_error(error, changeset) when is_struct(error, Ash.Error.Changes.InvalidAttribute) do
+    if error.required? and error.field in changeset.invalid_keys do
+      changeset
+    else
+      do_handle_error(error, changeset)
+    end
+  end
+
+  defp handle_error(error, changeset), do: do_handle_error(error, changeset)
+
+  defp do_handle_error(error, %{handle_errors: nil} = changeset) do
     %{changeset | valid?: false, errors: [error | changeset.errors]}
   end
 
-  defp handle_error(error, changeset) do
+  defp do_handle_error(error, changeset) do
     changeset
     |> changeset.handle_errors.(error)
     |> case do

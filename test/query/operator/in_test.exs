@@ -47,6 +47,44 @@ defmodule Ash.Query.Operator.InTest do
 
       assert In.compare(left, right) == :left_includes_right
     end
+
+    test "sets overlapping only semantically are not mutually exclusive" do
+      left = %In{left: 1, right: MapSet.new([1])}
+      right = %In{left: 1, right: MapSet.new([1.0])}
+
+      assert In.compare(left, right) == :unknown
+
+      left = %In{left: 1, right: MapSet.new([Decimal.new(1)])}
+      right = %In{left: 1, right: MapSet.new([1])}
+
+      assert In.compare(left, right) == :unknown
+
+      left = %In{left: 1, right: MapSet.new([Ash.CiString.new("FOO")])}
+      right = %In{left: 1, right: MapSet.new(["foo"])}
+
+      assert In.compare(left, right) == :unknown
+    end
+
+    test "sets with no semantic overlap are mutually exclusive" do
+      left = %In{left: 1, right: MapSet.new([1, 2])}
+      right = %In{left: 1, right: MapSet.new([3.0, 4])}
+
+      assert In.compare(left, right) == :mutually_exclusive
+    end
+
+    test "an Eq value matching a set member only semantically is included, not excluded" do
+      left = %In{left: 1, right: MapSet.new([1.0, 2.0])}
+      right = %Eq{left: 1, right: 1}
+
+      assert In.compare(left, right) == :left_includes_right
+    end
+
+    test "an Eq value with no semantic match in the set is mutually exclusive" do
+      left = %In{left: 1, right: MapSet.new([1.0, 2.0])}
+      right = %Eq{left: 1, right: 3}
+
+      assert In.compare(left, right) == :mutually_exclusive
+    end
   end
 
   describe "evaluate/1" do

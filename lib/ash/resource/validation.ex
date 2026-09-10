@@ -161,7 +161,8 @@ defmodule Ash.Resource.Validation do
     before_action?: [
       type: :boolean,
       default: false,
-      doc: "If set to `true`, the validation will be run in a before_action hook"
+      doc:
+        "If set to `true`, the validation will be run in a before_action hook, i.e. when the action is executed (inside the transaction) rather than when the changeset is built. Useful for validations that run queries or are otherwise expensive. Cannot be used with atomic actions."
     ],
     always_atomic?: [
       type: :boolean,
