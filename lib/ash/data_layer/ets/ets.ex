@@ -1713,7 +1713,7 @@ defmodule Ash.DataLayer.Ets do
       with {:ok, table} <- wrap_or_create_table(resource, options.tenant),
            {:ok, stored} <- stored_index(table, resource) do
         Enum.reduce_while(stream, {:ok, [], stored}, fn changeset, {:ok, results, known} ->
-          with :ok <- validate_pkey(resource, changeset),
+          with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
                {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
                {:ok, record} <- apply_atomics(changeset, resource, record),
                {:ok, record} <- establish_period(record, resource, changeset),
@@ -1723,7 +1723,7 @@ defmodule Ash.DataLayer.Ets do
             {:cont,
              {:ok,
               [
-                {pkey_map(resource, record), changeset.context.bulk_create.index,
+                {create_key(resource, record, valid_pkey), changeset.context.bulk_create.index,
                  changeset.context.bulk_create.ref, record}
                 | results
               ], remember_period(known, resource, record)}}
@@ -1759,7 +1759,7 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def create(resource, changeset, from_bulk_create? \\ false) do
-    with :ok <- validate_pkey(resource, changeset),
+    with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
          {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
@@ -1770,7 +1770,7 @@ defmodule Ash.DataLayer.Ets do
          {:ok, stored} <- stored_periods(table, resource, record),
          :ok <- check_non_overlapping(resource, record, stored),
          {:ok, record} <-
-           put_or_insert_new(table, {pkey_map(resource, record), record}, resource) do
+           put_or_insert_new(table, {create_key(resource, record, valid_pkey), record}, resource) do
       {:ok, set_loaded(record)}
     else
       {:error, error} -> {:error, error}
@@ -1959,18 +1959,23 @@ defmodule Ash.DataLayer.Ets do
 
     case dump_to_native(record, attributes) do
       {:ok, casted} ->
-        case ETS.Set.put(table, {pkey, casted}) do
-          {:ok, set} ->
-            {_key, record} = ETS.Set.get!(set, pkey)
-            cast_record(record, resource)
-
-          other ->
-            other
+        if :ets.insert_new(table.table, {pkey, casted}) do
+          {_key, record} = ETS.Set.get!(table, pkey)
+          cast_record(record, resource)
+        else
+          {:error, pkey_already_taken_error(resource)}
         end
 
       other ->
         other
     end
+  end
+
+  defp pkey_already_taken_error(resource) do
+    Ash.Error.Changes.InvalidChanges.exception(
+      fields: Ash.Resource.Info.primary_key(resource),
+      message: "has already been taken"
+    )
   end
 
   defp put_or_insert_new_batch(table, records, resource, return_records?) do
@@ -2023,18 +2028,39 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp validate_pkey(resource, changeset) do
-    pkey =
-      resource
-      |> Ash.Resource.Info.primary_key()
-      |> Enum.into(%{}, fn attr ->
-        {attr, Ash.Changeset.get_attribute(changeset, attr)}
-      end)
+  # Upstream's fix (v3.32.2): a resource with NO primary key gave every record
+  # the same empty key, so creates overwrote one another. The synthetic ref is
+  # per-record, so keyless records stop colliding.
+  #
+  # ⚠️ This validates and supplies a key; it does NOT decide the STORED key for
+  # a keyed resource - `create_key/3` does, because ours carries the period.
+  defp get_valid_pkey(resource, changeset) do
+    case Ash.Resource.Info.primary_key(resource) do
+      [] ->
+        {:ok, %{__ash_synthetic_key__: make_ref()}}
 
-    if !Enum.empty?(pkey) && Enum.any?(pkey, fn {_, v} -> is_nil(v) end) do
-      {:error, InvalidPrimaryKey.exception(resource: resource, value: pkey)}
-    else
-      :ok
+      pkey_fields ->
+        pkey =
+          Enum.into(pkey_fields, %{}, fn attr ->
+            {attr, Ash.Changeset.get_attribute(changeset, attr)}
+          end)
+
+        if Enum.any?(pkey, fn {_, v} -> is_nil(v) end) do
+          {:error, InvalidPrimaryKey.exception(resource: resource, value: pkey)}
+        else
+          {:ok, pkey}
+        end
+    end
+  end
+
+  # The stored key. A keyed resource keys on the RECORD, not the changeset:
+  # `key_fields/1` appends the temporal attribute, and the period is only
+  # established once `establish_period/3` has run. A keyless resource has
+  # nothing to key on, so it takes the synthetic ref above.
+  defp create_key(resource, record, synthetic) do
+    case Ash.Resource.Info.primary_key(resource) do
+      [] -> synthetic
+      _ -> pkey_map(resource, record)
     end
   end
 

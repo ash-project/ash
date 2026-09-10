@@ -333,7 +333,6 @@ defmodule Ash.Type.Range do
   defp apply_bound(type, value, inner) do
     case Ash.Type.apply_constraints(type, value, inner) do
       {:ok, value} -> {:ok, value}
-      :ok -> {:ok, value}
       {:error, error} -> {:error, error}
     end
   end

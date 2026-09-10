@@ -368,6 +368,7 @@ defmodule Ash.Actions.Update.Bulk do
                         action: atomic_changeset.action.name,
                         actor: opts[:actor]
                       },
+                      tenant: opts[:tenant],
                       data_layer_context: opts[:data_layer_context] || %{}
                     },
                     rollback_on_error?: false
@@ -594,6 +595,7 @@ defmodule Ash.Actions.Update.Bulk do
                   action: action.name,
                   actor: opts[:actor]
                 },
+                tenant: opts[:tenant],
                 data_layer_context: opts[:data_layer_context] || %{}
               },
               rollback_on_error?: false
@@ -1707,7 +1709,8 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp authorize_atomic_changeset(query, changeset, opts) do
+  @doc false
+  def authorize_atomic_changeset(query, changeset, opts) do
     if opts[:authorize?] do
       case Ash.can(
              changeset,
@@ -2020,6 +2023,7 @@ defmodule Ash.Actions.Update.Bulk do
               action: action.name,
               actor: opts[:actor]
             },
+            tenant: opts[:tenant],
             data_layer_context: opts[:data_layer_context] || context
           },
           rollback_on_error?: false

@@ -996,37 +996,43 @@ defmodule Ash.Actions.Read.Relationships do
         if related_query.filter do
           resolve_parent_in_filter(related_query.filter, record, relationship.source)
         else
-          nil
+          {:ok, nil}
         end
 
-      per_record_query =
-        related_query
-        |> Map.put(:filter, resolved_filter)
-        |> select_destination_attribute(relationship)
-        |> Ash.Query.set_context(%{
-          accessing_from: %{source: relationship.source, name: relationship.name},
-          parent_stack: parent_stack
-        })
-        |> then(fn query ->
-          if relationship.cardinality == :one && Map.get(relationship, :from_many?) do
-            Ash.Query.limit(query, 1)
-          else
-            query
-          end
-        end)
-        |> apply_relationship_offset(relationship)
-
-      case Ash.Actions.Read.unpaginated_read(per_record_query, nil,
-             authorize_with: relationship.authorize_read_with
-           ) do
-        {:ok, results} ->
-          # Tag results with the source record's primary key
-          tagged_results =
-            Enum.map(results, fn result ->
-              Map.put(result, :__lateral_join_source__, Map.take(record, primary_key))
+      case resolved_filter do
+        {:ok, resolved_filter} ->
+          per_record_query =
+            related_query
+            |> Map.put(:filter, resolved_filter)
+            |> select_destination_attribute(relationship)
+            |> Ash.Query.set_context(%{
+              accessing_from: %{source: relationship.source, name: relationship.name},
+              parent_stack: parent_stack
+            })
+            |> then(fn query ->
+              if relationship.cardinality == :one && Map.get(relationship, :from_many?) do
+                Ash.Query.limit(query, 1)
+              else
+                query
+              end
             end)
+            |> apply_relationship_offset(relationship)
 
-          {:cont, {:ok, tagged_results ++ acc}}
+          case Ash.Actions.Read.unpaginated_read(per_record_query, nil,
+                 authorize_with: relationship.authorize_read_with
+               ) do
+            {:ok, results} ->
+              # Tag results with the source record's primary key
+              tagged_results =
+                Enum.map(results, fn result ->
+                  Map.put(result, :__lateral_join_source__, Map.take(record, primary_key))
+                end)
+
+              {:cont, {:ok, tagged_results ++ acc}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
 
         {:error, error} ->
           {:halt, {:error, error}}
@@ -1035,16 +1041,32 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp resolve_parent_in_filter(filter, parent_record, source_resource) do
-    Ash.Filter.map(filter, fn
-      %Ash.Query.Parent{expr: expr} ->
-        case Ash.Expr.eval(expr, record: parent_record, resource: source_resource) do
-          {:ok, value} -> value
-          _ -> nil
-        end
+    {:ok,
+     Ash.Filter.map(filter, fn
+       %Ash.Query.Parent{expr: expr} ->
+         case Ash.Expr.eval(expr,
+                record: parent_record,
+                resource: source_resource,
+                unknown_on_unknown_refs?: true
+              ) do
+           {:ok, value} ->
+             value
 
-      other ->
-        other
-    end)
+           other ->
+             throw({:resolve_parent_error, other})
+         end
+
+       other ->
+         other
+     end)}
+  catch
+    {:resolve_parent_error, {:error, error}} ->
+      {:error, error}
+
+    {:resolve_parent_error, _other} ->
+      {:error,
+       "could not resolve a `parent/1` expression in a relationship filter; the referenced " <>
+         "parent field(s) must be selected on the source query"}
   end
 
   defp regroup_manual_results(records, %{cardinality: :many}, count) do

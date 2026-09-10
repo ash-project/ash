@@ -82,6 +82,14 @@ defmodule Ash.Test.Type.UUIDv7Test do
     assert {:ok, ^uuid_v7} = Ash.Type.coerce(Ash.Type.UUIDv7, binary_uuid_v7)
   end
 
+  test "cast_stored can load a stored non-v7 uuid instead of erroring on every read" do
+    uuid_v5 = "550e8400-e29b-51d4-a716-446655440000"
+
+    assert {:ok, ^uuid_v5} = Ash.Type.cast_input(Ash.Type.UUIDv7, uuid_v5)
+    assert {:ok, stored} = Ash.Type.dump_to_native(Ash.Type.UUIDv7, uuid_v5)
+    assert {:ok, ^uuid_v5} = Ash.Type.cast_stored(Ash.Type.UUIDv7, stored)
+  end
+
   describe "strict? constraint" do
     test "rejects a non-v7 uuid string that cast_input accepted" do
       uuid_v4 = "550e8400-e29b-41d4-a716-446655440000"

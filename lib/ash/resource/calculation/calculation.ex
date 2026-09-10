@@ -277,7 +277,32 @@ defmodule Ash.Resource.Calculation do
   @doc false
   @spec expression(module(), opts, Context.t()) :: any()
   def expression(module, opts, context) do
-    apply(module, :expression, [opts, context])
+    module
+    |> apply(:expression, [opts, context])
+    |> fill_arguments(context)
+  end
+
+  # A calculation's arguments belong to the calculation itself, so they are always
+  # safe (and necessary) to resolve here. Callers fill in the ambient `actor`,
+  # `tenant` and `context` templates themselves, because those are not always known
+  # at the time the expression is built.
+  defp fill_arguments(expression, context) do
+    case context do
+      %{arguments: arguments} when is_map(arguments) and arguments != %{} ->
+        Ash.Expr.walk_template(expression, fn
+          {:_arg, field} ->
+            case Map.fetch(arguments, field) do
+              {:ok, value} -> value
+              :error -> Map.get(arguments, to_string(field))
+            end
+
+          other ->
+            other
+        end)
+
+      _ ->
+        expression
+    end
   end
 
   @doc false

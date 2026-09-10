@@ -769,20 +769,12 @@ defmodule Ash.Policy.Authorizer do
       {:filter_and_continue, filter, authorizer} ->
         log_successful_policy_breakdown(authorizer, filter)
 
-        case context[:changeset] do
-          %Ash.Changeset{action_type: :create} ->
-            # Keep the signal so Ash.Can can dispatch a hook that knows the filter
-            # is necessary but not sufficient — a post-insert check/3 is still
-            # required to evaluate any deferred / runtime scenarios. For all
-            # other subjects we preserve the historical collapse to `:filter`
-            # because the runtime portion is handled via authorize_results on
-            # the read query (or, for update/destroy, by filtering against the
-            # original data).
-            {:filter_and_continue, filter, authorizer}
-
-          _ ->
-            {:filter, authorizer, filter}
-        end
+        # The filter is necessary but not sufficient: runtime checks remain that
+        # must be evaluated against the returned data. Callers (see `Ash.Can`)
+        # apply the filter and attach an `authorize_results` hook that runs
+        # `check/2` on the results. Collapsing this to `:filter` here would
+        # silently drop the runtime checks.
+        {:filter_and_continue, filter, authorizer}
 
       {:error, error} ->
         {:error, error}
@@ -1983,7 +1975,7 @@ defmodule Ash.Policy.Authorizer do
         |> Enum.reject(&scenario_impossible?(&1, authorizer, record))
         |> case do
           [] ->
-            {[record | data], authorizer, any_forbidden?}
+            {data, authorizer, true}
 
           scenarios ->
             case do_check_result(scenarios, authorizer, record) do

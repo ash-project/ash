@@ -3,10 +3,16 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Error.Changes.InvalidAttribute do
-  @moduledoc "Used when an invalid value is provided for an attribute change"
+  @moduledoc """
+  Used when an invalid value is provided for an attribute change
+
+  `required?: true` marks the error as reporting an absent value rather than a
+  bad one, which a changeset drops for a field that already failed to cast, the
+  same way it drops `Ash.Error.Changes.Required`.
+  """
 
   use Splode.Error,
-    fields: [:field, :message, :private_vars, :value, has_value?: false],
+    fields: [:field, :message, :private_vars, :value, has_value?: false, required?: false],
     class: :invalid
 
   def exception(opts) do

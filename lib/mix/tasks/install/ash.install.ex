@@ -189,7 +189,8 @@ if Code.ensure_loaded?(Igniter) do
                 {[:read_action_after_action_hooks_in_order?], true},
                 {[:bulk_actions_default_to_errors?], true},
                 {[:transaction_rollback_on_error?], true},
-                {[:redact_sensitive_values_in_errors?], true}
+                {[:redact_sensitive_values_in_errors?], true},
+                {[:default_string_length_count], :codepoints}
               ],
               comment: """
               These enable behaviors that will become the default in the next major

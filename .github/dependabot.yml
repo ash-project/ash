@@ -6,10 +6,9 @@
 updates:
   - directory: /
     groups:
-      dev-dependencies:
-        dependency-type: development
-      production-dependencies:
-        dependency-type: production
+      all-dependencies:
+        patterns:
+          - '*'
     package-ecosystem: mix
     schedule:
       interval: monthly

@@ -18,7 +18,7 @@ if Code.ensure_loaded?(Igniter) do
     """
 
     @impl Igniter.Mix.Task
-    def igniter(igniter, _argv) do
+    def igniter(igniter) do
       app_name = Igniter.Project.Application.app_name(igniter)
 
       Mix.shell().info("🔍 Scanning for Ash domains in :#{app_name}...")

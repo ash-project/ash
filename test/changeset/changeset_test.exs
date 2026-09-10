@@ -113,6 +113,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         argument :secret, :string, allow_nil?: true, public?: false
         argument :public_note, :string, allow_nil?: true, public?: true
       end
+
+      create :with_constrained_name_validation do
+        validate present(:short_name), message: "this validates the short name is present"
+      end
     end
 
     attributes do
@@ -120,6 +124,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       attribute :name, :string do
         public?(true)
+      end
+
+      attribute :short_name, :string do
+        public?(true)
+        constraints max_length: 5
       end
     end
 
@@ -1542,6 +1551,30 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                }
              ] =
                Ash.Changeset.for_create(Category, :with_name_validation, %{"name" => ""}).errors
+    end
+
+    test "a `present` validation is dropped for a field that already failed to cast" do
+      errors =
+        Ash.Changeset.for_create(Category, :with_constrained_name_validation, %{
+          "short_name" => "far too long to fit"
+        }).errors
+
+      assert [%Ash.Error.Changes.InvalidAttribute{field: :short_name, message: message}] = errors
+      assert message =~ "length must be less than or equal to"
+    end
+
+    test "a `present` validation still reports a field that is merely absent" do
+      errors =
+        Ash.Changeset.for_create(Category, :with_constrained_name_validation, %{
+          "short_name" => ""
+        }).errors
+
+      assert [
+               %Ash.Error.Changes.InvalidAttribute{
+                 field: :short_name,
+                 message: "this validates the short name is present"
+               }
+             ] = errors
     end
 
     test "it fails when the requested create action doesn't exist on the resource" do

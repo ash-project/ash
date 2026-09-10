@@ -103,6 +103,43 @@ defmodule Ash.Test.Filter.ParentTest do
     end
   end
 
+  defmodule ScopedNote do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Simple
+
+    actions do
+      defaults [:read]
+    end
+
+    attributes do
+      attribute(:id, :integer, primary_key?: true, allow_nil?: false, public?: true)
+      attribute(:org_id, :integer, public?: true)
+      attribute(:secret, :string, public?: true)
+    end
+  end
+
+  defmodule ScopeParent do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Simple
+
+    actions do
+      defaults [:read]
+    end
+
+    attributes do
+      attribute(:id, :integer, primary_key?: true, allow_nil?: false, public?: true)
+      attribute(:org_id, :integer, public?: true)
+    end
+
+    relationships do
+      has_many :notes, ScopedNote do
+        no_attributes? true
+        filter expr(is_nil(parent(org_id)) or org_id == parent(org_id))
+        public? true
+      end
+    end
+  end
+
   test "exists/2 can use `parent` to refer to the root record" do
     author =
       User
@@ -185,5 +222,26 @@ defmodule Ash.Test.Filter.ParentTest do
       |> Ash.load!(:post_author)
 
     assert comment.post_author.id == author.id
+  end
+
+  test "a failed parent() evaluation errors instead of activating the unrestricted branch" do
+    data = %{
+      ScopeParent => [struct(ScopeParent, id: 1, org_id: 10)],
+      ScopedNote => [
+        struct(ScopedNote, id: 1, org_id: 10, secret: "same organization"),
+        struct(ScopedNote, id: 2, org_id: nil, secret: "unscoped private note")
+      ]
+    }
+
+    base =
+      ScopeParent
+      |> Ash.Query.set_context(%{shared: %{data_layer: %{data: data}}})
+      |> Ash.Query.filter(id == 1)
+      |> Ash.Query.load(:notes)
+
+    assert {:error, _} = base |> Ash.Query.select([:id]) |> Ash.read_one()
+
+    assert {:ok, %{notes: notes}} = base |> Ash.Query.select([:id, :org_id]) |> Ash.read_one()
+    assert Enum.map(notes, & &1.secret) == ["same organization"]
   end
 end

@@ -1599,6 +1599,7 @@ defmodule Ash.Actions.Read do
                 resource: query.resource,
                 action: query.action.name
               },
+              tenant: query.tenant,
               data_layer_context: query.context[:data_layer]
             },
             rollback_on_error?: false
@@ -4792,6 +4793,15 @@ defmodule Ash.Actions.Read do
               expr
             end
         end
+
+      expr =
+        Ash.Expr.fill_template(
+          expr,
+          actor: actor,
+          tenant: tenant,
+          args: calc.context.arguments,
+          context: calc.context.source_context
+        )
 
       {:ok, expr} =
         Ash.Filter.hydrate_refs(

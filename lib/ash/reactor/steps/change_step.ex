@@ -42,6 +42,7 @@ defmodule Ash.Reactor.ChangeStep do
     Enum.reduce_while(clauses, {:ok, changeset}, fn clause, {:ok, changeset} ->
       case apply_validation(changeset, clause, context) do
         :ok -> {:cont, {:ok, changeset}}
+        {:raised, error} -> {:halt, {:error, error}}
         {:error, _} -> {:halt, {:bypass, changeset}}
       end
     end)
@@ -60,7 +61,7 @@ defmodule Ash.Reactor.ChangeStep do
 
     Ash.Resource.Validation.validate(module, changeset, opts, context)
   rescue
-    error -> {:error, error}
+    error -> {:raised, error}
   end
 
   defp apply_validation(changeset, module, context),

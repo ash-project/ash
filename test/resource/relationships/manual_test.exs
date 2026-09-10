@@ -70,6 +70,10 @@ defmodule Ash.Test.Resource.Relationships.ManualTestMacros do
         @moduledoc false
         use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
 
+        ets do
+          private?(true)
+        end
+
         actions do
           default_accept :*
           defaults [:read, :destroy, create: :*, update: :*]

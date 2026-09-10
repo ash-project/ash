@@ -620,7 +620,7 @@ The hooks execute in the following order (as of Ash 3.0+):
 
 #### Transaction Boundaries
 - **Outside Transaction**: `around_transaction`, `before_transaction`, `after_transaction`
-- **Inside Transaction**: Action preparations/validations/changes, Global preparations/validations/changes, `around_action`, `before_action`, `after_action`
+- **Inside Transaction**: `around_action`, `before_action`, `after_action`, and any validations marked with `before_action? true` (or all global validations when the action has `delay_global_validations? true`)
 
 #### Error Handling
 - `after_action` only runs on successful operations
