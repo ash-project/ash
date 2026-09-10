@@ -1380,6 +1380,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert Ash.Changeset.get_argument(changeset, :true_optional_argument) == true
       assert Ash.Changeset.get_argument(changeset, :false_optional_argument) == false
     end
+
+    test "arguments not defined on the action are stored under their name" do
+      changeset =
+        Category
+        |> Ash.Changeset.for_create(:create_with_confirmation)
+        |> Ash.Changeset.force_set_argument(:unknown_argument, "foo")
+
+      assert changeset.arguments[:unknown_argument] == "foo"
+      assert is_nil(changeset.arguments[nil])
+    end
   end
 
   describe "validation keyword errors" do
