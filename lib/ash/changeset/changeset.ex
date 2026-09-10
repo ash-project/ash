@@ -2291,7 +2291,7 @@ defmodule Ash.Changeset do
           message:
             "Could not determine domain for changeset. Provide the `domain` option or configure a domain in the resource directly."
 
-    changeset = %{changeset | domain: domain}
+    changeset = refuse_unserved_temporal(%{changeset | domain: domain})
 
     if changeset.valid? do
       try do
@@ -2951,6 +2951,22 @@ defmodule Ash.Changeset do
     end)
   end
 
+  # The runtime counterpart of `Ash.Resource.Verifiers.ValidateTemporal`.
+  defp refuse_unserved_temporal(changeset) do
+    if Ash.Resource.Info.temporal_strategy(changeset.resource) == :context and
+         not Ash.DataLayer.can?(:temporal, changeset.resource) do
+      add_error(
+        changeset,
+        Ash.Error.Query.TemporalNotSupported.exception(
+          resource: changeset.resource,
+          as_of: changeset.as_of
+        )
+      )
+    else
+      changeset
+    end
+  end
+
   defp do_for_action(changeset, action_or_name, params, opts) do
     domain =
       changeset.domain || opts[:domain] || Ash.Resource.Info.domain(changeset.resource) ||
@@ -3160,6 +3176,7 @@ defmodule Ash.Changeset do
 
   def prepare_changeset_for_action(changeset, action, opts) do
     changeset
+    |> refuse_unserved_temporal()
     |> Map.put(:action, action)
     |> reset_arguments()
     |> handle_errors(action.error_handler)

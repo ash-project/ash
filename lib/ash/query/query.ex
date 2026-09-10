@@ -4769,12 +4769,18 @@ defmodule Ash.Query do
     # `ash_query.as_of` is already a concrete `DateTime` (or nil) — frozen once upstream
     # (see `Ash.Query.freeze_as_of/1`), so this never re-evaluates "now".
     with as_of when not is_nil(as_of) <- ash_query.as_of,
-         :context <- Ash.Resource.Info.temporal_strategy(ash_query.resource),
-         true <- Ash.DataLayer.can?(:temporal, ash_query.resource),
-         {:ok, query} <- Ash.DataLayer.set_as_of(ash_query.resource, query, as_of) do
-      {:ok, query}
+         :context <- Ash.Resource.Info.temporal_strategy(ash_query.resource) do
+      # Refused rather than dropped: without the instant, nothing narrows by period.
+      if Ash.DataLayer.can?(:temporal, ash_query.resource) do
+        Ash.DataLayer.set_as_of(ash_query.resource, query, as_of)
+      else
+        {:error,
+         Ash.Error.Query.TemporalNotSupported.exception(
+           resource: ash_query.resource,
+           as_of: as_of
+         )}
+      end
     else
-      {:error, error} -> {:error, error}
       _ -> {:ok, query}
     end
   end
