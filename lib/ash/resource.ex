@@ -183,6 +183,9 @@ defmodule Ash.Resource do
   @impl Spark.Dsl
   def handle_before_compile(_opts) do
     quote do
+      Ash.Resource.TypeInference.change_dispatcher_definition(__MODULE__)
+      |> Code.eval_quoted([], __ENV__)
+
       require Ash.Schema
 
       Ash.Schema.define_schema()

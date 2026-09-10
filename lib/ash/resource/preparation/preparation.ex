@@ -145,6 +145,7 @@ defmodule Ash.Resource.Preparation do
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Preparation
+      @before_compile Ash.Resource.Preparation
 
       import Ash.Expr
       require Ash.Query
@@ -153,6 +154,18 @@ defmodule Ash.Resource.Preparation do
       def supports(_opts), do: [Ash.Query]
 
       defoverridable init: 1, supports: 1
+    end
+  end
+
+  defmacro __before_compile__(env) do
+    type_inference_definitions =
+      Ash.Resource.TypeInference.capture_definitions(env.module)
+
+    quote do
+      @doc false
+      def __ash_type_inference_definitions__ do
+        unquote(Macro.escape(type_inference_definitions))
+      end
     end
   end
 end
