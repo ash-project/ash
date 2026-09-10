@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.3](https://github.com/ash-project/ash/compare/v3.33.2...v3.33.3) (2026-09-10)
+
+
+
+
+### Bug Fixes:
+
+* don't check codepoints config when in a dependency by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.33.2](https://github.com/ash-project/ash/compare/v3.33.1...v3.33.2) (2026-09-10)
 
 
