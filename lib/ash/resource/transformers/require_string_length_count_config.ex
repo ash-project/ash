@@ -5,6 +5,16 @@
 defmodule Ash.Resource.Transformers.RequireStringLengthCountConfig do
   @moduledoc """
   Requires `config :ash, :default_string_length_count` to be set.
+
+  Every application must make an explicit choice about how string length is
+  counted. See the backwards compatibility guide for details.
+
+  The check only runs for resources that belong to the current OTP application,
+  i.e. the project being compiled, not its dependencies. Resources shipped by
+  libraries are compiled before the host application's installer has run, and
+  the library has no say over the host application's configuration. Those
+  resources are still covered by the runtime check in
+  `Ash.Type.String.length_count_config/0`.
   """
   use Spark.Dsl.Transformer
 
@@ -12,7 +22,9 @@ defmodule Ash.Resource.Transformers.RequireStringLengthCountConfig do
   alias Spark.Error.DslError
 
   def transform(dsl_state) do
-    if has_string_attribute?(dsl_state) do
+    if compiling_dependency?() do
+      {:ok, dsl_state}
+    else
       value = Application.get_env(:ash, :default_string_length_count)
 
       if value in [:codepoints, :mixed] do
@@ -25,17 +37,13 @@ defmodule Ash.Resource.Transformers.RequireStringLengthCountConfig do
            path: []
          )}
       end
-    else
-      {:ok, dsl_state}
     end
   end
 
-  defp has_string_attribute?(dsl_state) do
-    dsl_state
-    |> Transformer.get_entities([:attributes])
-    |> Enum.any?(&string_type?(&1.type))
+  # `Mix.Dep.in_dependency/3` sets `:deps_app_path` in the project config while
+  # a dependency is being compiled. The root project never has it set.
+  defp compiling_dependency? do
+    Code.ensure_loaded?(Mix.Project) and function_exported?(Mix.Project, :config, 0) and
+      Keyword.has_key?(Mix.Project.config(), :deps_app_path)
   end
-
-  defp string_type?({:array, type}), do: string_type?(type)
-  defp string_type?(type), do: type in [Ash.Type.String, Ash.Type.CiString]
 end
