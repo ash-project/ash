@@ -466,6 +466,18 @@ defmodule Ash.Test.Actions.ReadTest do
 
       assert {:ok, [_]} = run.(query)
     end
+
+    test "an unpaginated query stays a list through run and load" do
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+      |> Ash.create!()
+
+      %{run: run, load: load, query: query, ash_query: ash_query} =
+        Ash.data_layer_query!(Post)
+
+      assert {:ok, [%Post{} = post]} = run.(query)
+      assert {:ok, [^post]} = load.(ash_query, [post])
+    end
   end
 
   describe "Ash.read!/2 with no records" do

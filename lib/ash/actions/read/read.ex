@@ -818,6 +818,7 @@ defmodule Ash.Actions.Read do
                          query
                        ),
                      :ok <- validate_get(results, query.action, query),
+                     {query, results} <- drop_pagination_extra(query, results, opts),
                      results <- add_keysets(query, results, query.sort),
                      {:ok, results} <- run_authorize_results(query, results),
                      {:ok, results, after_notifications} <- run_after_action(query, results),
@@ -1068,78 +1069,62 @@ defmodule Ash.Actions.Read do
              :ok <- validate_combinations(query, calculations_at_runtime, query.load),
              {:ok, data_layer_query} <-
                Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations) do
+          # Pages remember their read opts so `Ash.page/2` can rerun the read.
+          # A rerun must produce the next page, not another data layer query.
+          page_opts = Keyword.delete(opts, :data_layer_query?)
+
           {:ok,
            %{
              query: data_layer_query,
              ash_query: query,
              load: fn query_ran, data ->
-               with {:ok, data} <-
-                      load_through_attributes(
-                        data,
-                        %{
-                          query_ran
-                          | calculations: Map.new(calculations_in_query, &{&1.name, &1})
-                        },
-                        query.domain,
-                        opts[:actor],
-                        opts[:tracer],
-                        opts[:authorize?]
-                      ),
-                    {:ok, data} <-
-                      load_relationships(data, query, opts),
-                    {:ok, data} <-
-                      Ash.Actions.Read.Calculations.run(
-                        data,
+               case data do
+                 %struct{results: results} = page
+                 when struct in [Ash.Page.Offset, Ash.Page.Keyset] ->
+                   # `run` already built the page, so only its records need
+                   # loading. The page keeps its `more?` and `count`.
+                   with {:ok, results} <-
+                          load_data_layer_results(
+                            results,
+                            query_ran,
+                            query,
+                            initial_query,
+                            calculations_at_runtime,
+                            calculations_in_query,
+                            opts
+                          ) do
+                     {:ok, %{page | results: results}}
+                   end
+
+                 results when is_list(results) ->
+                   # Raw rows, e.g. from a data layer query the caller ran
+                   # themselves. For a paginated query the extra row is still
+                   # present, which is what lets `add_page` determine `more?`.
+                   with {:ok, results} <-
+                          load_data_layer_results(
+                            results,
+                            query_ran,
+                            query,
+                            initial_query,
+                            calculations_at_runtime,
+                            calculations_in_query,
+                            opts
+                          ),
+                        {:ok, resolved_count} <- count.() do
+                     {:ok,
+                      add_page(
+                        results,
+                        query.action,
+                        resolved_count,
+                        query.sort,
+                        initial_query,
                         query,
-                        calculations_at_runtime,
-                        calculations_in_query
-                      ),
-                    {:ok, data} <-
-                      load_through_attributes(
-                        data,
-                        %{
-                          query
-                          | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
-                            load_through: Map.delete(query.load_through || %{}, :attribute)
-                        },
-                        query.domain,
-                        opts[:actor],
-                        opts[:tracer],
-                        opts[:authorize?],
-                        false
-                      ) do
-                 data
-                 |> Helpers.restrict_field_access(query)
-                 |> add_tenant(query)
-                 |> attach_fields(nil, initial_query, query, false)
-                 |> cleanup_field_auth(query)
-                 |> add_page(
-                   query.action,
-                   count,
-                   query.sort,
-                   initial_query,
-                   query,
-                   opts
-                 )
-               else
-                 {:error, %Ash.Query{errors: errors} = query} ->
-                   {:error, Ash.Error.to_error_class(errors, query: query)}
-
-                 {:error,
-                  %Ash.Error.Forbidden.Placeholder{
-                    authorizer: authorizer
-                  }} ->
-                   error =
-                     Ash.Authorizer.exception(
-                       authorizer,
-                       :forbidden,
-                       query_ran.context[:private][:authorizer_state][authorizer]
-                     )
-
-                   {:error, Ash.Error.to_error_class(error)}
-
-                 {:error, error} ->
-                   {:error, Ash.Error.to_error_class(error, query: query)}
+                        page_opts
+                      )}
+                   else
+                     {:error, error} ->
+                       {:error, Ash.Error.to_error_class(error, query: query)}
+                   end
                end
              end,
              run: fn data_layer_query ->
@@ -1162,12 +1147,25 @@ defmodule Ash.Actions.Read do
                         query
                       ),
                     :ok <- validate_get(results, query.action, query),
+                    {query, results} <- drop_pagination_extra(query, results, opts),
                     results <- add_keysets(query, results, query.sort),
                     {:ok, results} <- run_authorize_results(query, results),
-                    {:ok, results, after_notifications} <- run_after_action(query, results) do
+                    {:ok, results, after_notifications} <- run_after_action(query, results),
+                    {:ok, resolved_count} <- count.() do
                  notify_or_store(query, before_notifications ++ after_notifications, notify?)
 
-                 {:ok, add_tenant(results, query)}
+                 # For a paginated query this is the page; `load` accepts it as is.
+                 {:ok,
+                  results
+                  |> add_tenant(query)
+                  |> add_page(
+                    query.action,
+                    resolved_count,
+                    query.sort,
+                    initial_query,
+                    query,
+                    page_opts
+                  )}
                else
                  {%{valid?: false} = query, before_notifications} ->
                    notify_or_store(query, before_notifications, notify?)
@@ -1305,6 +1303,75 @@ defmodule Ash.Actions.Read do
   @doc false
   def paginated_relationship_count_aggregate_name(relationship_name) do
     "__paginated_#{relationship_name}_count__"
+  end
+
+  # The loading half of `Ash.data_layer_query/2`: everything `Ash.read/2` does
+  # to records after they come back from the data layer, minus paging.
+  defp load_data_layer_results(
+         records,
+         query_ran,
+         query,
+         initial_query,
+         calculations_at_runtime,
+         calculations_in_query,
+         opts
+       ) do
+    with {:ok, records} <-
+           load_through_attributes(
+             records,
+             %{query_ran | calculations: Map.new(calculations_in_query, &{&1.name, &1})},
+             query.domain,
+             opts[:actor],
+             opts[:tracer],
+             opts[:authorize?]
+           ),
+         {:ok, records} <- load_relationships(records, query, opts),
+         {:ok, records} <-
+           Ash.Actions.Read.Calculations.run(
+             records,
+             query,
+             calculations_at_runtime,
+             calculations_in_query
+           ),
+         {:ok, records} <-
+           load_through_attributes(
+             records,
+             %{
+               query
+               | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
+                 load_through: Map.delete(query.load_through || %{}, :attribute)
+             },
+             query.domain,
+             opts[:actor],
+             opts[:tracer],
+             opts[:authorize?],
+             false
+           ) do
+      records =
+        records
+        |> Helpers.restrict_field_access(query)
+        |> add_tenant(query)
+        |> attach_fields(nil, initial_query, query, false)
+        |> cleanup_field_auth(query)
+
+      {:ok, records}
+    else
+      {:error, %Ash.Query{errors: errors} = query} ->
+        {:error, Ash.Error.to_error_class(errors, query: query)}
+
+      {:error, %Ash.Error.Forbidden.Placeholder{authorizer: authorizer}} ->
+        error =
+          Ash.Authorizer.exception(
+            authorizer,
+            :forbidden,
+            query_ran.context[:private][:authorizer_state][authorizer]
+          )
+
+        {:error, Ash.Error.to_error_class(error)}
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error, query: query)}
+    end
   end
 
   @doc false
@@ -2967,23 +3034,18 @@ defmodule Ash.Actions.Read do
   @doc false
   def add_page(data, action, count, sort, original_query, new_query, opts) do
     cond do
-      opts[:skip_pagination?] ->
+      not paginated?(original_query, action, opts) ->
         data
 
-      action.pagination == false ->
-        data
-
-      original_query.page == false ->
-        data
-
-      opts[:return_unpaged?] && original_query.page[:limit] ->
-        Ash.Page.Unpaged.new(data, opts)
-
-      original_query.page[:limit] ->
-        to_page(data, action, count, sort, original_query, new_query, opts)
+      opts[:return_unpaged?] ->
+        Ash.Page.Unpaged.new(
+          data,
+          opts,
+          new_query.context[:pagination_more_by_source] || %{}
+        )
 
       true ->
-        data
+        to_page(data, action, count, sort, original_query, new_query, opts)
     end
   end
 
@@ -3015,7 +3077,31 @@ defmodule Ash.Actions.Read do
         last_record = List.last(data)
         not is_nil(last_record) && not is_nil(last_record.__metadata__[:keyset])
       else
-        not Enum.empty?(rest)
+        # The extra row is dropped before `after_action` hooks run, so `more?`
+        # comes from the query, or from the records when a relationship load
+        # builds its pages from a different one.
+        cond do
+          is_boolean(new_query.context[:pagination_more?]) ->
+            new_query.context[:pagination_more?]
+
+          is_map(new_query.context[:pagination_more_by_source]) ->
+            # A relationship load: one answer per source record, keyed by the
+            # `__lateral_join_source__` these rows carry.
+            case data do
+              [record | _] ->
+                Map.get(
+                  new_query.context[:pagination_more_by_source],
+                  record.__lateral_join_source__,
+                  false
+                )
+
+              [] ->
+                false
+            end
+
+          true ->
+            not Enum.empty?(rest)
+        end
       end
 
     if page_opts[:offset] do
@@ -3057,6 +3143,72 @@ defmodule Ash.Actions.Read do
     else
       data
     end
+  end
+
+  # Pagination fetches one row beyond the requested limit so that `more?` can be
+  # determined. That row is an implementation detail that must never reach an
+  # `authorize_results` or `after_action` hook, or the caller, so it is dropped
+  # right after the data layer returns, before any of those run. `more?` is
+  # remembered on the query, which is where a fact about the page belongs.
+  #
+  # A paginated relationship load is always a lateral join, so the unpaged
+  # (`return_unpaged?`) case is covered by the per-parent clause below.
+  defp drop_pagination_extra(query, results, opts) do
+    cond do
+      not paginated?(query, query.action, opts) ->
+        {query, results}
+
+      match?(%{data_layer: %{lateral_join_source: {_, _}}}, query.context) ->
+        # A lateral join fetches `limit + 1` rows *per source record*, so both
+        # the extra row and `more?` are per parent.
+        drop_pagination_extra_per_parent(query, results, query.page[:limit])
+
+      true ->
+        {results, more?} = take_page(results, query.page[:limit])
+        {Ash.Query.set_context(query, %{pagination_more?: more?}), results}
+    end
+  end
+
+  # The page for each parent is built later, by `Ash.Actions.Read.to_page/7`, from
+  # a query this read never reaches. `more?` travels there on the query context,
+  # then in `Ash.Page.Unpaged.more_by_source`, and is copied back onto the
+  # per-parent query by `Ash.Actions.Read.Relationships`. It is keyed by the raw
+  # `__lateral_join_source__` the rows carry: every row of one parent gets an
+  # identical copy of that parent's value, so rows only ever need to be compared
+  # with rows, never with the parent record itself. That is why no key
+  # normalization is needed here, unlike when rows are matched to parents in
+  # `Ash.Actions.Read.Relationships.attach_lateral_join_related_records/4`.
+  defp drop_pagination_extra_per_parent(query, results, limit) do
+    groups =
+      results
+      |> Enum.with_index()
+      |> Enum.group_by(fn {record, _index} -> record.__lateral_join_source__ end)
+
+    more_by_source =
+      Map.new(groups, fn {source, records} -> {source, length(records) > limit} end)
+
+    results =
+      groups
+      |> Enum.flat_map(fn {_source, records} -> Enum.take(records, limit) end)
+      |> Enum.sort_by(&elem(&1, 1))
+      |> Enum.map(&elem(&1, 0))
+
+    # Replaced rather than merged: a rerun for a single parent must not keep the
+    # answers of its siblings from the original load.
+    {%{query | context: Map.put(query.context, :pagination_more_by_source, more_by_source)},
+     results}
+  end
+
+  defp take_page(results, limit) do
+    {results, extra} = Enum.split(results, limit)
+    {results, extra != []}
+  end
+
+  # Whether this read produces a page at all. Shared by `add_page/7` and
+  # `drop_pagination_extra/3` so the two can't disagree about it.
+  defp paginated?(%{page: page_opts}, action, opts) do
+    not (opts[:skip_pagination?] || action.pagination == false ||
+           page_opts in [nil, false] || is_nil(page_opts[:limit]))
   end
 
   defp remove_already_selected(fields, %struct{results: results})
