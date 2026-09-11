@@ -6641,8 +6641,15 @@ defmodule Ash.Changeset do
             |> store_casted_argument(action_argument.name, last_val, store_casted?)
         end
       else
-        %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
-        |> store_casted_argument(argument, value, store_casted?)
+        add_error(
+          changeset,
+          NoSuchInput.exception(
+            resource: changeset.resource,
+            action: changeset.action.name,
+            input: argument,
+            inputs: Ash.Resource.Info.action_inputs(changeset.resource, changeset.action.name)
+          )
+        )
       end
     else
       %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
