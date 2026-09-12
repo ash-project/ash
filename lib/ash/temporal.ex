@@ -4,35 +4,48 @@
 
 defmodule Ash.Temporal do
   @moduledoc """
-  The `as_of` algebra: the instant a read sees, and the period a write establishes.
+  Resolves `as_of` into the point of time or period that the data layer stores.
 
-    * `resolve_as_of/1` — the instant a read sees
-    * `write_instant/2` — the instant a write supersedes at
-    * `write_period/2` — the period a write establishes, `[instant, ∞)`
-    * `now_for/1` — the current instant in an extent
+  On a [temporal resource](/documentation/topics/advanced/temporal-resources.md) every
+  version of a record is valid for a period. You can provide a `DateTime`, a `Date`, or
+  `:now` for resolution by the data layer.
 
-  Each answers in the inner type of the resource's period, so `:now` is a `Date` on a
-  `:date` extent and a second-precision `DateTime` on a `:datetime` one.
+  ```elixir
+  # a read resolves as_of a point in time
+  Ash.Temporal.resolve_as_of(query.as_of)
 
-  A temporal data layer passes `:now` for a write that names no `as_of`.
+  # a write resolves a period beginning at the point,
+  # and extending forever unless a later write closes it
+  {:ok, instant} = Ash.Temporal.write_instant(resource, :now)
+  {:ok, period} = Ash.Temporal.write_period(resource, :now)
+  ```
+
+  The write functions return a value of the type the resource builds its periods from. On a
+  `:date` resource `:now` gives you a `Date`. On a `:datetime` one it gives you a `DateTime`
+  according to its constraints. Not every type has a current value. A resource that numbers
+  its versions from one has no `:now` to give and the write functions return `:error`.
+
+  A write that provides no `as_of` takes effect now. Data layers provide `:now` for this.
   """
 
   @typedoc "An `as_of` as a caller may give it, before it is resolved."
   @type as_of :: :now | term() | nil
 
   @doc """
-  The instant a read "as of" `as_of` sees.
+  Resolves an `as_of` to a point in time.
 
-  `:now` resolves to the current instant; `nil` is unset and stays so.
+  `:now` resolves to the current time. Anything else is returned unchanged. `nil` means no
+  particular time was provided.
   """
   @spec resolve_as_of(as_of()) :: term() | nil
   def resolve_as_of(:now), do: DateTime.utc_now()
   def resolve_as_of(other), do: other
 
   @doc """
-  The period a write "as of" `as_of` establishes, in `resource`'s period type.
+  Resolves the period a write is valid for.
 
-  An instant opens a period at itself: `[instant, ∞)`.
+  The value comes back in the type the resource builds its periods from. It begins where
+  the write takes effect and extends forever unless a later write closes it.
   """
   @spec write_period(Ash.Resource.t(), as_of()) :: {:ok, Ash.Range.t()} | :error
   def write_period(resource, as_of) do
@@ -43,7 +56,10 @@ defmodule Ash.Temporal do
   end
 
   @doc """
-  The instant a write "as of" `as_of` supersedes at, in `resource`'s inner type.
+  Resolves the point where a write first takes effect.
+
+  The value comes back in the type the resource builds its periods from. Converting applies
+  whatever precision its constraints declare.
   """
   @spec write_instant(Ash.Resource.t(), as_of()) :: {:ok, term()} | :error
   def write_instant(resource, as_of) do
@@ -63,10 +79,10 @@ defmodule Ash.Temporal do
   end
 
   @doc """
-  The current instant in `inner_type`.
+  Returns the current time as `inner_type`.
 
-  A datetime extent answers a `DateTime`, `:naive_datetime` a `NaiveDateTime`, `:date` a
-  `Date`. Any other answers `:error`.
+  `:date` gives you a `Date` and `:naive_datetime` a `NaiveDateTime`. The datetime types
+  give you a `DateTime`. Anything else has no current time so this returns `:error`.
   """
   @spec now_for(Ash.Type.t() | nil) :: {:ok, term()} | :error
   # Resolved through `get_type/1`: an inner type reads back as a module, and matching the
