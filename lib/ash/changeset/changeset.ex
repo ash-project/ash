@@ -4228,17 +4228,18 @@ defmodule Ash.Changeset do
   # A `&DateTime.utc_now/0` default on a write that carries an `as_of` resolves to that
   # instant rather than the wall clock (see `Ash.Helpers.resolve_default/2`).
   defp default(changeset, :create, attribute),
-    do: Ash.Helpers.resolve_default(attribute.default, Ash.Query.resolve_as_of(changeset.as_of))
+    do:
+      Ash.Helpers.resolve_default(attribute.default, Ash.Temporal.resolve_as_of(changeset.as_of))
 
   defp default(changeset, :update, attribute) do
     Ash.Helpers.resolve_default(
       attribute.update_default,
-      Ash.Query.resolve_as_of(changeset.as_of)
+      Ash.Temporal.resolve_as_of(changeset.as_of)
     )
   end
 
   defp resolve_default(changeset, default),
-    do: Ash.Helpers.resolve_default(default, Ash.Query.resolve_as_of(changeset.as_of))
+    do: Ash.Helpers.resolve_default(default, Ash.Temporal.resolve_as_of(changeset.as_of))
 
   defp validation_attribute(changeset) do
     case List.last(changeset.atomics) do

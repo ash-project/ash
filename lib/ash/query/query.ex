@@ -3124,10 +3124,8 @@ defmodule Ash.Query do
   end
 
   @doc false
-  # `:now` means "current time at execution"; resolve it where as_of is consumed
-  # as a concrete value. A `DateTime` fixes the instant; `nil` means unset.
-  def resolve_as_of(:now), do: DateTime.utc_now()
-  def resolve_as_of(other), do: other
+  # Kept so that data layers calling it keep compiling; `Ash.Temporal` is where it lives.
+  defdelegate resolve_as_of(as_of), to: Ash.Temporal
 
   # Apply an `as_of` from opts without clobbering an unset query when there is none.
   defp maybe_set_as_of(query, nil), do: query
@@ -4552,7 +4550,7 @@ defmodule Ash.Query do
       |> Map.put(:action, ash_query.action)
       |> Map.put_new(:private, %{})
       |> put_in([:private, :tenant], ash_query.tenant)
-      |> put_in([:private, :as_of], resolve_as_of(ash_query.as_of))
+      |> put_in([:private, :as_of], Ash.Temporal.resolve_as_of(ash_query.as_of))
       |> Map.put_new(:data_layer, %{})
 
     context =

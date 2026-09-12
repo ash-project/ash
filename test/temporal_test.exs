@@ -301,6 +301,74 @@ defmodule Ash.TemporalTest do
     end
   end
 
+  describe "Ash.Temporal.resolve_as_of/1" do
+    test "answers the current instant for :now" do
+      before = DateTime.utc_now()
+      resolved = Ash.Temporal.resolve_as_of(:now)
+      assert DateTime.compare(resolved, before) in [:eq, :gt]
+    end
+
+    test "passes an instant and an unset as_of through" do
+      assert Ash.Temporal.resolve_as_of(@as_of) == @as_of
+      assert Ash.Temporal.resolve_as_of(nil) == nil
+    end
+
+    test "is what Ash.Query.resolve_as_of/1 answers" do
+      assert Ash.Query.resolve_as_of(@as_of) == Ash.Temporal.resolve_as_of(@as_of)
+    end
+  end
+
+  describe "Ash.Temporal.now_for/1" do
+    test "answers now in the extent's own type" do
+      assert {:ok, %DateTime{}} = Ash.Temporal.now_for(:datetime)
+      assert {:ok, %DateTime{}} = Ash.Temporal.now_for(:utc_datetime)
+      assert {:ok, %DateTime{}} = Ash.Temporal.now_for(:utc_datetime_usec)
+      assert {:ok, %NaiveDateTime{}} = Ash.Temporal.now_for(:naive_datetime)
+      assert {:ok, %Date{}} = Ash.Temporal.now_for(:date)
+    end
+
+    test "refuses an extent that is not made of time" do
+      assert :error = Ash.Temporal.now_for(:integer)
+      assert :error = Ash.Temporal.now_for(nil)
+    end
+  end
+
+  describe "Ash.Temporal.write_instant/2" do
+    test "casts an instant through the resource's inner type" do
+      assert {:ok, instant} =
+               Ash.Temporal.write_instant(Ash.Test.Temporal.EtsVersioned, @as_of)
+
+      assert instant == DateTime.truncate(@as_of, :second)
+    end
+
+    test "resolves :now in the resource's inner type" do
+      assert {:ok, %DateTime{microsecond: {0, 0}}} =
+               Ash.Temporal.write_instant(Ash.Test.Temporal.EtsVersioned, :now)
+    end
+
+    test "refuses :now on an extent with no current value" do
+      assert :error = Ash.Temporal.write_instant(Ash.Test.Temporal.EtsIntegerExtent, :now)
+    end
+
+    test "refuses an as_of that is not an instant, rather than guessing one" do
+      assert :error = Ash.Temporal.write_instant(Ash.Test.Temporal.EtsVersioned, nil)
+      assert :error = Ash.Temporal.write_instant(Ash.Test.Temporal.EtsVersioned, "2020-06-15")
+    end
+  end
+
+  describe "Ash.Temporal.write_period/2" do
+    test "opens a period at the instant, unbounded above" do
+      assert {:ok, %Ash.Range{lower: lower, upper: nil}} =
+               Ash.Temporal.write_period(Ash.Test.Temporal.EtsVersioned, @as_of)
+
+      assert lower == DateTime.truncate(@as_of, :second)
+    end
+
+    test "has no period when it has no instant" do
+      assert :error = Ash.Temporal.write_period(Ash.Test.Temporal.EtsVersioned, nil)
+    end
+  end
+
   defp narrow(as_of) do
     Ash.Filter.Runtime.as_of_matches(
       [%{valid_at: @period}],

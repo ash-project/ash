@@ -1892,8 +1892,8 @@ defmodule Ash.DataLayer.Ets do
   defp put_established_period(record, _attribute, %Ash.Range{}, _resource, _changeset), do: record
 
   defp put_established_period(record, attribute, nil, resource, changeset) do
-    case write_instant(resource, changeset) do
-      {:ok, as_of} -> Map.put(record, attribute, %Ash.Range{lower: as_of})
+    case Ash.Temporal.write_period(resource, write_as_of(changeset)) do
+      {:ok, period} -> Map.put(record, attribute, period)
       :error -> record
     end
   end
@@ -1902,53 +1902,15 @@ defmodule Ash.DataLayer.Ets do
 
   # Without an instant the query sees every version, not the one holding it.
   defp upsert_instant(resource, changeset) do
-    case write_instant(resource, changeset) do
+    case Ash.Temporal.write_instant(resource, write_as_of(changeset)) do
       {:ok, instant} -> instant
       :error -> nil
     end
   end
 
-  # Casting through the inner type settles precision: `:datetime` is second-resolution.
-  defp write_instant(resource, changeset) do
-    inner_type = Ash.Resource.Info.temporal_inner_type(resource)
-
-    with {:ok, raw} <- raw_instant(changeset, inner_type),
-         {:ok, instant} <-
-           Ash.Type.cast_input(
-             inner_type,
-             raw,
-             Ash.Resource.Info.temporal_inner_constraints(resource) || []
-           ) do
-      {:ok, instant}
-    else
-      _ -> :error
-    end
-  end
-
-  defp raw_instant(%{as_of: %DateTime{} = as_of}, _inner_type), do: {:ok, as_of}
-
-  defp raw_instant(%{as_of: as_of}, inner_type) when as_of in [nil, :now],
-    do: now_for(inner_type)
-
-  defp raw_instant(_changeset, _inner_type), do: :error
-
-  # Resolved through `get_type/1`: an inner type reads back as a module, and matching the
-  # short names alone silently answers `:error`.
-  defp now_for(inner_type) do
-    case Ash.Type.get_type(inner_type) do
-      type when type in [Ash.Type.DateTime, Ash.Type.UtcDatetime, Ash.Type.UtcDatetimeUsec] ->
-        {:ok, DateTime.utc_now()}
-
-      Ash.Type.NaiveDatetime ->
-        {:ok, NaiveDateTime.utc_now()}
-
-      Ash.Type.Date ->
-        {:ok, Date.utc_today()}
-
-      _ ->
-        :error
-    end
-  end
+  # A write that is not time travelling names no instant, and takes effect now.
+  defp write_as_of(%{as_of: nil}), do: :now
+  defp write_as_of(%{as_of: as_of}), do: as_of
 
   defp set_loaded(%resource{} = record) do
     %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}
@@ -2340,7 +2302,7 @@ defmodule Ash.DataLayer.Ets do
   # `nil` writes in place: no period, or a period with no now to supersede at.
   defp supersession(resource, changeset) do
     with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
-         {:ok, as_of} <- write_instant(resource, changeset) do
+         {:ok, as_of} <- Ash.Temporal.write_instant(resource, write_as_of(changeset)) do
       {period, as_of}
     else
       _ -> nil
