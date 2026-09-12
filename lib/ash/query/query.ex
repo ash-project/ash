@@ -3123,10 +3123,6 @@ defmodule Ash.Query do
     |> set_context(%{shared: %{as_of: as_of}})
   end
 
-  @doc false
-  # Kept so that data layers calling it keep compiling; `Ash.Temporal` is where it lives.
-  defdelegate resolve_as_of(as_of), to: Ash.Temporal
-
   # Apply an `as_of` from opts without clobbering an unset query when there is none.
   defp maybe_set_as_of(query, nil), do: query
   defp maybe_set_as_of(query, value), do: as_of(query, value)

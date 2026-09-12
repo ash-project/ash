@@ -312,10 +312,6 @@ defmodule Ash.TemporalTest do
       assert Ash.Temporal.resolve_as_of(@as_of) == @as_of
       assert Ash.Temporal.resolve_as_of(nil) == nil
     end
-
-    test "is what Ash.Query.resolve_as_of/1 answers" do
-      assert Ash.Query.resolve_as_of(@as_of) == Ash.Temporal.resolve_as_of(@as_of)
-    end
   end
 
   describe "Ash.Temporal.now_for/1" do
