@@ -330,6 +330,24 @@ defmodule Ash.Actions.Destroy do
     end
   end
 
+  # Manual destroys may return notifications as a bare list. Normalise to the
+  # `%{notifications: ...}` shape the clauses below and `Helpers.notify/3` expect,
+  # otherwise the result hits the catch-all and every notification is dropped.
+  defp manage_relationships(
+         {:ok, destroyed, notifications},
+         domain,
+         changeset,
+         engine_opts
+       )
+       when is_list(notifications) do
+    manage_relationships(
+      {:ok, destroyed, %{notifications: notifications}},
+      domain,
+      changeset,
+      engine_opts
+    )
+  end
+
   defp manage_relationships(
          {:ok, destroyed, %{notifications: notifications}},
          domain,
