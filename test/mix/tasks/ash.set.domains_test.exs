@@ -9,7 +9,7 @@ defmodule Mix.Tasks.Ash.Set.DomainsTest do
   test "branch 1: leaves file unchanged when no domains are discovered" do
     igniter = test_project()
 
-    igniter = Mix.Tasks.Ash.Set.Domains.igniter(igniter, [])
+    igniter = Mix.Tasks.Ash.Set.Domains.igniter(igniter)
 
     assert igniter.issues == []
     assert igniter.tasks == []
@@ -36,7 +36,7 @@ defmodule Mix.Tasks.Ash.Set.DomainsTest do
       )
       |> Igniter.include_all_elixir_files()
 
-    igniter = Mix.Tasks.Ash.Set.Domains.igniter(igniter, [])
+    igniter = Mix.Tasks.Ash.Set.Domains.igniter(igniter)
 
     assert_has_patch(igniter, "config/config.exs", """
     |import Config
