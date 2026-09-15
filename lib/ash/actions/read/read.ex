@@ -3298,7 +3298,7 @@ defmodule Ash.Actions.Read do
   def add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain, opts) do
     # Thread the query's `as_of` so `now()`/`ago()`/`from_now()` are anchored to it
     # during calc/aggregate/filter expansion (see `add_calc_context_to_filter`).
-    opts = Keyword.put_new(opts, :as_of, Ash.Query.resolve_as_of(query.as_of))
+    opts = Keyword.put_new(opts, :as_of, Ash.Temporal.resolve_as_of(query.as_of))
 
     {:ok, sort} =
       add_calc_context_to_sort(
