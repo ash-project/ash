@@ -18,8 +18,7 @@ defmodule Ash.Page.Unpaged do
   Creates a new `Ash.Page.Unpaged.t`.
 
   `more_by_source` records, per `__lateral_join_source__`, whether that source
-  record has a next page. The extra row pagination fetches to determine this is
-  dropped before the related records get here.
+  record has a next page.
   """
   @spec new([Ash.Resource.Record.t()], Keyword.t(), %{term() => boolean()}) :: t()
   def new(related_records, opts, more_by_source \\ %{}) do

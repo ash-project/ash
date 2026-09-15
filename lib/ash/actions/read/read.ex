@@ -1069,8 +1069,7 @@ defmodule Ash.Actions.Read do
              :ok <- validate_combinations(query, calculations_at_runtime, query.load),
              {:ok, data_layer_query} <-
                Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations) do
-          # Pages remember their read opts so `Ash.page/2` can rerun the read.
-          # A rerun must produce the next page, not another data layer query.
+          # `Ash.page/2` reruns the read with these, so it must produce a page.
           page_opts = Keyword.delete(opts, :data_layer_query?)
 
           {:ok,
@@ -1081,8 +1080,6 @@ defmodule Ash.Actions.Read do
                case data do
                  %struct{results: results} = page
                  when struct in [Ash.Page.Offset, Ash.Page.Keyset] ->
-                   # `run` already built the page, so only its records need
-                   # loading. The page keeps its `more?` and `count`.
                    with {:ok, results} <-
                           load_data_layer_results(
                             results,
@@ -1097,9 +1094,7 @@ defmodule Ash.Actions.Read do
                    end
 
                  results when is_list(results) ->
-                   # Raw rows, e.g. from a data layer query the caller ran
-                   # themselves. For a paginated query the extra row is still
-                   # present, which is what lets `add_page` determine `more?`.
+                   # Raw rows from a data layer query the caller ran themselves.
                    with {:ok, results} <-
                           load_data_layer_results(
                             results,
@@ -1154,7 +1149,6 @@ defmodule Ash.Actions.Read do
                     {:ok, resolved_count} <- count.() do
                  notify_or_store(query, before_notifications ++ after_notifications, notify?)
 
-                 # For a paginated query this is the page; `load` accepts it as is.
                  {:ok,
                   results
                   |> add_tenant(query)
@@ -1305,8 +1299,8 @@ defmodule Ash.Actions.Read do
     "__paginated_#{relationship_name}_count__"
   end
 
-  # The loading half of `Ash.data_layer_query/2`: everything `Ash.read/2` does
-  # to records after they come back from the data layer, minus paging.
+  # Everything `Ash.read/2` does to records after they come back from the data
+  # layer, minus paging.
   defp load_data_layer_results(
          records,
          query_ran,
@@ -3076,16 +3070,15 @@ defmodule Ash.Actions.Read do
         last_record = List.last(data)
         not is_nil(last_record) && not is_nil(last_record.__metadata__[:keyset])
       else
-        # The extra row is dropped before `after_action` hooks run, so `more?`
-        # comes from the query, or from the records when a relationship load
-        # builds its pages from a different one.
+        # `drop_pagination_extra/3` already removed the extra row and put `more?`
+        # on the context. Raw rows given to `load` skip it, so there the extra
+        # row is still in `data` and ends up in `rest`.
         cond do
           is_boolean(new_query.context[:pagination_more?]) ->
             new_query.context[:pagination_more?]
 
           is_map(new_query.context[:pagination_more_by_source]) ->
-            # A relationship load: one answer per source record, keyed by the
-            # `__lateral_join_source__` these rows carry.
+            # A relationship load: one answer per `__lateral_join_source__`.
             case data do
               [record | _] ->
                 Map.get(
@@ -3144,22 +3137,15 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  # Pagination fetches one row beyond the requested limit so that `more?` can be
-  # determined. That row is an implementation detail that must never reach an
-  # `authorize_results` or `after_action` hook, or the caller, so it is dropped
-  # right after the data layer returns, before any of those run. `more?` is
-  # remembered on the query, which is where a fact about the page belongs.
-  #
-  # A paginated relationship load is always a lateral join, so the unpaged
-  # (`return_unpaged?`) case is covered by the per-parent clause below.
+  # Drops the extra row fetched to determine `more?` and records `more?` on the
+  # query context, so `to_page/7` can build the page without it.
   defp drop_pagination_extra(query, results, opts) do
     cond do
       not paginated?(query, query.action, opts) ->
         {query, results}
 
       match?(%{data_layer: %{lateral_join_source: {_, _}}}, query.context) ->
-        # A lateral join fetches `limit + 1` rows *per source record*, so both
-        # the extra row and `more?` are per parent.
+        # A lateral join fetches `limit + 1` rows per source record.
         drop_pagination_extra_per_parent(query, results, query.page[:limit])
 
       true ->
@@ -3168,15 +3154,9 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  # The page for each parent is built later, by `Ash.Actions.Read.to_page/7`, from
-  # a query this read never reaches. `more?` travels there on the query context,
-  # then in `Ash.Page.Unpaged.more_by_source`, and is copied back onto the
-  # per-parent query by `Ash.Actions.Read.Relationships`. It is keyed by the raw
-  # `__lateral_join_source__` the rows carry: every row of one parent gets an
-  # identical copy of that parent's value, so rows only ever need to be compared
-  # with rows, never with the parent record itself. That is why no key
-  # normalization is needed here, unlike when rows are matched to parents in
-  # `Ash.Actions.Read.Relationships.attach_lateral_join_related_records/4`.
+  # `more?` per `__lateral_join_source__`, carried to the per-parent `to_page/7`
+  # call via `Ash.Page.Unpaged.more_by_source`. Rows of one parent all carry the
+  # same source value, so no key normalization is needed here.
   defp drop_pagination_extra_per_parent(query, results, limit) do
     groups =
       results
@@ -3192,8 +3172,6 @@ defmodule Ash.Actions.Read do
       |> Enum.sort_by(&elem(&1, 1))
       |> Enum.map(&elem(&1, 0))
 
-    # Replaced rather than merged: a rerun for a single parent must not keep the
-    # answers of its siblings from the original load.
     {%{query | context: Map.put(query.context, :pagination_more_by_source, more_by_source)},
      results}
   end
@@ -3203,8 +3181,6 @@ defmodule Ash.Actions.Read do
     {results, extra != []}
   end
 
-  # Whether this read produces a page at all. Shared by `add_page/7` and
-  # `drop_pagination_extra/3` so the two can't disagree about it.
   defp paginated?(%{page: page_opts}, action, opts) do
     not (opts[:skip_pagination?] || action.pagination == false ||
            page_opts in [nil, false] || is_nil(page_opts[:limit]))

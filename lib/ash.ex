@@ -2981,17 +2981,13 @@ defmodule Ash do
   ## Pagination
 
   When the query is paginated, `run` returns an `Ash.Page.Offset` or
-  `Ash.Page.Keyset` rather than a list. The data layer query fetches one row
-  beyond the page limit so that `more?` can be determined; `run` drops that row
-  before any `authorize_results` or `after_action` hooks see it, exactly as
-  `Ash.read/2` does, and sets `more?` (and `count`, when requested) on the page.
-  For an unpaginated query `run` returns a list of records.
+  `Ash.Page.Keyset` rather than a list, otherwise a list of records.
 
   Pass whatever `run` returned to `load`, which loads relationships,
   calculations and load-through attributes on the records and returns the same
-  shape it was given. `load` also accepts the raw rows of a paginated data
-  layer query you executed yourself, extra row included, and builds the page
-  from them. Passing `page.results` instead of the page loses `more?`.
+  shape it was given. `load` also accepts the raw rows of a data layer query
+  you executed yourself and builds the page from them. Passing `page.results`
+  instead of the page loses `more?`.
 
   ## Examples
 
