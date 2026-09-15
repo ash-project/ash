@@ -79,11 +79,7 @@ defmodule Ash.Reactor.Notifications do
 
       notifications when is_list(notifications) ->
         if Process.get(:ash_started_transaction?) do
-          Process.put(
-            :ash_notifications,
-            List.wrap(Process.get(:ash_notifications)) ++
-              notifications
-          )
+          Ash.Actions.Helpers.queue_notifications(notifications)
         else
           {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 

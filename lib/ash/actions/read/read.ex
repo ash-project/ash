@@ -1706,17 +1706,12 @@ defmodule Ash.Actions.Read do
 
   defp notify_or_store(_query, notifications, notify?) do
     if notify? do
-      notifications =
-        Ash.Notifier.notify(notifications ++ (Process.delete(:ash_notifications) || []))
-
-      Process.put(:ash_notifications, notifications)
+      notifications
+      |> Enum.concat(Helpers.take_queued_notifications())
+      |> Ash.Notifier.notify()
+      |> Helpers.queue_notifications()
     else
-      current_notifications = Process.get(:ash_notifications, [])
-
-      Process.put(
-        :ash_notifications,
-        notifications ++ current_notifications
-      )
+      Helpers.queue_notifications(notifications)
     end
   end
 

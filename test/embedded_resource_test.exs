@@ -729,6 +729,28 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     assert List.first(notifications).changeset.context[:changed?] == false
   end
 
+  test "casting embedded resources without notifiers inside a transaction does not queue notifications" do
+    # Simulates being inside an outer transaction, where notifications are
+    # deferred into the process dictionary until the transaction completes.
+    Process.put(:ash_started_transaction?, true)
+
+    try do
+      for i <- 1..25 do
+        input = %{first_name: "first_#{i}", last_name: "last_#{i}"}
+        {:ok, profile} = Ash.Type.cast_input(Profile, input)
+        {:ok, _} = Ash.Type.apply_constraints(Profile, profile, [])
+
+        {:ok, [profile]} = Ash.Type.cast_input({:array, Profile}, [input])
+        {:ok, _} = Ash.Type.apply_constraints({:array, Profile}, [profile], [])
+      end
+
+      assert Process.get(:ash_notifications, []) == []
+    after
+      Process.delete(:ash_started_transaction?)
+      Process.delete(:ash_notifications)
+    end
+  end
+
   describe "error messages include field context" do
     defmodule FailingType do
       @moduledoc false

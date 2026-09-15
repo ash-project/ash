@@ -431,34 +431,64 @@ defmodule Ash.Actions.Helpers do
   end
 
   @doc false
+  def queue_notifications(notifications) do
+    case List.wrap(notifications) do
+      [] ->
+        :ok
+
+      notifications ->
+        case Process.get(:ash_notifications) do
+          nil -> Process.put(:ash_notifications, notifications)
+          current -> Process.put(:ash_notifications, [current, notifications])
+        end
+
+        :ok
+    end
+  end
+
+  @doc false
+  def peek_queued_notifications do
+    :ash_notifications |> Process.get([]) |> List.flatten()
+  end
+
+  @doc false
+  def take_queued_notifications do
+    case Process.delete(:ash_notifications) do
+      nil -> []
+      notifications -> List.flatten(notifications)
+    end
+  end
+
+  @doc false
   def notify({:ok, record, instructions}, changeset, opts) do
     resource_notification = resource_notification(changeset, record, opts)
 
-    if opts[:return_notifications?] do
-      {:ok, record,
-       Map.update(
-         instructions,
-         :notifications,
-         [resource_notification],
-         &[resource_notification | &1]
-       )}
-    else
-      if Process.get(:ash_started_transaction?) do
-        current_notifications = Process.get(:ash_notifications, [])
+    cond do
+      opts[:return_notifications?] ->
+        {:ok, record,
+         Map.update(
+           instructions,
+           :notifications,
+           [resource_notification],
+           &[resource_notification | &1]
+         )}
 
-        Process.put(
-          :ash_notifications,
-          [resource_notification | current_notifications]
-        )
-      else
+      resource_notification.for == [] ->
+        {:ok, record, instructions}
+
+      Process.get(:ash_started_transaction?) ->
+        queue_notifications([resource_notification])
+
+        {:ok, record, instructions}
+
+      true ->
         unsent_notifications = Ash.Notifier.notify([resource_notification])
 
         warn_missed!(changeset.resource, changeset.action, %{
           resource_notifications: unsent_notifications
         })
-      end
 
-      {:ok, record, instructions}
+        {:ok, record, instructions}
     end
   end
 

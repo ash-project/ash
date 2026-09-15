@@ -503,10 +503,7 @@ defmodule Ash.Actions.Update.UpdateMany do
         %{result | notifications: nil}
 
       Process.get(:ash_started_transaction?, false) ->
-        Process.put(
-          :ash_notifications,
-          List.wrap(Process.get(:ash_notifications)) ++ result.notifications
-        )
+        Ash.Actions.Helpers.queue_notifications(result.notifications)
 
         %{result | notifications: []}
 

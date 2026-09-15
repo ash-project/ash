@@ -191,10 +191,7 @@ defmodule Ash.Actions.Helpers.Bulk do
           |> Ash.Notifier.notify()
 
         if Process.get(:ash_started_transaction?) do
-          Process.put(
-            :ash_notifications,
-            Process.get(:ash_notifications, []) ++ unsent_notifications
-          )
+          Ash.Actions.Helpers.queue_notifications(unsent_notifications)
         end
 
         nil

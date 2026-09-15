@@ -4370,12 +4370,12 @@ defmodule Ash do
                %{type: :custom, metadata: %{}, tenant: opts[:tenant]}
              ) do
         if opts[:return_notifications?] do
-          notifications = Process.delete(:ash_notifications) || []
+          notifications = Ash.Actions.Helpers.take_queued_notifications()
 
           {:ok, result, notifications}
         else
           if notify? do
-            notifications = Process.delete(:ash_notifications) || []
+            notifications = Ash.Actions.Helpers.take_queued_notifications()
 
             remaining = Ash.Notifier.notify(notifications)
 
@@ -4405,9 +4405,9 @@ defmodule Ash do
       end
 
       if old_notifications do
-        notifications = Process.get(:ash_notifications) || []
-
-        Process.put(:ash_notifications, old_notifications ++ notifications)
+        inner_notifications = Process.delete(:ash_notifications)
+        Process.put(:ash_notifications, old_notifications)
+        Ash.Actions.Helpers.queue_notifications(inner_notifications)
       end
     end
   end
@@ -4474,12 +4474,12 @@ defmodule Ash do
                rollback_on_error?: true
              ) do
         if opts[:return_notifications?] do
-          notifications = Process.delete(:ash_notifications) || []
+          notifications = Ash.Actions.Helpers.take_queued_notifications()
 
           {:ok, result, notifications}
         else
           if notify? do
-            notifications = Process.delete(:ash_notifications) || []
+            notifications = Ash.Actions.Helpers.take_queued_notifications()
 
             remaining = Ash.Notifier.notify(notifications)
 
@@ -4509,9 +4509,11 @@ defmodule Ash do
       end
 
       if old_notifications do
-        notifications = Process.get(:ash_notifications) || []
-
-        Process.put(:ash_notifications, old_notifications ++ notifications)
+        # Restore the outer queue, then append anything queued inside this
+        # transaction so ordering is preserved.
+        inner_notifications = Process.delete(:ash_notifications)
+        Process.put(:ash_notifications, old_notifications)
+        Ash.Actions.Helpers.queue_notifications(inner_notifications)
       end
     end
   end

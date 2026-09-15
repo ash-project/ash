@@ -93,7 +93,7 @@ defmodule Ash.Actions.Create.Bulk do
                     bulk_result
                     | notifications:
                         (bulk_result.notifications || []) ++
-                          (Process.delete(:ash_notifications) || [])
+                          Ash.Actions.Helpers.take_queued_notifications()
                   }
                 else
                   bulk_result
@@ -738,9 +738,8 @@ defmodule Ash.Actions.Create.Bulk do
         end
       after
         if notify? do
-          notifications = Process.get(:ash_notifications, [])
+          notifications = Ash.Actions.Helpers.take_queued_notifications()
           remaining_notifications = Ash.Notifier.notify(notifications)
-          Process.delete(:ash_notifications)
           Process.delete(:ash_started_transaction?)
 
           Ash.Actions.Helpers.warn_missed!(resource, action, %{
@@ -942,7 +941,7 @@ defmodule Ash.Actions.Create.Bulk do
 
             notifications =
               if opts[:notify?] do
-                process_notifications = Process.delete(:ash_notifications) || []
+                process_notifications = Ash.Actions.Helpers.take_queued_notifications()
                 bulk_notifications = Process.delete({:bulk_notifications, ref}) || []
 
                 if opts[:return_notifications?] do

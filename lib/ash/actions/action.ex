@@ -227,7 +227,7 @@ defmodule Ash.Actions.Action do
                 if notify? && !opts[:return_notifications?] do
                   Enum.concat(
                     notifications || [],
-                    Process.delete(:ash_notifications) || []
+                    Ash.Actions.Helpers.take_queued_notifications()
                   )
                 else
                   notifications || []

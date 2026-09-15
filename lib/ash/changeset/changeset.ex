@@ -4731,12 +4731,7 @@ defmodule Ash.Changeset do
           {:ok, value, changeset, instructions}
         else
           if Process.get(:ash_started_transaction?) do
-            current_notifications = List.wrap(Process.get(:ash_notifications, []))
-
-            Process.put(
-              :ash_notifications,
-              current_notifications ++ List.wrap(instructions[:notifications])
-            )
+            Ash.Actions.Helpers.queue_notifications(instructions[:notifications])
 
             {:ok, value, changeset, Map.put(instructions, :notifications, [])}
           else
@@ -4745,7 +4740,7 @@ defmodule Ash.Changeset do
 
             notifications =
               if instructions[:gather_notifications?] do
-                Enum.concat(List.wrap(Process.delete(:ash_notifications) || []), notifications)
+                Enum.concat(Ash.Actions.Helpers.take_queued_notifications(), notifications)
               else
                 notifications
               end

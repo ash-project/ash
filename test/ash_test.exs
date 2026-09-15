@@ -502,6 +502,29 @@ defmodule Ash.Test.AshTest do
 
       refute_received {:notification, %{action: %{type: :create}, resource: Item}}
     end
+
+    test "notifications are delivered in the order they were produced" do
+      Ash.transaction(Item, fn ->
+        first = Ash.create!(Item, %{title: "first"})
+        Ash.create!(Item, %{title: "second"})
+
+        Ash.transaction(Item, fn ->
+          Ash.create!(Item, %{title: "nested"})
+        end)
+
+        Ash.update!(first, %{title: "first updated"})
+        Ash.create!(Item, %{title: "third"})
+      end)
+
+      assert_receive {:notification, %{action: %{type: :create}, data: %{title: "first"}}}
+      assert_receive {:notification, %{action: %{type: :create}, data: %{title: "second"}}}
+      assert_receive {:notification, %{action: %{type: :create}, data: %{title: "nested"}}}
+
+      assert_receive {:notification, %{action: %{type: :update}, data: %{title: "first updated"}}}
+
+      assert_receive {:notification, %{action: %{type: :create}, data: %{title: "third"}}}
+      refute_received {:notification, _}
+    end
   end
 
   describe "get!/2" do
