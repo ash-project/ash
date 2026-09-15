@@ -2992,13 +2992,24 @@ defmodule Ash do
           run: (Ash.DataLayer.data_layer_query() ->
                   {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page() | no_return}
                   | {:error, Ash.Error.t()}),
-          load: (list(Ash.Resource.Record.t()) | Ash.Page.page() ->
+          load: (Ash.Query.t(), list(Ash.Resource.Record.t()) | Ash.Page.page() ->
                    {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()}
                    | {:error, Ash.Error.t()})
         }
 
   @doc """
   Gets the full query and any runtime calculations that would be loaded
+
+  ## Pagination
+
+  When the query is paginated, `run` returns an `Ash.Page.Offset` or
+  `Ash.Page.Keyset` rather than a list, otherwise a list of records.
+
+  Pass whatever `run` returned to `load`, which loads relationships,
+  calculations and load-through attributes on the records and returns the same
+  shape it was given. `load` also accepts the raw rows of a data layer query
+  you executed yourself and builds the page from them. Passing `page.results`
+  instead of the page loses `more?`.
 
   ## Examples
 

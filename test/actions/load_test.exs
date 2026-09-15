@@ -225,6 +225,11 @@ defmodule Ash.Test.Actions.LoadTest do
         public?: true
       )
 
+      has_many(:other_posts, Ash.Test.Actions.LoadTest.Post,
+        public?: true,
+        destination_attribute: :author_id
+      )
+
       has_one(:latest_post, Ash.Test.Actions.LoadTest.Post,
         destination_attribute: :author_id,
         sort: [inserted_at: :desc],
@@ -308,6 +313,22 @@ defmodule Ash.Test.Actions.LoadTest do
           offset? true
           default_limit 20
           countable :by_default
+        end
+      end
+
+      read :paginated_with_hook do
+        prepare after_action(fn query, results, _context ->
+                  if pid = query.context[:test_pid] do
+                    send(pid, {:after_action_count, length(results)})
+                  end
+
+                  {:ok, results}
+                end)
+
+        pagination do
+          required? false
+          keyset? true
+          offset? true
         end
       end
 
@@ -1715,6 +1736,150 @@ defmodule Ash.Test.Actions.LoadTest do
       )
 
       :ok
+    end
+
+    defp create_authors_with_posts(counts) do
+      for {name, post_count} <- counts do
+        author =
+          Author
+          |> Ash.Changeset.for_create(:create, %{name: name})
+          |> Ash.create!()
+
+        for i <- 1..post_count//1 do
+          Post
+          |> Ash.Changeset.for_create(:create, %{
+            title: "#{name} post#{i}",
+            author_id: author.id
+          })
+          |> Ash.create!()
+        end
+
+        author
+      end
+    end
+
+    defp hooked_posts_query(opts) do
+      Post
+      |> Ash.Query.for_read(:paginated_with_hook)
+      |> Ash.Query.set_context(%{test_pid: self()})
+      |> Ash.Query.page(opts)
+      |> Ash.Query.sort(:title)
+    end
+
+    defp after_action_counts do
+      receive do
+        {:after_action_count, count} -> [count | after_action_counts()]
+      after
+        0 -> []
+      end
+    end
+
+    test "after_action hooks only see each parent's own page, not the extra row" do
+      create_authors_with_posts([{"a", 5}, {"b", 5}, {"c", 5}])
+
+      assert [author_a, author_b, author_c] =
+               Author
+               |> Ash.Query.sort(:name)
+               |> Ash.Query.load(posts: hooked_posts_query(limit: 2, offset: 0))
+               |> Ash.read!()
+
+      # Three parents, two posts each -- not 3 x (2 + 1).
+      assert after_action_counts() == [6]
+
+      for {author, name} <- [{author_a, "a"}, {author_b, "b"}, {author_c, "c"}] do
+        assert %Ash.Page.Offset{more?: true} = author.posts
+
+        assert Enum.map(author.posts.results, & &1.title) == [
+                 "#{name} post1",
+                 "#{name} post2"
+               ]
+      end
+    end
+
+    test "parents with differing numbers of children each get their own page" do
+      create_authors_with_posts([{"a", 1}, {"b", 5}, {"c", 0}])
+
+      assert [author_a, author_b, author_c] =
+               Author
+               |> Ash.Query.sort(:name)
+               |> Ash.Query.load(posts: hooked_posts_query(limit: 2, offset: 0))
+               |> Ash.read!()
+
+      # "a" has a single post, "b" gets a full page, "c" has none.
+      assert after_action_counts() == [3]
+
+      assert %Ash.Page.Offset{more?: false} = author_a.posts
+      assert Enum.map(author_a.posts.results, & &1.title) == ["a post1"]
+
+      assert %Ash.Page.Offset{more?: true} = author_b.posts
+      assert Enum.map(author_b.posts.results, & &1.title) == ["b post1", "b post2"]
+
+      assert %Ash.Page.Offset{results: [], more?: false} = author_c.posts
+    end
+
+    test "keyset relationship pagination keeps per-parent ordering" do
+      create_authors_with_posts([{"a", 5}, {"b", 5}])
+
+      assert [author_a, author_b] =
+               Author
+               |> Ash.Query.sort(:name)
+               |> Ash.Query.load(posts: hooked_posts_query(limit: 3))
+               |> Ash.read!()
+
+      assert after_action_counts() == [6]
+
+      assert %Ash.Page.Keyset{more?: true} = author_a.posts
+
+      assert Enum.map(author_a.posts.results, & &1.title) == [
+               "a post1",
+               "a post2",
+               "a post3"
+             ]
+
+      assert Enum.map(author_b.posts.results, & &1.title) == [
+               "b post1",
+               "b post2",
+               "b post3"
+             ]
+    end
+
+    test "two paginated relationship loads on the same parent don't interfere" do
+      create_authors_with_posts([{"a", 5}])
+
+      assert [author] =
+               Author
+               |> Ash.Query.load(
+                 posts: hooked_posts_query(limit: 2, offset: 0),
+                 other_posts: hooked_posts_query(limit: 4, offset: 0)
+               )
+               |> Ash.read!()
+
+      # Two separate destination reads, each with its own extra row.
+      assert Enum.sort(after_action_counts()) == [2, 4]
+
+      assert %Ash.Page.Offset{more?: true} = author.posts
+      assert Enum.map(author.posts.results, & &1.title) == ["a post1", "a post2"]
+
+      assert %Ash.Page.Offset{more?: true} = author.other_posts
+
+      assert Enum.map(author.other_posts.results, & &1.title) == [
+               "a post1",
+               "a post2",
+               "a post3",
+               "a post4"
+             ]
+    end
+
+    test "a relationship load whose last page is exact reports more?: false" do
+      create_authors_with_posts([{"a", 4}])
+
+      assert [author] =
+               Author
+               |> Ash.Query.load(posts: hooked_posts_query(limit: 4, offset: 0))
+               |> Ash.read!()
+
+      assert after_action_counts() == [4]
+      assert %Ash.Page.Offset{more?: false} = author.posts
     end
 
     test "it allows paginating has_many relationships with offset pagination" do
