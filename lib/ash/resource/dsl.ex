@@ -624,6 +624,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Action,
     no_depend_modules: [:touches_resources, :error_handler],
+    lifted_function_transform: {Ash.Resource.TypeInference, :transform_lifted_function, []},
     schema: Ash.Resource.Actions.Action.opt_schema(),
     transform: {Ash.Resource.Actions.Action, :transform, []},
     entities: [

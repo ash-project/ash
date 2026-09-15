@@ -13,6 +13,9 @@ defmodule Ash.Resource.Change do
   when this change was configured on a resource, and the context, which currently only has
   the actor.
   """
+
+  require Ash.BehaviourHelpers
+
   defstruct [
     :change,
     :on,
@@ -100,14 +103,18 @@ defmodule Ash.Resource.Change do
   @spec change(module(), Ash.Changeset.t(), Keyword.t(), Ash.Resource.Change.Context.t()) ::
           Ash.Changeset.t()
   def change(module, changeset, opts, context) do
-    Ash.BehaviourHelpers.call_and_validate_return(
-      module,
-      :change,
-      [changeset, opts, context],
-      [%Ash.Changeset{}],
-      behaviour: __MODULE__,
-      callback_name: "change/3"
-    )
+    action_name = changeset.action && changeset.action.name
+
+    result =
+      changeset.resource.__ash_dispatch_change__(
+        action_name,
+        module,
+        changeset,
+        opts,
+        context
+      )
+
+    Ash.BehaviourHelpers.check_type!(module, result, [%Ash.Changeset{}])
   end
 
   @doc false
@@ -459,8 +466,16 @@ defmodule Ash.Resource.Change do
     end
   end
 
-  defmacro __before_compile__(_) do
+  defmacro __before_compile__(env) do
+    type_inference_definitions =
+      Ash.Resource.TypeInference.capture_definitions(env.module)
+
     quote do
+      @doc false
+      def __ash_type_inference_definitions__ do
+        unquote(Macro.escape(type_inference_definitions))
+      end
+
       if !Module.defines?(__MODULE__, {:change, 3}, :def) &&
            !Module.defines?(__MODULE__, {:atomic, 3}, :def) &&
            !Module.defines?(__MODULE__, {:batch_change, 3}, :def) do
