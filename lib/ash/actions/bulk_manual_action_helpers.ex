@@ -145,6 +145,14 @@ defmodule Ash.Actions.BulkManualActionHelpers do
         {:ok, record, changeset}
 
       {:ok, record, notifications} ->
+        # Manual create/update modules return `%{notifications: [...]}`; unwrap it
+        # so `store_notification/3` doesn't store the map as one notification.
+        notifications =
+          case notifications do
+            %{notifications: notifications} -> notifications
+            notifications -> notifications
+          end
+
         if store_notification do
           store_notification.(ref, notifications, opts)
         end
