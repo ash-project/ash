@@ -13,23 +13,51 @@ defmodule Ash.Reactor.ChangeStep do
   @doc false
   @impl true
   def run(arguments, context, options) do
-    with {:ok, changeset} <- initial_changeset(arguments.initial, arguments.arguments),
-         {:ok, changeset} <- maybe_must_be_valid(changeset, options[:only_when_valid?], :bypass),
-         {:ok, changeset} <- apply_where_clauses(changeset, options[:where], context),
-         {:ok, changeset} <- apply_change(changeset, options[:change], context) do
-      fail_if_invalid? = Keyword.get(options, :fail_if_invalid?, false)
-      maybe_must_be_valid(changeset, fail_if_invalid?, :error)
-    else
-      {:bypass, changeset} -> {:ok, changeset}
-      {:error, reason} -> {:error, reason}
+    changeset = initial_changeset(arguments.initial)
+    step_arguments = Map.new(arguments.arguments || %{})
+    original_arguments = changeset.arguments
+
+    # Step arguments are scoped to this step only. They are made available to
+    # the `where` validations and the change (both via `arg/1` templates and
+    # `Ash.Changeset.get_argument/2`), but they are *not* action arguments, so
+    # we bypass `set_argument/3` (which validates against the action) and
+    # restore the original arguments once the change has been applied.
+    changeset = %{changeset | arguments: Map.merge(original_arguments, step_arguments)}
+
+    result =
+      with {:ok, changeset} <- maybe_must_be_valid(changeset, options[:only_when_valid?], :bypass),
+           {:ok, changeset} <- apply_where_clauses(changeset, options[:where], context),
+           {:ok, changeset} <- apply_change(changeset, options[:change], context) do
+        fail_if_invalid? = Keyword.get(options, :fail_if_invalid?, false)
+        maybe_must_be_valid(changeset, fail_if_invalid?, :error)
+      else
+        {:bypass, changeset} -> {:ok, changeset}
+        {:error, reason} -> {:error, reason}
+      end
+
+    case result do
+      {:ok, changeset} ->
+        {:ok, restore_arguments(changeset, step_arguments, original_arguments)}
+
+      other ->
+        other
     end
   end
 
-  defp initial_changeset(module, arguments) when is_atom(module),
-    do: initial_changeset(Changeset.new(module), arguments)
+  defp initial_changeset(module) when is_atom(module), do: Changeset.new(module)
+  defp initial_changeset(changeset) when is_struct(changeset, Changeset), do: changeset
 
-  defp initial_changeset(changeset, arguments) when is_struct(changeset, Changeset),
-    do: {:ok, Changeset.force_set_arguments(changeset, arguments)}
+  defp restore_arguments(changeset, step_arguments, original_arguments) do
+    arguments =
+      Enum.reduce(step_arguments, changeset.arguments, fn {key, _}, arguments ->
+        case Map.fetch(original_arguments, key) do
+          {:ok, original} -> Map.put(arguments, key, original)
+          :error -> Map.delete(arguments, key)
+        end
+      end)
+
+    %{changeset | arguments: arguments}
+  end
 
   defp maybe_must_be_valid(changeset, true, _) when changeset.valid?, do: {:ok, changeset}
   defp maybe_must_be_valid(changeset, true, tag), do: {tag, changeset}
