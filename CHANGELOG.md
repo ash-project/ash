@@ -8,6 +8,31 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.4](https://github.com/ash-project/ash/compare/v3.33.3...v3.33.4) (2026-09-15)
+
+
+
+
+### Bug Fixes:
+
+* apply field policies to calculations and aggregates referenced in filters by [@zachdaniel](https://github.com/zachdaniel)
+
+* use nested lists for notification optimization by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't write empty lists to pdict for no reason by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't pass the extra pagination row to read hooks (#2916) by [@barnabasJ](https://github.com/barnabasJ) [(#2916)](https://github.com/ash-project/ash/pull/2916)
+
+* reject the unsupported `return_query?` option in `Ash.stream!/2` (#2934) by [@jimsynz](https://github.com/jimsynz) [(#2934)](https://github.com/ash-project/ash/pull/2934)
+
+* don't ask whether a resource can join itself (#2931) by jeroen11dijk [(#2931)](https://github.com/ash-project/ash/pull/2931)
+
+* unwrap map-form notifications from a non-bulk manual action result (#2930) by [@Torkan](https://github.com/Torkan) [(#2930)](https://github.com/ash-project/ash/pull/2930)
+
+* don't drop notifications returned as a list from manual destroy actions (#2929) by [@Torkan](https://github.com/Torkan) [(#2929)](https://github.com/ash-project/ash/pull/2929)
+
+* setting undeclared argument was done with `nil` key (#2925) by Rutgerdj [(#2925)](https://github.com/ash-project/ash/pull/2925)
+
 ## [v3.33.3](https://github.com/ash-project/ash/compare/v3.33.2...v3.33.3) (2026-09-10)
 
 
