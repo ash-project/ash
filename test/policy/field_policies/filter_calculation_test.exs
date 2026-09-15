@@ -10,7 +10,7 @@ defmodule Ash.Test.Policy.FieldPolicy.FilterCalculationTest do
   > When these fields are referred to in filters, they will be replaced with an
   > expression that evaluates to nil.
 
-  This holds for attributes, but not for calculations (or aggregates).
+  This must hold for attributes, calculations and aggregates alike.
   """
   use ExUnit.Case, async: true
 
@@ -134,7 +134,6 @@ defmodule Ash.Test.Policy.FieldPolicy.FilterCalculationTest do
   end
 
   describe "an actor who cannot see the field" do
-    # This one passes today.
     test "filtering on the attribute sees nil", %{user: user} do
       assert [] =
                Post
@@ -147,7 +146,6 @@ defmodule Ash.Test.Policy.FieldPolicy.FilterCalculationTest do
                |> Ash.read!(actor: user, authorize?: true)
     end
 
-    # This one fails today: the filter is applied against the real value.
     test "filtering on the calculation sees nil", %{user: user} do
       assert [] =
                Post
@@ -160,7 +158,6 @@ defmodule Ash.Test.Policy.FieldPolicy.FilterCalculationTest do
                |> Ash.read!(actor: user, authorize?: true)
     end
 
-    # Same failure for aggregates.
     test "filtering on the aggregate sees nil", %{user: user} do
       assert [] =
                Post
