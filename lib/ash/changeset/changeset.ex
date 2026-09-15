@@ -6612,33 +6612,44 @@ defmodule Ash.Changeset do
 
   defp do_set_argument(changeset, argument, value, store_casted? \\ false) do
     if changeset.action do
-      argument =
+      action_argument =
         Enum.find(
           changeset.action.arguments,
           &(&1.name == argument || to_string(&1.name) == argument)
         )
 
-      if argument do
-        with value <- Ash.Type.Helpers.handle_indexed_maps(argument.type, value),
+      if action_argument do
+        with value <- Ash.Type.Helpers.handle_indexed_maps(action_argument.type, value),
              constraints <-
-               Ash.Type.include_source(argument.type, changeset, argument.constraints),
+               Ash.Type.include_source(
+                 action_argument.type,
+                 changeset,
+                 action_argument.constraints
+               ),
              {:ok, casted} <-
-               Ash.Type.cast_input(argument.type, value, constraints),
+               Ash.Type.cast_input(action_argument.type, value, constraints),
              {{:ok, casted}, _last_val} <-
-               {Ash.Type.apply_constraints(argument.type, casted, constraints), casted} do
-          %{changeset | arguments: Map.put(changeset.arguments, argument.name, casted)}
-          |> store_casted_argument(argument.name, casted, store_casted?)
+               {Ash.Type.apply_constraints(action_argument.type, casted, constraints), casted} do
+          %{changeset | arguments: Map.put(changeset.arguments, action_argument.name, casted)}
+          |> store_casted_argument(action_argument.name, casted, store_casted?)
         else
           {:error, error} ->
-            add_invalid_errors(value, :argument, changeset, argument, error)
+            add_invalid_errors(value, :argument, changeset, action_argument, error)
 
           {{:error, error}, last_val} ->
-            add_invalid_errors(value, :argument, changeset, argument, error)
-            |> store_casted_argument(argument.name, last_val, store_casted?)
+            add_invalid_errors(value, :argument, changeset, action_argument, error)
+            |> store_casted_argument(action_argument.name, last_val, store_casted?)
         end
       else
-        %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
-        |> store_casted_argument(argument, value, store_casted?)
+        add_error(
+          changeset,
+          NoSuchInput.exception(
+            resource: changeset.resource,
+            action: changeset.action.name,
+            input: argument,
+            inputs: Ash.Resource.Info.action_inputs(changeset.resource, changeset.action.name)
+          )
+        )
       end
     else
       %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
