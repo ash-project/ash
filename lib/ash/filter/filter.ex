@@ -3681,6 +3681,7 @@ defmodule Ash.Filter do
     refs
     |> Enum.flat_map(&each_related(resource, &1.relationship_path))
     |> Enum.filter(& &1)
+    |> Enum.uniq()
     |> Enum.group_by(&Ash.DataLayer.data_layer/1)
     |> Map.to_list()
     |> case do
