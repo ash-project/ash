@@ -326,6 +326,10 @@ defmodule Ash.Actions.Helpers do
   # write is anchored at the *data layer's* clock, which core never observes, so stamping
   # a (slightly earlier) core `now()` could place `as_of` before the row's validity and
   # make the reload miss it. Those are left for `load` to default to the current instant.
+  # A range is concrete in the same way, and stamps the instant it begins at.
+  def put_write_as_of(metadata, resource, %Ash.Range{} = as_of),
+    do: put_write_as_of(metadata, resource, Ash.Temporal.resolve_as_of(as_of))
+
   def put_write_as_of(metadata, resource, %DateTime{} = as_of) do
     if Ash.Resource.Info.temporal?(resource) do
       Map.put_new(metadata, :as_of, as_of)
@@ -342,7 +346,8 @@ defmodule Ash.Actions.Helpers do
   # remapped for nothing.
   def stamp_record_metadata(records, resource, opts) do
     tenant = opts[:tenant]
-    stamp_as_of? = match?(%DateTime{}, opts[:as_of]) and Ash.Resource.Info.temporal?(resource)
+    as_of = Ash.Temporal.resolve_as_of(opts[:as_of])
+    stamp_as_of? = match?(%DateTime{}, as_of) and Ash.Resource.Info.temporal?(resource)
 
     if is_nil(tenant) and not stamp_as_of? do
       records
@@ -351,7 +356,7 @@ defmodule Ash.Actions.Helpers do
         metadata =
           if tenant, do: Map.put(record.__metadata__, :tenant, tenant), else: record.__metadata__
 
-        %{record | __metadata__: put_write_as_of(metadata, resource, opts[:as_of])}
+        %{record | __metadata__: put_write_as_of(metadata, resource, as_of)}
       end)
     end
   end
@@ -421,6 +426,10 @@ defmodule Ash.Actions.Helpers do
 
   defp resolve_query_as_of(_query, :now), do: DateTime.utc_now()
   defp resolve_query_as_of(_query, %DateTime{} = as_of), do: as_of
+
+  # Narrowed here as well as in `Ash.Query.as_of/2`: `as_of:` in opts and `as_of/2` on the
+  # query reach different code and must not answer differently.
+  defp resolve_query_as_of(_query, %Ash.Range{} = as_of), do: as_of
 
   defp resolve_query_as_of(query, nil) do
     if Ash.Resource.Info.temporal?(query.resource), do: DateTime.utc_now()
