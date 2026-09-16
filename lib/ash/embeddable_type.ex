@@ -288,10 +288,34 @@ defmodule Ash.EmbeddableType do
                         {:cont, {:ok, index, Map.put(acc, attribute.name, casted)}}
                       else
                         {:error, error} ->
-                          error =
-                            Ash.Error.set_path(Ash.Error.to_ash_error(error), attribute.name)
+                          errors =
+                            error
+                            |> Ash.Helpers.flatten_preserving_keywords()
+                            |> Enum.flat_map(fn
+                              error when is_exception(error) ->
+                                [
+                                  Ash.Error.set_path(
+                                    Ash.Error.to_ash_error(error),
+                                    attribute.name
+                                  )
+                                ]
 
-                          {:halt, {:error, index, error}}
+                              message ->
+                                # Match changeset casting while retaining nested field/path metadata.
+                                message
+                                |> Ash.Type.Helpers.error_to_exception_opts(attribute)
+                                |> Enum.map(fn opts ->
+                                  Ash.Error.Changes.InvalidAttribute.exception(
+                                    value: value,
+                                    field: opts[:field],
+                                    message: opts[:message],
+                                    vars: opts
+                                  )
+                                  |> Ash.Error.set_path(opts[:path] || [])
+                                end)
+                            end)
+
+                          {:halt, {:error, index, errors}}
                       end
                     else
                       if Enum.any?(skip_unknown_inputs, &(&1 == :* || &1 == key)) do
