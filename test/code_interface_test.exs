@@ -474,6 +474,28 @@ defmodule Ash.Test.CodeInterfaceTest do
                User.read_users!(query: [sort: [first_name: :desc]], authorize?: false)
     end
 
+    test "results can be streamed" do
+      User.create!("bob")
+      User.create!("cob")
+
+      assert [%{first_name: "bob"}, %{first_name: "cob"}] =
+               User.read_users!(
+                 query: [sort: [first_name: :asc]],
+                 authorize?: false,
+                 stream?: true
+               )
+               |> Enum.to_list()
+
+      assert [%{first_name: "bob"}, %{first_name: "cob"}] =
+               User.read_users!(
+                 query: [sort: [first_name: :asc]],
+                 authorize?: false,
+                 stream?: true,
+                 stream_options: [batch_size: 1]
+               )
+               |> Enum.to_list()
+    end
+
     test "have a helper to test authorization" do
       assert {:ok, true} == User.can_read_users(nil)
       assert {:ok, true} == User.can_get_by_id(nil, "some uuid")

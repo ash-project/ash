@@ -2195,11 +2195,13 @@ defmodule Ash.CodeInterface do
   @doc false
   def read_list_act!(query, opts) do
     if opts[:stream?] do
+      # `return_query?` is a read option that `ReadOpts` validation fills in with
+      # its default, but `Ash.stream!/2` does not accept it.
       opts =
         Keyword.merge(opts, opts[:stream_options] || [])
-        |> Keyword.drop([:stream?, :stream_options])
+        |> Keyword.drop([:stream?, :stream_options, :return_query?])
 
-      Ash.stream!(query, Keyword.drop(opts, [:stream?, :stream_options]))
+      Ash.stream!(query, opts)
     else
       Ash.read!(query, Keyword.drop(opts, [:stream?, :stream_options]))
     end
