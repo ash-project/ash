@@ -19,6 +19,22 @@ defmodule Ash.Query.Function.RangeContains do
 
   def returns, do: [:boolean]
 
+  # The declared argument types are vague, so `Ash.Query.Function.new/2` cannot
+  # tell a range from a string here; a referenced attribute must be a range.
+  def new(args) do
+    case Enum.find(args, &Ash.Query.Function.ref_type_conflicts?(&1, :range)) do
+      nil ->
+        {:ok, struct(__MODULE__, arguments: args)}
+
+      ref ->
+        {:error,
+         Ash.Error.Query.InvalidFilterValue.exception(
+           value: %Ash.Query.Call{name: :range_contains, args: args},
+           message: "range_contains requires range arguments, but #{inspect(ref)} is not a range"
+         )}
+    end
+  end
+
   def evaluate(%{arguments: [nil, _]}), do: {:known, nil}
   def evaluate(%{arguments: [_, nil]}), do: {:known, nil}
 

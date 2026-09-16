@@ -81,10 +81,10 @@ defmodule Ash.Query.Function do
           |> Enum.filter(fn args ->
             Enum.count(args) == given_arg_count
           end)
-          |> Enum.find_value(&try_cast_arguments(&1, args))
+          |> Enum.find_value(&try_cast_arguments(&1, args, check_refs?: mod.predicate?()))
           |> case do
             nil ->
-              {:error, "Could not cast function arguments for #{mod.name()}/#{given_arg_count}"}
+              {:error, cast_error(mod, configured_args, args)}
 
             casted ->
               case mod.new(casted) do
@@ -143,7 +143,18 @@ defmodule Ash.Query.Function do
     end
   end
 
-  def try_cast_arguments(configured_args, args) do
+  @doc """
+  Casts `args` against one declared signature, returning the cast list or `nil`
+  when the signature does not fit.
+
+  Literal values are cast with `Ash.Query.Type.try_cast/3`. Expressions are never
+  cast; with `check_refs?: true` a `%Ash.Query.Ref{}` whose attribute type is
+  incompatible with a concrete declared type makes the signature not fit, so a
+  predicate such as `contains/2` cannot be applied to an `:integer` attribute.
+  """
+  def try_cast_arguments(configured_args, args, opts \\ []) do
+    check_refs? = Keyword.get(opts, :check_refs?, false)
+
     args
     |> Enum.zip(configured_args)
     |> Enum.reduce_while({:ok, []}, fn
@@ -163,23 +174,33 @@ defmodule Ash.Query.Function do
         {:cont, {:ok, [arg | args]}}
 
       {arg, {type, constraints}}, {:ok, args} when type != :array ->
-        if expr?(arg) do
-          {:cont, {:ok, [arg | args]}}
-        else
-          case Ash.Query.Type.try_cast(arg, type, constraints) do
-            {:ok, value} -> {:cont, {:ok, [value | args]}}
-            :error -> {:halt, :error}
-          end
+        cond do
+          !expr?(arg) ->
+            case Ash.Query.Type.try_cast(arg, type, constraints) do
+              {:ok, value} -> {:cont, {:ok, [value | args]}}
+              :error -> {:halt, :error}
+            end
+
+          check_refs? and ref_type_conflicts?(arg, type) ->
+            {:halt, :error}
+
+          true ->
+            {:cont, {:ok, [arg | args]}}
         end
 
       {arg, type}, {:ok, args} ->
-        if expr?(arg) do
-          {:cont, {:ok, [arg | args]}}
-        else
-          case Ash.Query.Type.try_cast(arg, type, []) do
-            {:ok, value} -> {:cont, {:ok, [value | args]}}
-            :error -> {:halt, :error}
-          end
+        cond do
+          !expr?(arg) ->
+            case Ash.Query.Type.try_cast(arg, type, []) do
+              {:ok, value} -> {:cont, {:ok, [value | args]}}
+              :error -> {:halt, :error}
+            end
+
+          check_refs? and ref_type_conflicts?(arg, type) ->
+            {:halt, :error}
+
+          true ->
+            {:cont, {:ok, [arg | args]}}
         end
     end)
     |> case do
@@ -189,6 +210,77 @@ defmodule Ash.Query.Function do
       _ ->
         nil
     end
+  end
+
+  @doc """
+  Returns true when `ref` points at an attribute whose type cannot satisfy the
+  declared argument `type`.
+
+  Only a reference with a determinable Ash type is ever rejected. A type is
+  compatible with the declaration when it is the same type, a `Ash.Type.NewType`
+  of it, or stored the same way (so an `:atom` attribute still satisfies a
+  `:string` argument). Anything undeterminable is left alone, as it is today.
+  """
+  def ref_type_conflicts?(%Ash.Query.Ref{} = ref, declared_type) do
+    with {:ok, {ref_type, ref_constraints}} <- Ash.Expr.determine_type(ref),
+         declared_type when is_atom(declared_type) or is_tuple(declared_type) <-
+           Ash.Type.get_type(declared_type),
+         true <- Ash.Type.ash_type?(declared_type) do
+      not compatible_types?(ref_type, ref_constraints, declared_type)
+    else
+      _ ->
+        false
+    end
+  end
+
+  def ref_type_conflicts?(_other, _declared_type), do: false
+
+  defp compatible_types?(ref_type, ref_constraints, declared_type) do
+    ref_base = Ash.Type.NewType.subtype_of(ref_type)
+    declared_base = Ash.Type.NewType.subtype_of(declared_type)
+
+    ref_base == declared_base or
+      same_storage_type?(ref_type, ref_constraints, declared_type)
+  end
+
+  defp same_storage_type?(ref_type, ref_constraints, declared_type) do
+    Ash.Type.storage_type(ref_type, ref_constraints) ==
+      Ash.Type.storage_type(declared_type, [])
+  rescue
+    _ -> true
+  end
+
+  defp cast_error(mod, configured_args, args) do
+    given_arg_count = Enum.count(args)
+
+    ref_types =
+      args
+      |> Enum.flat_map(fn
+        %Ash.Query.Ref{} = ref ->
+          case Ash.Expr.determine_type(ref) do
+            {:ok, {type, _}} -> ["#{inspect(ref)} is of type #{inspect(type)}"]
+            :error -> []
+          end
+
+        _ ->
+          []
+      end)
+
+    message =
+      "Could not cast function arguments for #{mod.name()}/#{given_arg_count}. " <>
+        "Accepted argument types: #{inspect(configured_args)}"
+
+    message =
+      if ref_types == [] do
+        message
+      else
+        message <> ". " <> Enum.join(ref_types, ", ")
+      end
+
+    Ash.Error.Query.InvalidFilterValue.exception(
+      value: %Ash.Query.Call{name: mod.name(), args: args},
+      message: message
+    )
   end
 
   # Copied from https://github.com/andrewhao/ordinal/blob/master/lib/ordinal.ex
