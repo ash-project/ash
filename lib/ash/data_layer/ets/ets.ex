@@ -2165,30 +2165,77 @@ defmodule Ash.DataLayer.Ets do
 
   defp retire(table, pkey, resource, supersede) do
     case {supersede, ETS.Set.get(table, pkey)} do
-      {{period, as_of}, {:ok, {_key, stored}}} when is_map(stored) ->
-        close_version(table, pkey, stored, resource, period, as_of)
+      {{period, %Ash.Range{} = written}, {:ok, {_key, stored}}} when is_map(stored) ->
+        close_version(table, pkey, stored, resource, period, written)
 
       _ ->
         with {:ok, _} <- ETS.Set.delete(table, pkey), do: :ok
     end
   end
 
-  # A destroy ends validity at the instant of the write. Closing a version at the
-  # instant it began leaves nothing to keep, so it goes.
-  defp close_version(table, pkey, stored, resource, period, as_of) do
-    with {:ok, closed} <- close_at(Map.get(pkey, period), as_of, resource, period),
-         {:ok, table} <- ETS.Set.delete(table, pkey) do
-      case closed do
-        nil ->
-          :ok
+  # A destroy ends validity over the period it names. Closing a version at the instant it
+  # began leaves nothing to keep, so it goes.
+  defp close_version(table, pkey, stored, resource, period, written) do
+    prior = Map.get(pkey, period)
 
-        closed ->
-          with {:ok, version} <- version(resource, pkey, period, stored, closed),
-               {:ok, _} <- ETS.Set.put(table, [version]) do
-            :ok
-          end
-      end
+    with {:ok, closed} <- close_at(prior, written.lower, resource, period),
+         {:ok, resumed} <- resume_after(prior, written, resource, period),
+         {:ok, versions} <- carved(resource, pkey, period, stored, [closed, resumed]),
+         {:ok, table} <- ETS.Set.delete(table, pkey),
+         {:ok, _} <- put_versions(table, versions) do
+      :ok
     end
+  end
+
+  defp put_versions(table, []), do: {:ok, table}
+  defp put_versions(table, versions), do: ETS.Set.put(table, versions)
+
+  # An instant ends validity for good; a range hands back what lies beyond its upper bound.
+  defp resume_after(_prior, %Ash.Range{upper: nil}, _resource, _period), do: {:ok, nil}
+
+  defp resume_after(%Ash.Range{} = prior, %Ash.Range{} = written, resource, period) do
+    resumed = %{
+      prior
+      | lower: written.upper,
+        bounds: bounds(not Ash.Range.upper_inclusive?(written.bounds), prior.bounds)
+    }
+
+    cond do
+      not Ash.Range.contains?(prior, written) ->
+        {:error,
+         Ash.Error.Changes.PeriodOutOfBounds.exception(
+           resource: resource,
+           field: period,
+           period: written,
+           within: prior
+         )}
+
+      Ash.Range.empty?(resumed) ->
+        {:ok, nil}
+
+      true ->
+        {:ok, resumed}
+    end
+  end
+
+  defp bounds(lower_inclusive?, prior_bounds) do
+    case {lower_inclusive?, Ash.Range.upper_inclusive?(prior_bounds)} do
+      {true, true} -> :"[]"
+      {true, false} -> :"[)"
+      {false, true} -> :"(]"
+      {false, false} -> :"()"
+    end
+  end
+
+  defp carved(resource, pkey, period, stored, ranges) do
+    ranges
+    |> Enum.reject(&is_nil/1)
+    |> Enum.reduce_while({:ok, []}, fn range, {:ok, acc} ->
+      case version(resource, pkey, period, stored, range) do
+        {:ok, version} -> {:cont, {:ok, [version | acc]}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   defp has_filter?(filter) when filter in [nil, true], do: false
@@ -2302,8 +2349,8 @@ defmodule Ash.DataLayer.Ets do
   # `nil` writes in place: no period, or a period with no now to supersede at.
   defp supersession(resource, changeset) do
     with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
-         {:ok, as_of} <- Ash.Temporal.write_instant(resource, write_as_of(changeset)) do
-      {period, as_of}
+         {:ok, written} <- Ash.Temporal.write_period(resource, write_as_of(changeset)) do
+      {period, written}
     else
       _ -> nil
     end
@@ -2411,19 +2458,40 @@ defmodule Ash.DataLayer.Ets do
 
   defp write_version(table, pkey, _prior, data, _resource, nil), do: put_data(table, pkey, data)
 
-  # The new half ends where the old one did: an edit must not extend a closed version to
-  # forever. No transaction here, so the delete goes first — a reader sees the record
-  # absent, never twice.
-  defp write_version(table, pkey, prior_data, data, resource, {period, as_of}) do
+  # No transaction here, so the delete goes first: a reader sees the record absent, never
+  # twice.
+  defp write_version(table, pkey, prior_data, data, resource, {period, written}) do
     prior = Map.get(pkey, period)
 
-    with {:ok, closed} <- close_at(prior, as_of, resource, period),
+    with {:ok, closed} <- close_at(prior, written.lower, resource, period),
+         {:ok, resumed} <- resume_after(prior, written, resource, period),
+         {:ok, opening} <- open_at(prior, written, resource, period),
          {:ok, {_key, opened_data} = opened} <-
-           version(resource, pkey, period, data, %{prior | lower: as_of}),
-         {:ok, retained} <- retained(resource, pkey, period, prior_data, closed),
+           version(resource, pkey, period, data, opening),
+         {:ok, kept} <- carved(resource, pkey, period, prior_data, [closed, resumed]),
          {:ok, table} <- ETS.Set.delete(table, pkey),
-         {:ok, _table} <- ETS.Set.put(table, retained ++ [opened]) do
+         {:ok, _table} <- put_versions(table, kept ++ [opened]) do
       {:ok, opened_data}
+    end
+  end
+
+  # An unbounded written upper leaves the prior's in place, so a bare instant is unchanged.
+  defp open_at(prior, %Ash.Range{lower: lower, upper: nil}, _resource, _period),
+    do: {:ok, %{prior | lower: lower}}
+
+  defp open_at(%Ash.Range{} = prior, %Ash.Range{} = written, resource, period) do
+    opening = %{prior | lower: written.lower, upper: written.upper, bounds: written.bounds}
+
+    if Ash.Range.contains?(prior, opening) do
+      {:ok, opening}
+    else
+      {:error,
+       Ash.Error.Changes.PeriodOutOfBounds.exception(
+         resource: resource,
+         field: period,
+         period: opening,
+         within: prior
+       )}
     end
   end
 
@@ -2445,14 +2513,6 @@ defmodule Ash.DataLayer.Ets do
 
   defp close_at(_prior, _as_of, resource, period) do
     {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
-  end
-
-  defp retained(_resource, _pkey, _period, _prior_data, nil), do: {:ok, []}
-
-  defp retained(resource, pkey, period, prior_data, closed) do
-    with {:ok, version} <- version(resource, pkey, period, prior_data, closed) do
-      {:ok, [version]}
-    end
   end
 
   # Cast in the key, dumped in the data, as every other write leaves it.

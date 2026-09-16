@@ -1949,7 +1949,7 @@ defmodule Ash.Changeset do
       doc: "set the tenant on the changeset"
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
       doc:
         "set the `as_of` point in time on the changeset (time travel). See `Ash.Changeset.as_of/2`."
     ],
@@ -5533,7 +5533,7 @@ defmodule Ash.Changeset do
   `as_of`. How (and whether) a period of validity is stored is up to the data
   layer.
   """
-  @spec as_of(t(), DateTime.t() | :now | nil) :: t()
+  @spec as_of(t(), DateTime.t() | Ash.Range.t() | :now | nil) :: t()
   def as_of(changeset, nil), do: changeset
 
   def as_of(changeset, as_of) do

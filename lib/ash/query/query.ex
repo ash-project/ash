@@ -212,7 +212,7 @@ defmodule Ash.Query do
           filter: Ash.Filter.t() | nil,
           resource: module,
           tenant: term(),
-          as_of: DateTime.t() | :now | nil,
+          as_of: DateTime.t() | Ash.Range.t() | :now | nil,
           combination_of: [Ash.Query.Combination.t()],
           timeout: pos_integer() | nil,
           action_failed?: boolean,
@@ -829,7 +829,7 @@ defmodule Ash.Query do
       doc: "set the tenant on the query"
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
       doc: "set the `as_of` point in time on the query (time travel). See `Ash.Query.as_of/2`."
     ],
     load: [
@@ -2844,10 +2844,22 @@ defmodule Ash.Query do
     # (the same channel multitenancy uses), and is mirrored onto the struct
     # field here so it is threaded to the data layer.
     case Map.fetch(query.context, :as_of) do
-      {:ok, as_of} -> %{query | as_of: as_of}
+      {:ok, as_of} -> narrow_as_of(query, as_of)
       :error -> query
     end
   end
+
+  # A write's `as_of` reaches its own read leg through this context, so a range arrives here
+  # even when no caller passed one.
+  defp narrow_as_of(query, %Ash.Range{lower: nil} = as_of) do
+    add_error(
+      query,
+      Ash.Error.Query.AsOfNotAnInstant.exception(resource: query.resource, as_of: as_of)
+    )
+  end
+
+  defp narrow_as_of(query, %Ash.Range{lower: lower}), do: %{query | as_of: lower}
+  defp narrow_as_of(query, as_of), do: %{query | as_of: as_of}
 
   @doc """
   Gets the value of an argument provided to the query.
@@ -3114,7 +3126,7 @@ defmodule Ash.Query do
 
   See the `temporal` section of `Ash.Resource.Dsl`.
   """
-  @spec as_of(t() | Ash.Resource.t(), DateTime.t() | :now | nil) :: t()
+  @spec as_of(t() | Ash.Resource.t(), DateTime.t() | Ash.Range.t() | :now | nil) :: t()
   def as_of(query, nil), do: new(query)
 
   def as_of(query, as_of) do

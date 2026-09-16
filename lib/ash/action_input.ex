@@ -96,7 +96,7 @@ defmodule Ash.ActionInput do
           arguments: map(),
           params: map(),
           tenant: term(),
-          as_of: DateTime.t() | :now | nil,
+          as_of: DateTime.t() | Ash.Range.t() | :now | nil,
           action: Ash.Resource.Actions.Action.t() | nil,
           resource: Ash.Resource.t(),
           invalid_keys: MapSet.t(),
@@ -165,7 +165,7 @@ defmodule Ash.ActionInput do
       doc: "The tenant to use for the action."
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
       doc: "A point in time to run the action \"as of\" (time travel). See `Ash.Query.as_of/2`."
     ],
     scope: [
@@ -366,7 +366,7 @@ defmodule Ash.ActionInput do
   `:now`, or `nil`) is stored on the input and threaded into the action context so
   generic action implementations can read it.
   """
-  @spec set_as_of(t(), DateTime.t() | :now | nil) :: t()
+  @spec set_as_of(t(), DateTime.t() | Ash.Range.t() | :now | nil) :: t()
   def set_as_of(input, nil), do: input
 
   def set_as_of(input, as_of) do
