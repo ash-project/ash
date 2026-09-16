@@ -31,6 +31,9 @@ defmodule Ash.Type.Atom do
   def storage_type(_), do: :string
 
   @impl true
+  def acts_as(_), do: :string
+
+  @impl true
   def constraints, do: @constraints
 
   @impl true

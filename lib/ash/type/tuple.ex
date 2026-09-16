@@ -85,6 +85,9 @@ defmodule Ash.Type.Tuple do
   def storage_type(_), do: :map
 
   @impl true
+  def acts_as(_), do: :map
+
+  @impl true
   def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:fields])
 
   @impl true

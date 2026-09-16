@@ -124,8 +124,33 @@ defmodule Ash.Type.Range do
 
   @impl true
   def referenced_types(constraints) do
-    type = Ash.Type.get_type(constraints[:inner_type])
-    [{type, constraints[:inner_constraints] || [], {:inner_type_of, :range}}]
+    case type_parameter(constraints) do
+      {type, inner_constraints} -> [{type, inner_constraints, {:inner_type_of, :range}}]
+      nil -> []
+    end
+  end
+
+  @impl true
+  def type_parameter(constraints) do
+    case constraints[:inner_type] do
+      nil -> nil
+      inner_type -> {Ash.Type.get_type(inner_type), constraints[:inner_constraints] || []}
+    end
+  end
+
+  @impl true
+  def with_type_parameter(constraints, {inner_type, inner_constraints}) do
+    inner_type = Ash.Type.get_type(inner_type)
+
+    # `inner_type` is validated against short names, so write the short name back.
+    inner_type =
+      Enum.find_value(Ash.Type.short_names(), inner_type, fn {short_name, module} ->
+        if module == inner_type, do: short_name
+      end)
+
+    constraints
+    |> Keyword.put(:inner_type, inner_type)
+    |> Keyword.put(:inner_constraints, inner_constraints)
   end
 
   @impl true

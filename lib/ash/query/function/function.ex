@@ -72,19 +72,24 @@ defmodule Ash.Query.Function do
         mod.new(args)
 
       mod_args ->
-        configured_args = List.wrap(mod_args)
+        configured_args = overload_signatures(mod) ++ List.wrap(mod_args)
         allowed_arg_counts = Enum.map(configured_args, &Enum.count/1)
         given_arg_count = Enum.count(args)
 
         if given_arg_count in allowed_arg_counts do
-          mod_args
-          |> Enum.filter(fn args ->
-            Enum.count(args) == given_arg_count
-          end)
-          |> Enum.find_value(&try_cast_arguments(&1, args))
+          signatures =
+            Enum.filter(configured_args, fn args ->
+              Enum.count(args) == given_arg_count
+            end)
+
+          # Prefer a signature the values already fit over one they must be
+          # coerced into: a `NaiveDateTime` coerces to `:datetime` by assuming
+          # UTC, but `[:naive_datetime, ...]` is the signature meant for it.
+          (Enum.find_value(signatures, &try_cast_arguments(&1, args, exact?: true)) ||
+             Enum.find_value(signatures, &try_cast_arguments(&1, args)))
           |> case do
             nil ->
-              {:error, "Could not cast function arguments for #{mod.name()}/#{given_arg_count}"}
+              {:error, cast_error(mod, configured_args, args)}
 
             casted ->
               case mod.new(casted) do
@@ -143,7 +148,15 @@ defmodule Ash.Query.Function do
     end
   end
 
-  def try_cast_arguments(configured_args, args) do
+  @doc """
+  Casts `args` to a single declared signature, returning the cast list or `nil`.
+
+  With `exact?: true`, a value only fits a declared type if casting leaves it
+  unchanged, so signatures are matched on the type the value already has.
+  """
+  def try_cast_arguments(configured_args, args, opts \\ []) do
+    exact? = Keyword.get(opts, :exact?, false)
+
     args
     |> Enum.zip(configured_args)
     |> Enum.reduce_while({:ok, []}, fn
@@ -156,29 +169,43 @@ defmodule Ash.Query.Function do
       {arg, :same}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 
-      {arg, {:array, vague}}, {:ok, args} when vague in [:any, :same] ->
-        {:cont, {:ok, [arg | args]}}
+      # `{:array, :same}`, `{:range, :any}`: the parameter can't be checked here,
+      # but the constructor can when the argument is a typed expression.
+      {arg, {_parameterized, vague} = declared}, {:ok, args} when vague in [:any, :same] ->
+        if expr?(arg) and not compatible_expr_type?(arg, declared) do
+          {:halt, :error}
+        else
+          {:cont, {:ok, [arg | args]}}
+        end
 
       {%{__predicate__?: _} = arg, _}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 
       {arg, {type, constraints}}, {:ok, args} when type != :array ->
         if expr?(arg) do
-          {:cont, {:ok, [arg | args]}}
+          if compatible_expr_type?(arg, type) do
+            {:cont, {:ok, [arg | args]}}
+          else
+            {:halt, :error}
+          end
         else
           case Ash.Query.Type.try_cast(arg, type, constraints) do
-            {:ok, value} -> {:cont, {:ok, [value | args]}}
-            :error -> {:halt, :error}
+            {:ok, value} when not exact? or value == arg -> {:cont, {:ok, [value | args]}}
+            _ -> {:halt, :error}
           end
         end
 
       {arg, type}, {:ok, args} ->
         if expr?(arg) do
-          {:cont, {:ok, [arg | args]}}
+          if compatible_expr_type?(arg, type) do
+            {:cont, {:ok, [arg | args]}}
+          else
+            {:halt, :error}
+          end
         else
           case Ash.Query.Type.try_cast(arg, type, []) do
-            {:ok, value} -> {:cont, {:ok, [value | args]}}
-            :error -> {:halt, :error}
+            {:ok, value} when not exact? or value == arg -> {:cont, {:ok, [value | args]}}
+            _ -> {:halt, :error}
           end
         end
     end)
@@ -189,6 +216,155 @@ defmodule Ash.Query.Function do
       _ ->
         nil
     end
+  end
+
+  @doc """
+  Whether an expression's type is compatible with a declared argument type.
+
+  Vague declarations (`:any`, `:same` and their array forms) accept anything.
+  A concrete declaration matches when the expression's type, as resolved by
+  `Ash.Expr.determine_type/1`, is that type or acts as it: a NewType acts as
+  its `subtype_of`, and any type may name another via `c:Ash.Type.acts_as/1`
+  (an `:atom` acts as a `:string`, an embedded resource acts as a `:map`, and
+  so on), recursively. Functions should therefore declare the most general
+  type they accept: `datetime_add/3` declares `:datetime`, so any datetime
+  NewType such as `:utc_datetime_usec` is accepted. An expression whose type
+  cannot be determined is considered compatible, as there is no evidence
+  against it.
+  """
+  @spec compatible_expr_type?(term, term) :: boolean
+  def compatible_expr_type?(_expr, vague) when vague in [:any, :same], do: true
+  def compatible_expr_type?(_expr, {:array, vague}) when vague in [:any, :same], do: true
+
+  # `{:range, :same}`: only the constructor can be checked here.
+  def compatible_expr_type?(expr, {parameterized, vague}) when vague in [:any, :same],
+    do: compatible_expr_type?(expr, parameterized)
+
+  def compatible_expr_type?(expr, declared) do
+    declared =
+      case declared do
+        {:array, {type, _constraints}} -> {:array, Ash.Type.get_type(type)}
+        {type, _constraints} when type != :array -> Ash.Type.get_type(type)
+        type -> Ash.Type.get_type(type)
+      end
+
+    case Ash.Expr.determine_type(expr) do
+      {:ok, {actual, constraints}} ->
+        if known_type?(actual) && known_type?(declared) do
+          declared in acts_as_types(actual, constraints)
+        else
+          true
+        end
+
+      :error ->
+        true
+    end
+  end
+
+  # Every type the given type may stand in for, itself included, following
+  # `Ash.Type.NewType.subtype_of/0` and `c:Ash.Type.acts_as/1` until they run out.
+  defp acts_as_types(type, constraints, acc \\ [])
+
+  defp acts_as_types({:array, type}, constraints, acc) do
+    type
+    |> acts_as_types(constraints[:items] || [], [])
+    |> Enum.map(&{:array, &1})
+    |> Enum.concat(acc)
+    |> Enum.uniq()
+  end
+
+  defp acts_as_types(type, constraints, acc) do
+    type = Ash.Type.get_type(type)
+
+    if type in acc do
+      acc
+    else
+      acc = [type | acc]
+
+      acc =
+        if Ash.Type.NewType.new_type?(type) do
+          acts_as_types(type.subtype_of(), Ash.Type.NewType.constraints(type, constraints), acc)
+        else
+          acc
+        end
+
+      case Ash.Type.acts_as(type, constraints) do
+        nil -> acc
+        other -> acts_as_types(other, [], acc)
+      end
+    end
+  end
+
+  defp known_type?({:array, type}), do: known_type?(type)
+  defp known_type?(type), do: is_atom(type) && Ash.Type.ash_type?(type)
+
+  # Types may register overloads for a function under its name, the same way
+  # they do for operators (see `Ash.Type.operator_overloads/0`). Those are
+  # signatures too, and take priority over the function's own declarations.
+  defp overload_signatures(mod) do
+    mod.name()
+    |> Ash.Query.Operator.operator_overloads()
+    |> Kernel.||(%{})
+    |> Map.keys()
+    |> Enum.filter(&is_list/1)
+  end
+
+  defp cast_error(mod, configured_args, args) do
+    given_arg_count = Enum.count(args)
+
+    # If a typed input reference is what disqualified every signature, say so:
+    # that is far more useful than a generic "could not cast".
+    args
+    |> Enum.with_index()
+    |> Enum.find_value(fn
+      {%Ash.Query.Ref{attribute: %{type: ref_type}} = ref, index}
+      when not is_nil(ref_type) ->
+        accepted_types =
+          configured_args
+          |> Enum.filter(&(Enum.count(&1) == given_arg_count))
+          |> Enum.map(&Enum.at(&1, index))
+
+        if Enum.any?(accepted_types, &compatible_expr_type?(ref, &1)) do
+          nil
+        else
+          accepted =
+            accepted_types
+            |> Enum.map(fn
+              {type, _constraints} when type != :array -> type
+              type -> type
+            end)
+            |> Enum.uniq()
+            |> Enum.map_join(", ", &inspect/1)
+
+          "`#{mod.name()}` cannot be applied to `#{ref_name(ref)}`: #{ordinal(index + 1)} " <>
+            "argument must be one of #{accepted}, but `#{ref_name(ref)}` is of type " <>
+            describe_type(ref)
+        end
+
+      _ ->
+        nil
+    end)
+    |> case do
+      nil -> "Could not cast function arguments for #{mod.name()}/#{given_arg_count}"
+      message -> message
+    end
+  end
+
+  defp ref_name(%Ash.Query.Ref{attribute: %{name: name}, relationship_path: []}), do: name
+
+  defp ref_name(%Ash.Query.Ref{attribute: %{name: name}, relationship_path: path}),
+    do: Enum.join(path ++ [name], ".")
+
+  defp ref_name(%Ash.Query.Ref{attribute: attribute}), do: inspect(attribute)
+
+  defp describe_type(%Ash.Query.Ref{attribute: %{type: type}}) do
+    type = Ash.Type.get_type(type)
+
+    Ash.Type.short_names()
+    |> Enum.find_value(type, fn {short_name, module} ->
+      if module == type, do: short_name
+    end)
+    |> inspect()
   end
 
   # Copied from https://github.com/andrewhao/ordinal/blob/master/lib/ordinal.ex

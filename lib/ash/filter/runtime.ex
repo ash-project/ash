@@ -842,11 +842,13 @@ defmodule Ash.Filter.Runtime do
   defp try_cast_arguments(configured_args, args) do
     given_arg_count = Enum.count(args)
 
-    configured_args
-    |> Enum.filter(fn args ->
-      Enum.count(args) == given_arg_count
-    end)
-    |> Enum.find_value(&Ash.Query.Function.try_cast_arguments(&1, args))
+    signatures =
+      Enum.filter(configured_args, fn args ->
+        Enum.count(args) == given_arg_count
+      end)
+
+    Enum.find_value(signatures, &Ash.Query.Function.try_cast_arguments(&1, args, exact?: true)) ||
+      Enum.find_value(signatures, &Ash.Query.Function.try_cast_arguments(&1, args))
   end
 
   defp resolve_ref(
