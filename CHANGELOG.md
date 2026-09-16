@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 
 ### Bug Fixes:
 
-* apply field policies to calculations and aggregates referenced in filters by [@zachdaniel](https://github.com/zachdaniel)
+* apply field policies to calculations and aggregates referenced in filters (CVE-2026-86338) by [@zachdaniel](https://github.com/zachdaniel)
 
 * use nested lists for notification optimization by [@zachdaniel](https://github.com/zachdaniel)
 
