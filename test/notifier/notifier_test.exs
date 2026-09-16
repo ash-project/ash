@@ -324,6 +324,41 @@ defmodule Ash.Test.NotifierTest do
 
       assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{custom?: true}}}
     end
+
+    test "a custom notification without an action does not crash when telemetry handlers are attached" do
+      handler_id = {__MODULE__, :notifier_telemetry, System.unique_integer()}
+      test_pid = self()
+
+      :telemetry.attach(
+        handler_id,
+        [:ash, :notifier, :start],
+        fn _event, _measurements, metadata, _config ->
+          send(test_pid, {:telemetry_metadata, metadata})
+        end,
+        nil
+      )
+
+      on_exit(fn -> :telemetry.detach(handler_id) end)
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.Changeset.before_action(fn changeset ->
+        {changeset,
+         %{
+           notifications: [
+             %Ash.Notifier.Notification{
+               resource: changeset.resource,
+               domain: Ash.Resource.Info.domain(changeset.resource),
+               metadata: %{custom?: true}
+             }
+           ]
+         }}
+      end)
+      |> Ash.create!()
+
+      assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{custom?: true}}}
+      assert_receive {:telemetry_metadata, %{action: nil, resource: Comment}}
+    end
   end
 
   test "a nested notification is sent automatically" do

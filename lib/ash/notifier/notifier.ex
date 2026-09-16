@@ -414,7 +414,7 @@ defmodule Ash.Notifier do
           resource_short_name: Ash.Resource.Info.short_name(notification.resource),
           actor: notification.changeset && notification.changeset.context[:private][:actor],
           tenant: notification.changeset && notification.changeset.context[:private][:tenant],
-          action: notification.action.name,
+          action: notification.action && notification.action.name,
           authorize?:
             notification.changeset && notification.changeset.context[:private][:authorize?]
         }

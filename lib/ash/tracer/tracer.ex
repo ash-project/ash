@@ -87,6 +87,31 @@ defmodule Ash.Tracer do
     end
   end
 
+  # `:telemetry.list_handlers/1` matches on an event *prefix*, which telemetry implements
+  # as a scan over every handler in the VM. Its cost scales with the number of handlers
+  # attached by all libraries, not just Ash. `telemetry_span/4` only ever emits
+  # `name ++ [:start]` and `name ++ [:stop]`, so we check those two exact names with the same
+  # O(1) lookup that `:telemetry.execute/3` itself uses.
+  #
+  # `:telemetry_handler_table.list_for_event/1` is documented as private but has been
+  # exported and used by `:telemetry.execute/3` since telemetry 0.4, so we use it when
+  # present and fall back to the public prefix scan otherwise.
+  @fast_handler_lookup? Code.ensure_loaded?(:telemetry_handler_table) and
+                          function_exported?(:telemetry_handler_table, :list_for_event, 1)
+
+  @doc false
+  @spec telemetry_handlers?([atom()]) :: boolean()
+  if @fast_handler_lookup? do
+    def telemetry_handlers?(telemetry_name) do
+      :telemetry_handler_table.list_for_event(telemetry_name ++ [:start]) != [] or
+        :telemetry_handler_table.list_for_event(telemetry_name ++ [:stop]) != []
+    end
+  else
+    def telemetry_handlers?(telemetry_name) do
+      :telemetry.list_handlers(telemetry_name) != []
+    end
+  end
+
   defmacro telemetry_span(name, metadata, opts \\ [], block_opts) do
     quote generated: true do
       if unquote(opts[:skip?]) do
@@ -100,10 +125,10 @@ defmodule Ash.Tracer do
 
         metadata =
           if !compiling? do
-            case :telemetry.list_handlers(telemetry_name) do
-              [] -> %{}
-              _ when is_function(metadata) -> apply(metadata, [])
-              _ -> metadata
+            if Ash.Tracer.telemetry_handlers?(telemetry_name) do
+              if is_function(metadata), do: apply(metadata, []), else: metadata
+            else
+              %{}
             end
           end
 
