@@ -7,6 +7,9 @@ defmodule Ash.Resource.Change.UpdateChange do
   use Ash.Resource.Change
 
   @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
   def change(changeset, opts, _) do
     Ash.Changeset.before_action(
       changeset,

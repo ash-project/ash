@@ -5,6 +5,10 @@
 defmodule Ash.Resource.Change.RelateActor do
   @moduledoc false
   use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   import Ash.Gettext
   alias Ash.Changeset
   alias Ash.Error.Changes.InvalidRelationship

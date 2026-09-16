@@ -19,6 +19,10 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
   ]
 
   use Ash.Resource.Validation
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   import Ash.Gettext
   alias Ash.Error.Changes.InvalidArgument
 

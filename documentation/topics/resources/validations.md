@@ -147,6 +147,28 @@ This could then be used in a resource via:
 validate {MyApp.Validations.IsPrime, attribute: :foo}
 ```
 
+## Temporal Safety
+
+Every action on a [temporal resource](/documentation/topics/advanced/temporal-resources.md) runs "as of" a point in time, which may be in the past or in the future. A validation that runs as part of one must not assume the action is happening now. Validations declare that they meet this bar with the `temporal_safe?/1` callback, which defaults to `false`:
+
+```elixir
+defmodule MyApp.Validations.IsPrime do
+  use Ash.Resource.Validation
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
+  def validate(changeset, opts, _context) do
+    # ...
+  end
+end
+```
+
+Running a validation that has not declared itself temporal safe on a temporal resource raises `Ash.Error.Framework.NotTemporalSafe`. Return `true` when the validation never reads the wall clock (use `now()` in expressions, or the subject's `as_of`) and performs any reads through Ash, so that `as_of` is threaded to them. `opts` is passed so a validation that is only safe for some configurations can say so.
+
+All of the builtin validations are temporal safe. `all/1`, `any/1` and `negate/1` are safe when the validations they compose are. Anonymous function validations are never temporal safe, because their safety cannot be known; move that logic into a module validation to use it on a temporal resource.
+
 ## Anonymous Function Validations
 
 You can also use anonymous functions for validations. Keep in mind, these cannot be made atomic. This is great for prototyping, but we generally recommend using a module, both for organizational purposes, and to allow adding atomic behavior.

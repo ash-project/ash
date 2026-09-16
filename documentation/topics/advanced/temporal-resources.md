@@ -280,6 +280,42 @@ evaluated at the query's instant rather than the wall clock — but neither of
 those changes the fact that the **actor struct's own attributes** are whatever
 you loaded.)
 
+## Changes, validations and preparations
+
+Because every action on a temporal resource runs "as of" a point in time, anything that
+runs as part of one must not assume it is happening now: it must not read the wall clock
+(use `now()` in expressions, or the subject's `as_of`), must not have side effects that
+assume the present, and must perform any reads or nested actions through Ash so that
+`as_of` is threaded to them.
+
+Changes, validations and preparations declare that they meet this bar with the
+`temporal_safe?/1` callback of their behaviour, which defaults to `false`. Running one
+that has not declared itself safe on a temporal resource raises
+`Ash.Error.Framework.NotTemporalSafe`:
+
+```elixir
+defmodule MyApp.Changes.Slugify do
+  use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
+  def change(changeset, _opts, _context), do: # ...
+end
+```
+
+The builtin changes, validations and preparations are all temporal safe (`set_attribute`
+with `&DateTime.utc_now/0` resolves to the write's `as_of`, like an attribute default),
+except those that wrap an arbitrary function: `before_action`, `after_action`,
+`before_transaction`, `after_transaction`, and anonymous function
+changes, validations and preparations. Their safety cannot be known, so move that logic
+into a module that declares `temporal_safe?/1` to use it on a temporal resource.
+
+See the [changes](/documentation/topics/resources/changes.md#temporal-safety),
+[validations](/documentation/topics/resources/validations.md#temporal-safety) and
+[preparations](/documentation/topics/resources/preparations.md#temporal-safety) guides.
+
 ## Limitations
 
 - **`ash_postgres` on PostgreSQL 19+, or `Ash.DataLayer.Ets`.** Every other data

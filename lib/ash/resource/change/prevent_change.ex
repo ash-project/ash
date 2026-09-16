@@ -5,6 +5,10 @@
 defmodule Ash.Resource.Change.PreventChange do
   @moduledoc false
   use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   alias Ash.Changeset
 
   def init(opts) do
@@ -21,6 +25,7 @@ defmodule Ash.Resource.Change.PreventChange do
   defp validate_field(value) when is_atom(value), do: :ok
   defp validate_field(other), do: {:error, "field is invalid: #{inspect(other)}"}
 
+  @impl true
   def change(changeset, opts, _) do
     Changeset.before_action(changeset, fn changeset ->
       Changeset.clear_change(changeset, opts[:field])

@@ -5,6 +5,10 @@
 defmodule Ash.Resource.Change.DebugLog do
   @moduledoc false
   use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   require Logger
 
   @doc false

@@ -7,6 +7,9 @@ defmodule Ash.Resource.Change.Filter do
   use Ash.Resource.Change
 
   @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
   def change(changeset, opts, _) do
     Ash.Changeset.filter(changeset, opts[:filter])
   end

@@ -5,6 +5,10 @@
 defmodule Ash.Resource.Validation.Present do
   @moduledoc false
   use Ash.Resource.Validation
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   import Ash.Gettext
 
   alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}

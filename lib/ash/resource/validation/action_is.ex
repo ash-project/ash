@@ -5,6 +5,10 @@
 defmodule Ash.Resource.Validation.ActionIs do
   @moduledoc "Validates that the action is the specified action."
   use Ash.Resource.Validation
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   import Ash.Gettext
 
   @opt_schema [

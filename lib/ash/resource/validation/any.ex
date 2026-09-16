@@ -14,6 +14,17 @@ defmodule Ash.Resource.Validation.Any do
   ]
 
   use Ash.Resource.Validation
+
+  # Safe when every composed validation is. The composed validations are checked again
+  # individually when they are dispatched, which names the offending one.
+  @impl true
+  def temporal_safe?(opts) do
+    Enum.all?(opts[:validations] || [], fn
+      {module, validation_opts} -> Ash.Temporal.temporal_safe?(module, validation_opts)
+      module -> Ash.Temporal.temporal_safe?(module, [])
+    end)
+  end
+
   alias Ash.Error.Changes.InvalidAttribute
   alias Ash.Error.Changes.InvalidChanges
   require Ash.Expr

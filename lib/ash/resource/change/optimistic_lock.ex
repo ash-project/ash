@@ -28,6 +28,9 @@ defmodule Ash.Resource.Change.OptimisticLock do
   use Ash.Resource.Change
 
   @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
   def change(changeset, opts, context) do
     changeset
     |> Ash.Changeset.filter({opts[:attribute], [eq: Map.get(changeset.data, opts[:attribute])]})

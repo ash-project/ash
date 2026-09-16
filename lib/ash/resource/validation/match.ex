@@ -7,6 +7,9 @@ defmodule Ash.Resource.Validation.Match do
 
   use Ash.Resource.Validation
 
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   alias Ash.Error.Changes.InvalidAttribute
 
   @opt_schema [

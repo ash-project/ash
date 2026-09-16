@@ -14,6 +14,22 @@ defmodule Ash.Resource.Validation.Negate do
   ]
 
   use Ash.Resource.Validation
+
+  # Safe when the negated validation is.
+  @impl true
+  def temporal_safe?(opts) do
+    case opts[:validation] do
+      {module, validation_opts} ->
+        Ash.Temporal.temporal_safe?(module, validation_opts)
+
+      module when is_atom(module) and not is_nil(module) ->
+        Ash.Temporal.temporal_safe?(module, [])
+
+      _ ->
+        false
+    end
+  end
+
   alias Ash.Error.Changes.InvalidAttribute
   alias Ash.Error.Changes.InvalidChanges
   require Ash.Expr

@@ -5,6 +5,10 @@
 defmodule Ash.Resource.Change.SetAttribute do
   @moduledoc false
   use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   alias Ash.Changeset
 
   @opt_schema [
@@ -66,7 +70,9 @@ defmodule Ash.Resource.Change.SetAttribute do
   def change(changeset, opts, _) do
     value =
       case opts[:value] do
-        value when is_function(value) -> value.()
+        # `&DateTime.utc_now/0` resolves to the write's `as_of` on a temporal resource,
+        # the same as an attribute default does, so this stays temporal safe.
+        value when is_function(value) -> Ash.Helpers.resolve_default(value, changeset.as_of)
         value -> value
       end
 
@@ -89,7 +95,9 @@ defmodule Ash.Resource.Change.SetAttribute do
   def atomic(changeset, opts, _context) do
     value =
       case opts[:value] do
-        value when is_function(value) -> value.()
+        # `&DateTime.utc_now/0` resolves to the write's `as_of` on a temporal resource,
+        # the same as an attribute default does, so this stays temporal safe.
+        value when is_function(value) -> Ash.Helpers.resolve_default(value, changeset.as_of)
         value -> value
       end
 

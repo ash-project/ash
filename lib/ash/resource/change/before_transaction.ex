@@ -6,7 +6,12 @@ defmodule Ash.Resource.Change.BeforeTransaction do
   @moduledoc false
   use Ash.Resource.Change
 
+  # Wraps an arbitrary function, whose temporal safety cannot be known.
+  @impl true
+  def temporal_safe?(_opts), do: false
+
   @doc false
+  @impl true
   @spec change(Ash.Changeset.t(), keyword, Ash.Resource.Change.context()) :: Ash.Changeset.t()
   def change(changeset, opts, context) do
     Ash.Changeset.before_transaction(

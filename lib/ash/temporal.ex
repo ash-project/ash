@@ -42,6 +42,55 @@ defmodule Ash.Temporal do
   def resolve_as_of(other), do: other
 
   @doc """
+  Whether a change, validation or preparation module declares itself safe to run on a
+  temporal resource, for the given options.
+
+  Every action on a temporal resource runs "as of" a point in time, so anything that
+  runs as part of one must not assume it is happening now. A module declares that it
+  meets that bar with the `temporal_safe?/1` callback of its behaviour
+  (`c:Ash.Resource.Change.temporal_safe?/1`, `c:Ash.Resource.Validation.temporal_safe?/1`,
+  `c:Ash.Resource.Preparation.temporal_safe?/1`). A module that does not define it is
+  not temporal safe.
+  """
+  @spec temporal_safe?(module(), Keyword.t()) :: boolean()
+  def temporal_safe?(module, opts) do
+    Code.ensure_loaded?(module) and function_exported?(module, :temporal_safe?, 1) and
+      module.temporal_safe?(opts) == true
+  end
+
+  @doc false
+  # Raises `Ash.Error.Framework.NotTemporalSafe` when `module` is about to run as part of
+  # an action on a temporal resource without having declared itself temporal safe.
+  # `subject` is the changeset, query or action input being acted on (or a batch of
+  # changesets). Called from the `Ash.Resource.Change`/`Validation`/`Preparation`
+  # dispatchers, so every path that runs one of these is covered.
+  @spec assert_temporal_safe!(
+          :change | :validation | :preparation,
+          module(),
+          Keyword.t(),
+          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t() | [Ash.Changeset.t()]
+        ) :: :ok
+  def assert_temporal_safe!(type, module, opts, [subject | _]),
+    do: assert_temporal_safe!(type, module, opts, subject)
+
+  def assert_temporal_safe!(_type, _module, _opts, []), do: :ok
+
+  def assert_temporal_safe!(type, module, opts, %{resource: resource} = subject) do
+    if Ash.Resource.Info.temporal?(resource) and not temporal_safe?(module, opts) do
+      raise Ash.Error.to_error_class(
+              Ash.Error.Framework.NotTemporalSafe.exception(
+                resource: resource,
+                action: Map.get(subject, :action),
+                module: module,
+                type: type
+              )
+            )
+    end
+
+    :ok
+  end
+
+  @doc """
   Resolves the period a write is valid for.
 
   The value comes back in the type the resource builds its periods from. It begins where

@@ -95,6 +95,10 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
   """
   use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   import Ash.Gettext
   require Ash.Query
 

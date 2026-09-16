@@ -8,6 +8,9 @@ defmodule Ash.Resource.Change.SetContext do
   use Ash.Resource.Change
 
   @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
   def change(changeset, opts, _context) do
     context =
       case opts[:context] do

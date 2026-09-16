@@ -555,6 +555,8 @@ defmodule Ash.Actions.Helpers.Bulk do
 
       {:ok, opts} = module.init(opts)
 
+      Ash.Temporal.assert_temporal_safe!(:validation, module, opts, matches)
+
       validated =
         module.batch_validate(
           matches,
