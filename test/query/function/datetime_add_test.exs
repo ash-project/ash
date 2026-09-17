@@ -9,6 +9,7 @@ defmodule Ash.Query.Function.DateTimeAddTest do
   import Ash.Expr
   require Ash.Query
 
+  alias Ash.Query.Function.DateTimeAdd
   alias Ash.Test.Domain, as: Domain
 
   defmodule Event do
@@ -68,6 +69,28 @@ defmodule Ash.Query.Function.DateTimeAddTest do
                datetime_add(happened_at, ^Duration.new!(day: 1)) == ^~N[2024-02-01 12:00:00]
              )
              |> Ash.read!()
+  end
+
+  describe "datetime_add query function" do
+    test "1 year from today" do
+      today = DateTime.utc_now()
+
+      assert {:known, %DateTime{} = datetime} =
+               DateTimeAdd.evaluate(%{arguments: [today, 1, :year]})
+
+      assert datetime.year == today.year + 1
+    end
+  end
+
+  describe "datetime_add :duration query function" do
+    test "1 year from today" do
+      today = DateTime.utc_now()
+
+      assert {:known, %DateTime{} = datetime} =
+               DateTimeAdd.evaluate(%{arguments: [today, Duration.new!(year: 1)]})
+
+      assert datetime.year == today.year + 1
+    end
   end
 
   test "evaluates naive datetimes directly" do
