@@ -10,4 +10,9 @@ defmodule Ash.Type.UtcDatetimeUsec do
   """
   # 4.0 deprecate this type
   use Ash.Type.NewType, subtype_of: :datetime, constraints: [precision: :microsecond]
+
+  # A microsecond UTC datetime is still a UTC datetime to expression functions
+  # that declared `:utc_datetime`.
+  @impl Ash.Type
+  def acts_as(_constraints), do: :utc_datetime
 end

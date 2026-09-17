@@ -98,6 +98,20 @@ jobs:
           path: ${{matrix.project.name}}/_build
           key: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-3-${{ hashFiles('config/**/*.exs') }}-${{ hashFiles(format('{0}{1}', github.workspace, '/ash/mix.lock')) }}
           restore-keys: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-3-${{ hashFiles('config/**/*.exs') }}-
+      # ash_oban's mix.lock pins oban_pro from the private "oban" hex repo, so
+      # deps.get needs that repo registered even though the dependency itself
+      # is only added when OBAN_PRO_LICENSE_KEY is set.
+      - name: Configure Oban Pro hex repo
+        if: ${{ matrix.project.name == 'ash_oban' }}
+        run: |
+          if [ -n "$OBAN_PRO_LICENSE_KEY" ]; then
+            mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+          else
+            echo "OBAN_PRO_LICENSE_KEY not set; skipping Oban Pro hex repo"
+          fi
+        shell: bash
+        env:
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - name: mix deps.get inside ./${{matrix.project.name}}
         run: mix deps.get
         working-directory: ./${{matrix.project.name}}

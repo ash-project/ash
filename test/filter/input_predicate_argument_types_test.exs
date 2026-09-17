@@ -48,6 +48,8 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
       attribute(:score, :integer, public?: true)
       attribute(:tags, {:array, :string}, public?: true)
 
+      create_timestamp(:inserted_at)
+
       attribute(:valid_at, Ash.Type.Range,
         public?: true,
         constraints: [inner_type: :integer]
@@ -184,6 +186,46 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
                Post
                |> Ash.Query.filter_input(%{"bio" => %{"at_path" => ["title"], "eq" => "Dr."}})
                |> Ash.read!()
+    end
+  end
+
+  describe "types that act as another for functions declared narrowly" do
+    defmodule Shout do
+      @moduledoc false
+      # Stands in for a data layer function that only ever declared `:string`.
+      use Ash.Query.Function, name: :shout, predicate?: true
+
+      def args, do: [[:string, :string]]
+      def returns, do: [:boolean]
+    end
+
+    defmodule AgeAt do
+      @moduledoc false
+      use Ash.Query.Function, name: :age_at
+
+      def args, do: [[:utc_datetime]]
+      def returns, do: [:integer]
+    end
+
+    defp ref(attribute) do
+      %Ash.Query.Ref{
+        attribute: Ash.Resource.Info.attribute(Post, attribute),
+        relationship_path: [],
+        resource: Post
+      }
+    end
+
+    test "a ci_string attribute is accepted where :string is declared" do
+      assert {:ok, %Shout{}} = Ash.Query.Function.new(Shout, [ref(:category), "x"])
+    end
+
+    test "a utc_datetime_usec attribute is accepted where :utc_datetime is declared" do
+      assert {:ok, %AgeAt{}} = Ash.Query.Function.new(AgeAt, [ref(:inserted_at)])
+    end
+
+    test "an integer attribute is still rejected where :string is declared" do
+      assert {:error, message} = Ash.Query.Function.new(Shout, [ref(:score), "x"])
+      assert message =~ "shout"
     end
   end
 
