@@ -173,7 +173,10 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
     }
   end
 
-  defp resolve_aggregate_type(resource, aggregate) do
+  @doc false
+  @spec resolve_aggregate_type(Ash.Resource.t(), Ash.Resource.Aggregate.t()) ::
+          {Ash.Type.t() | nil, Keyword.t()}
+  def resolve_aggregate_type(resource, aggregate) do
     field =
       if aggregate.field do
         related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
