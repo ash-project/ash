@@ -780,7 +780,7 @@ defmodule Ash.Test.GeneratorTest do
 
   test "string generator honors trim?: true" do
     check all(string <- Ash.Type.String.generator(min_length: 5, trim?: true)) do
-      assert String.length(String.trim(string)) >= 5
+      assert {:ok, _} = Ash.Type.String.apply_constraints(string, min_length: 5, trim?: true)
     end
   end
 
