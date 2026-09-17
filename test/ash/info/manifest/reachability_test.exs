@@ -74,6 +74,18 @@ defmodule Ash.Test.Info.Manifest.Generator.ReachabilityTest do
       assert MapSet.member?(resource_set, Ash.Test.Manifest.TodoMetadata)
     end
 
+    test "finds embedded resources reachable only through a first aggregate" do
+      {resources, _types} = Reachability.find_reachable([Ash.Test.Manifest.AggregateHolder])
+
+      assert Ash.Test.Manifest.AggregateFirstMeta in resources
+    end
+
+    test "finds embedded resources reachable only through a list aggregate" do
+      {resources, _types} = Reachability.find_reachable([Ash.Test.Manifest.AggregateHolder])
+
+      assert Ash.Test.Manifest.AggregateListMeta in resources
+    end
+
     test "traverses explicit action roots for already structurally visited resources" do
       {_resources, types} =
         Reachability.find_reachable([

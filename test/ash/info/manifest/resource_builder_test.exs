@@ -212,6 +212,42 @@ defmodule Ash.Test.Info.Manifest.Generator.ResourceBuilderTest do
     end
   end
 
+  describe "resolve_aggregate_type/2" do
+    test "falls back to the declared type when an inner aggregate cannot be resolved" do
+      # ETS does not support custom aggregates, so add one to AggregateSource's
+      # DSL state directly. `Ash.Query.Aggregate.aggregate_type/2` returns an
+      # error for a custom aggregate, and raises when that aggregate is nested.
+      custom = %Ash.Resource.Aggregate{
+        name: :custom_meta,
+        kind: :custom,
+        type: :string,
+        constraints: [],
+        relationship_path: [:children]
+      }
+
+      source_dsl =
+        Spark.Dsl.Transformer.add_entity(
+          Ash.Test.Manifest.AggregateSource.spark_dsl_config(),
+          [:aggregates],
+          custom
+        )
+
+      outer = %Ash.Resource.Aggregate{
+        name: :first_custom_meta,
+        kind: :first,
+        related?: false,
+        resource: source_dsl,
+        relationship_path: [],
+        field: :custom_meta,
+        type: :string,
+        constraints: [max_length: 10]
+      }
+
+      assert ResourceBuilder.resolve_aggregate_type(Ash.Test.Manifest.AggregateHolder, outer) ==
+               {:string, [max_length: 10]}
+    end
+  end
+
   describe "build/2 with no capabilities passed (backwards compat)" do
     test "filter_operators and filter_functions remain nil" do
       resource = ResourceBuilder.build(Ash.Test.Manifest.Todo, [])
