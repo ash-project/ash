@@ -4989,6 +4989,14 @@ defmodule Ash.Filter do
     |> parse_and_join(op, context)
   end
 
+  defp parse_and_join(statement, _op, _context) do
+    {:error,
+     InvalidFilterValue.exception(
+       value: statement,
+       message: "expected a non-empty list or map"
+     )}
+  end
+
   defp parse_predicates(value, field, context)
        when not is_list(value) and not is_map(value) do
     parse_predicates([eq: value], field, context)
