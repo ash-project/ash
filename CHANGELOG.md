@@ -8,6 +8,23 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.5](https://github.com/ash-project/ash/compare/v3.33.4...v3.33.5) (2026-09-17)
+
+
+
+
+### Improvements:
+
+* use O(1) event listener lookup by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* return an invalid error for sort input that is not a string or list (#2947) by [@chiliec](https://github.com/chiliec) [(#2947)](https://github.com/ash-project/ash/pull/2947)
+
+* don't pass `return_query?` and `stream?` in code interface opts by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle notifications w/o an action set by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.33.4](https://github.com/ash-project/ash/compare/v3.33.3...v3.33.4) (2026-09-15)
 
 
