@@ -130,6 +130,43 @@ defmodule Ash.Test.Info.Manifest.GeneratorTest do
     end
   end
 
+  describe "aggregate field types" do
+    setup do
+      {:ok, spec} =
+        Ash.Info.Manifest.generate(
+          otp_app: :ash_manifest_test,
+          action_entrypoints: [{Ash.Test.Manifest.AggregateHolder, :read}]
+        )
+
+      holder = Enum.find(spec.resources, &(&1.module == Ash.Test.Manifest.AggregateHolder))
+
+      %{spec: spec, holder: holder}
+    end
+
+    test "an embedded resource reached only through a first aggregate is in spec.types",
+         %{spec: spec, holder: holder} do
+      field_type = holder.fields[:first_meta].type
+      assert field_type.kind == :embedded_resource
+      assert field_type.module == Ash.Test.Manifest.AggregateFirstMeta
+
+      embedded = Enum.find(spec.types, &(&1.module == Ash.Test.Manifest.AggregateFirstMeta))
+      assert embedded != nil
+      assert embedded.kind == :embedded_resource
+    end
+
+    test "an embedded resource reached only through a list aggregate is in spec.types",
+         %{spec: spec, holder: holder} do
+      field_type = holder.fields[:list_metas].type
+      assert field_type.kind == :array
+      assert field_type.item_type.kind == :embedded_resource
+      assert field_type.item_type.module == Ash.Test.Manifest.AggregateListMeta
+
+      embedded = Enum.find(spec.types, &(&1.module == Ash.Test.Manifest.AggregateListMeta))
+      assert embedded != nil
+      assert embedded.kind == :embedded_resource
+    end
+  end
+
   describe "private actions" do
     test "are excluded from entrypoints by default" do
       {:ok, spec} = Ash.Info.Manifest.generate(otp_app: :ash_manifest_test)

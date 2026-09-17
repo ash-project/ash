@@ -28,5 +28,7 @@ defmodule Ash.Test.Manifest.Domain do
     resource Ash.Test.Manifest.TenantSetting
     resource Ash.Test.Manifest.InputParsing.Resource
     resource Ash.Test.Manifest.NestedMapResource
+    resource Ash.Test.Manifest.AggregateHolder
+    resource Ash.Test.Manifest.AggregateSource
   end
 end
