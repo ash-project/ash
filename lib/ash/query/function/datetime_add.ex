@@ -15,9 +15,15 @@ defmodule Ash.Query.Function.DateTimeAdd do
 
   use Ash.Query.Function, name: :datetime_add, eager_evaluate?: false
 
-  def args, do: [[:utc_datetime, :integer, :duration_name], [:utc_datetime, :duration]]
+  def args,
+    do: [
+      [:datetime, :integer, :duration_name],
+      [:datetime, :duration],
+      [:naive_datetime, :integer, :duration_name],
+      [:naive_datetime, :duration]
+    ]
 
-  def returns, do: [:utc_datetime]
+  def returns, do: [:utc_datetime, :utc_datetime, :naive_datetime, :naive_datetime]
 
   def evaluate(%{arguments: [datetime, factor, interval]}) do
     shifted = Ash.Query.Function.Ago.datetime_add(datetime, factor, interval)
@@ -25,7 +31,7 @@ defmodule Ash.Query.Function.DateTimeAdd do
   end
 
   def evaluate(%{arguments: [datetime, duration]}) when is_struct(duration, Duration) do
-    shifted = DateTime.shift(datetime, duration)
+    shifted = Ash.Query.Function.Ago.datetime_add(datetime, duration)
     {:known, shifted}
   end
 

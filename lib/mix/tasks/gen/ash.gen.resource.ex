@@ -149,7 +149,7 @@ if Code.ensure_loaded?(Igniter) do
             base =
               Igniter.Project.Module.parse(options[:base])
 
-            if base not in List.wrap(Application.get_env(app_name, :base_resources)) do
+            if !base_resource_configured?(igniter, app_name, base) do
               raise """
               The base module #{inspect(base)} is not in the list of base resources.
 
@@ -766,6 +766,70 @@ if Code.ensure_loaded?(Igniter) do
             {:cont, :error}
         end
       end)
+    end
+
+    defp base_resource_configured?(igniter, app_name, base) do
+      base in List.wrap(Application.get_env(app_name, :base_resources)) or
+        base_resource_in_config?(igniter, app_name, base)
+    end
+
+    defp base_resource_in_config?(igniter, app_name, base) do
+      config_path = Igniter.Project.Application.config_path(igniter)
+      igniter = Igniter.include_existing_file(igniter, config_path, required?: false)
+
+      case Rewrite.source(igniter.rewrite, config_path) do
+        {:ok, source} ->
+          source
+          |> Rewrite.Source.get(:quoted)
+          |> Sourceror.Zipper.zip()
+          |> configures_base_resource?(app_name, base)
+
+        _ ->
+          false
+      end
+    end
+
+    defp configures_base_resource?(zipper, app_name, base) do
+      keyword_form =
+        Igniter.Code.Function.move_to_function_call_in_current_scope(
+          zipper,
+          :config,
+          2,
+          fn call ->
+            Igniter.Code.Function.argument_equals?(call, 0, app_name) and
+              Igniter.Code.Function.argument_matches_predicate?(call, 1, fn keyword ->
+                case Igniter.Code.Keyword.get_key(keyword, :base_resources) do
+                  {:ok, list} -> list_contains_module?(list, base)
+                  :error -> false
+                end
+              end)
+          end
+        )
+
+      key_form =
+        Igniter.Code.Function.move_to_function_call_in_current_scope(
+          zipper,
+          :config,
+          3,
+          fn call ->
+            Igniter.Code.Function.argument_equals?(call, 0, app_name) and
+              Igniter.Code.Function.argument_equals?(call, 1, :base_resources) and
+              Igniter.Code.Function.argument_matches_predicate?(
+                call,
+                2,
+                &list_contains_module?(&1, base)
+              )
+          end
+        )
+
+      match?({:ok, _}, keyword_form) or match?({:ok, _}, key_form)
+    end
+
+    defp list_contains_module?(zipper, module) do
+      Igniter.Code.List.list?(zipper) and
+        zipper
+        |> Igniter.Code.List.find_list_item_index(&Igniter.Code.Common.nodes_equal?(&1, module))
+        |> is_integer()
     end
 
     defp enter_section(zipper, name) do

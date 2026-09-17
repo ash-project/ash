@@ -1228,6 +1228,7 @@ defmodule Ash.Expr do
       returns =
         Enum.map(returns, fn
           {:array, any} when any in [:same, :any] -> {:array, any}
+          {type, any} when any in [:same, :any] -> {Ash.Type.get_type(type), any}
           any when any in [:same, :any] -> any
           {type, constraints} -> get_type({type, constraints})
           type -> get_type({type, []})
@@ -1236,6 +1237,7 @@ defmodule Ash.Expr do
       normalize_types = fn types ->
         Enum.map(types, fn
           {:array, any} when any in [:same, :any] -> {:array, any}
+          {type, any} when any in [:same, :any] -> {Ash.Type.get_type(type), any}
           any when any in [:same, :any] -> any
           {type, constraints} -> get_type({type, constraints})
           type -> get_type({type, []})
@@ -1397,6 +1399,52 @@ defmodule Ash.Expr do
                      | &1
                    ]
                  )}
+            end
+
+          {{{param_type, vague_type}, _value}, index}, acc
+          when is_atom(param_type) and param_type != :array and vague_type in [:any, :same] ->
+            adopt = fn parameter -> Ash.Type.with_type_parameter(param_type, [], parameter) end
+
+            adopt_later = fn acc ->
+              acc = Map.update!(acc, :types, &[nil | &1])
+              {:cont, Map.update!(acc, :must_adopt_basis, &[{index, adopt} | &1])}
+            end
+
+            with {:ok, value_type} <- elem(value_types, index),
+                 {^param_type, constraints} <- unwrap_new_type(value_type),
+                 {type, parameter_constraints} <-
+                   Ash.Type.type_parameter(param_type, constraints) do
+              case acc[:basis] do
+                nil ->
+                  if vague_type == :any do
+                    acc = Map.update!(acc, :types, &[{param_type, constraints} | &1])
+                    {:cont, Map.put(acc, :basis, {type, parameter_constraints})}
+                  else
+                    acc =
+                      acc
+                      |> Map.update!(:types, &[nil | &1])
+                      |> Map.put(:fallback_basis, {type, parameter_constraints})
+
+                    {:cont, Map.update!(acc, :must_adopt_basis, &[{index, adopt} | &1])}
+                  end
+
+                {^type, matched_constraints} ->
+                  {:cont, Map.update!(acc, :types, &[adopt.({type, matched_constraints}) | &1])}
+
+                _ ->
+                  {:halt, :error}
+              end
+            else
+              # The value is known to be some other type entirely.
+              {other, _constraints} when is_atom(other) and other != param_type ->
+                if Ash.Type.ash_type?(other) do
+                  {:halt, :error}
+                else
+                  adopt_later.(acc)
+                end
+
+              _ ->
+                adopt_later.(acc)
             end
 
           {{{type, constraints}, value}, index}, acc ->
@@ -1566,6 +1614,16 @@ defmodule Ash.Expr do
           end)
 
         select_matches(types, length(values), values)
+    end
+  end
+
+  defp unwrap_new_type({type, constraints}) do
+    type = Ash.Type.get_type(type)
+
+    if is_atom(type) && Ash.Type.NewType.new_type?(type) do
+      unwrap_new_type({type.subtype_of(), Ash.Type.NewType.constraints(type, constraints)})
+    else
+      {type, constraints}
     end
   end
 

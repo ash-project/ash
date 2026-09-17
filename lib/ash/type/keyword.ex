@@ -84,6 +84,9 @@ defmodule Ash.Type.Keyword do
   def storage_type(_), do: :map
 
   @impl true
+  def acts_as(_), do: :map
+
+  @impl true
   def matches_type?(v, _constraints) do
     Keyword.keyword?(v)
   end

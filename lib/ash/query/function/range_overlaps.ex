@@ -16,7 +16,7 @@ defmodule Ash.Query.Function.RangeOverlaps do
 
   alias Ash.Range
 
-  def args, do: [[:any, :same]]
+  def args, do: [[{:range, :any}, {:range, :same}]]
 
   def returns, do: [:boolean]
 

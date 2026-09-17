@@ -15,7 +15,8 @@ defmodule Ash.Query.Function.RangeContains do
 
   alias Ash.Range
 
-  def args, do: [[:any, :any]]
+  # A range holds another range of the same inner type, or a point of it.
+  def args, do: [[{:range, :any}, {:range, :same}], [{:range, :any}, :same]]
 
   def returns, do: [:boolean]
 

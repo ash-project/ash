@@ -5084,6 +5084,17 @@ defmodule Ash.Filter do
                        {:error,
                         "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the function #{inspect(function)}"}}
                     end
+                  else
+                    {:error, %{__exception__: true} = error} ->
+                      {:halt, {:error, error}}
+
+                    {:error, error} ->
+                      {:halt,
+                       {:error,
+                        InvalidFilterValue.exception(
+                          value: value,
+                          message: to_string(error)
+                        )}}
                   end
               end
 

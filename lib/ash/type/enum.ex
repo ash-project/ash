@@ -221,6 +221,9 @@ defmodule Ash.Type.Enum do
       def storage_type, do: :string
 
       @impl Ash.Type
+      def acts_as(_), do: :atom
+
+      @impl Ash.Type
       def generator(_constraints) do
         StreamData.member_of(@values)
       end
@@ -358,6 +361,7 @@ defmodule Ash.Type.Enum do
 
       defoverridable match: 1,
                      storage_type: 0,
+                     acts_as: 1,
                      cast_stored: 2,
                      dump_to_native: 2,
                      label: 1,

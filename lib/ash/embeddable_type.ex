@@ -169,6 +169,8 @@ defmodule Ash.EmbeddableType do
 
       def storage_type(_), do: :map
 
+      def acts_as(_), do: :map
+
       def cast_atomic(value, constraints) do
         with :ok <- check_atomic(value, constraints) do
           case cast_input(value, constraints) do

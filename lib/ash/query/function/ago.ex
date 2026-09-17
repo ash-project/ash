@@ -32,17 +32,22 @@ defmodule Ash.Query.Function.Ago do
   end
 
   @doc false
+  def datetime_add(%NaiveDateTime{} = datetime, amount_to_add, unit)
+      when unit in [:microsecond, :millisecond, :second] do
+    NaiveDateTime.add(datetime, amount_to_add, unit)
+  end
+
   def datetime_add(datetime, amount_to_add, unit)
       when unit in [:microsecond, :millisecond, :second] do
     DateTime.add(datetime, amount_to_add, unit)
   end
 
   def datetime_add(datetime, amount_to_add, :minute) do
-    DateTime.add(datetime, amount_to_add * 60, :second)
+    datetime_add(datetime, amount_to_add * 60, :second)
   end
 
   def datetime_add(datetime, amount_to_add, :hour) do
-    DateTime.add(datetime, amount_to_add * 60 * 60, :second)
+    datetime_add(datetime, amount_to_add * 60 * 60, :second)
   end
 
   def datetime_add(datetime, amount_to_add, :day) do
@@ -78,6 +83,10 @@ defmodule Ash.Query.Function.Ago do
     else
       result
     end
+  end
+
+  def datetime_add(%NaiveDateTime{} = datetime, duration) when is_struct(duration, Duration) do
+    NaiveDateTime.shift(datetime, duration)
   end
 
   def datetime_add(datetime, duration) when is_struct(duration, Duration) do
