@@ -207,6 +207,34 @@ defmodule Ash.Test.Resource.AggregatesTest do
     end
   end
 
+  describe "Ash.Query.Aggregate.aggregate_type/2" do
+    test "returns an error when a nested aggregate's type cannot be resolved" do
+      # ETS does not support custom aggregates, so add one to Comment's DSL
+      # state directly. A custom aggregate has no field to derive a type from.
+      custom = %Aggregate{
+        name: :custom_likes,
+        kind: :custom,
+        type: :string,
+        constraints: [],
+        relationship_path: [:likes]
+      }
+
+      comment_dsl =
+        Spark.Dsl.Transformer.add_entity(Comment.spark_dsl_config(), [:aggregates], custom)
+
+      outer = %Aggregate{
+        name: :first_custom_likes,
+        kind: :first,
+        related?: false,
+        resource: comment_dsl,
+        relationship_path: [],
+        field: :custom_likes
+      }
+
+      assert {:error, _} = Ash.Query.Aggregate.aggregate_type(Like, outer)
+    end
+  end
+
   test "it can load aggregates on resources which require an explicit domain" do
     defmodule Leg do
       @moduledoc false
