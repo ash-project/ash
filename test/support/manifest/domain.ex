@@ -30,5 +30,6 @@ defmodule Ash.Test.Manifest.Domain do
     resource Ash.Test.Manifest.NestedMapResource
     resource Ash.Test.Manifest.AggregateHolder
     resource Ash.Test.Manifest.AggregateSource
+    resource Ash.Test.Manifest.AggregateChild
   end
 end
