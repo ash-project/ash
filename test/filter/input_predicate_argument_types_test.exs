@@ -237,4 +237,20 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
       assert {:error, %Ash.Error.Invalid{}} = Ash.read(query)
     end
   end
+
+  describe "boolean filter group input" do
+    for operator <- ["and", "or"] do
+      test "rejects malformed #{operator} values" do
+        for value <- [[], %{}, "not a list"] do
+          query =
+            Ash.Query.filter_input(Post, %{
+              unquote(operator) => value
+            })
+
+          assert [%Ash.Error.Query.InvalidFilterValue{}] = query.errors
+          assert {:error, %Ash.Error.Invalid{}} = Ash.read(query)
+        end
+      end
+    end
+  end
 end
