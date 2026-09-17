@@ -22,7 +22,7 @@ defmodule Ash.Sort do
           list(sort_item)
           | sort_item
 
-  alias Ash.Error.Query.{InvalidSortOrder, NoSuchField, UnsortableField}
+  alias Ash.Error.Query.{InvalidSort, InvalidSortOrder, NoSuchField, UnsortableField}
 
   @doc """
   Builds an expression to be used in a sort statement. Prefer to use `Ash.Expr.calc/2` instead.
@@ -125,6 +125,8 @@ defmodule Ash.Sort do
 
   def parse_input(_resource, nil, _), do: {:ok, nil}
 
+  def parse_input(_resource, sort, _), do: {:error, InvalidSort.exception(sort: sort)}
+
   @doc """
   Same as `parse_input/2` except raises any errors
 
@@ -211,12 +213,15 @@ defmodule Ash.Sort do
     end
   end
 
-  def parse_sort(resource, field, handler, public_only?) do
+  def parse_sort(resource, field, handler, public_only?)
+      when is_binary(field) or is_atom(field) or is_struct(field) do
     case get_field(resource, field, handler, public_only?) do
       {:error, error} -> {:error, error}
       {:ok, field} -> {:ok, add_order(field, :asc)}
     end
   end
+
+  def parse_sort(_resource, sort, _, _), do: {:error, InvalidSort.exception(sort: sort)}
 
   defp add_order({field, map}, order) when is_map(map) do
     {field, {map, order}}
