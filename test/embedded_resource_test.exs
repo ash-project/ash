@@ -751,6 +751,229 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     end
   end
 
+  describe "casting errors in arrays of simple embedded resources" do
+    defmodule CastErrorType do
+      use Ash.Type
+
+      def storage_type(_), do: :string
+      def cast_input(nil, _), do: {:ok, nil}
+      def cast_input(value, _), do: {:error, value}
+      def cast_stored(value, _), do: {:ok, value}
+      def dump_to_native(value, _), do: {:ok, value}
+    end
+
+    defmodule SimpleEmbed do
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :id, :uuid, allow_nil?: false, public?: true
+        attribute :quantity, :decimal, constraints: [greater_than: 0], public?: true
+        attribute :custom, CastErrorType, public?: true
+
+        attribute :metadata, :map do
+          public? true
+          constraints fields: [count: [type: :integer, constraints: [min: 1]]]
+        end
+      end
+    end
+
+    defmodule EmbedContainer do
+      use Ash.Resource, data_layer: :embedded
+
+      actions do
+        default_accept [:entries]
+
+        create :create do
+          primary? true
+          argument :entry_inputs, {:array, SimpleEmbed}
+        end
+      end
+
+      attributes do
+        attribute :entries, {:array, SimpleEmbed}, public?: true
+      end
+    end
+
+    test "scalar casting failures retain their field, message and original input" do
+      for {field, value} <- [id: "not-a-uuid", quantity: "not-a-number"] do
+        valid = %{id: Ash.UUID.generate(), quantity: "1"}
+        invalid = Map.put(valid, field, value)
+
+        assert {:error, error} = Ash.Type.cast_input({:array, SimpleEmbed}, [valid, invalid])
+
+        assert [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: ^field,
+                   message: "is invalid",
+                   value: ^value,
+                   path: [1]
+                 }
+               ] = Ash.Error.to_error_class(error).errors
+      end
+    end
+
+    test "constraint failures retain the message template and interpolation variables" do
+      valid = %{id: Ash.UUID.generate(), quantity: "1"}
+
+      assert {:error, error} =
+               Ash.Type.cast_input({:array, SimpleEmbed}, [valid, %{valid | quantity: "0"}])
+
+      assert [
+               %Ash.Error.Changes.InvalidAttribute{
+                 field: :quantity,
+                 message: "must be greater than %{greater_than}",
+                 value: "0",
+                 vars: vars,
+                 path: [1]
+               }
+             ] = Ash.Error.to_error_class(error).errors
+
+      assert Decimal.equal?(vars[:greater_than], 0)
+    end
+
+    test "parent attributes and arguments prepend their names without moving the leaf field" do
+      valid = %{id: Ash.UUID.generate(), quantity: "1"}
+
+      for field <- [:entries, :entry_inputs] do
+        changeset =
+          Ash.Changeset.for_create(EmbedContainer, :create, %{
+            field => [valid, %{valid | quantity: "0"}]
+          })
+
+        assert [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: :quantity,
+                   path: [^field, 1],
+                   message: "must be greater than %{greater_than}",
+                   vars: vars
+                 }
+               ] = changeset.errors
+
+        assert Decimal.equal?(vars[:greater_than], 0)
+      end
+    end
+
+    test "array error details match ordinary changeset validation, including map fields" do
+      valid = %{id: Ash.UUID.generate(), quantity: "1"}
+
+      for {field, value} <- [
+            id: "not-a-uuid",
+            quantity: "not-a-number",
+            quantity: "0",
+            metadata: %{count: 0},
+            metadata: %{count: "not-an-integer"},
+            custom: [message: "invalid child", field: :child, path: [:nested]],
+            custom: [message: "invalid value", path: [:nested]]
+          ] do
+        invalid = Map.put(valid, field, value)
+        changeset = Ash.Changeset.for_create(SimpleEmbed, :create, invalid)
+        refute changeset.valid?
+        assert {:error, error} = Ash.Type.cast_input({:array, SimpleEmbed}, [valid, invalid])
+
+        expected =
+          Enum.map(changeset.errors, fn error ->
+            error
+            |> Ash.Error.set_path(1)
+            |> Map.take([:__struct__, :field, :path, :message, :value, :vars])
+          end)
+
+        actual =
+          error
+          |> Ash.Error.to_error_class()
+          |> Map.fetch!(:errors)
+          |> Enum.map(&Map.take(&1, [:__struct__, :field, :path, :message, :value, :vars]))
+
+        assert actual == expected
+      end
+    end
+
+    test "row indexes include already-cast structs" do
+      valid = %{id: Ash.UUID.generate(), quantity: "1"}
+      assert {:ok, casted} = Ash.Type.cast_input(SimpleEmbed, valid)
+
+      assert {:error, error} =
+               Ash.Type.cast_input({:array, SimpleEmbed}, [
+                 casted,
+                 valid,
+                 %{valid | quantity: "0"}
+               ])
+
+      assert [%Ash.Error.Changes.InvalidAttribute{field: :quantity, path: [2]}] =
+               Ash.Error.to_error_class(error).errors
+    end
+
+    test "required errors retain their field and row path" do
+      valid = %{id: Ash.UUID.generate(), quantity: "1"}
+      assert {:error, error} = Ash.Type.cast_input({:array, SimpleEmbed}, [valid, %{}])
+
+      assert [%Ash.Error.Changes.Required{field: :id, path: [1]}] =
+               Ash.Error.to_error_class(error).errors
+    end
+
+    test "multiple raw errors keep their fields, relative paths and interpolation variables" do
+      valid = %{id: Ash.UUID.generate(), quantity: "1"}
+
+      errors = [
+        "invalid format",
+        [message: "must be at least %{minimum}", minimum: 2],
+        [message: "invalid child", fields: [:first, :second], path: [:nested]]
+      ]
+
+      assert {:error, error} =
+               Ash.Type.cast_input({:array, SimpleEmbed}, [valid, Map.put(valid, :custom, errors)])
+
+      assert [
+               %Ash.Error.Changes.InvalidAttribute{
+                 field: :custom,
+                 message: "invalid format",
+                 path: [1],
+                 value: ^errors
+               },
+               %Ash.Error.Changes.InvalidAttribute{
+                 field: :custom,
+                 message: "must be at least %{minimum}",
+                 path: [1],
+                 vars: vars
+               },
+               %Ash.Error.Changes.InvalidAttribute{field: :first, path: [1, :custom, :nested]},
+               %Ash.Error.Changes.InvalidAttribute{field: :second, path: [1, :custom, :nested]}
+             ] = Ash.Error.to_error_class(error).errors
+
+      assert vars[:minimum] == 2
+    end
+
+    test "existing exceptions keep their type, field, value and nested path" do
+      valid = %{id: Ash.UUID.generate(), quantity: "1"}
+
+      native =
+        Ash.Error.Changes.InvalidArgument.exception(
+          field: :quantity,
+          message: "must be at least %{minimum}",
+          value: "bad",
+          vars: [minimum: 2]
+        )
+        |> Ash.Error.set_path([:nested])
+
+      for error <- [native, Ash.Error.to_error_class([native])] do
+        assert {:error, error} =
+                 Ash.Type.cast_input({:array, SimpleEmbed}, [
+                   valid,
+                   Map.put(valid, :custom, error)
+                 ])
+
+        assert [
+                 %Ash.Error.Changes.InvalidArgument{
+                   field: :quantity,
+                   message: "must be at least %{minimum}",
+                   value: "bad",
+                   vars: [minimum: 2],
+                   path: [1, :custom, :nested]
+                 }
+               ] = Ash.Error.to_error_class(error).errors
+      end
+    end
+  end
+
   describe "error messages include field context" do
     defmodule FailingType do
       @moduledoc false
