@@ -711,7 +711,7 @@ defmodule Ash.Type.NewType do
         end
       end
 
-      defoverridable init: 1, 
+      defoverridable init: 1,
                      apply_constraints_array: 2,
                      apply_constraints: 2,
                      apply_atomic_constraints: 2,
