@@ -8,6 +8,23 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.6](https://github.com/ash-project/ash/compare/v3.33.5...v3.33.6) (2026-09-18)
+
+
+
+
+### Improvements:
+
+* allow overriding `init/1` by [@zachdaniel](https://github.com/zachdaniel)
+
+* check expression arguments against declared function argument types (#2948) by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* validate malformed boolean filter groups (#2951) by Wu Shuwen [(#2951)](https://github.com/ash-project/ash/pull/2951)
+
+* resolve aggregate types in manifest reachability (#2950) by [@pshoukry](https://github.com/pshoukry) [(#2950)](https://github.com/ash-project/ash/pull/2950)
+
 ## [v3.33.5](https://github.com/ash-project/ash/compare/v3.33.4...v3.33.5) (2026-09-17)
 
 
