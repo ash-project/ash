@@ -19,20 +19,30 @@ defmodule Ash.Test.CompMemoizeTest do
   end
 
   test "nothing is memoized while it is turned off" do
-    assert Comp.equal?(1, 1)
+    assert Comp.equal?(~D[2020-01-01], ~D[2020-01-01])
     assert Comp.equal?(Decimal.new(1), 1)
+    assert cached_pairs() == 0
+  end
+
+  test "same-type primitives never touch the dispatch cache" do
+    Comp.memoize_dispatch(true)
+
+    assert Comp.equal?(1, 1)
+    assert Comp.equal?("a", "a")
+    assert Comp.equal?(:a, :a)
+    assert Comp.compare(1, 2.0) == :lt
     assert cached_pairs() == 0
   end
 
   test "turning it on memoizes each type pair once" do
     Comp.memoize_dispatch(true)
 
-    assert Comp.equal?(1, 1)
+    assert Comp.equal?(~D[2020-01-01], ~D[2020-01-01])
     one_pair = cached_pairs()
     assert one_pair > 0
 
     # repeating the same pair caches nothing further
-    for _ <- 1..5, do: assert(Comp.equal?(2, 3) == false)
+    for _ <- 1..5, do: assert(Comp.equal?(~D[2020-01-01], ~D[2020-01-02]) == false)
     assert cached_pairs() == one_pair
 
     # a pair of different types caches more. A comparator may delegate to
@@ -43,7 +53,7 @@ defmodule Ash.Test.CompMemoizeTest do
 
   test "reset_dispatch/0 discards what was memoized" do
     Comp.memoize_dispatch(true)
-    assert Comp.equal?(1, 1)
+    assert Comp.equal?(~D[2020-01-01], ~D[2020-01-01])
     assert cached_pairs() > 0
 
     assert :ok = Comp.reset_dispatch()
@@ -52,7 +62,7 @@ defmodule Ash.Test.CompMemoizeTest do
 
   test "toggling clears, so a stale answer cannot survive the switch" do
     Comp.memoize_dispatch(true)
-    assert Comp.equal?(1, 1)
+    assert Comp.equal?(~D[2020-01-01], ~D[2020-01-01])
     assert cached_pairs() > 0
 
     Comp.memoize_dispatch(false)

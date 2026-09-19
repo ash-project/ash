@@ -24,24 +24,45 @@ defmodule Ash.Filter.Runtime do
   def filter_matches(domain, records, filter, opts) do
     {records, parent} = load_records_and_parent(records, domain, opts[:parent], filter, opts)
 
-    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
-      case matches(record, filter, Keyword.put(opts, :parent, parent)) do
-        {:ok, falsey} when falsey in [false, nil] ->
-          {:cont, {:ok, records}}
+    # Every record shares a resource, so hydrate the filter and compute its
+    # relationship paths once rather than once per record.
+    hydrated =
+      case records do
+        [%resource{} | _] ->
+          Ash.Filter.hydrate_refs(filter, %{
+            resource: resource,
+            public?: false,
+            parent_stack: parent_stack(parent),
+            conflicting_upsert_values: opts[:conflicting_upsert_values]
+          })
 
-        {:ok, _} ->
-          {:cont, {:ok, [record | records]}}
-
-        {:error, error} ->
-          {:halt, {:error, error}}
+        _ ->
+          {:ok, filter}
       end
-    end)
-    |> case do
-      {:ok, records} ->
-        {:ok, Enum.reverse(records)}
 
-      other ->
-        other
+    with {:ok, filter} <- hydrated do
+      relationship_paths = Ash.Filter.relationship_paths(filter)
+      opts = Keyword.put(opts, :parent, parent)
+
+      Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
+        case matches(record, filter, relationship_paths, opts) do
+          {:ok, falsey} when falsey in [false, nil] ->
+            {:cont, {:ok, records}}
+
+          {:ok, _} ->
+            {:cont, {:ok, [record | records]}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+      |> case do
+        {:ok, records} ->
+          {:ok, Enum.reverse(records)}
+
+        other ->
+          other
+      end
     end
   end
 
@@ -114,21 +135,16 @@ defmodule Ash.Filter.Runtime do
     {records, parent}
   end
 
-  defp matches(record, expression, opts) do
-    relationship_paths =
-      expression
-      |> Ash.Filter.relationship_paths()
-
+  defp matches(record, expression, relationship_paths, opts) do
     record
     |> stream_relationships(relationship_paths)
     |> Enum.reduce_while({:ok, false}, fn scenario, {:ok, false} ->
-      case do_match(
+      case do_match_hydrated(
              scenario,
              expression,
              opts[:parent],
              nil,
-             opts[:unknown_on_unknown_refs?],
-             opts[:conflicting_upsert_values]
+             opts[:unknown_on_unknown_refs?]
            ) do
         {:error, error} ->
           {:halt, {:error, error}}
@@ -305,20 +321,24 @@ defmodule Ash.Filter.Runtime do
       end
 
     with {:ok, hydrated} <- hydrated do
-      case resolve_expr(hydrated, record, parent, resource, unknown_on_unknown_refs?) do
-        :unknown ->
-          if unknown_on_unknown_refs? do
-            :unknown
-          else
-            {:ok, nil}
-          end
+      do_match_hydrated(record, hydrated, parent, resource, unknown_on_unknown_refs?)
+    end
+  end
 
-        {:ok, value} ->
-          {:ok, value}
+  defp do_match_hydrated(record, hydrated, parent, resource, unknown_on_unknown_refs?) do
+    case resolve_expr(hydrated, record, parent, resource, unknown_on_unknown_refs?) do
+      :unknown ->
+        if unknown_on_unknown_refs? do
+          :unknown
+        else
+          {:ok, nil}
+        end
 
-        other ->
-          other
-      end
+      {:ok, value} ->
+        {:ok, value}
+
+      other ->
+        other
     end
   end
 

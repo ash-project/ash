@@ -15,6 +15,13 @@ if !Code.ensure_loaded?(Comp) do
     defmacro lt, do: :lt
     defmacro eq, do: :eq
 
+    # Same-type primitives have no custom comparator, so `Any.To.Any` would
+    # just apply `==`/`<`/`>`. Skip the dispatch struct entirely.
+    defguardp primitive_pair(left, right)
+              when (is_binary(left) and is_binary(right)) or
+                     (is_number(left) and is_number(right)) or
+                     (is_atom(left) and is_atom(right))
+
     @doc """
     Helper to define ordering relation for pair of types,
     accepts two `term :: type` pairs
@@ -136,6 +143,8 @@ if !Code.ensure_loaded?(Comp) do
         false
     """
     @spec equal?(left, right) :: boolean
+    def equal?(left, right) when primitive_pair(left, right), do: left == right
+
     def equal?(left, right) do
       left
       |> new(right)
@@ -153,6 +162,8 @@ if !Code.ensure_loaded?(Comp) do
         true
     """
     @spec not_equal?(left, right) :: boolean
+    def not_equal?(left, right) when primitive_pair(left, right), do: left != right
+
     def not_equal?(left, right) do
       left
       |> new(right)
@@ -172,6 +183,8 @@ if !Code.ensure_loaded?(Comp) do
         true
     """
     @spec greater_than?(left, right) :: boolean
+    def greater_than?(left, right) when primitive_pair(left, right), do: left > right
+
     def greater_than?(left, right) do
       left
       |> new(right)
@@ -191,6 +204,8 @@ if !Code.ensure_loaded?(Comp) do
         false
     """
     @spec less_than?(left, right) :: boolean
+    def less_than?(left, right) when primitive_pair(left, right), do: left < right
+
     def less_than?(left, right) do
       left
       |> new(right)
@@ -210,6 +225,8 @@ if !Code.ensure_loaded?(Comp) do
         true
     """
     @spec greater_or_equal?(left, right) :: boolean
+    def greater_or_equal?(left, right) when primitive_pair(left, right), do: left >= right
+
     def greater_or_equal?(left, right) do
       left
       |> new(right)
@@ -229,6 +246,8 @@ if !Code.ensure_loaded?(Comp) do
         false
     """
     @spec less_or_equal?(left, right) :: boolean
+    def less_or_equal?(left, right) when primitive_pair(left, right), do: left <= right
+
     def less_or_equal?(left, right) do
       left
       |> new(right)
@@ -309,6 +328,14 @@ if !Code.ensure_loaded?(Comp) do
         :eq
     """
     @spec compare(left, right) :: Comparable.ord()
+    def compare(left, right) when primitive_pair(left, right) do
+      cond do
+        left == right -> :eq
+        left > right -> :gt
+        true -> :lt
+      end
+    end
+
     def compare(left, right) do
       left
       |> new(right)
