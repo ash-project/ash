@@ -20,7 +20,14 @@ defmodule Ash.Info.Manifest.Resource do
           fields: %{atom() => Ash.Info.Manifest.Field.t()},
           relationships: %{atom() => Ash.Info.Manifest.Relationship.t()},
           identities: %{atom() => %{keys: [atom()]}},
-          multitenancy: %{strategy: atom(), global?: boolean(), attribute: atom()} | nil,
+          multitenancy:
+            %{
+              strategy: atom(),
+              global?: boolean(),
+              attribute: atom(),
+              ancestor_attributes: [atom()]
+            }
+            | nil,
           custom: map()
         }
 

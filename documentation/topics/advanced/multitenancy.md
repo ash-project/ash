@@ -137,6 +137,59 @@ multitenancy do
 end
 ```
 
+### Hierarchical Tenants With Ancestor Attributes
+
+For hierarchical tenants, like departments inside an organization, the tenant
+stays a single value (the department), but `ancestor_attributes` can be
+configured, ordered from broadest to narrowest. The ancestor values are
+derived from the tenant via the `Ash.ToAncestorTenants` protocol, and are
+applied everywhere the tenant attribute is: read filters, created records, and
+upsert conflict targets. Data layers that generate unique indexes for
+identities (like AshPostgres) prefix them with the ancestor attributes before
+the tenant attribute, so one index serves both organization-level
+(`organization_id`) and department-level (`organization_id, department_id`)
+lookups. Deeper hierarchies just add more ancestors, e.g
+`ancestor_attributes [:organization_id, :department_id]` for team-level
+tenancy.
+
+```elixir
+defmodule MyApp.Customer do
+  use Ash.Resource, ...
+
+  multitenancy do
+    strategy :attribute
+    attribute :department_id
+    ancestor_attributes [:organization_id]
+  end
+end
+
+defmodule MyApp.Department do
+  use Ash.Resource, ...
+
+  defimpl Ash.ToTenant do
+    def to_tenant(department, _resource), do: department.id
+  end
+
+  defimpl Ash.ToAncestorTenants do
+    def to_ancestor_tenants(department, _resource), do: [department.organization_id]
+  end
+end
+
+MyApp.Customer
+|> Ash.Query.for_read(:read, %{}, tenant: department)
+|> Ash.read!()
+```
+
+`Ash.ToAncestorTenants` falls back to `[]` for values without an
+implementation. If a resource configures `ancestor_attributes` and the derived
+ancestors don't line up with it, the operation raises rather than silently
+dropping the ancestor filters.
+
+Tenants don't always arrive as structs: across serialization boundaries — a
+background job's arguments, a session, an API header — a tenant is often
+reduced to a plain id, which doesn't carry its ancestors. Rebuild a tenant
+value that does (for example by looking the record up) before setting it.
+
 ### Transforming Tenant Values
 
 You can provide the `parse_attribute` option if the tenant being set doesn't
