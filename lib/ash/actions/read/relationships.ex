@@ -408,7 +408,8 @@ defmodule Ash.Actions.Read.Relationships do
                   destination_attribute: destination_attribute
                 } = relationship
 
-                if acc != [] && source_query.context[:private][:authorize?] do
+                if acc != [] && source_query.context[:private][:authorize?] &&
+                     Ash.Actions.Helpers.authorizers?(entry_query) do
                   case Ash.can(
                          entry_query,
                          source_query.context[:private][:actor],
@@ -484,7 +485,8 @@ defmodule Ash.Actions.Read.Relationships do
                 source_query.arguments
               )
 
-            if source_query.context[:private][:authorize?] do
+            if source_query.context[:private][:authorize?] &&
+                 Ash.Actions.Helpers.authorizers?(through_query) do
               case Ash.can(
                      through_query,
                      source_query.context[:private][:actor],

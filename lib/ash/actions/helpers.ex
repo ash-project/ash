@@ -1093,4 +1093,14 @@ defmodule Ash.Actions.Helpers do
       :ok
     end
   end
+
+  @doc false
+  @spec authorizers?(Ash.Resource.t() | Ash.Query.t() | Ash.Changeset.t() | [Ash.Changeset.t()]) ::
+          boolean()
+  def authorizers?(resource) when is_atom(resource),
+    do: Ash.Resource.Info.authorizers(resource) != []
+
+  def authorizers?(%{resource: resource}), do: authorizers?(resource)
+  def authorizers?([%{resource: resource} | _]), do: authorizers?(resource)
+  def authorizers?(_), do: true
 end
