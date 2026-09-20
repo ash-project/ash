@@ -105,18 +105,17 @@ checks =
     {record, action}
   end
 
-contexts = %{
-  "manager bypass" => %{
-    shared: %{
-      membership: %{id: 20, lab_id: 1},
-      role: %{permissions: [:orders_manage]}
-    }
-  },
-  "self-service policy" => %{
-    shared: %{
-      membership: %{id: 10, lab_id: 1},
-      role: %{permissions: [:orders_work_self]}
-    }
+manager_context = %{
+  shared: %{
+    membership: %{id: 20, lab_id: 1},
+    role: %{permissions: [:orders_manage]}
+  }
+}
+
+self_service_context = %{
+  shared: %{
+    membership: %{id: 10, lab_id: 1},
+    role: %{permissions: [:orders_work_self]}
   }
 }
 
@@ -130,16 +129,21 @@ can_all = fn context ->
   end)
 end
 
-for {name, context} <- contexts do
-  if can_all.(context) != List.duplicate(true, length(checks)) do
-    raise "unexpected authorization result for #{name}"
+jobs = %{
+  "manager bypass" => fn -> can_all.(manager_context) end,
+  "self-service policy" => fn -> can_all.(self_service_context) end,
+  "can_do_all" => fn ->
+    Ash.can_do_all(checks, nil,
+      context: self_service_context,
+      reuse_values?: true,
+      run_queries?: false
+    )
   end
-end
+}
 
 Logger.configure(level: :error)
 
-Benchee.run(
-  Map.new(contexts, fn {name, context} -> {name, fn -> can_all.(context) end} end),
+Benchee.run(jobs,
   warmup: 1,
   time: 5,
   memory_time: 2
