@@ -427,7 +427,7 @@ defmodule Ash.Actions.Helpers do
   defp resolve_query_as_of(_query, :now), do: DateTime.utc_now()
   defp resolve_query_as_of(_query, %DateTime{} = as_of), do: as_of
 
-  # Resolved by `Ash.Query.as_of/2`, which both spellings reach.
+  # Passed through so `Ash.Query.as_of/2` refuses it by name, as it does for the setter.
   defp resolve_query_as_of(_query, %Ash.Range{} = as_of), do: as_of
 
   defp resolve_query_as_of(query, nil) do

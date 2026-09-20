@@ -260,14 +260,7 @@ defmodule Ash do
                        doc: "The tenant to set on the query being run"
                      ],
                      as_of: [
-                       type:
-                         {:or,
-                          [
-                            {:struct, DateTime},
-                            {:struct, Ash.Range},
-                            {:literal, :now},
-                            {:literal, nil}
-                          ]},
+                       type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
                        doc:
                          "A point in time to run the read \"as of\" (time travel). See `Ash.Query.as_of/2`."
                      ],
@@ -836,7 +829,7 @@ defmodule Ash do
       """
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
       doc: """
       A point in time to run "as of" (time travel). See `Ash.Query.as_of/2`.
       """

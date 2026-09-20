@@ -212,7 +212,7 @@ defmodule Ash.Query do
           filter: Ash.Filter.t() | nil,
           resource: module,
           tenant: term(),
-          as_of: DateTime.t() | Ash.Range.t() | :now | nil,
+          as_of: DateTime.t() | :now | nil,
           combination_of: [Ash.Query.Combination.t()],
           timeout: pos_integer() | nil,
           action_failed?: boolean,
@@ -829,7 +829,7 @@ defmodule Ash.Query do
       doc: "set the tenant on the query"
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
       doc: "set the `as_of` point in time on the query (time travel). See `Ash.Query.as_of/2`."
     ],
     load: [
