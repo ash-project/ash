@@ -215,6 +215,18 @@ defmodule Ash.TemporalTest do
       assert anchored(%Now{arguments: []}) == @anchor
     end
 
+    test "a range-valued as_of anchors to the point its portion begins at" do
+      portion = %Ash.Range{
+        lower: @anchor,
+        upper: ~U[2026-07-01 00:00:00.000000Z],
+        bounds: :"[)"
+      }
+
+      assert Ash.Expr.fill_template(%Now{arguments: []},
+               context: %{private: %{as_of: portion}}
+             ) == @anchor
+    end
+
     test "ago(n, unit) resolves to as_of shifted into the past" do
       assert anchored(%Ago{arguments: [7, :day]}) == Ago.datetime_add(@anchor, -7, :day)
     end

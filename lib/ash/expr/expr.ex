@@ -329,10 +329,8 @@ defmodule Ash.Expr do
   defp fill_template_as_of(opts) do
     context = opts[:context] || %{}
 
-    case get_in(context, [:private, :as_of]) || get_in(context, [:shared, :as_of]) do
-      :now -> DateTime.utc_now()
-      other -> other
-    end
+    (get_in(context, [:private, :as_of]) || get_in(context, [:shared, :as_of]))
+    |> Ash.Temporal.resolve_write_as_of()
   end
 
   @doc false
