@@ -583,23 +583,34 @@ defmodule Ash.DataLayer.EtsTemporalTest do
 
     # The read side takes the instant the portion begins at, so a write's own read leg finds
     # the version it supersedes.
-    test "a range on a read narrows to the point its period begins at" do
+    test "a range on a read is refused" do
       Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
 
-      assert [%{name: "first"}] =
-               EtsVersioned |> Ash.Query.as_of(@portion) |> Ash.read!()
-
-      assert Ash.Query.as_of(EtsVersioned, @portion).as_of == @portion.lower
+      assert %{errors: [%Ash.Error.Query.AsOfNotAnInstant{}]} =
+               Ash.Query.as_of(EtsVersioned, @portion)
     end
 
     # `as_of:` in opts and `as_of/2` on the query reach different code, so both are named
     # here.
-    test "both spellings of a read's as_of narrow a range the same way" do
+    test "both spellings of a read's as_of refuse a range" do
       Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
 
-      assert Ash.Query.as_of(EtsVersioned, @portion).as_of == @portion.lower
+      assert %{errors: [%Ash.Error.Query.AsOfNotAnInstant{}]} =
+               Ash.Query.as_of(EtsVersioned, @portion)
 
-      assert {:ok, _} = EtsVersioned |> Ash.Query.new() |> Ash.read(as_of: @portion)
+      assert {:error, error} = EtsVersioned |> Ash.Query.new() |> Ash.read(as_of: @portion)
+
+      assert %Ash.Error.Query.AsOfNotAnInstant{} =
+               Ash.Error.to_error_class(error).errors |> hd()
+    end
+
+    # A write's read legs inherit the instant, so the rule above does not refuse them.
+    test "a write keeps its range, and propagates an instant" do
+      changeset = EtsVersioned |> Ash.Changeset.new() |> Ash.Changeset.as_of(@portion)
+
+      assert changeset.as_of == @portion
+      assert changeset.context[:private][:as_of] == @portion
+      assert changeset.context[:as_of] == @portion.lower
     end
 
     # `nil` already means "no particular instant", so a range that resolves to one has to

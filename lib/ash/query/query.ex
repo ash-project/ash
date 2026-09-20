@@ -2844,22 +2844,19 @@ defmodule Ash.Query do
     # (the same channel multitenancy uses), and is mirrored onto the struct
     # field here so it is threaded to the data layer.
     case Map.fetch(query.context, :as_of) do
-      {:ok, as_of} -> narrow_as_of(query, as_of)
+      {:ok, as_of} -> put_as_of(query, as_of)
       :error -> query
     end
   end
 
-  # A write's `as_of` reaches its own read leg through this context, so a range arrives here
-  # even when no caller passed one.
-  defp narrow_as_of(query, %Ash.Range{lower: nil} = as_of) do
+  defp put_as_of(query, %Ash.Range{} = as_of) do
     add_error(
       query,
       Ash.Error.Query.AsOfNotAnInstant.exception(resource: query.resource, as_of: as_of)
     )
   end
 
-  defp narrow_as_of(query, %Ash.Range{lower: lower}), do: %{query | as_of: lower}
-  defp narrow_as_of(query, as_of), do: %{query | as_of: as_of}
+  defp put_as_of(query, as_of), do: %{query | as_of: as_of}
 
   @doc """
   Gets the value of an argument provided to the query.
@@ -3126,7 +3123,7 @@ defmodule Ash.Query do
 
   See the `temporal` section of `Ash.Resource.Dsl`.
   """
-  @spec as_of(t() | Ash.Resource.t(), DateTime.t() | Ash.Range.t() | :now | nil) :: t()
+  @spec as_of(t() | Ash.Resource.t(), DateTime.t() | :now | nil) :: t()
   def as_of(query, nil), do: new(query)
 
   def as_of(query, as_of) do
@@ -4558,7 +4555,7 @@ defmodule Ash.Query do
       |> Map.put(:action, ash_query.action)
       |> Map.put_new(:private, %{})
       |> put_in([:private, :tenant], ash_query.tenant)
-      |> put_in([:private, :as_of], Ash.Temporal.resolve_as_of(ash_query.as_of))
+      |> put_in([:private, :as_of], Ash.Temporal.resolve_read_as_of(ash_query.as_of))
       |> Map.put_new(:data_layer, %{})
 
     context =

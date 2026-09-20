@@ -12,7 +12,7 @@ defmodule Ash.Temporal do
 
   ```elixir
   # a read resolves as_of a point in time
-  Ash.Temporal.resolve_as_of(query.as_of)
+  Ash.Temporal.resolve_read_as_of(query.as_of)
 
   # a write resolves a period beginning at the point,
   # and extending forever unless a later write closes it
@@ -32,16 +32,30 @@ defmodule Ash.Temporal do
   @type as_of :: :now | term() | nil
 
   @doc """
-  Resolves an `as_of` to a point in time.
+  Resolves the `as_of` a write takes effect at.
 
-  `:now` resolves to the current time. Anything else is returned unchanged. `nil` means no
-  particular time was provided.
+  `:now` resolves to the current time. A range resolves to its lower bound. Anything else is
+  returned unchanged. `nil` means no particular time was provided.
   """
-  @spec resolve_as_of(as_of()) :: term() | nil
-  def resolve_as_of(:now), do: DateTime.utc_now()
-  def resolve_as_of(%Ash.Range{lower: nil}), do: nil
-  def resolve_as_of(%Ash.Range{lower: lower}), do: resolve_as_of(lower)
-  def resolve_as_of(other), do: other
+  @spec resolve_write_as_of(as_of()) :: term() | nil
+  def resolve_write_as_of(:now), do: DateTime.utc_now()
+  def resolve_write_as_of(%Ash.Range{lower: nil}), do: nil
+  def resolve_write_as_of(%Ash.Range{lower: lower}), do: resolve_write_as_of(lower)
+  def resolve_write_as_of(other), do: other
+
+  @doc """
+  Resolves the `as_of` a read answers at.
+
+  `:now` resolves to the current time. `nil` means no particular time was provided. A range
+  raises `Ash.Error.Query.AsOfNotAnInstant`.
+  """
+  @spec resolve_read_as_of(as_of()) :: term() | nil
+  def resolve_read_as_of(%Ash.Range{} = as_of) do
+    raise Ash.Error.Query.AsOfNotAnInstant.exception(resource: nil, as_of: as_of)
+  end
+
+  def resolve_read_as_of(:now), do: DateTime.utc_now()
+  def resolve_read_as_of(other), do: other
 
   @doc """
   Whether a change, validation or preparation module declares itself safe to run on a
