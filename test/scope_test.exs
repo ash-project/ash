@@ -252,6 +252,24 @@ defmodule Ash.ScopeTest do
 
       assert :ok = Ash.destroy(record, action: :soft_destroy, scope: scope)
     end
+
+    test "direct actor and tenant are available to soft destroy changes" do
+      record =
+        MultiTenantResource
+        |> Ash.Changeset.for_create(:create, %{name: "to_archive", tenant_id: "tenant_1"},
+          tenant: "tenant_1"
+        )
+        |> Ash.create!()
+
+      actor = %{id: Ash.UUID.generate()}
+
+      assert :ok =
+               Ash.destroy(record,
+                 action: :soft_destroy,
+                 actor: actor,
+                 tenant: "tenant_1"
+               )
+    end
   end
 
   describe "Ash.Context.to_opts/1 (deprecated)" do
