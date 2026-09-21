@@ -8,6 +8,16 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.8](https://github.com/ash-project/ash/compare/v3.33.7...v3.33.8) (2026-09-21)
+
+
+### Bug Fixes:
+
+* revert: properly prevent reloading lazy calculations by [@zachdaniel](https://github.com/zachdaniel)
+
+This caused calculations with arguments to not be reloaded
+
+
 ## [v3.33.7](https://github.com/ash-project/ash/compare/v3.33.6...v3.33.7) (2026-09-21)
 
 
