@@ -8,6 +8,25 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.7](https://github.com/ash-project/ash/compare/v3.33.6...v3.33.7) (2026-09-21)
+
+
+
+
+### Bug Fixes:
+
+* properly prevent reloading lazy calculations by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle parsing errors for relationship filters by [@zachdaniel](https://github.com/zachdaniel)
+
+### Performance Improvements:
+
+* store static policy expressions at compile time by [@zachdaniel](https://github.com/zachdaniel)
+
+* constant fold policy expressions before other expensive logic by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't run authorization code if there are no authorizers by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.33.6](https://github.com/ash-project/ash/compare/v3.33.5...v3.33.6) (2026-09-18)
 
 
