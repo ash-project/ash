@@ -489,6 +489,10 @@ defmodule Ash.Policy.Authorizer do
     Ash.Policy.Authorizer.Transformers.CacheFieldPolicies
   ]
 
+  @persisters [
+    Ash.Policy.Authorizer.Transformers.CachePolicyExpressions
+  ]
+
   @verifiers [
     Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers,
     Ash.Policy.Authorizer.Verifiers.VerifySatSolverImplementation,
@@ -499,6 +503,7 @@ defmodule Ash.Policy.Authorizer do
   use Spark.Dsl.Extension,
     sections: @sections,
     transformers: @transformers,
+    persisters: @persisters,
     verifiers: @verifiers
 
   @impl true
