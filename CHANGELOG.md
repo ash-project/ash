@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.9](https://github.com/ash-project/ash/compare/v3.33.8...v3.33.9) (2026-09-21)
+
+
+
+
+### Bug Fixes:
+
+* reinstate lazy calculations fix by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure actor and tenant context is available to changes on soft destroys (#2958) by aVikingTrex [(#2958)](https://github.com/ash-project/ash/pull/2958)
+
 ## [v3.33.8](https://github.com/ash-project/ash/compare/v3.33.7...v3.33.8) (2026-09-21)
 
 
