@@ -2849,13 +2849,6 @@ defmodule Ash.Query do
     end
   end
 
-  defp put_as_of(query, %Ash.Range{} = as_of) do
-    add_error(
-      query,
-      Ash.Error.Query.AsOfNotAnInstant.exception(resource: query.resource, as_of: as_of)
-    )
-  end
-
   defp put_as_of(query, as_of), do: %{query | as_of: as_of}
 
   @doc """

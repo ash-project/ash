@@ -581,27 +581,25 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert DateTime.compare(bound, bare) in [:eq, :gt]
     end
 
-    # The read side takes the instant the portion begins at, so a write's own read leg finds
-    # the version it supersedes.
-    test "a range on a read is refused" do
+    test "a read's as_of refuses a range at the option" do
       Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
 
-      assert %{errors: [%Ash.Error.Query.AsOfNotAnInstant{}]} =
-               Ash.Query.as_of(EtsVersioned, @portion)
+      assert_raise Ash.Error.Unknown, ~r/:as_of option/, fn ->
+        EtsVersioned |> Ash.Query.new() |> Ash.read!(as_of: @portion)
+      end
     end
 
-    # `as_of:` in opts and `as_of/2` on the query reach different code, so both are named
-    # here.
-    test "both spellings of a read's as_of refuse a range" do
+    # `as_of/2` is specced for an instant, and a spec is not enforced.
+    test "a range reaching a query past its spec is refused when the read runs" do
       Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
 
-      assert %{errors: [%Ash.Error.Query.AsOfNotAnInstant{}]} =
-               Ash.Query.as_of(EtsVersioned, @portion)
+      query = Ash.Query.as_of(EtsVersioned, @portion)
 
-      assert {:error, error} = EtsVersioned |> Ash.Query.new() |> Ash.read(as_of: @portion)
+      assert query.as_of == @portion
+      assert query.errors == []
 
-      assert %Ash.Error.Query.AsOfNotAnInstant{} =
-               Ash.Error.to_error_class(error).errors |> hd()
+      error = assert_raise Ash.Error.Invalid, fn -> Ash.read!(query) end
+      assert [%Ash.Error.Query.AsOfNotAnInstant{}] = error.errors
     end
 
     # A write's read legs inherit the instant, so the rule above does not refuse them.
@@ -613,11 +611,14 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert changeset.context[:as_of] == @portion.lower
     end
 
-    # `nil` already means "no particular instant", so a range that resolves to one has to
-    # refuse by name rather than read as current state.
-    test "a range with no lower bound is refused by name on a read" do
-      assert %{errors: [%Ash.Error.Query.AsOfNotAnInstant{}]} =
-               Ash.Query.as_of(EtsVersioned, %Ash.Range{lower: nil, upper: nil, bounds: :"[)"})
+    # `nil` already means "no particular instant", so this must refuse rather than read
+    # as current state.
+    test "a range with no lower bound is refused on a read" do
+      query =
+        Ash.Query.as_of(EtsVersioned, %Ash.Range{lower: nil, upper: nil, bounds: :"[)"})
+
+      error = assert_raise Ash.Error.Invalid, fn -> Ash.read!(query) end
+      assert [%Ash.Error.Query.AsOfNotAnInstant{}] = error.errors
     end
 
     # `raw_instant/2` refuses it rather than guessing a bound, so the write finds no version
