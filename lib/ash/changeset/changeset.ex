@@ -1949,7 +1949,7 @@ defmodule Ash.Changeset do
       doc: "set the tenant on the changeset"
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
       doc:
         "set the `as_of` point in time on the changeset (time travel). See `Ash.Changeset.as_of/2`."
     ],
@@ -4229,17 +4229,20 @@ defmodule Ash.Changeset do
   # instant rather than the wall clock (see `Ash.Helpers.resolve_default/2`).
   defp default(changeset, :create, attribute),
     do:
-      Ash.Helpers.resolve_default(attribute.default, Ash.Temporal.resolve_as_of(changeset.as_of))
+      Ash.Helpers.resolve_default(
+        attribute.default,
+        Ash.Temporal.resolve_write_as_of(changeset.as_of)
+      )
 
   defp default(changeset, :update, attribute) do
     Ash.Helpers.resolve_default(
       attribute.update_default,
-      Ash.Temporal.resolve_as_of(changeset.as_of)
+      Ash.Temporal.resolve_write_as_of(changeset.as_of)
     )
   end
 
   defp resolve_default(changeset, default),
-    do: Ash.Helpers.resolve_default(default, Ash.Temporal.resolve_as_of(changeset.as_of))
+    do: Ash.Helpers.resolve_default(default, Ash.Temporal.resolve_write_as_of(changeset.as_of))
 
   defp validation_attribute(changeset) do
     case List.last(changeset.atomics) do
@@ -5533,12 +5536,16 @@ defmodule Ash.Changeset do
   `as_of`. How (and whether) a period of validity is stored is up to the data
   layer.
   """
-  @spec as_of(t(), DateTime.t() | :now | nil) :: t()
+  @spec as_of(t(), DateTime.t() | Ash.Range.t() | :now | nil) :: t()
   def as_of(changeset, nil), do: changeset
 
   def as_of(changeset, as_of) do
+    # Read legs inherit the instant through `shared`; the range stays on `private`.
     %{changeset | as_of: as_of}
-    |> set_context(%{private: %{as_of: as_of}, shared: %{as_of: as_of}})
+    |> set_context(%{
+      private: %{as_of: as_of},
+      shared: %{as_of: Ash.Temporal.resolve_write_as_of(as_of)}
+    })
   end
 
   @spec timeout(t(), nil | pos_integer, nil | pos_integer) :: t()
@@ -5566,14 +5573,19 @@ defmodule Ash.Changeset do
     # `as_of` rides in the shared context so it propagates to related/managed records (the
     # same channel multitenancy uses), and is mirrored onto the struct field here so the
     # data layer threads it — symmetric with `Ash.Query.set_context/2`.
+    #
+    # `private` holds this write's own `as_of`, which may be a range, and wins.
     changeset =
-      case Map.fetch(changeset.context, :as_of) do
+      case fetch_context_as_of(changeset.context) do
         {:ok, as_of} -> %{changeset | as_of: as_of}
         :error -> changeset
       end
 
     store_context_changes(changeset, map)
   end
+
+  defp fetch_context_as_of(%{private: %{as_of: as_of}}), do: {:ok, as_of}
+  defp fetch_context_as_of(context), do: Map.fetch(context, :as_of)
 
   defp store_context_changes(%{phase: :pending} = changeset, map) do
     %{changeset | context_changes: Ash.Helpers.deep_merge_maps(changeset.context_changes, map)}

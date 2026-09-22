@@ -215,6 +215,18 @@ defmodule Ash.TemporalTest do
       assert anchored(%Now{arguments: []}) == @anchor
     end
 
+    test "a range-valued as_of anchors to the point its portion begins at" do
+      portion = %Ash.Range{
+        lower: @anchor,
+        upper: ~U[2026-07-01 00:00:00.000000Z],
+        bounds: :"[)"
+      }
+
+      assert Ash.Expr.fill_template(%Now{arguments: []},
+               context: %{private: %{as_of: portion}}
+             ) == @anchor
+    end
+
     test "ago(n, unit) resolves to as_of shifted into the past" do
       assert anchored(%Ago{arguments: [7, :day]}) == Ago.datetime_add(@anchor, -7, :day)
     end
@@ -301,16 +313,37 @@ defmodule Ash.TemporalTest do
     end
   end
 
-  describe "Ash.Temporal.resolve_as_of/1" do
-    test "answers the current instant for :now" do
+  describe "Ash.Temporal resolvers" do
+    test "both answer the current instant for :now" do
       before = DateTime.utc_now()
-      resolved = Ash.Temporal.resolve_as_of(:now)
-      assert DateTime.compare(resolved, before) in [:eq, :gt]
+
+      for resolved <- [
+            Ash.Temporal.resolve_read_as_of(:now),
+            Ash.Temporal.resolve_write_as_of(:now)
+          ] do
+        assert DateTime.compare(resolved, before) in [:eq, :gt]
+      end
     end
 
-    test "passes an instant and an unset as_of through" do
-      assert Ash.Temporal.resolve_as_of(@as_of) == @as_of
-      assert Ash.Temporal.resolve_as_of(nil) == nil
+    test "both pass an instant and an unset as_of through" do
+      assert Ash.Temporal.resolve_read_as_of(@as_of) == @as_of
+      assert Ash.Temporal.resolve_read_as_of(nil) == nil
+      assert Ash.Temporal.resolve_write_as_of(@as_of) == @as_of
+      assert Ash.Temporal.resolve_write_as_of(nil) == nil
+    end
+
+    test "only the write resolver takes a range" do
+      portion = %Ash.Range{
+        lower: ~U[2020-06-01 00:00:00Z],
+        upper: ~U[2020-09-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert Ash.Temporal.resolve_write_as_of(portion) == portion.lower
+
+      assert_raise Ash.Error.Query.AsOfNotAnInstant, fn ->
+        Ash.Temporal.resolve_read_as_of(portion)
+      end
     end
   end
 

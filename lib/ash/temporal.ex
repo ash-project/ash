@@ -12,7 +12,7 @@ defmodule Ash.Temporal do
 
   ```elixir
   # a read resolves as_of a point in time
-  Ash.Temporal.resolve_as_of(query.as_of)
+  Ash.Temporal.resolve_read_as_of(query.as_of)
 
   # a write resolves a period beginning at the point,
   # and extending forever unless a later write closes it
@@ -32,14 +32,30 @@ defmodule Ash.Temporal do
   @type as_of :: :now | term() | nil
 
   @doc """
-  Resolves an `as_of` to a point in time.
+  Resolves the `as_of` a write takes effect at.
 
-  `:now` resolves to the current time. Anything else is returned unchanged. `nil` means no
-  particular time was provided.
+  `:now` resolves to the current time. A range resolves to its lower bound. Anything else is
+  returned unchanged. `nil` means no particular time was provided.
   """
-  @spec resolve_as_of(as_of()) :: term() | nil
-  def resolve_as_of(:now), do: DateTime.utc_now()
-  def resolve_as_of(other), do: other
+  @spec resolve_write_as_of(as_of()) :: term() | nil
+  def resolve_write_as_of(:now), do: DateTime.utc_now()
+  def resolve_write_as_of(%Ash.Range{lower: nil}), do: nil
+  def resolve_write_as_of(%Ash.Range{lower: lower}), do: resolve_write_as_of(lower)
+  def resolve_write_as_of(other), do: other
+
+  @doc """
+  Resolves the `as_of` a read answers at.
+
+  `:now` resolves to the current time. `nil` means no particular time was provided. A range
+  raises `Ash.Error.Query.AsOfNotAnInstant`.
+  """
+  @spec resolve_read_as_of(as_of()) :: term() | nil
+  def resolve_read_as_of(%Ash.Range{} = as_of) do
+    raise Ash.Error.Query.AsOfNotAnInstant.exception(resource: nil, as_of: as_of)
+  end
+
+  def resolve_read_as_of(:now), do: DateTime.utc_now()
+  def resolve_read_as_of(other), do: other
 
   @doc """
   Whether a change, validation or preparation module declares itself safe to run on a
@@ -97,12 +113,33 @@ defmodule Ash.Temporal do
   the write takes effect and extends forever unless a later write closes it.
   """
   @spec write_period(Ash.Resource.t(), as_of()) :: {:ok, Ash.Range.t()} | :error
+  def write_period(resource, %Ash.Range{} = as_of) do
+    with %{type: type, constraints: constraints} <- Ash.Resource.Info.temporal_period(resource),
+         {:ok, bounded} <- resolve_bounds(as_of, Ash.Resource.Info.temporal_inner_type(resource)),
+         {:ok, period} <- Ash.Type.cast_input(type, bounded, constraints) do
+      {:ok, period}
+    else
+      _ -> :error
+    end
+  end
+
   def write_period(resource, as_of) do
     case write_instant(resource, as_of) do
       {:ok, instant} -> {:ok, %Ash.Range{lower: instant}}
       :error -> :error
     end
   end
+
+  # A bound reads `:now` off the same clock a bare `:now` does, so the two spellings agree.
+  defp resolve_bounds(%Ash.Range{} = as_of, inner_type) do
+    with {:ok, lower} <- resolve_bound(as_of.lower, inner_type),
+         {:ok, upper} <- resolve_bound(as_of.upper, inner_type) do
+      {:ok, %{as_of | lower: lower, upper: upper}}
+    end
+  end
+
+  defp resolve_bound(:now, inner_type), do: now_for(inner_type)
+  defp resolve_bound(bound, _inner_type), do: {:ok, bound}
 
   @doc """
   Resolves the point where a write first takes effect.
@@ -154,5 +191,7 @@ defmodule Ash.Temporal do
 
   defp raw_instant(%DateTime{} = as_of, _inner_type), do: {:ok, as_of}
   defp raw_instant(:now, inner_type), do: now_for(inner_type)
+  defp raw_instant(%Ash.Range{lower: nil}, _inner_type), do: :error
+  defp raw_instant(%Ash.Range{lower: lower}, inner_type), do: resolve_bound(lower, inner_type)
   defp raw_instant(_as_of, _inner_type), do: :error
 end

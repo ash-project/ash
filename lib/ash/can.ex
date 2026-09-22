@@ -184,7 +184,7 @@ defmodule Ash.Can do
           {resource, action_or_query_or_changeset, input, opts}
       end
 
-    check_actor_as_of!(actor, opts[:as_of])
+    check_actor_as_of!(actor, Ash.Temporal.resolve_write_as_of(opts[:as_of]))
 
     subject =
       build_subject(action_or_query_or_changeset, resource, input, actor, pre_flight?, opts)

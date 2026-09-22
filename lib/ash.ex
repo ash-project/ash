@@ -75,7 +75,7 @@ defmodule Ash do
       doc: "A tenant to set on the query or changeset"
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
       doc: "A point in time to run the action \"as of\" (time travel). See `Ash.Query.as_of/2`."
     ],
     actor: [
@@ -92,6 +92,12 @@ defmodule Ash do
 
   @read_opts_schema Spark.Options.merge(
                       [
+                        # Reads take an instant; the global entry takes a range for writes.
+                        as_of: [
+                          type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+                          doc:
+                            "A point in time to read \"as of\" (time travel). See `Ash.Query.as_of/2`."
+                        ],
                         page: [
                           doc: "Pagination options, see `Ash.read/2` for more.",
                           type: {:custom, Ash.Page, :page_opts, []}
@@ -150,7 +156,7 @@ defmodule Ash do
                             "If set to `:error`, instead of applying authorization filters as a filter, any records not matching the authorization filter will cause an error to be returned."
                         ]
                       ],
-                      @global_opts,
+                      Keyword.delete(@global_opts, :as_of),
                       "Global Options"
                     )
 
@@ -792,9 +798,18 @@ defmodule Ash do
                       `list`/`min`/`max`/`first`/`sum`/`avg` could otherwise reveal a field-policy-protected
                       value.
                       """
+                    ],
+                    # Reads take an instant; the global entry takes a range for writes.
+                    as_of: [
+                      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+                      doc:
+                        "A point in time to aggregate \"as of\" (time travel). See `Ash.Query.as_of/2`."
                     ]
                   ]
-                  |> Spark.Options.merge(@global_opts, "Global Options")
+                  |> Spark.Options.merge(
+                    Keyword.delete(@global_opts, :as_of),
+                    "Global Options"
+                  )
 
   @calculate_opts [
     args: [
@@ -900,7 +915,7 @@ defmodule Ash do
       """
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
       doc: """
       A point in time to run "as of" (time travel). See `Ash.Query.as_of/2`.
       """
@@ -991,7 +1006,7 @@ defmodule Ash do
       doc: "The tenant to use for authorization"
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
       doc: "A point in time to authorize \"as of\" (time travel). See `Ash.Query.as_of/2`."
     ],
     alter_source?: [

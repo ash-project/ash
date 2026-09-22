@@ -493,6 +493,151 @@ defmodule Ash.DataLayer.EtsTemporalTest do
     end
   end
 
+  # A range-valued `as_of` names the portion a write applies to, rather than the instant it
+  # opens at.
+  describe "an as_of naming a period" do
+    @portion %Ash.Range{
+      lower: ~U[2020-06-01 00:00:00Z],
+      upper: ~U[2020-09-01 00:00:00Z],
+      bounds: :"[)"
+    }
+
+    defp versions_at(instants) do
+      Enum.flat_map(instants, fn instant ->
+        EtsVersioned
+        |> Ash.Query.as_of(instant)
+        |> Ash.read!()
+        |> Enum.map(&{&1.name, &1.valid_at.lower, &1.valid_at.upper})
+      end)
+      |> Enum.uniq()
+    end
+
+    test "a create takes the period outright, not merely its lower bound" do
+      created =
+        EtsVersioned
+        |> Ash.Changeset.for_create(:create, %{id: 1, name: "ranged"}, as_of: @portion)
+        |> Ash.create!()
+
+      # An instant-valued `as_of` leaves the upper unbounded.
+      assert %Ash.Range{
+               lower: ~U[2020-06-01 00:00:00Z],
+               upper: ~U[2020-09-01 00:00:00Z]
+             } = created.valid_at
+    end
+
+    test "an update carves the portion out, and the prior version resumes after it" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      updated = update_at(record, "second", @portion)
+
+      assert updated.valid_at == @portion
+
+      # `first` held [2020-01-01, 2021-01-01); the portion splits it in three.
+      assert [
+               {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-06-01 00:00:00Z]},
+               {"second", ~U[2020-06-01 00:00:00Z], ~U[2020-09-01 00:00:00Z]},
+               {"first", ~U[2020-09-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]}
+             ] =
+               versions_at([
+                 ~U[2020-03-01 00:00:00Z],
+                 ~U[2020-07-01 00:00:00Z],
+                 ~U[2020-10-01 00:00:00Z]
+               ])
+    end
+
+    test "a destroy removes validity over the portion, and it resumes after" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      assert :ok =
+               record
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: @portion)
+               |> Ash.destroy()
+
+      # The hole is the portion; `first` survives either side of it.
+      assert [
+               {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-06-01 00:00:00Z]},
+               {"first", ~U[2020-09-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]}
+             ] =
+               versions_at([
+                 ~U[2020-03-01 00:00:00Z],
+                 ~U[2020-07-01 00:00:00Z],
+                 ~U[2020-10-01 00:00:00Z]
+               ])
+    end
+
+    # A bound reads `:now` off the same clock a bare `:now` does, so the two spellings agree.
+    # Asserted on the resolver: an explicit `:now` does not reach the data layer today.
+    test "a bound of :now resolves against the same clock a bare :now does" do
+      assert {:ok, %Ash.Range{lower: bare, upper: nil}} =
+               Ash.Temporal.write_period(EtsVersioned, :now)
+
+      assert {:ok, %Ash.Range{lower: bound, upper: nil}} =
+               Ash.Temporal.write_period(EtsVersioned, %Ash.Range{
+                 lower: :now,
+                 upper: nil,
+                 bounds: :"[)"
+               })
+
+      assert DateTime.compare(bound, bare) in [:eq, :gt]
+    end
+
+    test "a read's as_of refuses a range at the option" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      assert_raise Ash.Error.Unknown, ~r/:as_of option/, fn ->
+        EtsVersioned |> Ash.Query.new() |> Ash.read!(as_of: @portion)
+      end
+    end
+
+    # `as_of/2` is specced for an instant, and a spec is not enforced.
+    test "a range reaching a query past its spec is refused when the read runs" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      query = Ash.Query.as_of(EtsVersioned, @portion)
+
+      assert query.as_of == @portion
+      assert query.errors == []
+
+      error = assert_raise Ash.Error.Invalid, fn -> Ash.read!(query) end
+      assert [%Ash.Error.Query.AsOfNotAnInstant{}] = error.errors
+    end
+
+    # A write's read legs inherit the instant, so the rule above does not refuse them.
+    test "a write keeps its range, and propagates an instant" do
+      changeset = EtsVersioned |> Ash.Changeset.new() |> Ash.Changeset.as_of(@portion)
+
+      assert changeset.as_of == @portion
+      assert changeset.context[:private][:as_of] == @portion
+      assert changeset.context[:as_of] == @portion.lower
+    end
+
+    # `nil` already means "no particular instant", so this must refuse rather than read
+    # as current state.
+    test "a range with no lower bound is refused on a read" do
+      query =
+        Ash.Query.as_of(EtsVersioned, %Ash.Range{lower: nil, upper: nil, bounds: :"[)"})
+
+      error = assert_raise Ash.Error.Invalid, fn -> Ash.read!(query) end
+      assert [%Ash.Error.Query.AsOfNotAnInstant{}] = error.errors
+    end
+
+    # `raw_instant/2` refuses it rather than guessing a bound, so the write finds no version
+    # to supersede and the record is left untouched.
+    test "a range with no lower bound is refused, and changes nothing" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      assert {:error, error} =
+               record
+               |> Ash.Changeset.for_destroy(:destroy, %{},
+                 as_of: %Ash.Range{lower: nil, upper: nil, bounds: :"[)"}
+               )
+               |> Ash.destroy()
+
+      assert %Ash.Error.Changes.StaleRecord{} = Ash.Error.to_error_class(error).errors |> hd()
+      assert ["first"] = names_at(~U[2020-06-01 00:00:00Z])
+    end
+  end
+
   # Temporal says nothing about the inner type. Storage works over any ordered extent;
   # the `as_of` that reads it does not, in two different ways.
   describe "an extent that is not a period" do
@@ -522,6 +667,24 @@ defmodule Ash.DataLayer.EtsTemporalTest do
           valid_over: %Ash.Range{lower: 50, upper: 150, bounds: :"[)"}
         })
       end
+    end
+
+    # A period is an ordered extent, not a clock, and this is the only arm that can show it.
+    test "a range-valued as_of establishes a period over a non-datetime extent" do
+      created =
+        EtsIntegerExtent
+        |> Ash.Changeset.for_create(:create, %{id: 1, name: "ranged"},
+          as_of: %Ash.Range{lower: 10, upper: 20, bounds: :"[)"}
+        )
+        |> Ash.create!()
+
+      assert %Ash.Range{lower: 10, upper: 20} = created.valid_over
+    end
+
+    # The contract is `:error`, not which of the two guards produces it.
+    test "an as_of of :now over a non-datetime extent has no instant to resolve" do
+      assert :error = Ash.Temporal.write_instant(EtsIntegerExtent, :now)
+      assert :error = Ash.Temporal.write_period(EtsIntegerExtent, :now)
     end
 
     # `resolve_query_as_of/2` takes `:now`, a `DateTime` and `nil`, and nothing else.
