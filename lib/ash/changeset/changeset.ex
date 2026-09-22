@@ -1737,6 +1737,9 @@ defmodule Ash.Changeset do
       end
     end)
     |> case do
+      {:not_atomic, reason} ->
+        {:not_atomic, reason}
+
       {:atomic, expr} ->
         case Ash.Expr.eval(expr,
                resource: changeset.resource,

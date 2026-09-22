@@ -49,13 +49,14 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
             _ ->
               false
           end)
-          |> Enum.map(fn
-            %{change: {module, _}} ->
-              module
+          |> Enum.flat_map(fn
+            %{change: {module, _}, where: where} ->
+              [module | Enum.map(where, &elem(&1, 0))]
 
-            %{validation: {module, _}} ->
-              module
+            %{validation: {module, _}, where: where} ->
+              [module | Enum.map(where, &elem(&1, 0))]
           end)
+          |> Enum.uniq()
           |> Enum.reject(fn module ->
             module.atomic?()
           end)

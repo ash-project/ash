@@ -11,6 +11,11 @@ defmodule Ash.Test.Actions.UpdateTest do
   require Ash.Expr
   alias Ash.Test.Domain, as: Domain
 
+  defmodule AlwaysOkCondition do
+    @moduledoc false
+    def always(_changeset, _context), do: :ok
+  end
+
   defmodule AtomicOnlyValidation do
     use Ash.Resource.Validation
 
@@ -1041,6 +1046,71 @@ defmodule Ash.Test.Actions.UpdateTest do
                  %{match?: true},
                  eager?: false
                )
+    end
+
+    test "non-atomic `where` conditions warn at compile time and return MustBeAtomic at runtime" do
+      warnings =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          defmodule PostWithNonAtomicWhere do
+            @moduledoc false
+            use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+            ets do
+              private? true
+            end
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            actions do
+              defaults [:read, create: [:title]]
+
+              update :rename_with_validation_where do
+                accept [:title]
+                validate present(:title), where: [&AlwaysOkCondition.always/2]
+              end
+
+              update :rename_with_change_where do
+                accept [:title]
+                change set_attribute(:title, "changed"), where: [&AlwaysOkCondition.always/2]
+              end
+
+              update :rename_no_where do
+                accept [:title]
+                validate present(:title)
+                change set_attribute(:title, "changed")
+              end
+
+              update :rename_non_atomic do
+                accept [:title]
+                require_atomic? false
+                validate present(:title), where: [&AlwaysOkCondition.always/2]
+              end
+            end
+          end
+        end)
+
+      # Compile-time: the verifier must see the non-atomic `where` module
+      assert warnings =~ "rename_with_validation_where"
+      assert warnings =~ "rename_with_change_where"
+      assert warnings =~ "Ash.Resource.Validation.Function"
+      refute warnings =~ "rename_no_where"
+      refute warnings =~ "rename_non_atomic"
+
+      # Runtime: must be a MustBeAtomic error, not a CaseClauseError
+      post = Ash.create!(__MODULE__.PostWithNonAtomicWhere, %{title: "a"})
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.MustBeAtomic{} = error]}} =
+               Ash.update(post, %{title: "b"}, action: :rename_with_validation_where)
+
+      assert error.reason =~ "Ash.Resource.Validation.Function does not implement `atomic/3`"
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.MustBeAtomic{}]}} =
+               Ash.update(post, %{title: "b"}, action: :rename_with_change_where)
+
+      assert {:ok, %{title: "b"}} = Ash.update(post, %{title: "b"}, action: :rename_non_atomic)
     end
   end
 
