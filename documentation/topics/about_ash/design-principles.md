@@ -32,7 +32,7 @@ A high priority is placed on ensuring that our users don't experience feature wh
 
 ## Community
 
-The Ash community comes together and collaborates to make sure that we can all build our software quickly, effectively and in a way that will age gracefully. We have a strict code of conduct, and love working with people of any experience level or background. To experience this first-hand, participate on [ElixirForum](https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum/123) or join our [discord](https://discord.gg/D7FNG2q)!
+The Ash community comes together and collaborates to make sure that we can all build our software quickly, effectively and in a way that will age gracefully. We have a strict code of conduct, and love working with people of any experience level or background. To experience this first-hand, participate on [ElixirForum](https://elixirforum.com/ash) or join our [discord](https://discord.gg/D7FNG2q)!
 
 > ### Domain Driven Design? {: .info}
 >

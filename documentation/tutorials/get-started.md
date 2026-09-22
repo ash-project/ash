@@ -642,7 +642,7 @@ Where Ash shines however, is all of the tools that can work _with_ your resource
 
 #### Get Help
 
-- Check out [ElixirForum](https://elixirforum.com/c/ash-framework-forum)
+- Check out [ElixirForum](https://elixirforum.com/ash)
 - Join our [Discord server](https://discord.gg/D7FNG2q)
 - Open a [GitHub issue](https://github.com/ash-project/ash/issues/new/choose)
 
