@@ -173,21 +173,11 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
     }
   end
 
-  defp resolve_aggregate_type(resource, aggregate) do
-    field =
-      if aggregate.field do
-        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-
-        if related do
-          Ash.Resource.Info.attribute(related, aggregate.field) ||
-            Ash.Resource.Info.calculation(related, aggregate.field)
-        end
-      end
-
-    field_type = if field, do: field.type
-    field_constraints = if field, do: Map.get(field, :constraints, []), else: []
-
-    case Ash.Query.Aggregate.kind_to_type(aggregate.kind, field_type, field_constraints) do
+  @doc false
+  @spec resolve_aggregate_type(Ash.Resource.t(), Ash.Resource.Aggregate.t()) ::
+          {Ash.Type.t() | nil, Keyword.t()}
+  def resolve_aggregate_type(resource, aggregate) do
+    case Ash.Query.Aggregate.aggregate_type(resource, aggregate) do
       {:ok, type, constraints} -> {type, constraints}
       _other -> {aggregate.type, aggregate.constraints || []}
     end

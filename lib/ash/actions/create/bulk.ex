@@ -1056,7 +1056,7 @@ defmodule Ash.Actions.Create.Bulk do
   defp default(%{default: value}), do: value
 
   defp authorize(batch, opts) do
-    if opts[:authorize?] do
+    if opts[:authorize?] && Ash.Actions.Helpers.authorizers?(batch) do
       Enum.map(batch, fn changeset ->
         if changeset.valid? do
           case Ash.can(changeset, opts[:actor],

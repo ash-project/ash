@@ -843,6 +843,53 @@ defmodule Ash.Test.Filter.FilterTest do
         Ash.Filter.parse_input!(Profile, error: {Ash.Error.Query.NotFound, []})
       end)
     end
+
+    test "a valid nested predicate under a to-one relationship parses" do
+      assert {:ok, _} =
+               Ash.Filter.parse_input(Post, %{
+                 "author1" => %{"name" => %{"contains" => "a"}}
+               })
+
+      assert {:ok, _} =
+               Ash.Filter.parse_input(Post, %{
+                 "author1" => [%{"name" => %{"contains" => "a"}}, %{"special" => true}]
+               })
+    end
+
+    test "an unknown predicate nested under a to-one relationship returns an error" do
+      assert {:error, %Ash.Error.Query.NoSuchFilterPredicate{key: "special", resource: User}} =
+               Ash.Filter.parse_input(Post, %{
+                 "author1" => %{
+                   "name" => %{"contains" => "a", "special" => %{"eq" => true}}
+                 }
+               })
+
+      query =
+        Ash.Query.filter_input(Post, %{
+          "author1" => %{"name" => %{"contains" => "a", "special" => %{"eq" => true}}}
+        })
+
+      refute query.valid?
+      assert [%Ash.Error.Query.NoSuchFilterPredicate{key: "special"}] = query.errors
+    end
+
+    test "an invalid predicate value under a to-one relationship returns an error" do
+      assert {:error, %Ash.Error.Query.InvalidFilterValue{}} =
+               Ash.Filter.parse_input(Post, %{"author1" => %{"name" => %{"in" => "x"}}})
+
+      assert {:error, %Ash.Error.Query.InvalidFilterValue{}} =
+               Ash.Filter.parse_input(Post, %{"author1" => %{"name" => %{"is_nil" => "yes"}}})
+    end
+
+    test "a list of bare values under a to-one relationship returns the same error as a to-many" do
+      assert {:error, %Ash.Error.Query.InvalidFilterValue{} = to_one} =
+               Ash.Filter.parse_input(Post, %{"author1" => ["x"]})
+
+      assert {:error, %Ash.Error.Query.InvalidFilterValue{} = to_many} =
+               Ash.Filter.parse_input(User, %{"posts" => ["x"]})
+
+      assert to_one.value == to_many.value
+    end
   end
 
   describe "base_filter" do

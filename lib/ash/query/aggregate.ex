@@ -705,34 +705,34 @@ defmodule Ash.Query.Aggregate do
 
   @doc false
   def aggregate_type(resource, aggregate) do
-    {field_type, field_constraints} =
-      if aggregate.field do
-        related =
-          case aggregate do
-            %{related?: false, resource: unrelated_resource}
-            when not is_nil(unrelated_resource) ->
-              unrelated_resource
+    with {:ok, field_type, field_constraints} <- aggregate_field_type(resource, aggregate) do
+      kind_to_type(aggregate.kind, field_type, field_constraints)
+    end
+  end
 
-            _ ->
-              Ash.Resource.Info.related(resource, aggregate.relationship_path)
-          end
+  defp aggregate_field_type(_resource, %{field: nil}), do: {:ok, nil, nil}
 
-        case Ash.Resource.Info.field(related, aggregate.field) do
-          %Ash.Resource.Aggregate{} = nested_agg ->
-            # Recursively resolve the type of the nested aggregate
-            {:ok, type, constraints} = aggregate_type(related, nested_agg)
-            {type, constraints}
+  defp aggregate_field_type(resource, aggregate) do
+    related =
+      case aggregate do
+        %{related?: false, resource: unrelated_resource}
+        when not is_nil(unrelated_resource) ->
+          unrelated_resource
 
-          %{type: type, constraints: constraints} ->
-            {type, constraints}
-
-          _ ->
-            {nil, nil}
-        end
-      else
-        {nil, nil}
+        _ ->
+          Ash.Resource.Info.related(resource, aggregate.relationship_path)
       end
 
-    kind_to_type(aggregate.kind, field_type, field_constraints)
+    case Ash.Resource.Info.field(related, aggregate.field) do
+      %Ash.Resource.Aggregate{} = nested_agg ->
+        # Recursively resolve the type of the nested aggregate
+        aggregate_type(related, nested_agg)
+
+      %{type: type, constraints: constraints} ->
+        {:ok, type, constraints}
+
+      _ ->
+        {:ok, nil, nil}
+    end
   end
 end

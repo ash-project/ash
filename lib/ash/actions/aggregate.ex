@@ -230,7 +230,7 @@ defmodule Ash.Actions.Aggregate do
   defp referenced_field_name(_), do: nil
 
   defp authorize_query(query, opts, agg_authorize?) do
-    if agg_authorize? do
+    if agg_authorize? && Ash.Actions.Helpers.authorizers?(query) do
       case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              pre_flight?: false,

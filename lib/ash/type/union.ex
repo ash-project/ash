@@ -436,6 +436,9 @@ defmodule Ash.Type.Union do
   @impl true
   def storage_type(_), do: :map
 
+  @impl true
+  def acts_as(_), do: :map
+
   def loaded?(%Ash.Union{type: type, value: value}, path_to_load, constraints, opts) do
     config = constraints[:types][type]
 

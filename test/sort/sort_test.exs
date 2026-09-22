@@ -204,6 +204,20 @@ defmodule Ash.Test.Sort.SortTest do
       assert %{sort: [title: :asc, contents: :desc]} =
                Ash.Query.sort_input(Post, ["+title", "-contents"])
     end
+
+    test "a sort that is neither a string nor a list adds an error to the query" do
+      for input <- [5, %{}, %{"title" => "asc"}] do
+        assert %Ash.Query{valid?: false, errors: [%Ash.Error.Query.InvalidSort{sort: ^input}]} =
+                 Ash.Query.sort_input(Post, input)
+      end
+    end
+
+    test "a list containing a non-field value adds an error to the query" do
+      assert %Ash.Query{
+               valid?: false,
+               errors: [%Ash.Error.Query.InvalidSort{sort: %{"field" => "title"}}]
+             } = Ash.Query.sort_input(Post, [%{"field" => "title"}])
+    end
   end
 
   describe "sorting on calculations whose expression/2 reads context.source_context" do
@@ -296,6 +310,13 @@ defmodule Ash.Test.Sort.SortTest do
 
     test "private attributes cannot be used" do
       assert {:error, %Ash.Error.Query.NoSuchField{}} = Ash.Sort.parse_input(Post, "points")
+    end
+
+    test "a sort that is neither a string nor a list is an error" do
+      assert {:error, %Ash.Error.Query.InvalidSort{sort: 5}} = Ash.Sort.parse_input(Post, 5)
+
+      assert {:error, %Ash.Error.Query.InvalidSort{sort: %{"title" => "asc"}}} =
+               Ash.Sort.parse_input(Post, %{"title" => "asc"})
     end
 
     test "a list sort parses properly" do

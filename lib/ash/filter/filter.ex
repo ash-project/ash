@@ -3306,34 +3306,47 @@ defmodule Ash.Filter do
              attr <- attribute(%{public?: context[:public?], resource: dest}, pk),
              %Ash.Resource.Attribute{} = attr,
              true <- is_list(nested_statement) or is_map(nested_statement) do
-          {:ok,
-           Enum.reduce(nested_statement, true, fn {key, val}, acc ->
-             {:ok, expr_part} =
-               if is_nil(aggregate(%{public?: context[:public?], resource: dest}, key)) and
-                    is_nil(attribute(%{public?: context[:public?], resource: dest}, key)) and
-                    is_nil(calculation(%{public?: context[:public?], resource: dest}, key)) and
-                    is_nil(relationship(%{public?: context[:public?], resource: dest}, key)) do
-                 nested_statement =
-                   if is_list(nested_statement) do
-                     [{dest_attr, {key, val}}]
-                   else
-                     Map.put(%{}, dest_attr, Map.put(%{}, key, val))
-                   end
+          dest_context = %{public?: context[:public?], resource: dest}
 
-                 add_expression_part({field, nested_statement}, context, expression)
-               else
-                 nested_statement =
-                   if is_list(nested_statement) do
-                     [{key, val}]
-                   else
-                     Map.put(%{}, key, val)
-                   end
+          Enum.reduce_while(nested_statement, {:ok, true}, fn item, {:ok, acc} ->
+            result =
+              with {key, val} <- item,
+                   true <-
+                     is_nil(aggregate(dest_context, key)) and
+                       is_nil(attribute(dest_context, key)) and
+                       is_nil(calculation(dest_context, key)) and
+                       is_nil(relationship(dest_context, key)) do
+                # A predicate on the destination's primary key, e.g. `author: [eq: id]`
+                nested_statement =
+                  if is_list(nested_statement) do
+                    [{dest_attr, {key, val}}]
+                  else
+                    Map.put(%{}, dest_attr, Map.put(%{}, key, val))
+                  end
 
-                 add_expression_part_relationship(rel, nested_statement, context, expression)
-               end
+                add_expression_part({field, nested_statement}, context, expression)
+              else
+                _ ->
+                  # Anything else is a statement on the destination, parsed exactly
+                  # as it would be under a to-many relationship.
+                  nested_statement =
+                    if is_list(nested_statement) do
+                      [item]
+                    else
+                      Map.new([item])
+                    end
 
-             BooleanExpression.optimized_new(:and, acc, expr_part)
-           end)}
+                  add_expression_part_relationship(rel, nested_statement, context, expression)
+              end
+
+            case result do
+              {:ok, expr_part} ->
+                {:cont, {:ok, BooleanExpression.optimized_new(:and, acc, expr_part)}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+          end)
         else
           _ -> add_expression_part_relationship(rel, nested_statement, context, expression)
         end
@@ -4989,6 +5002,14 @@ defmodule Ash.Filter do
     |> parse_and_join(op, context)
   end
 
+  defp parse_and_join(statement, _op, _context) do
+    {:error,
+     InvalidFilterValue.exception(
+       value: statement,
+       message: "expected a non-empty list or map"
+     )}
+  end
+
   defp parse_predicates(value, field, context)
        when not is_list(value) and not is_map(value) do
     parse_predicates([eq: value], field, context)
@@ -5084,6 +5105,17 @@ defmodule Ash.Filter do
                        {:error,
                         "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the function #{inspect(function)}"}}
                     end
+                  else
+                    {:error, %{__exception__: true} = error} ->
+                      {:halt, {:error, error}}
+
+                    {:error, error} ->
+                      {:halt,
+                       {:error,
+                        InvalidFilterValue.exception(
+                          value: value,
+                          message: to_string(error)
+                        )}}
                   end
               end
 
@@ -5135,8 +5167,19 @@ defmodule Ash.Filter do
                   end
                 end
               else
-                {:known, value} -> {:cont, {:ok, value}}
-                {:error, error} -> {:halt, {:error, error}}
+                {:known, value} ->
+                  {:cont, {:ok, value}}
+
+                {:error, %{__exception__: true} = error} ->
+                  {:halt, {:error, error}}
+
+                {:error, error} ->
+                  {:halt,
+                   {:error,
+                    InvalidFilterValue.exception(
+                      value: value,
+                      message: if(is_binary(error), do: error, else: inspect(error))
+                    )}}
               end
           end
       end)

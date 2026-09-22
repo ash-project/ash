@@ -321,6 +321,17 @@ defmodule Ash.Actions.Read do
 
     reuse_values? = Keyword.get(opts, :reuse_values?, false)
 
+    # Lazily loading onto existing records: drop calculations and aggregates the
+    # records already have *before* the calculations are split and their
+    # dependencies are selected, otherwise they (and the data layer query for
+    # their dependencies) would still run.
+    query =
+      if opts[:lazy?] && opts[:initial_data] do
+        unload_loaded_calculations_and_aggregates(query, opts[:initial_data])
+      else
+        query
+      end
+
     case Ash.Actions.Read.Calculations.split_and_load_calculations(
            query.domain,
            query,
@@ -398,13 +409,7 @@ defmodule Ash.Actions.Read do
                 select
               end
 
-            query = %{query | select: select}
-
-            if opts[:lazy?] do
-              unload_loaded_calculations_and_aggregates(query, opts[:initial_data])
-            else
-              query
-            end
+            %{query | select: select}
           else
             Ash.Query.ensure_selected(query, source_fields)
           end

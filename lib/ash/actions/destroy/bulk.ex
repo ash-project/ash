@@ -1362,7 +1362,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp authorize_bulk_query(query, atomic_changeset, opts) do
-    if opts[:authorize?] && opts[:authorize_query?] do
+    if opts[:authorize?] && opts[:authorize_query?] && Ash.Actions.Helpers.authorizers?(query) do
       case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              pre_flight?: false,
@@ -1390,7 +1390,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp authorize_atomic_changeset(query, changeset, opts) do
-    if opts[:authorize?] do
+    if opts[:authorize?] && Ash.Actions.Helpers.authorizers?(changeset) do
       case Ash.can(changeset, opts[:actor],
              return_forbidden_error?: true,
              pre_flight?: false,
@@ -1942,7 +1942,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp authorize(batch, opts) do
-    if opts[:authorize?] do
+    if opts[:authorize?] && Ash.Actions.Helpers.authorizers?(batch) do
       batch
       |> Enum.map(fn changeset ->
         if changeset.valid? do

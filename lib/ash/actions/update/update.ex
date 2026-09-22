@@ -373,7 +373,7 @@ defmodule Ash.Actions.Update do
   end
 
   defp authorize(changeset, opts) do
-    if opts[:authorize?] do
+    if opts[:authorize?] && Ash.Actions.Helpers.authorizers?(changeset) do
       case Ash.can(changeset, opts[:actor],
              alter_source?: true,
              return_forbidden_error?: true,

@@ -31,6 +31,31 @@ defmodule Ash.Policy.Info do
     Extension.get_persisted(resource, :fields_to_field_policies, %{})[field]
   end
 
+  @doc false
+  @spec policy_expressions(Ash.Resource.t() | Spark.Dsl.t()) ::
+          %{
+            policies: [Ash.Policy.Policy.t()],
+            overall: Crux.Expression.t(Ash.Policy.Check.ref()),
+            by_action: %{atom() => Crux.Expression.t(Ash.Policy.Check.ref())}
+          }
+          | nil
+  def policy_expressions(resource) do
+    if Spark.Dsl.is?(resource, Ash.Resource) do
+      Extension.get_persisted(resource, :policy_expressions)
+    end
+  end
+
+  @doc false
+  @spec field_policy_expressions(Ash.Resource.t() | Spark.Dsl.t()) ::
+          %{[Ash.Policy.FieldPolicy.t()] => Crux.Expression.t(Ash.Policy.Check.ref())}
+  def field_policy_expressions(resource) do
+    if Spark.Dsl.is?(resource, Ash.Resource) do
+      Extension.get_persisted(resource, :field_policy_expressions, %{})
+    else
+      %{}
+    end
+  end
+
   @doc """
   A utility to determine if a given query/changeset would pass authorization.
 

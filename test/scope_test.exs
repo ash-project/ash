@@ -40,6 +40,18 @@ defmodule Ash.ScopeTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      destroy :soft_destroy do
+        soft? true
+        require_atomic? false
+        change fn changeset, context ->
+          if context.actor do
+            changeset
+          else
+            Ash.Changeset.add_error(changeset, "actor is required")
+          end
+        end
+      end
     end
   end
 
@@ -225,6 +237,38 @@ defmodule Ash.ScopeTest do
       scope = %MyScope{actor: nil, tenant: "tenant_1"}
 
       assert :ok = Ash.destroy(record, scope: scope)
+    end
+
+    test "scope actor is available to soft destroy changes" do
+      record =
+        MultiTenantResource
+        |> Ash.Changeset.for_create(:create, %{name: "to_archive", tenant_id: "tenant_1"},
+          tenant: "tenant_1"
+        )
+        |> Ash.create!()
+
+      actor = %{id: Ash.UUID.generate()}
+      scope = %MyScope{actor: actor, tenant: "tenant_1"}
+
+      assert :ok = Ash.destroy(record, action: :soft_destroy, scope: scope)
+    end
+
+    test "direct actor and tenant are available to soft destroy changes" do
+      record =
+        MultiTenantResource
+        |> Ash.Changeset.for_create(:create, %{name: "to_archive", tenant_id: "tenant_1"},
+          tenant: "tenant_1"
+        )
+        |> Ash.create!()
+
+      actor = %{id: Ash.UUID.generate()}
+
+      assert :ok =
+               Ash.destroy(record,
+                 action: :soft_destroy,
+                 actor: actor,
+                 tenant: "tenant_1"
+               )
     end
   end
 

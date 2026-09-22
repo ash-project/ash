@@ -75,6 +75,11 @@ defmodule Ash.Type.CiString do
   @impl true
   def storage_type(_), do: :ci_string
 
+  # A case-insensitive string is still a string to expression functions that
+  # only declared `:string` (e.g. `like`/`ilike` in released data layers).
+  @impl true
+  def acts_as(_), do: :string
+
   @impl true
   def constraints, do: @constraints
 

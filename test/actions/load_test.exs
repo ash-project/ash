@@ -209,6 +209,7 @@ defmodule Ash.Test.Actions.LoadTest do
       end
 
       calculate :campaign_upcase, :string, Ash.Test.Actions.LoadTest.UpcaseName
+      calculate :tracked_campaign_upcase, :string, Ash.Test.Actions.LoadTest.TrackedUpcaseName
 
       calculate :posts_calc, :struct, PostsWithACalc do
         constraints instance_of: Ash.Test.Actions.LoadTest.Post
@@ -242,6 +243,20 @@ defmodule Ash.Test.Actions.LoadTest do
         destination_attribute(:name)
         public?(true)
       end
+    end
+  end
+
+  defmodule TrackedUpcaseName do
+    @moduledoc "Like `UpcaseName`, but tells the test process every time it runs."
+    use Ash.Resource.Calculation
+
+    @impl true
+    def load(_, _, _), do: [campaign: :name]
+
+    @impl true
+    def calculate(authors, _, _) do
+      send(self(), {:calculated, __MODULE__})
+      Enum.map(authors, &String.upcase(to_string(&1.campaign.name)))
     end
   end
 
@@ -1056,6 +1071,42 @@ defmodule Ash.Test.Actions.LoadTest do
       |> Ash.Query.load([:posts])
       |> Ash.read!(authorize?: true)
       |> Ash.load!([posts: :author], lazy?: true)
+    end
+
+    test "lazy?: true does not recompute or requery an already loaded calculation" do
+      campaign = Ash.create!(Ash.Changeset.for_create(Campaign, :create, %{name: "spring"}))
+
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
+        |> Ash.Changeset.manage_relationship(:campaign, campaign, type: :append_and_remove)
+        |> Ash.create!()
+        |> Ash.load!([:tracked_campaign_upcase, :campaign])
+
+      assert author.tracked_campaign_upcase == "SPRING"
+      assert_received {:calculated, TrackedUpcaseName}
+
+      run_query = {Ash.DataLayer.Ets, :run_query, 2}
+      Code.ensure_loaded!(Ash.DataLayer.Ets)
+      :erlang.trace_pattern(run_query, true, [:call_count])
+      on_exit(fn -> :erlang.trace_pattern(run_query, false, [:call_count]) end)
+
+      reloaded = Ash.load!(author, [:tracked_campaign_upcase, :campaign], lazy?: true)
+
+      assert reloaded.tracked_campaign_upcase == "SPRING"
+      assert reloaded.campaign.id == campaign.id
+      refute_received {:calculated, TrackedUpcaseName}
+      assert {:call_count, 0} = :erlang.trace_info(run_query, :call_count)
+
+      # a field the record does not have yet is still loaded, keeping the rest
+      with_more = Ash.load!(author, [:campaign_upcase], lazy?: true)
+      assert with_more.campaign_upcase == "SPRING"
+      assert with_more.tracked_campaign_upcase == "SPRING"
+      refute_received {:calculated, TrackedUpcaseName}
+
+      # without lazy?, the calculation runs again
+      Ash.load!(author, [:tracked_campaign_upcase])
+      assert_received {:calculated, TrackedUpcaseName}
     end
 
     test "loading something already loaded still loads it unless lazy?: true" do

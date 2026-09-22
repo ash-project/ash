@@ -17,6 +17,8 @@ defmodule Ash.Actions.Destroy do
           | {:error, Ash.Changeset.t()}
           | {:error, term}
   def run(domain, changeset, %{soft?: true} = action, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
+
     changeset =
       if changeset.__validated_for_action__ == action.name do
         %{changeset | action_type: :destroy}
@@ -176,7 +178,7 @@ defmodule Ash.Actions.Destroy do
   end
 
   defp authorize(changeset, opts) do
-    if opts[:authorize?] do
+    if opts[:authorize?] && Ash.Actions.Helpers.authorizers?(changeset) do
       case Ash.can(changeset, opts[:actor],
              alter_source?: true,
              pre_flight?: false,
