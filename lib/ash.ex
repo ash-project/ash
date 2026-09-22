@@ -2445,9 +2445,19 @@ defmodule Ash do
       {:ok, result}
     else
       {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
     end
   end
+
+  # The `:page` option is validated by `Ash.Page.page_opts/1`, the same function
+  # `Ash.Query.page/2` uses, but here a failure arrives as an options validation
+  # error that `Ash.Error.to_error_class/2` has no class for. Page options are
+  # user input, so they get the invalid-class error the query path already returns.
+  defp invalid_page_error(%Spark.Options.ValidationError{key: :page}, opts) do
+    Ash.Error.Query.InvalidPage.exception(page: opts[:page])
+  end
+
+  defp invalid_page_error(error, _opts), do: error
 
   defp do_get(resource, filter, domain, opts, action, read_opts) do
     query =
@@ -3158,7 +3168,7 @@ defmodule Ash do
       end
     else
       {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
     end
   end
 
@@ -3301,7 +3311,7 @@ defmodule Ash do
       end
     else
       {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
     end
   end
 
@@ -3381,7 +3391,7 @@ defmodule Ash do
       end
     else
       {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
     end
   end
 
