@@ -44,6 +44,7 @@ defmodule Ash.ScopeTest do
       destroy :soft_destroy do
         soft? true
         require_atomic? false
+
         change fn changeset, context ->
           if context.actor do
             changeset
