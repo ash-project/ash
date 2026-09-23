@@ -2287,10 +2287,7 @@ defmodule Ash.DataLayer.Ets do
                 {:halt, {:error, error}}
             end
           else
-            case acc do
-              :ok -> {:cont, :ok}
-              {:ok, results} -> {:cont, {:ok, [result | results]}}
-            end
+            {:cont, acc}
           end
         end)
 
@@ -2299,8 +2296,26 @@ defmodule Ash.DataLayer.Ets do
     end
     |> case do
       :ok -> :ok
-      {:ok, results} -> {:ok, Enum.reverse(results)}
+      {:ok, results} -> {:ok, first_versions(resource, Enum.reverse(results))}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  # A range can carve several versions of one record; the write returns the first of them.
+  defp first_versions(resource, results) do
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil ->
+        results
+
+      attribute ->
+        firsts =
+          results
+          |> Enum.group_by(&primary_key(resource, &1))
+          |> Map.new(fn {key, versions} ->
+            {key, Enum.min_by(versions, &Map.get(&1, attribute).lower, Comp)}
+          end)
+
+        Enum.filter(results, &(Map.fetch!(firsts, primary_key(resource, &1)) == &1))
     end
   end
 

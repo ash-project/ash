@@ -545,6 +545,77 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                ])
     end
 
+    test "an update whose portion spans two stored versions returns the first it wrote" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+      record = EtsVersioned |> Ash.Query.as_of(~U[2020-01-01 00:00:00Z]) |> Ash.read_one!()
+
+      updated =
+        update_at(record, "third", %Ash.Range{
+          lower: ~U[2020-09-01 00:00:00Z],
+          upper: ~U[2021-06-01 00:00:00Z],
+          bounds: :"[)"
+        })
+
+      assert %{name: "third", valid_at: %{lower: ~U[2020-09-01 00:00:00Z]}} = updated
+      assert updated.valid_at.upper == ~U[2021-01-01 00:00:00Z]
+    end
+
+    test "an update returns the version it wrote, not an earlier one it left alone" do
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "first",
+        valid_at: %Ash.Range{
+          lower: ~U[2020-01-01 00:00:00Z],
+          upper: ~U[2020-06-01 00:00:00Z],
+          bounds: :"[)"
+        }
+      })
+
+      record =
+        Ash.Seed.seed!(%EtsVersioned{
+          id: 1,
+          name: "second",
+          valid_at: %Ash.Range{lower: ~U[2020-06-01 00:00:00Z], upper: nil, bounds: :"[)"}
+        })
+
+      updated =
+        update_at(record, "third", %Ash.Range{
+          lower: ~U[2020-09-01 00:00:00Z],
+          upper: ~U[2021-01-01 00:00:00Z],
+          bounds: :"[)"
+        })
+
+      assert %{name: "third", valid_at: %{lower: ~U[2020-09-01 00:00:00Z]}} = updated
+    end
+
+    test "an update whose portion no version holds is refused" do
+      record =
+        Ash.Seed.seed!(%EtsVersioned{
+          id: 1,
+          name: "first",
+          valid_at: %Ash.Range{
+            lower: ~U[2020-01-01 00:00:00Z],
+            upper: ~U[2020-06-01 00:00:00Z],
+            bounds: :"[)"
+          }
+        })
+
+      assert {:error, error} =
+               record
+               |> Ash.Changeset.for_update(:update, %{name: "second"})
+               |> Ash.Changeset.as_of(%Ash.Range{
+                 lower: ~U[2020-09-01 00:00:00Z],
+                 upper: ~U[2021-01-01 00:00:00Z],
+                 bounds: :"[)"
+               })
+               |> Ash.update()
+
+      assert %Ash.Error.Changes.StaleRecord{} = Ash.Error.to_error_class(error).errors |> hd()
+      assert ["first"] = names_at(~U[2020-03-01 00:00:00Z])
+    end
+
     test "an update whose portion spans two stored versions carves both" do
       Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
       Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})

@@ -217,13 +217,7 @@ defmodule Ash.Actions.Update do
                    authorize_changeset_with: authorize_changeset_with
                  )
                ) do
-            %Ash.BulkResult{
-              status: :success,
-              records: [_ | _] = records,
-              notifications: notifications
-            } ->
-              record = primary_atomic_record(records, atomic_changeset.resource)
-
+            %Ash.BulkResult{status: :success, records: [record], notifications: notifications} ->
               if opts[:return_notifications?] do
                 {:ok, record, List.wrap(notifications)}
               else
@@ -342,14 +336,6 @@ defmodule Ash.Actions.Update do
   # A range-valued as_of scopes this query by primary key alone, to reach every version.
   defp scope_atomic_read_as_of(query, %Ash.Range{}), do: %{query | as_of: nil}
   defp scope_atomic_read_as_of(query, _as_of), do: query
-
-  # `Ash.update!/3` returns one record: the version beginning at the portion's lower bound.
-  defp primary_atomic_record([record], _resource), do: record
-
-  defp primary_atomic_record(records, resource) do
-    attribute = Ash.Resource.Info.temporal_attribute(resource)
-    Enum.min_by(records, &Map.get(&1, attribute).lower, Comp)
-  end
 
   @doc false
   def do_run(domain, changeset, action, opts) do
