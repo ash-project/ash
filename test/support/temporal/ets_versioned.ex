@@ -39,6 +39,11 @@ defmodule Ash.Test.Temporal.EtsVersioned do
       accept [:id, :name]
       upsert? true
     end
+
+    destroy :cancel do
+      soft? true
+      change set_attribute(:name, "cancelled")
+    end
   end
 
   attributes do
