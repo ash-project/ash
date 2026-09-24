@@ -972,6 +972,23 @@ defmodule Ash.Actions.PaginationTest do
         refute is_nil(result.__metadata__.keyset)
       end
     end
+
+    test "invalid page options are an invalid error, like Ash.Query.page/2" do
+      for page <- [
+            [after: "x", offset: 1],
+            [limit: 0],
+            [limit: -1],
+            [limit: "x"],
+            [limit: 1, offset: -1],
+            "x"
+          ] do
+        assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidPage{page: ^page}]}} =
+                 Ash.read(User, action: :both_optional, page: page)
+
+        assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidPage{page: ^page}]}} =
+                 Ash.read_one(User, action: :both_optional, page: page)
+      end
+    end
   end
 
   describe "loading with pagination" do
