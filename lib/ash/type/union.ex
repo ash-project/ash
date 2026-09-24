@@ -437,6 +437,26 @@ defmodule Ash.Type.Union do
   def storage_type(_), do: :map
 
   @impl true
+  def equal?(left, right), do: equal?(left, right, [])
+
+  @impl true
+  def equal?(
+        %Ash.Union{type: type_name, value: left},
+        %Ash.Union{type: type_name, value: right},
+        constraints
+      ) do
+    case constraints[:types][type_name] do
+      nil ->
+        left == right
+
+      config ->
+        Ash.Type.equal?(config[:type], left, right, config[:constraints] || [])
+    end
+  end
+
+  def equal?(left, right, _constraints), do: left == right
+
+  @impl true
   def acts_as(_), do: :map
 
   def loaded?(%Ash.Union{type: type, value: value}, path_to_load, constraints, opts) do

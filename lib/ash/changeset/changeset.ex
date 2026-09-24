@@ -6892,7 +6892,7 @@ defmodule Ash.Changeset do
               }
               |> store_casted_attribute(attribute.name, nil, store_casted?)
 
-            Ash.Type.equal?(attribute.type, casted, data_value) ->
+            Ash.Type.equal?(attribute.type, casted, data_value, attribute.constraints) ->
               %{
                 changeset
                 | attributes: Map.delete(changeset.attributes, attribute.name),
@@ -7032,7 +7032,8 @@ defmodule Ash.Changeset do
                   defaults: changeset.defaults -- [attribute.name]
               }
 
-            has_data_value? and Ash.Type.equal?(attribute.type, casted, data_value) ->
+            has_data_value? and
+                Ash.Type.equal?(attribute.type, casted, data_value, attribute.constraints) ->
               %{
                 changeset
                 | attributes: Map.delete(changeset.attributes, attribute.name),

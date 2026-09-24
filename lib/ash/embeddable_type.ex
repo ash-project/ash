@@ -1023,9 +1023,19 @@ defmodule Ash.EmbeddableType do
 
                       if unique_key_config.nils_distinct? do
                         not is_nil(this_value) and not is_nil(other_value) and
-                          Ash.Type.equal?(attribute.type, this_value, other_value)
+                          Ash.Type.equal?(
+                            attribute.type,
+                            this_value,
+                            other_value,
+                            attribute.constraints
+                          )
                       else
-                        Ash.Type.equal?(attribute.type, this_value, other_value)
+                        Ash.Type.equal?(
+                          attribute.type,
+                          this_value,
+                          other_value,
+                          attribute.constraints
+                        )
                       end
                     end)
                   end)

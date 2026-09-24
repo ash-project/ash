@@ -1555,7 +1555,7 @@ defmodule Ash.Actions.Read.Relationships do
           |> Enum.filter(fn result ->
             destination_value = Map.get(result, relationship.destination_attribute)
 
-            Ash.Type.equal?(attribute.type, value, destination_value)
+            Ash.Type.equal?(attribute.type, value, destination_value, attribute.constraints)
           end)
           |> then(fn result ->
             result =
@@ -1568,7 +1568,7 @@ defmodule Ash.Actions.Read.Relationships do
           |> Enum.find_value(:error, fn result ->
             destination_value = Map.get(result, relationship.destination_attribute)
 
-            if Ash.Type.equal?(attribute.type, value, destination_value) do
+            if Ash.Type.equal?(attribute.type, value, destination_value, attribute.constraints) do
               {:ok, result}
             end
           end)

@@ -372,6 +372,127 @@ defmodule Ash.Test.Filter.UnionTest do
     end
   end
 
+  defmodule Circle do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :type, :atom, public?: true, default: :circle, writable?: false
+      attribute :radius, :integer, public?: true, allow_nil?: false
+    end
+  end
+
+  defmodule ShapeUnion do
+    use Ash.Type.NewType,
+      subtype_of: :union,
+      constraints: [
+        storage: :map_with_tag,
+        types: [circle: [type: Circle, tag: :type, tag_value: :circle]]
+      ]
+  end
+
+  defmodule Drawing do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:read, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :shape, :union,
+        public?: true,
+        constraints: [
+          storage: :map_with_tag,
+          types: [circle: [type: Circle, tag: :type, tag_value: :circle]]
+        ]
+
+      attribute :new_type_shape, ShapeUnion, public?: true
+
+      attribute :shapes, {:array, :union},
+        public?: true,
+        constraints: [
+          items: [
+            storage: :map_with_tag,
+            types: [circle: [type: Circle, tag: :type, tag_value: :circle]]
+          ]
+        ]
+    end
+  end
+
+  describe "equality" do
+    setup do
+      drawing =
+        Drawing
+        |> Ash.Changeset.for_create(:create, %{
+          shape: %{type: :circle, radius: 5},
+          new_type_shape: %{type: :circle, radius: 5},
+          shapes: [%{type: :circle, radius: 5}]
+        })
+        |> Ash.create!()
+
+      %{drawing: Ash.get!(Drawing, drawing.id)}
+    end
+
+    test "setting a union attribute to its current value is not a change", %{drawing: drawing} do
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{shape: %{type: :circle, radius: 5}})
+
+      refute Ash.Changeset.changing_attribute?(changeset, :shape)
+
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{shape: %{type: :circle, radius: 6}})
+
+      assert Ash.Changeset.changing_attribute?(changeset, :shape)
+    end
+
+    test "setting a NewType union attribute to its current value is not a change", %{
+      drawing: drawing
+    } do
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{new_type_shape: %{type: :circle, radius: 5}})
+
+      refute Ash.Changeset.changing_attribute?(changeset, :new_type_shape)
+
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{new_type_shape: %{type: :circle, radius: 6}})
+
+      assert Ash.Changeset.changing_attribute?(changeset, :new_type_shape)
+    end
+
+    test "setting an array of unions to its current value is not a change", %{drawing: drawing} do
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{shapes: [%{type: :circle, radius: 5}]})
+
+      refute Ash.Changeset.changing_attribute?(changeset, :shapes)
+
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{shapes: [%{type: :circle, radius: 6}]})
+
+      assert Ash.Changeset.changing_attribute?(changeset, :shapes)
+    end
+
+    test "Ash.Type.equal?/4 compares union members using the member type", %{drawing: drawing} do
+      constraints = Ash.Resource.Info.attribute(Drawing, :shape).constraints
+
+      {:ok, new} =
+        Ash.Type.cast_input(:union, %{type: :circle, radius: 5}, constraints)
+
+      assert Ash.Type.equal?(:union, drawing.shape, new, constraints)
+
+      refute Ash.Type.equal?(
+               :union,
+               drawing.shape,
+               %{new | value: %{new.value | radius: 6}},
+               constraints
+             )
+    end
+  end
+
   test "it handles UUIDs and strings" do
     constraints = [types: [id: [type: :uuid], slug: [type: :string]]]
 

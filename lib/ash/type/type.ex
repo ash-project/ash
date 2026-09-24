@@ -613,6 +613,17 @@ defmodule Ash.Type do
   @callback equal?(term, term) :: boolean
 
   @doc """
+  Determine if two valid instances of the type are equal, given the type's constraints.
+
+  Defaults to calling `c:equal?/2`. Define this instead of `c:equal?/2` if your type
+  needs its constraints to compare values, for example to compare nested values
+  using the types described by those constraints.
+
+  *Do not define this* if `==` is sufficient for your type. See `c:simple_equality?/0` for more.
+  """
+  @callback equal?(term, term, constraints) :: boolean
+
+  @doc """
   Whether or not `==` can be used to compare instances of the type.
 
   This is defined automatically to return `false` if `c:equal?/2` is defined.
@@ -1696,17 +1707,22 @@ defmodule Ash.Type do
 
   Maps to `Ecto.Type.equal?/3`
   """
-  @spec equal?(t(), term, term) :: boolean
-  def equal?({:array, type}, [nil | xs], [nil | ys]), do: equal?({:array, type}, xs, ys)
+  @spec equal?(t(), term, term, constraints()) :: boolean
+  def equal?(type, left, right, constraints \\ [])
 
-  def equal?({:array, type}, [x | xs], [y | ys]),
-    do: equal?(type, x, y) && equal?({:array, type}, xs, ys)
+  def equal?({:array, type}, [nil | xs], [nil | ys], constraints),
+    do: equal?({:array, type}, xs, ys, constraints)
 
-  def equal?({:array, _}, [], []), do: true
-  def equal?({:array, _}, _, _), do: false
+  def equal?({:array, type}, [x | xs], [y | ys], constraints),
+    do:
+      equal?(type, x, y, constraints[:items] || []) &&
+        equal?({:array, type}, xs, ys, constraints)
 
-  def equal?(type, left, right) do
-    type.equal?(left, right)
+  def equal?({:array, _}, [], [], _), do: true
+  def equal?({:array, _}, _, _, _), do: false
+
+  def equal?(type, left, right, constraints) do
+    get_type(type).equal?(left, right, constraints)
   end
 
   @doc """
@@ -2106,8 +2122,8 @@ defmodule Ash.Type do
         end
 
         @impl true
-        def equal?(left, right, _params) do
-          @parent.equal?(left, right)
+        def equal?(left, right, params) do
+          @parent.equal?(left, right, params)
         end
 
         @impl true
@@ -2809,7 +2825,8 @@ defmodule Ash.Type do
   # Credit to @immutable from elixir discord for the idea
   defmacro __before_compile__(_env) do
     quote generated: true do
-      if Module.defines?(__MODULE__, {:equal?, 2}, :def) do
+      if Module.defines?(__MODULE__, {:equal?, 2}, :def) ||
+           Module.defines?(__MODULE__, {:equal?, 3}, :def) do
         if !Module.defines?(__MODULE__, {:simple_equality, 0}, :def) do
           @impl true
           def simple_equality?, do: false
@@ -2819,9 +2836,27 @@ defmodule Ash.Type do
           @impl true
           def simple_equality?, do: true
         end
+      end
 
-        @impl true
-        def equal?(left, right), do: left == right
+      cond do
+        Module.defines?(__MODULE__, {:equal?, 2}, :def) &&
+            Module.defines?(__MODULE__, {:equal?, 3}, :def) ->
+          :ok
+
+        Module.defines?(__MODULE__, {:equal?, 2}, :def) ->
+          @impl true
+          def equal?(left, right, _constraints), do: equal?(left, right)
+
+        Module.defines?(__MODULE__, {:equal?, 3}, :def) ->
+          @impl true
+          def equal?(left, right), do: equal?(left, right, [])
+
+        true ->
+          @impl true
+          def equal?(left, right), do: left == right
+
+          @impl true
+          def equal?(left, right, _constraints), do: left == right
       end
 
       if Module.defines?(__MODULE__, {:to_simple_equality_comparable, 1}, :def) do
