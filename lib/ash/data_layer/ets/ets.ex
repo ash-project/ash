@@ -2268,22 +2268,26 @@ defmodule Ash.DataLayer.Ets do
     |> case do
       {:ok, results} ->
         Enum.reduce_while(results, acc, fn result, acc ->
-          result_changeset = %{changeset | data: result}
+          if touches_portion?(resource, result, changeset.as_of) do
+            result_changeset = %{changeset | data: result}
 
-          case update(query.resource, result_changeset, nil, true) do
-            {:ok, result} ->
-              result = Ash.Actions.Helpers.Bulk.put_metadata(result, result_changeset)
+            case update(query.resource, result_changeset, nil, true) do
+              {:ok, result} ->
+                result = Ash.Actions.Helpers.Bulk.put_metadata(result, result_changeset)
 
-              case acc do
-                :ok ->
-                  {:cont, :ok}
+                case acc do
+                  :ok ->
+                    {:cont, :ok}
 
-                {:ok, results} ->
-                  {:cont, {:ok, [result | results]}}
-              end
+                  {:ok, results} ->
+                    {:cont, {:ok, [result | results]}}
+                end
 
-            {:error, error} ->
-              {:halt, {:error, error}}
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+          else
+            {:cont, acc}
           end
         end)
 
@@ -2292,8 +2296,26 @@ defmodule Ash.DataLayer.Ets do
     end
     |> case do
       :ok -> :ok
-      {:ok, results} -> {:ok, Enum.reverse(results)}
+      {:ok, results} -> {:ok, first_versions(resource, Enum.reverse(results))}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  # A range can carve several versions of one record; the write returns the first of them.
+  defp first_versions(resource, results) do
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil ->
+        results
+
+      attribute ->
+        firsts =
+          results
+          |> Enum.group_by(&primary_key(resource, &1))
+          |> Map.new(fn {key, versions} ->
+            {key, Enum.min_by(versions, &Map.get(&1, attribute).lower, Comp)}
+          end)
+
+        Enum.filter(results, &(Map.fetch!(firsts, primary_key(resource, &1)) == &1))
     end
   end
 
@@ -2462,6 +2484,7 @@ defmodule Ash.DataLayer.Ets do
   # twice.
   defp write_version(table, pkey, prior_data, data, resource, {period, written}) do
     prior = Map.get(pkey, period)
+    written = clip_to_prior(prior, written)
 
     with {:ok, closed} <- close_at(prior, written.lower, resource, period),
          {:ok, resumed} <- resume_after(prior, written, resource, period),
@@ -2473,6 +2496,45 @@ defmodule Ash.DataLayer.Ets do
          {:ok, _table} <- put_versions(table, kept ++ [opened]) do
       {:ok, opened_data}
     end
+  end
+
+  # A primary-key-only match reaches every version; one the portion misses is left as it was.
+  defp touches_portion?(resource, result, %Ash.Range{} = as_of) do
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil ->
+        true
+
+      attribute ->
+        case Map.get(result, attribute) do
+          %Ash.Range{} = prior -> Ash.Range.intersects?(prior, as_of)
+          _ -> true
+        end
+    end
+  end
+
+  defp touches_portion?(_resource, _result, _as_of), do: true
+
+  # A version holding only part of a written period takes the part it holds, clipped here.
+  defp clip_to_prior(%Ash.Range{lower: prior_lower}, written) when is_nil(prior_lower) do
+    written
+  end
+
+  defp clip_to_prior(%Ash.Range{} = prior, written) do
+    lower =
+      if not is_nil(written.lower) and Comp.less_than?(written.lower, prior.lower) do
+        prior.lower
+      else
+        written.lower
+      end
+
+    upper =
+      case {prior.upper, written.upper} do
+        {nil, w} -> w
+        {p, nil} -> p
+        {p, w} -> if Comp.less_than?(p, w), do: p, else: w
+      end
+
+    %{written | lower: lower, upper: upper}
   end
 
   # An unbounded written upper leaves the prior's in place, so a bare instant is unchanged.
