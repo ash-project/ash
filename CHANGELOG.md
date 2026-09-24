@@ -8,6 +8,21 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.10](https://github.com/ash-project/ash/compare/v3.33.9...v3.33.10) (2026-09-24)
+
+
+
+
+### Bug Fixes:
+
+* clamp page limit to max page size by [@zachdaniel](https://github.com/zachdaniel)
+
+* return an invalid error for bad page options passed to read functions (#2963) by grempe [(#2963)](https://github.com/ash-project/ash/pull/2963)
+
+* preserve field paths and messages in embedded array errors (#2946) by Alt-iOS [(#2946)](https://github.com/ash-project/ash/pull/2946)
+
+* pass through `{:not_atomic, _}` from where conditions and verify them at compile time by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.33.9](https://github.com/ash-project/ash/compare/v3.33.8...v3.33.9) (2026-09-21)
 
 
