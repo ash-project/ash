@@ -2619,7 +2619,16 @@ defmodule Ash.Type do
        when not is_nil(default) and not is_function(default) do
     case Ash.Type.cast_input(type, default, constraints) do
       {:ok, value} ->
-        {:ok, %{thing | default: value}}
+        if literal?(value) do
+          {:ok, %{thing | default: value}}
+        else
+          # The cast value cannot be embedded as a compile-time literal (for example, a
+          # struct whose fields contain a reference, pid from another process, or local
+          # function). Keep the original, uncast default instead of persisting the cast
+          # result into the DSL state, which would crash `Spark.Dsl.__before_compile__/1`
+          # when it tries to escape it. The default is still cast normally at change time.
+          {:ok, thing}
+        end
 
       :error ->
         {:error, "Could not cast #{inspect(default)} to #{inspect(type)}"}
@@ -2630,6 +2639,13 @@ defmodule Ash.Type do
   end
 
   defp set_default(thing, _type, _constraints), do: {:ok, thing}
+
+  defp literal?(value) do
+    Macro.escape(value)
+    true
+  rescue
+    ArgumentError -> false
+  end
 
   @doc false
   def field_referenced_types(nil), do: []
