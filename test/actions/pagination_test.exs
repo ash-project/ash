@@ -113,6 +113,10 @@ defmodule Ash.Actions.PaginationTest do
         pagination keyset?: true, offset?: true, countable: true, default_limit: 25
       end
 
+      read :small_max_page_size do
+        pagination keyset?: true, offset?: true, countable: true, max_page_size: 3
+      end
+
       defaults create: :*, update: :*
     end
 
@@ -988,6 +992,39 @@ defmodule Ash.Actions.PaginationTest do
         assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidPage{page: ^page}]}} =
                  Ash.read_one(User, action: :both_optional, page: page)
       end
+    end
+  end
+
+  describe "when the limit exceeds max_page_size" do
+    setup do
+      for i <- 0..9 do
+        Ash.create!(Ash.Changeset.for_create(User, :create, %{name: "#{i}"}))
+      end
+
+      :ok
+    end
+
+    test "offset pages are capped and report more?" do
+      page = Ash.read!(User, action: :small_max_page_size, page: [limit: 100, offset: 0])
+
+      assert %Ash.Page.Offset{limit: 3, more?: true} = page
+      assert length(page.results) == 3
+      assert length(Ash.page!(page, :next).results) == 3
+    end
+
+    test "keyset pages are capped and report more?" do
+      page = Ash.read!(User, action: :small_max_page_size, page: [limit: 100])
+
+      assert %Ash.Page.Keyset{limit: 3, more?: true} = page
+      assert length(page.results) == 3
+      assert length(Ash.page!(page, :next).results) == 3
+    end
+
+    test "the last capped page reports no more" do
+      page = Ash.read!(User, action: :small_max_page_size, page: [limit: 100, offset: 9])
+
+      assert %Ash.Page.Offset{limit: 3, more?: false} = page
+      assert length(page.results) == 1
     end
   end
 

@@ -295,6 +295,7 @@ defmodule Ash.Actions.Read do
       else
         page_opts(action, query.page, relationship?)
       end
+      |> clamp_page_limit(action, query)
 
     opts = Keyword.delete(opts, :page)
 
@@ -4067,6 +4068,20 @@ defmodule Ash.Actions.Read do
         page_opts
     end
   end
+
+  defp clamp_page_limit(page_opts, %{pagination: %{max_page_size: max}}, query)
+       when is_list(page_opts) and is_integer(max) do
+    limit = page_opts[:limit]
+
+    if is_integer(limit) and limit > max and
+         !query.context[:private][:bypass_max_page_size?] do
+      Keyword.put(page_opts, :limit, max)
+    else
+      page_opts
+    end
+  end
+
+  defp clamp_page_limit(page_opts, _action, _query), do: page_opts
 
   @doc false
   def paginate(starting_query, _action, true) do

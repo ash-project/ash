@@ -311,5 +311,25 @@ defmodule Ash.Test.PageTest do
 
       assert Enum.map(page.results, & &1.id) == Enum.take(ids, 3)
     end
+
+    test "run caps the page at max_page_size and reports more?", %{ids: ids} do
+      %{run: run, query: query} = data_layer_query(offset: 0, limit: 100)
+
+      assert {:ok, %Ash.Page.Offset{results: results, limit: 5, more?: true}} = run.(query)
+      assert Enum.map(results, & &1.id) == Enum.take(ids, 5)
+      assert_received {:after_action_count, 5}
+    end
+
+    test "load caps raw rows at max_page_size and reports more?", %{ids: ids} do
+      %{load: load, query: query, ash_query: ash_query} = data_layer_query(offset: 0, limit: 100)
+
+      {:ok, raw_rows} = Ash.DataLayer.run_query(query, ThisTest.Obj)
+      assert length(raw_rows) == 6
+
+      assert {:ok, %Ash.Page.Offset{results: results, limit: 5, more?: true}} =
+               load.(ash_query, raw_rows)
+
+      assert Enum.map(results, & &1.id) == Enum.take(ids, 5)
+    end
   end
 end
