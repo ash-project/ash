@@ -1595,4 +1595,64 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                )
     end
   end
+
+  defmodule PrivateArgResource do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :audit_note, :string, public?: true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :create]
+
+      destroy :archive do
+        require_atomic? false
+        argument :internal_reason, :string, public?: false
+        change set_attribute(:audit_note, arg(:internal_reason))
+      end
+    end
+  end
+
+  describe "private action arguments" do
+    test "are not settable from a user parameter map" do
+      record =
+        PrivateArgResource
+        |> Ash.Changeset.for_create(:create, %{audit_note: "original"})
+        |> Ash.create!()
+
+      result =
+        Ash.bulk_destroy!([record], :archive, %{"internal_reason" => "ATTACKER_CONTROLLED"},
+          strategy: [:stream],
+          return_records?: true
+        )
+
+      [destroyed] = result.records
+      refute destroyed.audit_note == "ATTACKER_CONTROLLED"
+    end
+
+    test "can still be set server-side via :private_arguments" do
+      record =
+        PrivateArgResource
+        |> Ash.Changeset.for_create(:create, %{audit_note: "original"})
+        |> Ash.create!()
+
+      result =
+        Ash.bulk_destroy!([record], :archive, %{},
+          strategy: [:stream],
+          private_arguments: %{internal_reason: "SERVER_SET"},
+          return_records?: true
+        )
+
+      [destroyed] = result.records
+      assert destroyed.audit_note == "SERVER_SET"
+    end
+  end
 end

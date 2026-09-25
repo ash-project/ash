@@ -1749,11 +1749,11 @@ defmodule Ash.Actions.Update.Bulk do
         argument =
           if is_binary(key) do
             Enum.find(action.arguments, fn arg ->
-              to_string(arg.name) == key
+              arg.public? && to_string(arg.name) == key
             end)
           else
             Enum.find(action.arguments, fn arg ->
-              arg.name == key
+              arg.public? && arg.name == key
             end)
           end
 
