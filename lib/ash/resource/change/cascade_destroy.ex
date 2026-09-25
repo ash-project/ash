@@ -308,12 +308,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       })
 
     context_opts =
-      Keyword.update(
-        context_opts,
-        :context,
-        action_context,
-        &Map.merge(&1, action_context)
-      )
+      Keyword.update(context_opts, :context, action_context, &Map.merge(&1, action_context))
+
+    destroy_opts = with_as_of(context_opts, changeset, relationship.destination)
 
     case related_query(data, opts, context_opts) do
       {:ok, query} ->
@@ -321,7 +318,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
           query,
           action.name,
           %{},
-          context_opts
+          destroy_opts
         )
 
       :error ->
@@ -366,7 +363,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
             action.name,
             %{},
             Keyword.update(
-              context_opts,
+              destroy_opts,
               :context,
               action_context,
               &Map.merge(&1, action_context)
@@ -375,6 +372,25 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         end
     end
   end
+
+  # The destroys carry the changeset's own `as_of`, which may be a range or set after the change ran; the read that finds them does not.
+  defp with_as_of(context_opts, %{as_of: as_of}, destination) when not is_nil(as_of) do
+    if Ash.Resource.Info.temporal?(destination) do
+      context_opts
+      |> Keyword.put(:as_of, as_of)
+      |> Keyword.update(:context, %{}, &drop_shared_as_of/1)
+    else
+      context_opts
+    end
+  end
+
+  defp with_as_of(context_opts, _changeset, _destination), do: context_opts
+
+  # `shared` carries only the instant a range resolves to, and would narrow the range on the way in.
+  defp drop_shared_as_of(%{shared: %{} = shared} = context),
+    do: %{context | shared: Map.delete(shared, :as_of)}
+
+  defp drop_shared_as_of(context), do: context
 
   defp related_query(_records, opts, _) when opts.relationship.type == :many_to_many, do: :error
 
