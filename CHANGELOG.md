@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.33.11](https://github.com/ash-project/ash/compare/v3.33.10...v3.33.11) (2026-09-25)
+
+
+
+
+### Bug Fixes:
+
+* enforce public? on argument matching in bulk destroy/update (CVE-2026-93477) by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly compare unions w/ `Ash.Type.equal?` by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.33.10](https://github.com/ash-project/ash/compare/v3.33.9...v3.33.10) (2026-09-24)
 
 
