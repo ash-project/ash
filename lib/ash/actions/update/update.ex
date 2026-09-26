@@ -161,8 +161,22 @@ defmodule Ash.Actions.Update do
             |> Ash.Changeset.set_context(%{data_layer: %{use_atomic_update_data?: true}})
             |> Map.put(:load, changeset.load)
             |> Map.put(:select, changeset.select)
-            |> Map.put(:filter, changeset.added_filter)
             |> Ash.Changeset.set_context(changeset.context)
+
+          # the atomic changeset carries filters added by the action's changes,
+          # so the caller's filters are added to it rather than replacing it
+          atomic_changeset =
+            if changeset.added_filter do
+              case Ash.Filter.add_to_filter(atomic_changeset.filter, changeset.added_filter) do
+                {:ok, filter} ->
+                  %{atomic_changeset | filter: filter}
+
+                {:error, error} ->
+                  Ash.Changeset.add_error(atomic_changeset, error)
+              end
+            else
+              atomic_changeset
+            end
 
           {atomic_changeset, opts} =
             Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
