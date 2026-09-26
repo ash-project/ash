@@ -84,12 +84,18 @@ defmodule Ash.Temporal do
           :change | :validation | :preparation,
           module(),
           Keyword.t(),
-          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t() | [Ash.Changeset.t()]
+          Ash.Changeset.t()
+          | Ash.Query.t()
+          | Ash.ActionInput.t()
+          | [Ash.Changeset.t()]
+          | Enumerable.t(Ash.Changeset.t())
         ) :: :ok
   def assert_temporal_safe!(type, module, opts, [subject | _]),
     do: assert_temporal_safe!(type, module, opts, subject)
 
   def assert_temporal_safe!(_type, _module, _opts, []), do: :ok
+
+  def assert_temporal_safe!(_type, _module, _opts, %Stream{}), do: :ok
 
   def assert_temporal_safe!(type, module, opts, %{resource: resource} = subject) do
     if Ash.Resource.Info.temporal?(resource) and not temporal_safe?(module, opts) do
