@@ -724,6 +724,35 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                ])
     end
 
+    test "a hard destroy whose portion spans two stored versions carves both" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+      record = EtsVersioned |> Ash.Query.as_of(~U[2020-01-01 00:00:00Z]) |> Ash.read_one!()
+
+      portion = %Ash.Range{
+        lower: ~U[2020-09-01 00:00:00Z],
+        upper: ~U[2021-06-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert :ok =
+               record
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: portion)
+               |> Ash.destroy()
+
+      assert [
+               {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-09-01 00:00:00Z]},
+               {"second", ~U[2021-06-01 00:00:00Z], nil}
+             ] =
+               versions_at([
+                 ~U[2020-06-01 00:00:00Z],
+                 ~U[2020-10-01 00:00:00Z],
+                 ~U[2021-03-01 00:00:00Z],
+                 ~U[2021-09-01 00:00:00Z]
+               ])
+    end
+
     # A bound reads `:now` off the same clock a bare `:now` does, so the two spellings agree.
     # Asserted on the resolver: an explicit `:now` does not reach the data layer today.
     test "a bound of :now resolves against the same clock a bare :now does" do

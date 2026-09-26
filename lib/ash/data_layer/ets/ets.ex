@@ -2112,14 +2112,15 @@ defmodule Ash.DataLayer.Ets do
       filter,
       changeset.domain,
       changeset.context[:private][:actor],
-      supersession(resource, changeset)
+      supersession(resource, changeset),
+      match?(%Ash.Range{}, write_as_of(changeset))
     )
   end
 
-  defp do_destroy(resource, record, tenant, filter, domain, actor, supersede) do
+  defp do_destroy(resource, record, tenant, filter, domain, actor, supersede, range?) do
     case wrap_or_create_table(resource, tenant, false) do
       {:ok, table} ->
-        do_destroy(table, resource, record, tenant, filter, domain, actor, supersede)
+        do_destroy(table, resource, record, tenant, filter, domain, actor, supersede, range?)
 
       # Nothing has ever been written for this tenant, so there is nothing to destroy.
       :no_table ->
@@ -2134,7 +2135,7 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp do_destroy(table, resource, record, tenant, filter, domain, actor, supersede) do
+  defp do_destroy(table, resource, record, tenant, filter, domain, actor, supersede, range?) do
     pkey = pkey_map(resource, record)
 
     if has_filter?(filter) do
@@ -2142,7 +2143,7 @@ defmodule Ash.DataLayer.Ets do
         {:ok, {_key, record}} when is_map(record) ->
           with {:ok, record} <- cast_record(record, resource),
                {:ok, [_]} <- filter_matches([record], filter, domain, tenant, actor) do
-            retire(table, pkey, resource, supersede)
+            retire(table, pkey, resource, record, supersede, range?)
           else
             {:ok, []} ->
               {:error,
@@ -2159,9 +2160,34 @@ defmodule Ash.DataLayer.Ets do
           {:error, error}
       end
     else
-      retire(table, pkey, resource, supersede)
+      retire(table, pkey, resource, record, supersede, range?)
     end
   end
+
+  # A range reaches every version it overlaps. An instant closes only the version given.
+  defp retire(table, _pkey, resource, record, {period, %Ash.Range{lower: lower} = written}, true)
+       when not is_nil(lower) do
+    with {:ok, periods} <- stored_periods(table, resource, record) do
+      primary_key = primary_key(resource, record)
+
+      periods
+      |> Map.get(primary_key, [])
+      |> Enum.filter(&Ash.Range.intersects?(&1, written))
+      |> Enum.reduce_while(:ok, fn version, :ok ->
+        key = Map.put(primary_key, period, version)
+
+        with {:ok, {_key, stored}} <- ETS.Set.get(table, key),
+             :ok <- close_version(table, key, stored, resource, period, overlap(version, written)) do
+          {:cont, :ok}
+        else
+          error -> {:halt, error}
+        end
+      end)
+    end
+  end
+
+  defp retire(table, pkey, resource, _record, supersede, _range?),
+    do: retire(table, pkey, resource, supersede)
 
   defp retire(table, pkey, resource, supersede) do
     case {supersede, ETS.Set.get(table, pkey)} do
@@ -2217,6 +2243,34 @@ defmodule Ash.DataLayer.Ets do
         {:ok, resumed}
     end
   end
+
+  # The part of `written` that `version` holds.
+  defp overlap(version, written) do
+    {lower, lower_bounds} =
+      if later?(written.lower, version.lower),
+        do: {written.lower, written.bounds},
+        else: {version.lower, version.bounds}
+
+    {upper, upper_bounds} =
+      if earlier?(written.upper, version.upper),
+        do: {written.upper, written.bounds},
+        else: {version.upper, version.bounds}
+
+    %Ash.Range{
+      lower: lower,
+      upper: upper,
+      bounds: bounds(Ash.Range.lower_inclusive?(lower_bounds), upper_bounds)
+    }
+  end
+
+  # `nil` is unbounded: no lower is later, and no upper is earlier.
+  defp later?(_left, nil), do: true
+  defp later?(nil, _right), do: false
+  defp later?(left, right), do: Comp.greater_than?(left, right)
+
+  defp earlier?(_left, nil), do: true
+  defp earlier?(nil, _right), do: false
+  defp earlier?(left, right), do: Comp.less_than?(left, right)
 
   defp bounds(lower_inclusive?, prior_bounds) do
     case {lower_inclusive?, Ash.Range.upper_inclusive?(prior_bounds)} do
