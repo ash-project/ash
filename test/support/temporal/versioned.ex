@@ -43,7 +43,7 @@ defmodule Ash.Test.Temporal.Versioned do
 
   relationships do
     has_many :notes, Ash.Test.Temporal.VersionedNote do
-      no_attributes? true
+      destination_attribute :versioned_id
       temporal_keys {:valid_at, :valid_at}
     end
   end

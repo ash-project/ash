@@ -142,8 +142,8 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       For relationships involving temporal resources, the `{source, destination}` period
       attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side
       (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a
-      `range_overlaps(parent(source), destination)` filter is applied at build time.
-      Requires `no_attributes? true`. See the `temporal` section of `Ash.Resource.Dsl`.
+      `range_overlaps(parent(source), destination)` filter is added to the relationship,
+      alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`.
       """
     ]
   ]

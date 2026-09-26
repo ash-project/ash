@@ -8,9 +8,7 @@ defmodule Ash.Resource.Verifiers.ValidateTemporalKeys do
 
   When either side of a `has_one`/`has_many`/`belongs_to` is temporal, the
   relationship must declare `temporal_keys` matching each side's period attribute
-  (`nil` for a non-temporal side), and `has_one`/`has_many` must set
-  `no_attributes? true` (a temporal destination is not uniquely keyed by the
-  foreign key — the join is expressed via the filter).
+  (`nil` for a non-temporal side).
 
   This runs as a verifier (not a transformer) so it can inspect the destination
   resource's temporality without introducing a compile-time dependency.
@@ -58,25 +56,15 @@ defmodule Ash.Resource.Verifiers.ValidateTemporalKeys do
   end
 
   defp check(relationship, module, expected) do
-    cond do
-      relationship.temporal_keys != expected ->
-        error(
-          module,
-          relationship,
-          "involves a temporal resource and must set `temporal_keys #{inspect(expected)}` " <>
-            "(got #{inspect(relationship.temporal_keys)})"
-        )
-
-      Map.has_key?(relationship, :no_attributes?) and not relationship.no_attributes? ->
-        error(
-          module,
-          relationship,
-          "involves a temporal resource and must set `no_attributes? true` " <>
-            "(a temporal destination is not uniquely keyed by the foreign key)"
-        )
-
-      true ->
-        :ok
+    if relationship.temporal_keys == expected do
+      :ok
+    else
+      error(
+        module,
+        relationship,
+        "involves a temporal resource and must set `temporal_keys #{inspect(expected)}` " <>
+          "(got #{inspect(relationship.temporal_keys)})"
+      )
     end
   end
 

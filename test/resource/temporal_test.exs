@@ -341,7 +341,7 @@ defmodule Ash.Test.Resource.TemporalTest do
 
             relationships do
               has_many :notes, Ash.Test.Temporal.VersionedNote do
-                no_attributes? true
+                destination_attribute :versioned_id
               end
             end
           end
@@ -350,27 +350,24 @@ defmodule Ash.Test.Resource.TemporalTest do
       assert error.message =~ "must set `temporal_keys {nil, :valid_at}`"
     end
 
-    test "must not be keyed by the foreign key" do
-      error =
-        assert_dsl_error %Spark.Error.DslError{path: [:relationships, :notes]} do
-          defmodule AttributeKeyedRelationship do
-            @moduledoc false
-            use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+    test "may be keyed by the foreign key" do
+      refute_dsl_errors do
+        defmodule AttributeKeyedRelationship do
+          @moduledoc false
+          use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
 
-            attributes do
-              attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
-            end
+          attributes do
+            attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
+          end
 
-            relationships do
-              has_many :notes, Ash.Test.Temporal.VersionedNote do
-                destination_attribute :versioned_id
-                temporal_keys {nil, :valid_at}
-              end
+          relationships do
+            has_many :notes, Ash.Test.Temporal.VersionedNote do
+              destination_attribute :versioned_id
+              temporal_keys {nil, :valid_at}
             end
           end
         end
-
-      assert error.message =~ "must set `no_attributes? true`"
+      end
     end
 
     test "are left alone when neither side is temporal" do
