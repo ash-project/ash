@@ -25,6 +25,14 @@ defmodule Ash.Test.TemporalSafeTest do
     def change(changeset, _opts, _context), do: changeset
   end
 
+  # Declares nothing itself, but is listed in `:temporal_safe_modules` in config/config.exs.
+  defmodule ConfiguredSafeChange do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context), do: changeset
+  end
+
   defmodule OptsDependentChange do
     @moduledoc false
     use Ash.Resource.Change
@@ -134,6 +142,11 @@ defmodule Ash.Test.TemporalSafeTest do
       create :create_unsafe_change do
         accept [:id, :name]
         change UnsafeChange
+      end
+
+      create :create_configured_safe_change do
+        accept [:id, :name]
+        change ConfiguredSafeChange
       end
 
       create :create_safe_change do
@@ -327,6 +340,10 @@ defmodule Ash.Test.TemporalSafeTest do
       assert Ash.Temporal.temporal_safe?(SafePreparation, [])
     end
 
+    test "is true for a module listed in the `:temporal_safe_modules` config" do
+      assert Ash.Temporal.temporal_safe?(ConfiguredSafeChange, [])
+    end
+
     test "consults the options" do
       assert Ash.Temporal.temporal_safe?(OptsDependentChange, safe?: true)
       refute Ash.Temporal.temporal_safe?(OptsDependentChange, safe?: false)
@@ -375,6 +392,11 @@ defmodule Ash.Test.TemporalSafeTest do
     test "a change that declared itself temporal safe runs" do
       assert %Versioned{name: "a"} =
                Ash.create!(Versioned, %{id: 1, name: "a"}, action: :create_safe_change)
+    end
+
+    test "a change listed as temporal safe in config runs" do
+      assert %Versioned{name: "a"} =
+               Ash.create!(Versioned, %{id: 1, name: "a"}, action: :create_configured_safe_change)
     end
 
     test "temporal safety may depend on the change's options" do

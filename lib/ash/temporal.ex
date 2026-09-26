@@ -28,6 +28,8 @@ defmodule Ash.Temporal do
   A write that provides no `as_of` takes effect now. Data layers provide `:now` for this.
   """
 
+  @temporal_safe_modules Application.compile_env(:ash, :temporal_safe_modules, [])
+
   @typedoc "An `as_of` as a caller may give it, before it is resolved."
   @type as_of :: :now | term() | nil
 
@@ -67,11 +69,17 @@ defmodule Ash.Temporal do
   (`c:Ash.Resource.Change.temporal_safe?/1`, `c:Ash.Resource.Validation.temporal_safe?/1`,
   `c:Ash.Resource.Preparation.temporal_safe?/1`). A module that does not define it is
   not temporal safe.
+
+  Modules from packages that don't declare it yet can be listed as temporal safe in
+  config:
+
+      config :ash, :temporal_safe_modules, [SomePackage.Changes.DoesThing]
   """
   @spec temporal_safe?(module(), Keyword.t()) :: boolean()
   def temporal_safe?(module, opts) do
-    Code.ensure_loaded?(module) and function_exported?(module, :temporal_safe?, 1) and
-      module.temporal_safe?(opts) == true
+    module in @temporal_safe_modules or
+      (Code.ensure_loaded?(module) and function_exported?(module, :temporal_safe?, 1) and
+         module.temporal_safe?(opts) == true)
   end
 
   @doc false

@@ -305,6 +305,13 @@ defmodule MyApp.Changes.Slugify do
 end
 ```
 
+Changes, validations and preparations from packages that don't declare `temporal_safe?/1`
+yet can be listed as temporal safe in config. This is checked at compile time:
+
+```elixir
+config :ash, :temporal_safe_modules, [SomePackage.Changes.DoesThing]
+```
+
 The builtin changes, validations and preparations are all temporal safe (`set_attribute`
 with `&DateTime.utc_now/0` resolves to the write's `as_of`, like an attribute default),
 except those that wrap an arbitrary function: `before_action`, `after_action`,
