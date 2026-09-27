@@ -72,7 +72,7 @@ defmodule Ash.Resource.Change.SetAttribute do
       case opts[:value] do
         # `&DateTime.utc_now/0` resolves to the write's `as_of` on a temporal resource,
         # the same as an attribute default does, so this stays temporal safe.
-        value when is_function(value) -> Ash.Helpers.resolve_default(value, changeset.as_of)
+        value when is_function(value) -> resolve_default(changeset, opts[:attribute], value)
         value -> value
       end
 
@@ -97,7 +97,7 @@ defmodule Ash.Resource.Change.SetAttribute do
       case opts[:value] do
         # `&DateTime.utc_now/0` resolves to the write's `as_of` on a temporal resource,
         # the same as an attribute default does, so this stays temporal safe.
-        value when is_function(value) -> Ash.Helpers.resolve_default(value, changeset.as_of)
+        value when is_function(value) -> resolve_default(changeset, opts[:attribute], value)
         value -> value
       end
 
@@ -133,6 +133,15 @@ defmodule Ash.Resource.Change.SetAttribute do
            }}
         end
       end
+    end
+  end
+
+  # The resource's `recorded_at` attribute is the time of the write itself, not its `as_of`.
+  defp resolve_default(changeset, attribute, value) do
+    if attribute == Ash.Resource.Info.temporal_recorded_at(changeset.resource) do
+      Ash.Helpers.resolve_default(value, Ash.Changeset.temporal_recorded_at(changeset))
+    else
+      Ash.Helpers.resolve_default(value, changeset.as_of)
     end
   end
 end

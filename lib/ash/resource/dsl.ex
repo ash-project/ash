@@ -1749,6 +1749,7 @@ defmodule Ash.Resource.Dsl do
       temporal do
         strategy :context
         attribute :valid_at
+        recorded_at :recorded_at
       end
       """
     ],
@@ -1765,6 +1766,19 @@ defmodule Ash.Resource.Dsl do
         type: :atom,
         default: :valid_at,
         doc: "The single period (range) attribute, e.g `valid_at`."
+      ],
+      recorded_at: [
+        type: :atom,
+        doc: """
+        An attribute to stamp with the time each version was actually written, e.g
+        `recorded_at`. Other `&DateTime.utc_now/0` defaults resolve to the write's `as_of`,
+        so a write back-dated into the past gets past timestamps. This one is always the
+        wall clock, so it tells you when a version was recorded, not when it took effect.
+        A write that isn't back-dated stamps it with the same instant its period starts at.
+
+        If the resource doesn't declare the attribute, a `:utc_datetime_usec` one is added
+        that is set on every create and update.
+        """
       ]
     ]
   }

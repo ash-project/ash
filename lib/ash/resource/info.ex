@@ -550,6 +550,14 @@ defmodule Ash.Resource.Info do
     end
   end
 
+  @doc "The attribute a temporal resource stamps with the time each version was written, if any"
+  @spec temporal_recorded_at(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
+  def temporal_recorded_at(resource) do
+    if temporal?(resource) do
+      Spark.Dsl.Extension.get_opt(resource, [:temporal], :recorded_at, nil)
+    end
+  end
+
   @doc "The period attribute of a temporal resource, carrying its type and constraints."
   @spec temporal_period(Spark.Dsl.t() | Ash.Resource.t()) :: Ash.Resource.Attribute.t() | nil
   def temporal_period(resource) do

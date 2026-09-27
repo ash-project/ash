@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Resource.Transformers.AddPeriodAttribute do
-  # Adds or checks the period attribute of a temporal resource
+  # Adds or checks the period attribute of a temporal resource, and adds its `recorded_at`
+  # attribute if it names one it doesn't declare
   @moduledoc false
   use Spark.Dsl.Transformer
 
@@ -14,7 +15,9 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
 
   def transform(dsl_state) do
     if Ash.Resource.Info.temporal?(dsl_state) do
-      add_or_check(dsl_state)
+      with {:ok, dsl_state} <- add_or_check(dsl_state) do
+        add_recorded_at(dsl_state)
+      end
     else
       {:ok, dsl_state}
     end
@@ -39,6 +42,20 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
       attribute ->
         check(attribute, module)
         {:ok, mark_generated(dsl_state, attribute)}
+    end
+  end
+
+  defp add_recorded_at(dsl_state) do
+    with name when not is_nil(name) <- Ash.Resource.Info.temporal_recorded_at(dsl_state),
+         nil <- Ash.Resource.Info.attribute(dsl_state, name) do
+      Ash.Resource.Builder.add_attribute(dsl_state, name, :utc_datetime_usec,
+        allow_nil?: false,
+        writable?: false,
+        default: &DateTime.utc_now/0,
+        update_default: &DateTime.utc_now/0
+      )
+    else
+      _ -> {:ok, dsl_state}
     end
   end
 

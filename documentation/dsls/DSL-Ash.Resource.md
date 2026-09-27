@@ -470,7 +470,7 @@ end
 | [`violation_message`](#relationships-has_one-violation_message){: #relationships-has_one-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-has_one-authorize_read_with){: #relationships-has_one-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-has_one-allow_forbidden_field?){: #relationships-has_one-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
-| [`temporal_keys`](#relationships-has_one-temporal_keys){: #relationships-has_one-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is applied at build time. Requires `no_attributes? true`. See the `temporal` section of `Ash.Resource.Dsl`. |
+| [`temporal_keys`](#relationships-has_one-temporal_keys){: #relationships-has_one-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.has_one.filter
@@ -583,7 +583,7 @@ end
 | [`violation_message`](#relationships-has_many-violation_message){: #relationships-has_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-has_many-authorize_read_with){: #relationships-has_many-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-has_many-allow_forbidden_field?){: #relationships-has_many-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
-| [`temporal_keys`](#relationships-has_many-temporal_keys){: #relationships-has_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is applied at build time. Requires `no_attributes? true`. See the `temporal` section of `Ash.Resource.Dsl`. |
+| [`temporal_keys`](#relationships-has_many-temporal_keys){: #relationships-has_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.has_many.filter
@@ -696,7 +696,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`violation_message`](#relationships-many_to_many-violation_message){: #relationships-many_to_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-many_to_many-authorize_read_with){: #relationships-many_to_many-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-many_to_many-allow_forbidden_field?){: #relationships-many_to_many-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
-| [`temporal_keys`](#relationships-many_to_many-temporal_keys){: #relationships-many_to_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is applied at build time. Requires `no_attributes? true`. See the `temporal` section of `Ash.Resource.Dsl`. |
+| [`temporal_keys`](#relationships-many_to_many-temporal_keys){: #relationships-many_to_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.many_to_many.filter
@@ -804,7 +804,7 @@ end
 | [`violation_message`](#relationships-belongs_to-violation_message){: #relationships-belongs_to-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-belongs_to-authorize_read_with){: #relationships-belongs_to-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-belongs_to-allow_forbidden_field?){: #relationships-belongs_to-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
-| [`temporal_keys`](#relationships-belongs_to-temporal_keys){: #relationships-belongs_to-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is applied at build time. Requires `no_attributes? true`. See the `temporal` section of `Ash.Resource.Dsl`. |
+| [`temporal_keys`](#relationships-belongs_to-temporal_keys){: #relationships-belongs_to-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.belongs_to.filter
@@ -4366,6 +4366,7 @@ layer temporal support (e.g. Postgres) via a single period column.
 temporal do
   strategy :context
   attribute :valid_at
+  recorded_at :recorded_at
 end
 
 ```
@@ -4379,6 +4380,7 @@ end
 |------|------|---------|------|
 | [`strategy`](#temporal-strategy){: #temporal-strategy } | `:context` | `:context` | Determines how temporality is implemented. Currently only `:context`, which defers to native data layer support using a single period column. |
 | [`attribute`](#temporal-attribute){: #temporal-attribute } | `atom` | `:valid_at` | The single period (range) attribute, e.g `valid_at`. |
+| [`recorded_at`](#temporal-recorded_at){: #temporal-recorded_at } | `atom` |  | An attribute to stamp with the time each version was actually written, e.g `recorded_at`. Other `&DateTime.utc_now/0` defaults resolve to the write's `as_of`, so a write back-dated into the past gets past timestamps. This one is always the wall clock, so it tells you when a version was recorded, not when it took effect. A write that isn't back-dated stamps it with the same instant its period starts at. If the resource doesn't declare the attribute, a `:utc_datetime_usec` one is added that is set on every create and update. |
 
 
 

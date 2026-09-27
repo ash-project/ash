@@ -267,6 +267,7 @@ spark_locals_without_parens = [
   read_one: 2,
   read_one: 3,
   read_one: 4,
+  recorded_at: 1,
   relationship_context: 1,
   require_actor?: 1,
   require_atomic?: 1,

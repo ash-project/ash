@@ -945,6 +945,24 @@ defmodule Ash.Changeset do
     end)
     |> Enum.reduce_while(changeset, fn attribute, changeset ->
       cond do
+        # `now()` would resolve to the write's `as_of`, but `recorded_at` is the wall clock.
+        recorded_at_attribute?(changeset, attribute) and
+            Ash.Helpers.now_default?(attribute.update_default) ->
+          recorded_at = temporal_recorded_at(changeset)
+
+          {:cont,
+           atomic_update(
+             changeset,
+             attribute.name,
+             {:atomic,
+              atomic_default_condition(
+                initial_changeset,
+                attribute.name,
+                Ash.Expr.expr(^recorded_at),
+                opts
+              )}
+           )}
+
         attribute.update_default == (&DateTime.utc_now/0) ->
           {:cont,
            atomic_update(
@@ -4194,14 +4212,25 @@ defmodule Ash.Changeset do
       end
     end)
     |> Enum.reduce(changeset, fn {default_fun, attributes}, changeset ->
-      default_value = resolve_default(changeset, default_fun)
+      default_value =
+        Ash.Helpers.resolve_default(
+          default_fun,
+          Ash.Temporal.resolve_write_as_of(changeset.as_of)
+        )
 
       Enum.reduce(attributes, changeset, fn attribute, changeset ->
         if changing_attribute?(changeset, attribute.name) do
           changeset
         else
+          value =
+            if recorded_at_attribute?(changeset, attribute) do
+              Ash.Helpers.resolve_default(default_fun, temporal_recorded_at(changeset))
+            else
+              default_value
+            end
+
           changeset
-          |> force_change_attribute(attribute.name, default_value)
+          |> force_change_attribute(attribute.name, value)
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -4215,9 +4244,17 @@ defmodule Ash.Changeset do
   # from `as_of` share one instant — rather than each calling the wall clock separately and
   # landing microseconds apart. Runs after any user-provided `as_of`, so it never clobbers
   # an explicit time-travel write. No-op for non-temporal resources.
+  #
+  # The pinned instant is also what the resource's `recorded_at` attribute is stamped with,
+  # so a write that isn't back-dated records the same instant its period starts at.
   defp pin_temporal_write_now(%{as_of: nil} = changeset) do
     if Ash.Resource.Info.temporal?(changeset.resource) do
-      as_of(changeset, :now)
+      changeset = as_of(changeset, :now)
+
+      case changeset.as_of do
+        %DateTime{} = now -> set_context(changeset, %{private: %{temporal_recorded_at: now}})
+        _ -> changeset
+      end
     else
       changeset
     end
@@ -4226,23 +4263,33 @@ defmodule Ash.Changeset do
   defp pin_temporal_write_now(changeset), do: changeset
 
   # A `&DateTime.utc_now/0` default on a write that carries an `as_of` resolves to that
-  # instant rather than the wall clock (see `Ash.Helpers.resolve_default/2`).
+  # instant rather than the wall clock (see `Ash.Helpers.resolve_default/2`), except on the
+  # resource's `recorded_at` attribute, which is always the time of the write itself.
   defp default(changeset, :create, attribute),
-    do:
-      Ash.Helpers.resolve_default(
-        attribute.default,
-        Ash.Temporal.resolve_write_as_of(changeset.as_of)
-      )
+    do: Ash.Helpers.resolve_default(attribute.default, default_as_of(changeset, attribute))
 
   defp default(changeset, :update, attribute) do
-    Ash.Helpers.resolve_default(
-      attribute.update_default,
-      Ash.Temporal.resolve_write_as_of(changeset.as_of)
-    )
+    Ash.Helpers.resolve_default(attribute.update_default, default_as_of(changeset, attribute))
   end
 
-  defp resolve_default(changeset, default),
-    do: Ash.Helpers.resolve_default(default, Ash.Temporal.resolve_write_as_of(changeset.as_of))
+  defp default_as_of(changeset, attribute) do
+    if recorded_at_attribute?(changeset, attribute) do
+      temporal_recorded_at(changeset)
+    else
+      Ash.Temporal.resolve_write_as_of(changeset.as_of)
+    end
+  end
+
+  defp recorded_at_attribute?(changeset, %{name: name}) do
+    name == Ash.Resource.Info.temporal_recorded_at(changeset.resource)
+  end
+
+  @doc false
+  # The instant a temporal write stamps its `recorded_at` attribute with: the `now` pinned
+  # for it, or the wall clock when it carries an explicit `as_of`.
+  def temporal_recorded_at(changeset) do
+    changeset.context[:private][:temporal_recorded_at] || DateTime.utc_now()
+  end
 
   defp validation_attribute(changeset) do
     case List.last(changeset.atomics) do
