@@ -356,6 +356,53 @@ defmodule Ash.Test.CodeInterfaceTest do
     :ok
   end
 
+  test "generated functions record the line of their `define`" do
+    # `mix test` compiles without debug info, which holds the recorded locations.
+    debug_info = Code.get_compiler_option(:debug_info)
+    Code.put_compiler_option(:debug_info, true)
+
+    compiled =
+      try do
+        Code.compile_string("""
+        defmodule Ash.Test.CodeInterfaceTest.DefineLine do
+          use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          actions do
+            defaults [:read, create: []]
+          end
+
+          code_interface do
+            define :list, action: :read
+            define :create
+          end
+        end
+        """)
+      after
+        Code.put_compiler_option(:debug_info, debug_info)
+      end
+
+    {module, binary} = List.keyfind(compiled, Ash.Test.CodeInterfaceTest.DefineLine, 0)
+
+    {:ok, {_, [debug_info: {:debug_info_v1, backend, data}]}} =
+      :beam_lib.chunks(binary, [:debug_info])
+
+    {:ok, %{definitions: definitions}} = backend.debug_info(:elixir_v1, module, data, [])
+    metas = Map.new(definitions, fn {fun_arity, _kind, meta, _clauses} -> {fun_arity, meta} end)
+
+    assert metas[{:list!, 0}][:line] == 13
+    assert metas[{:list, 1}][:line] == 13
+    assert metas[{:create!, 0}][:line] == 14
+    assert metas[{:can_create?, 1}][:line] == 14
+
+    # The file, and with it every line in the body and in stacktraces, stays Ash's.
+    {file, _line} = metas[{:create!, 0}][:file]
+    assert String.ends_with?(file, "lib/ash/code_interface.ex")
+  end
+
   describe "exclude_inputs" do
     test "raises an error when used" do
       assert_raise ArgumentError,
