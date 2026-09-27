@@ -4217,7 +4217,7 @@ defmodule Ash.Changeset do
   # an explicit time-travel write. No-op for non-temporal resources.
   defp pin_temporal_write_now(%{as_of: nil} = changeset) do
     if Ash.Resource.Info.temporal?(changeset.resource) do
-      as_of(changeset, DateTime.utc_now())
+      as_of(changeset, :now)
     else
       changeset
     end
@@ -5540,6 +5540,8 @@ defmodule Ash.Changeset do
   def as_of(changeset, nil), do: changeset
 
   def as_of(changeset, as_of) do
+    as_of = Ash.Temporal.cast_write_as_of(changeset.resource, as_of)
+
     # Read legs inherit the instant through `shared`; the range stays on `private`.
     %{changeset | as_of: as_of}
     |> set_context(%{

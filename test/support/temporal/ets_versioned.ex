@@ -7,7 +7,8 @@ defmodule Ash.Test.Temporal.EtsVersioned do
   A temporal resource on the ETS data layer.
 
   The period is never action input, so a test that needs a particular one seeds it
-  with `Ash.Seed.seed!/2`.
+  with `Ash.Seed.seed!/2`. It is declared with second precision, so writes are cast to
+  whole seconds.
   """
   use Ash.Resource,
     domain: Ash.Test.Domain,
@@ -49,5 +50,14 @@ defmodule Ash.Test.Temporal.EtsVersioned do
   attributes do
     attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
     attribute :name, :string, public?: true
+
+    attribute :valid_at, Ash.Type.Range,
+      allow_nil?: false,
+      constraints: [
+        inner_type: :datetime,
+        inner_constraints: [precision: :second],
+        lower: [inclusive?: true],
+        upper: [inclusive?: false]
+      ]
   end
 end

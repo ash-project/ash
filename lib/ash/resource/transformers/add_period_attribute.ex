@@ -30,7 +30,7 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
           allow_nil?: false,
           generated?: true,
           constraints: [
-            inner_type: :datetime,
+            inner_type: :utc_datetime_usec,
             lower: [inclusive?: true],
             upper: [inclusive?: false]
           ]

@@ -56,15 +56,27 @@ defmodule Ash.Test.Resource.TemporalTest do
   end
 
   describe "a resource that names its period and declares nothing" do
-    test "gets the attribute, as an inclusive-exclusive range over datetimes" do
+    test "gets the attribute, as an inclusive-exclusive range over microsecond datetimes" do
       attribute = Ash.Resource.Info.temporal_period(VersionedNote)
 
       assert attribute.name == :valid_at
       assert attribute.type == Ash.Type.Range
       refute attribute.allow_nil?
-      assert attribute.constraints[:inner_type] == Ash.Type.DateTime
+      assert attribute.constraints[:inner_type] == Ash.Type.UtcDatetimeUsec
       assert attribute.constraints[:lower][:inclusive?]
       refute attribute.constraints[:upper][:inclusive?]
+    end
+
+    test "keeps sub-second detail, so a version shorter than a second is not empty" do
+      constraints = Ash.Resource.Info.temporal_period(VersionedNote).constraints
+      lower = ~U[2026-01-01 00:00:00.123456Z]
+      upper = ~U[2026-01-01 00:00:00.654321Z]
+
+      assert {:ok, range} =
+               Ash.Type.cast_input(Ash.Type.Range, %{lower: lower, upper: upper}, constraints)
+
+      assert {:ok, %{lower: ^lower, upper: ^upper, empty?: false}} =
+               Ash.Type.apply_constraints(Ash.Type.Range, range, constraints)
     end
 
     test "gets it marked generated?, so a create need not supply it" do

@@ -34,6 +34,34 @@ defmodule Ash.Temporal do
   @type as_of :: :now | term() | nil
 
   @doc """
+  Casts the `as_of` of a write to a temporal resource into the type its periods are built
+  from, applying the precision that type declares.
+
+  An instant or `:now` becomes an instant (see `write_instant/2`) and a range becomes a period
+  (see `write_period/2`). Anything that can't be cast, and any `as_of` of a resource that
+  isn't temporal, is returned unchanged.
+  """
+  @spec cast_write_as_of(Ash.Resource.t(), as_of()) :: term()
+  def cast_write_as_of(_resource, nil), do: nil
+
+  def cast_write_as_of(resource, as_of) do
+    if Ash.Resource.Info.temporal?(resource) do
+      result =
+        case as_of do
+          %Ash.Range{} -> write_period(resource, as_of)
+          _ -> write_instant(resource, as_of)
+        end
+
+      case result do
+        {:ok, cast} -> cast
+        :error -> as_of
+      end
+    else
+      as_of
+    end
+  end
+
+  @doc """
   Resolves the `as_of` a write takes effect at.
 
   `:now` resolves to the current time. A range resolves to its lower bound. Anything else is

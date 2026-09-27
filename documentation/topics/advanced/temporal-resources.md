@@ -55,7 +55,7 @@ defmodule MyApp.Subscription do
     attribute :valid_at, Ash.Type.Range,
       allow_nil?: false,
       constraints: [
-        inner_type: :datetime,
+        inner_type: :utc_datetime_usec,
         lower: [inclusive?: true],
         upper: [inclusive?: false]
       ]

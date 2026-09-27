@@ -385,6 +385,31 @@ defmodule Ash.TemporalTest do
     end
   end
 
+  describe "Ash.Temporal.cast_write_as_of/2" do
+    test "casts an instant to the precision of the resource's period" do
+      assert Ash.Temporal.cast_write_as_of(Ash.Test.Temporal.EtsVersioned, @as_of) ==
+               DateTime.truncate(@as_of, :second)
+    end
+
+    test "resolves :now in the resource's inner type" do
+      assert %DateTime{microsecond: {0, 0}} =
+               Ash.Temporal.cast_write_as_of(Ash.Test.Temporal.EtsVersioned, :now)
+    end
+
+    test "leaves the as_of of a resource that isn't temporal alone" do
+      assert Ash.Temporal.cast_write_as_of(Ash.Test.Manifest.Article, @as_of) == @as_of
+    end
+
+    test "is applied to the as_of of a changeset" do
+      changeset =
+        Ash.Test.Temporal.EtsVersioned
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.as_of(@as_of)
+
+      assert changeset.as_of == DateTime.truncate(@as_of, :second)
+    end
+  end
+
   describe "Ash.Temporal.write_period/2" do
     test "opens a period at the instant, unbounded above" do
       assert {:ok, %Ash.Range{lower: lower, upper: nil}} =
