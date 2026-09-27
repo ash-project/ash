@@ -63,6 +63,40 @@ defmodule Ash.TemporalTest do
 
   alias Ash.Test.Temporal.Thing
 
+  defmodule Stamped do
+    @moduledoc false
+    use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    temporal do
+      strategy :context
+      attribute :valid_at
+    end
+
+    actions do
+      defaults [:read, create: [:id, :name], update: [:name]]
+    end
+
+    attributes do
+      attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
+      attribute :name, :string, public?: true
+
+      attribute :valid_at, Ash.Type.Range,
+        allow_nil?: false,
+        constraints: [
+          inner_type: :utc_datetime_usec,
+          lower: [inclusive?: true],
+          upper: [inclusive?: false]
+        ]
+
+      create_timestamp :inserted_at
+      update_timestamp :updated_at
+    end
+  end
+
   describe "as_of threaded through builder opts (like tenant)" do
     test "Ash.Query.for_read/4 reads :as_of from opts" do
       query = Ash.Query.for_read(Thing, :read, %{}, as_of: @as_of)
@@ -131,6 +165,50 @@ defmodule Ash.TemporalTest do
     test "Ash.run_action/1 sees as_of set on the input itself" do
       input = Ash.ActionInput.for_action(Thing, :reveal_as_of, %{}, as_of: @as_of)
       assert {:ok, @as_of} = Ash.run_action(input)
+    end
+
+    test "Ash.create/2 threads :as_of onto a changeset built without one" do
+      stamped =
+        Stamped
+        |> Ash.Changeset.for_create(:create, %{id: 1})
+        |> Ash.create!(as_of: @as_of)
+
+      assert stamped.valid_at.lower == @as_of
+      assert stamped.inserted_at == @as_of
+    end
+
+    test "Ash.create/2 leaves the :as_of a changeset was built with" do
+      stamped =
+        Stamped
+        |> Ash.Changeset.for_create(:create, %{id: 1}, as_of: @as_of)
+        |> Ash.create!(as_of: ~U[2022-01-01 00:00:00.000000Z])
+
+      assert stamped.valid_at.lower == @as_of
+    end
+
+    test "Ash.update/2 threads :as_of onto a changeset built without one" do
+      Ash.create!(Stamped, %{id: 1}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      updated =
+        Stamped
+        |> Ash.read_one!()
+        |> Ash.Changeset.for_update(:update, %{name: "b"})
+        |> Ash.update!(as_of: @as_of)
+
+      assert updated.valid_at.lower == @as_of
+      assert updated.updated_at == @as_of
+    end
+
+    test "Ash.update/2 leaves the :as_of a changeset was built with" do
+      Ash.create!(Stamped, %{id: 1}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      updated =
+        Stamped
+        |> Ash.read_one!()
+        |> Ash.Changeset.for_update(:update, %{name: "b"}, as_of: @as_of)
+        |> Ash.update!(as_of: ~U[2022-01-01 00:00:00.000000Z])
+
+      assert updated.valid_at.lower == @as_of
     end
   end
 
