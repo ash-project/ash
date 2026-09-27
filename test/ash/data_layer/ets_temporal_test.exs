@@ -809,20 +809,105 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert [%Ash.Error.Query.AsOfNotAnInstant{}] = error.errors
     end
 
-    # `raw_instant/2` refuses it rather than guessing a bound, so the write finds no version
-    # to supersede and the record is left untouched.
-    test "a range with no lower bound is refused, and changes nothing" do
-      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+    test "a hard destroy over all time removes every version" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+      record = EtsVersioned |> Ash.Query.as_of(~U[2020-06-01 00:00:00Z]) |> Ash.read_one!()
+      all_time = %Ash.Range{lower: nil, upper: nil, bounds: :"[)"}
+
+      assert :ok =
+               record
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: all_time)
+               |> Ash.destroy()
+
+      assert [] = versions_at([~U[2020-06-01 00:00:00Z], ~U[2021-06-01 00:00:00Z]])
 
       assert {:error, error} =
                record
-               |> Ash.Changeset.for_destroy(:destroy, %{},
-                 as_of: %Ash.Range{lower: nil, upper: nil, bounds: :"[)"}
-               )
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: all_time)
                |> Ash.destroy()
 
       assert %Ash.Error.Changes.StaleRecord{} = Ash.Error.to_error_class(error).errors |> hd()
-      assert ["first"] = names_at(~U[2020-06-01 00:00:00Z])
+    end
+
+    test "a hard destroy over a range reaching no stored version is refused as stale" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      assert :ok =
+               record
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: @portion)
+               |> Ash.destroy()
+
+      assert {:error, error} =
+               record
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: @portion)
+               |> Ash.destroy()
+
+      assert %Ash.Error.Changes.StaleRecord{} = Ash.Error.to_error_class(error).errors |> hd()
+
+      assert [
+               {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-06-01 00:00:00Z]},
+               {"first", ~U[2020-09-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]}
+             ] =
+               versions_at([
+                 ~U[2020-03-01 00:00:00Z],
+                 ~U[2020-07-01 00:00:00Z],
+                 ~U[2020-10-01 00:00:00Z]
+               ])
+    end
+
+    test "a bulk hard destroy by list over a range reaching no stored version returns nothing" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      destroy = fn ->
+        Ash.bulk_destroy([record], :destroy, %{},
+          as_of: @portion,
+          strategy: [:stream],
+          return_records?: true,
+          return_errors?: true
+        )
+      end
+
+      assert %Ash.BulkResult{status: :success, records: [%{name: "first"}]} = destroy.()
+      assert %Ash.BulkResult{status: :success, records: []} = destroy.()
+    end
+
+    test "a hard destroy over all time removes a version with no lower bound" do
+      all_time = %Ash.Range{lower: nil, upper: nil, bounds: :"[)"}
+
+      record =
+        EtsVersioned
+        |> Ash.Changeset.for_create(:create, %{id: 1, name: "always"}, as_of: all_time)
+        |> Ash.create!()
+
+      assert :ok =
+               record
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: all_time)
+               |> Ash.destroy()
+
+      assert [] = versions_at([~U[2020-06-01 00:00:00Z]])
+    end
+
+    test "a hard destroy over a range with no lower bound keeps what lies after it" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+      record = EtsVersioned |> Ash.Query.as_of(~U[2020-06-01 00:00:00Z]) |> Ash.read_one!()
+
+      assert :ok =
+               record
+               |> Ash.Changeset.for_destroy(:destroy, %{},
+                 as_of: %Ash.Range{lower: nil, upper: ~U[2021-06-01 00:00:00Z], bounds: :"[)"}
+               )
+               |> Ash.destroy()
+
+      assert [{"second", ~U[2021-06-01 00:00:00Z], nil}] =
+               versions_at([
+                 ~U[2020-06-01 00:00:00Z],
+                 ~U[2021-03-01 00:00:00Z],
+                 ~U[2021-09-01 00:00:00Z]
+               ])
     end
   end
 
