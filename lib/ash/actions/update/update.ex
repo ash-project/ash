@@ -206,7 +206,7 @@ defmodule Ash.Actions.Update do
               tracer: opts[:tracer]
             )
             |> Ash.Query.do_filter(primary_key_filter)
-            |> scope_atomic_read_as_of(atomic_changeset.as_of)
+            |> Ash.Actions.Helpers.scope_write_read_as_of(atomic_changeset.as_of)
 
           authorize_changeset_with =
             if Ash.DataLayer.data_layer_can?(atomic_changeset.resource, :expr_error) do
@@ -346,10 +346,6 @@ defmodule Ash.Actions.Update do
               ),
               __STACKTRACE__
   end
-
-  # A range-valued as_of scopes this query by primary key alone, to reach every version.
-  defp scope_atomic_read_as_of(query, %Ash.Range{}), do: %{query | as_of: nil}
-  defp scope_atomic_read_as_of(query, _as_of), do: query
 
   @doc false
   def do_run(domain, changeset, action, opts) do

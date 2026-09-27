@@ -341,6 +341,11 @@ defmodule Ash.Actions.Helpers do
   def put_write_as_of(metadata, _resource, _as_of), do: metadata
 
   @doc false
+  # A range-valued as_of scopes a write's record-selecting query by primary key alone, to reach every version.
+  def scope_write_read_as_of(query, %Ash.Range{}), do: %{query | as_of: nil}
+  def scope_write_read_as_of(query, _as_of), do: query
+
+  @doc false
   # Stamp `tenant`/`as_of` onto each record's metadata, but only walk the list when there is
   # actually something to stamp — so a plain (non-tenant, non-temporal) result isn't
   # remapped for nothing.

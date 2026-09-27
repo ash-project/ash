@@ -1078,6 +1078,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         |> Ash.Query.filter(^pkeys)
         |> Ash.Query.select([])
         |> Ash.Query.sort(opts[:query_sort] || [])
+        |> Ash.Actions.Helpers.scope_write_read_as_of(atomic_changeset.as_of)
         |> then(fn query ->
           run(
             domain,

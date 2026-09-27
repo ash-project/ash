@@ -2072,6 +2072,7 @@ defmodule Ash.DataLayer.Ets do
     |> case do
       {:ok, results} ->
         results
+        |> first_versions(resource, changeset)
         |> Enum.reduce_while(acc, fn result, acc ->
           result_changeset = %{changeset | data: result}
 
@@ -2099,6 +2100,21 @@ defmodule Ash.DataLayer.Ets do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  # A destroy over a range carves every version of a record at once, so each record is
+  # destroyed once, as the first version the range overlaps.
+  defp first_versions(results, resource, changeset) do
+    case {write_as_of(changeset), supersession(resource, changeset)} do
+      {%Ash.Range{}, {period, written}} ->
+        results
+        |> Enum.filter(&overlapping?(Map.get(&1, period), written))
+        |> Enum.sort_by(&Map.get(&1, period), Ash.Range)
+        |> Enum.uniq_by(&primary_key(resource, &1))
+
+      _ ->
+        results
     end
   end
 

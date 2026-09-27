@@ -1405,6 +1405,7 @@ defmodule Ash.Actions.Update.Bulk do
         |> Ash.Query.filter(^atomic_changeset.filter)
         |> Ash.Query.select([])
         |> Ash.Query.sort(opts[:query_sort] || [])
+        |> Ash.Actions.Helpers.scope_write_read_as_of(atomic_changeset.as_of)
         |> then(fn query ->
           run(domain, query, action.name, input,
             actor: opts[:actor],
