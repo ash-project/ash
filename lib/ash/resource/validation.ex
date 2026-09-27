@@ -117,7 +117,26 @@ defmodule Ash.Resource.Validation do
   @callback has_validate?() :: boolean
   @callback has_batch_validate?() :: boolean
 
-  @optional_callbacks describe: 1, validate: 3, atomic: 3, batch_validate: 3
+  @doc """
+  Whether this validation is safe to run as part of an action on a temporal resource.
+
+  Every action on a [temporal resource](/documentation/topics/advanced/temporal-resources.md)
+  runs "as of" a point in time, which may be in the past or the future. A validation that
+  runs there must not assume the action is happening now: it must not read the wall clock
+  (use `now()` in expressions, or the subject's `as_of`), and must perform any reads
+  through Ash so that `as_of` is threaded to them.
+
+  Defaults to `false`. Running a validation that is not temporal safe on a temporal
+  resource raises `Ash.Error.Framework.NotTemporalSafe`. Return `true` to declare the
+  validation safe, inspecting `opts` if it is only safe for some configurations.
+  """
+  @callback temporal_safe?(opts :: Keyword.t()) :: boolean
+
+  @optional_callbacks describe: 1,
+                      validate: 3,
+                      atomic: 3,
+                      batch_validate: 3,
+                      temporal_safe?: 1
 
   @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
                     Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 2}}
@@ -191,6 +210,9 @@ defmodule Ash.Resource.Validation do
       @impl true
       def batch_callbacks?(_, _, _), do: true
 
+      @impl true
+      def temporal_safe?(_opts), do: false
+
       defp with_description(keyword, opts) do
         if Kernel.function_exported?(__MODULE__, :describe, 1) do
           keyword ++ Ash.Resource.Validation.describe(__MODULE__, opts)
@@ -199,7 +221,7 @@ defmodule Ash.Resource.Validation do
         end
       end
 
-      defoverridable init: 1, supports: 1, batch_callbacks?: 3
+      defoverridable init: 1, supports: 1, batch_callbacks?: 3, temporal_safe?: 1
     end
   end
 
@@ -270,6 +292,8 @@ defmodule Ash.Resource.Validation do
           Context.t()
         ) :: :ok | {:error, term()}
   def validate(module, changeset_query_or_input, opts, context) do
+    Ash.Temporal.assert_temporal_safe!(:validation, module, opts, changeset_query_or_input)
+
     Ash.BehaviourHelpers.call_and_validate_return(
       module,
       :validate,
@@ -324,6 +348,8 @@ defmodule Ash.Resource.Validation do
           | {:not_atomic, String.t()}
           | {:error, term()}
   def atomic(module, changeset_query_or_input, opts, context) do
+    Ash.Temporal.assert_temporal_safe!(:validation, module, opts, changeset_query_or_input)
+
     result = apply(module, :atomic, [changeset_query_or_input, opts, context])
 
     if valid_atomic_result?(result) do

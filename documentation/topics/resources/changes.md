@@ -61,6 +61,32 @@ This could then be used in a resource via:
 change {MyApp.Changes.Slugify, attribute: :foo}
 ```
 
+## Temporal Safety
+
+Every action on a [temporal resource](/documentation/topics/advanced/temporal-resources.md) runs "as of" a point in time, which may be in the past or in the future. A change that runs as part of one must not assume the write is happening now. Changes declare that they meet this bar with the `temporal_safe?/1` callback, which defaults to `false`:
+
+```elixir
+defmodule MyApp.Changes.Slugify do
+  use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
+  def change(changeset, _opts, _context) do
+    # ...
+  end
+end
+```
+
+Running a change that has not declared itself temporal safe on a temporal resource raises `Ash.Error.Framework.NotTemporalSafe`. Return `true` when the change:
+
+- never reads the wall clock (use `now()` in expressions, or `changeset.as_of`)
+- has no side effects that assume the present, like sending a notification about "the current" state
+- performs any reads or nested actions through Ash, so that `as_of` is threaded to them
+
+`opts` is passed so a change that is only safe for some configurations can say so. All of the builtin changes are temporal safe, except those that wrap an arbitrary function (`before_action/1`, `after_action/1`, `before_transaction/1`, `after_transaction/1`) and anonymous function changes, whose safety cannot be known. Move that logic into a module change to use it on a temporal resource.
+
 ## Anonymous Function Changes
 
 You can also use anonymous functions for changes. Keep in mind, these cannot be made atomic, or support batching. This is great for prototyping, but we generally recommend using a module, both for organizational purposes, and to allow adding atomic/batch behavior.

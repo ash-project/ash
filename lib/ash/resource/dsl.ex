@@ -1730,6 +1730,59 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @temporal %Spark.Dsl.Section{
+    name: :temporal,
+    describe: """
+    Options for configuring temporal (time-travel) behavior of a resource.
+
+    Presence of this section makes a resource temporal (mirrors `multitenancy`,
+    which keys on `strategy`). A temporal resource tracks a period of validity for
+    each row. Reads and writes are pinned to a point in time with `Ash.Query.as_of/2`
+    / `Ash.Changeset.as_of/2`: a read returns the rows valid at that instant, and a
+    write only guarantees its rules hold at that instant, at the time it is made.
+
+    Only the `:context` strategy is supported for now, which defers to native data
+    layer temporal support (e.g. Postgres) via a single period column.
+    """,
+    examples: [
+      """
+      temporal do
+        strategy :context
+        attribute :valid_at
+        recorded_at :recorded_at
+      end
+      """
+    ],
+    schema: [
+      strategy: [
+        type: {:in, [:context]},
+        default: :context,
+        doc: """
+        Determines how temporality is implemented. Currently only `:context`,
+        which defers to native data layer support using a single period column.
+        """
+      ],
+      attribute: [
+        type: :atom,
+        default: :valid_at,
+        doc: "The single period (range) attribute, e.g `valid_at`."
+      ],
+      recorded_at: [
+        type: :atom,
+        doc: """
+        An attribute to stamp with the time each version was actually written, e.g
+        `recorded_at`. Other `&DateTime.utc_now/0` defaults resolve to the write's `as_of`,
+        so a write back-dated into the past gets past timestamps. This one is always the
+        wall clock, so it tells you when a version was recorded, not when it took effect.
+        A write that isn't back-dated stamps it with the same instant its period starts at.
+
+        If the resource doesn't declare the attribute, a `:utc_datetime_usec` one is added
+        that is set on every create and update.
+        """
+      ]
+    ]
+  }
+
   @sections [
     @attributes,
     @relationships,
@@ -1743,7 +1796,8 @@ defmodule Ash.Resource.Dsl do
     @pipelines,
     @aggregates,
     @calculations,
-    @multitenancy
+    @multitenancy,
+    @temporal
   ]
 
   @transformers [
@@ -1751,6 +1805,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.ResolvePipelines,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
+    Ash.Resource.Transformers.AddPeriodAttribute,
+    Ash.Resource.Transformers.AddTemporalRelationshipFilters,
     Ash.Resource.Transformers.BelongsToAttribute,
     Ash.Resource.Transformers.HasDestinationField,
     Ash.Resource.Transformers.ManyToManySourceAttributeOnJoinResource,
@@ -1796,6 +1852,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateEagerIdentities,
     Ash.Resource.Verifiers.ValidateManagedRelationshipOpts,
     Ash.Resource.Verifiers.ValidateMultitenancy,
+    Ash.Resource.Verifiers.ValidateTemporal,
+    Ash.Resource.Verifiers.ValidateTemporalKeys,
     Ash.Resource.Verifiers.ValidatePrimaryKey,
     Ash.Resource.Verifiers.ValidateAtomicValidationDefaultTargetAttribute,
     Ash.Resource.Verifiers.VerifyAcceptedByDomain,

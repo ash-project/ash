@@ -105,6 +105,7 @@ defmodule Ash.MixProject do
         "documentation/topics/advanced/combination-queries.md",
         "documentation/topics/advanced/timeouts.md",
         "documentation/topics/advanced/multitenancy.md",
+        "documentation/topics/advanced/temporal-resources.md",
         "documentation/topics/advanced/writing-extensions.md",
         "documentation/topics/advanced/code-generation.md",
         "documentation/moved/upgrade.md",

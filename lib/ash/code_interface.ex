@@ -1156,6 +1156,7 @@ defmodule Ash.CodeInterface do
             Keyword.take(interface_options.schema(), [
               :actor,
               :tenant,
+              :as_of,
               :scope,
               :authorize?,
               :tracer,
@@ -1278,6 +1279,7 @@ defmodule Ash.CodeInterface do
       opts
       |> Keyword.take([
         :tenant,
+        :as_of,
         :authorize?,
         :tracer,
         :context,
@@ -2056,6 +2058,7 @@ defmodule Ash.CodeInterface do
         :input,
         :actor,
         :tenant,
+        :as_of,
         :authorize?,
         :tracer,
         :scope,
@@ -2093,6 +2096,7 @@ defmodule Ash.CodeInterface do
         :query,
         :actor,
         :tenant,
+        :as_of,
         :authorize?,
         :tracer,
         :context,
@@ -2214,6 +2218,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :scope,
         :authorize?,
         :tracer,
@@ -2322,6 +2327,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :authorize?,
         :scope,
         :tracer,
@@ -2353,6 +2359,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :scope,
         :authorize?,
         :tracer,
@@ -2616,6 +2623,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :scope,
         :authorize?,
         :tracer,
@@ -2685,6 +2693,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :scope,
         :authorize?,
         :tracer,

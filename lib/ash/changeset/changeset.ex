@@ -66,6 +66,7 @@ defmodule Ash.Changeset do
     :resource,
     :tenant,
     :to_tenant,
+    :as_of,
     :timeout,
     dirty_hooks: [],
     invalid_keys: MapSet.new(),
@@ -836,6 +837,11 @@ defmodule Ash.Changeset do
           opts
         )
 
+      # This changeset is rebuilt from scratch (carrying context but not every
+      # field); restore the temporal `as_of` from the carried context so it is
+      # not lost on the way to the data layer.
+      changeset = %{changeset | as_of: changeset.context[:private][:as_of]}
+
       changeset = set_phase(changeset, :atomic)
 
       with :ok <- verify_notifiers_support_atomic(resource, action),
@@ -939,6 +945,24 @@ defmodule Ash.Changeset do
     end)
     |> Enum.reduce_while(changeset, fn attribute, changeset ->
       cond do
+        # `now()` would resolve to the write's `as_of`, but `recorded_at` is the wall clock.
+        recorded_at_attribute?(changeset, attribute) and
+            Ash.Helpers.now_default?(attribute.update_default) ->
+          recorded_at = temporal_recorded_at(changeset)
+
+          {:cont,
+           atomic_update(
+             changeset,
+             attribute.name,
+             {:atomic,
+              atomic_default_condition(
+                initial_changeset,
+                attribute.name,
+                Ash.Expr.expr(^recorded_at),
+                opts
+              )}
+           )}
+
         attribute.update_default == (&DateTime.utc_now/0) ->
           {:cont,
            atomic_update(
@@ -1944,6 +1968,11 @@ defmodule Ash.Changeset do
     tenant: [
       type: {:protocol, Ash.ToTenant},
       doc: "set the tenant on the changeset"
+    ],
+    as_of: [
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      doc:
+        "set the `as_of` point in time on the changeset (time travel). See `Ash.Changeset.as_of/2`."
     ],
     skip_unknown_inputs: [
       type: {:wrap_list, {:or, [:atom, :string]}},
@@ -3161,8 +3190,13 @@ defmodule Ash.Changeset do
     |> load(opts[:load])
     |> timeout(changeset.timeout || opts[:timeout])
     |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
+    |> maybe_set_as_of(opts[:as_of] || changeset.as_of)
     |> Map.put(:action_type, action.type)
   end
+
+  # Apply an `as_of` from opts without clobbering an unset changeset when there is none.
+  defp maybe_set_as_of(changeset, nil), do: changeset
+  defp maybe_set_as_of(changeset, value), do: as_of(changeset, value)
 
   defp reset_arguments(%{arguments: arguments} = changeset) do
     Enum.reduce(arguments, changeset, fn {key, value}, changeset ->
@@ -3311,6 +3345,11 @@ defmodule Ash.Changeset do
             actor: changeset.context[:private][:actor],
             authorize?: changeset.context[:private][:authorize?],
             tracer: changeset.context[:private][:tracer],
+            # Check uniqueness "as of" the write's instant: on a temporal resource the
+            # new row is `[as_of, ∞)`, so the conflicting set is the rows valid at `as_of`
+            # (an `@> as_of` read). `nil` (the default-`now()` write) leaves the read to
+            # default to `now()`, which matches the period the data layer will write.
+            as_of: changeset.as_of,
             domain: domain
           )
           |> Ash.Query.do_filter(values)
@@ -3374,7 +3413,12 @@ defmodule Ash.Changeset do
           else
             %{
               changeset
-              | arguments: Map.put(changeset.arguments, argument.name, default(:create, argument))
+              | arguments:
+                  Map.put(
+                    changeset.arguments,
+                    argument.name,
+                    default(changeset, :create, argument)
+                  )
             }
           end
 
@@ -4080,6 +4124,8 @@ defmodule Ash.Changeset do
   def set_defaults(changeset, action_type, lazy? \\ false)
 
   def set_defaults(changeset, :create, lazy?) do
+    changeset = pin_temporal_write_now(changeset)
+
     with_static_defaults =
       changeset.resource
       |> Ash.Resource.Info.static_default_attributes(:create)
@@ -4088,7 +4134,7 @@ defmodule Ash.Changeset do
           changeset
         else
           changeset
-          |> force_change_attribute(attribute.name, default(:create, attribute))
+          |> force_change_attribute(attribute.name, default(changeset, :create, attribute))
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -4105,6 +4151,8 @@ defmodule Ash.Changeset do
   end
 
   def set_defaults(changeset, :update, lazy?) do
+    changeset = pin_temporal_write_now(changeset)
+
     with_static_defaults =
       changeset.resource
       |> Ash.Resource.Info.static_default_attributes(:update)
@@ -4113,7 +4161,7 @@ defmodule Ash.Changeset do
           changeset
         else
           changeset
-          |> force_change_attribute(attribute.name, default(:update, attribute))
+          |> force_change_attribute(attribute.name, default(changeset, :update, attribute))
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -4146,7 +4194,7 @@ defmodule Ash.Changeset do
         changeset
       else
         changeset
-        |> force_change_attribute(attribute.name, default(type, attribute))
+        |> force_change_attribute(attribute.name, default(changeset, type, attribute))
         |> Map.update!(:defaults, fn defaults ->
           [attribute.name | defaults]
         end)
@@ -4168,20 +4216,24 @@ defmodule Ash.Changeset do
     end)
     |> Enum.reduce(changeset, fn {default_fun, attributes}, changeset ->
       default_value =
-        case default_fun do
-          function when is_function(function) ->
-            function.()
-
-          {m, f, a} when is_atom(m) and is_atom(f) and is_list(a) ->
-            apply(m, f, a)
-        end
+        Ash.Helpers.resolve_default(
+          default_fun,
+          Ash.Temporal.resolve_write_as_of(changeset.as_of)
+        )
 
       Enum.reduce(attributes, changeset, fn attribute, changeset ->
         if changing_attribute?(changeset, attribute.name) do
           changeset
         else
+          value =
+            if recorded_at_attribute?(changeset, attribute) do
+              Ash.Helpers.resolve_default(default_fun, temporal_recorded_at(changeset))
+            else
+              default_value
+            end
+
           changeset
-          |> force_change_attribute(attribute.name, default_value)
+          |> force_change_attribute(attribute.name, value)
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -4190,16 +4242,57 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp default(:create, %{default: {mod, func, args}}), do: apply(mod, func, args)
-  defp default(:create, %{default: function}) when is_function(function, 0), do: function.()
-  defp default(:create, %{default: value}), do: value
+  # Pin a single `now` for a temporal write (as its `as_of`) when one isn't already set, so
+  # every `&DateTime.utc_now/0` default *and* the validity period the data layer derives
+  # from `as_of` share one instant — rather than each calling the wall clock separately and
+  # landing microseconds apart. Runs after any user-provided `as_of`, so it never clobbers
+  # an explicit time-travel write. No-op for non-temporal resources.
+  #
+  # The pinned instant is also what the resource's `recorded_at` attribute is stamped with,
+  # so a write that isn't back-dated records the same instant its period starts at.
+  defp pin_temporal_write_now(%{as_of: nil} = changeset) do
+    if Ash.Resource.Info.temporal?(changeset.resource) do
+      changeset = as_of(changeset, :now)
 
-  defp default(:update, %{update_default: {mod, func, args}}), do: apply(mod, func, args)
+      case changeset.as_of do
+        %DateTime{} = now -> set_context(changeset, %{private: %{temporal_recorded_at: now}})
+        _ -> changeset
+      end
+    else
+      changeset
+    end
+  end
 
-  defp default(:update, %{update_default: function}) when is_function(function, 0),
-    do: function.()
+  defp pin_temporal_write_now(changeset), do: changeset
 
-  defp default(:update, %{update_default: value}), do: value
+  # A `&DateTime.utc_now/0` default on a write that carries an `as_of` resolves to that
+  # instant rather than the wall clock (see `Ash.Helpers.resolve_default/2`), except on the
+  # resource's `recorded_at` attribute, which is always the time of the write itself.
+  defp default(changeset, :create, attribute),
+    do: Ash.Helpers.resolve_default(attribute.default, default_as_of(changeset, attribute))
+
+  defp default(changeset, :update, attribute) do
+    Ash.Helpers.resolve_default(attribute.update_default, default_as_of(changeset, attribute))
+  end
+
+  defp default_as_of(changeset, attribute) do
+    if recorded_at_attribute?(changeset, attribute) do
+      temporal_recorded_at(changeset)
+    else
+      Ash.Temporal.resolve_write_as_of(changeset.as_of)
+    end
+  end
+
+  defp recorded_at_attribute?(changeset, %{name: name}) do
+    name == Ash.Resource.Info.temporal_recorded_at(changeset.resource)
+  end
+
+  @doc false
+  # The instant a temporal write stamps its `recorded_at` attribute with: the `now` pinned
+  # for it, or the wall clock when it carries an explicit `as_of`.
+  def temporal_recorded_at(changeset) do
+    changeset.context[:private][:temporal_recorded_at] || DateTime.utc_now()
+  end
 
   defp validation_attribute(changeset) do
     case List.last(changeset.atomics) do
@@ -5476,6 +5569,32 @@ defmodule Ash.Changeset do
     %{changeset | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, changeset.resource)}
   end
 
+  @doc """
+  Pins a write to a temporal resource to a point in time.
+
+  `as_of` is the instant the write takes effect, defaulting to now when unset
+  (also settable explicitly as `:now`). The write only guarantees its rules hold
+  *at* `as_of`, at the time it is made — exactly like any non-temporal write,
+  which guarantees its validations only at write time, not for any future moment.
+
+  `now()`/`ago()`/`from_now()` in validations and atomic changes resolve to
+  `as_of`. How (and whether) a period of validity is stored is up to the data
+  layer.
+  """
+  @spec as_of(t(), DateTime.t() | Ash.Range.t() | :now | nil) :: t()
+  def as_of(changeset, nil), do: changeset
+
+  def as_of(changeset, as_of) do
+    as_of = Ash.Temporal.cast_write_as_of(changeset.resource, as_of)
+
+    # Read legs inherit the instant through `shared`; the range stays on `private`.
+    %{changeset | as_of: as_of}
+    |> set_context(%{
+      private: %{as_of: as_of},
+      shared: %{as_of: Ash.Temporal.resolve_write_as_of(as_of)}
+    })
+  end
+
   @spec timeout(t(), nil | pos_integer, nil | pos_integer) :: t()
   def timeout(changeset, timeout, default \\ nil) do
     %{changeset | timeout: timeout || default}
@@ -5490,15 +5609,30 @@ defmodule Ash.Changeset do
   def set_context(changeset, nil), do: changeset
 
   def set_context(changeset, map) do
-    %{
+    changeset = %{
       changeset
       | context:
           changeset.context
           |> Ash.Helpers.deep_merge_maps(map)
           |> then(&Ash.Helpers.deep_merge_maps(&1, map[:shared] || %{}))
     }
-    |> store_context_changes(map)
+
+    # `as_of` rides in the shared context so it propagates to related/managed records (the
+    # same channel multitenancy uses), and is mirrored onto the struct field here so the
+    # data layer threads it — symmetric with `Ash.Query.set_context/2`.
+    #
+    # `private` holds this write's own `as_of`, which may be a range, and wins.
+    changeset =
+      case fetch_context_as_of(changeset.context) do
+        {:ok, as_of} -> %{changeset | as_of: as_of}
+        :error -> changeset
+      end
+
+    store_context_changes(changeset, map)
   end
+
+  defp fetch_context_as_of(%{private: %{as_of: as_of}}), do: {:ok, as_of}
+  defp fetch_context_as_of(context), do: Map.fetch(context, :as_of)
 
   defp store_context_changes(%{phase: :pending} = changeset, map) do
     %{changeset | context_changes: Ash.Helpers.deep_merge_maps(changeset.context_changes, map)}

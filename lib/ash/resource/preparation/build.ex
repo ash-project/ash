@@ -7,6 +7,10 @@ defmodule Ash.Resource.Preparation.Build do
 
   use Ash.Resource.Preparation
 
+  @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
   def prepare(query, opts, _context) do
     Ash.Query.build(query, opts[:options] || [])
   end

@@ -6,6 +6,10 @@ defmodule Ash.Resource.Change.AfterAction do
   @moduledoc false
   use Ash.Resource.Change
 
+  # Wraps an arbitrary function, whose temporal safety cannot be known.
+  @impl true
+  def temporal_safe?(_opts), do: false
+
   @doc false
   @impl true
   def change(changeset, opts, context) do

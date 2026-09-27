@@ -26,6 +26,20 @@ defmodule Ash.Type.RangeTest do
     assert Ash.Type.get_type(:range) == Ash.Type.Range
   end
 
+  test "a NewType of a supported inner type may be the inner type, and keeps its constraints" do
+    {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :utc_datetime_usec)
+    lower = ~U[2026-01-01 00:00:00.123456Z]
+
+    assert {:ok, %Range{lower: ^lower}} =
+             Ash.Type.cast_input(Ash.Type.Range, %{lower: lower, upper: nil}, constraints)
+
+    assert Ash.Type.Range.base_type(constraints[:inner_type]) == Ash.Type.DateTime
+  end
+
+  test "an inner type that is not a supported type, or a NewType of one, is refused" do
+    assert {:error, _} = Ash.Type.init(Ash.Type.Range, inner_type: :string)
+  end
+
   test "storage_type is the logical :range (data layer chooses the concrete type)" do
     assert Ash.Type.Range.storage_type(@constraints) == :range
     assert Ash.Type.Range.storage_type(@date_constraints) == :range

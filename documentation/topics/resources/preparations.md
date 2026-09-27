@@ -67,6 +67,28 @@ This could then be used in a resource via:
 prepare {MyApp.Preparations.Top5, attribute: :foo}
 ```
 
+## Temporal Safety
+
+Every action on a [temporal resource](/documentation/topics/advanced/temporal-resources.md) runs "as of" a point in time, which may be in the past or in the future. A preparation that runs as part of one must not assume the action is happening now. Preparations declare that they meet this bar with the `temporal_safe?/1` callback, which defaults to `false`:
+
+```elixir
+defmodule MyApp.Preparations.Top5 do
+  use Ash.Resource.Preparation
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
+  def prepare(query, _opts, _context) do
+    # ...
+  end
+end
+```
+
+Running a preparation that has not declared itself temporal safe on a temporal resource raises `Ash.Error.Framework.NotTemporalSafe`. Return `true` when the preparation never reads the wall clock (use `now()` in expressions, or the query's `as_of`), has no side effects that assume the present, and performs any reads through Ash, so that `as_of` is threaded to them. `opts` is passed so a preparation that is only safe for some configurations can say so.
+
+The builtin `build/1` and `set_context/1` preparations are temporal safe. `before_action/1`, `after_action/1` and anonymous function preparations are not, because they wrap an arbitrary function whose safety cannot be known; move that logic into a module preparation to use it on a temporal resource.
+
 ## Anonymous Function Queries
 
 You can also use anonymous functions for preparations. This is great for prototyping, but we generally recommend using a module for organizational purposes.

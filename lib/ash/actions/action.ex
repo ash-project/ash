@@ -41,6 +41,7 @@ defmodule Ash.Actions.Action do
       %Ash.Resource.Actions.Implementation.Context{
         actor: opts[:actor],
         tenant: opts[:tenant],
+        as_of: opts[:as_of],
         tracer: opts[:tracer],
         source_context: input.context,
         authorize?: opts[:authorize?],

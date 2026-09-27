@@ -464,7 +464,7 @@ defmodule Ash.Actions.Read do
 
             with {:ok, data, count, calculations_at_runtime, calculations_in_query, new_query} <-
                    data_result,
-                 data = add_tenant(data, new_query),
+                 data = add_read_metadata(data, new_query),
                  {:ok, data} <-
                    load_through_attributes(
                      data,
@@ -499,7 +499,7 @@ defmodule Ash.Actions.Read do
                    ) do
               data
               |> Helpers.restrict_field_access(query)
-              |> add_tenant(new_query)
+              |> add_read_metadata(new_query)
               |> attach_fields(opts[:initial_data], initial_query, query, missing_pkeys?)
               |> cleanup_field_auth(query)
               |> add_page(
@@ -1157,7 +1157,7 @@ defmodule Ash.Actions.Read do
 
                  {:ok,
                   results
-                  |> add_tenant(query)
+                  |> add_read_metadata(query)
                   |> add_page(
                     query.action,
                     resolved_count,
@@ -1350,7 +1350,7 @@ defmodule Ash.Actions.Read do
       records =
         records
         |> Helpers.restrict_field_access(query)
-        |> add_tenant(query)
+        |> add_read_metadata(query)
         |> attach_fields(nil, initial_query, query, false)
         |> cleanup_field_auth(query)
 
@@ -2525,6 +2525,43 @@ defmodule Ash.Actions.Read do
       end
 
     Ash.Filter.map(filter, fn
+      # Anchor relative-time expressions to the query's `as_of` (temporal reads).
+      # `as_of` rides in `opts[:as_of]` (optional — `nil` leaves wall-clock behavior),
+      # threaded by `add_calc_context_to_query` and by data layers at their call sites.
+      %Ash.Query.Function.Now{} = now ->
+        opts[:as_of] || now
+
+      %Ash.Query.Function.Ago{arguments: [factor, interval]} = ago when is_integer(factor) ->
+        if as_of = opts[:as_of] do
+          Ash.Query.Function.Ago.datetime_add(as_of, -factor, interval)
+        else
+          ago
+        end
+
+      %Ash.Query.Function.FromNow{arguments: [factor, interval]} = from_now
+      when is_integer(factor) ->
+        if as_of = opts[:as_of] do
+          Ash.Query.Function.Ago.datetime_add(as_of, factor, interval)
+        else
+          from_now
+        end
+
+      %Ash.Query.Function.Ago{arguments: [duration]} = ago
+      when is_struct(duration, Duration) ->
+        if as_of = opts[:as_of] do
+          Ash.Query.Function.Ago.datetime_add(as_of, Duration.negate(duration))
+        else
+          ago
+        end
+
+      # A date rather than a datetime, so it anchors by taking the date of `as_of`.
+      %Ash.Query.Function.Today{} = today ->
+        if as_of = opts[:as_of] do
+          DateTime.to_date(as_of)
+        else
+          today
+        end
+
       %Ash.Query.Parent{} = parent ->
         if List.wrap(opts[:parent_stack]) != [] do
           %{
@@ -2829,76 +2866,47 @@ defmodule Ash.Actions.Read do
     if query.__validated_for_action__ == action.name do
       query
     else
-      load = query.load
-      calculations = query.calculations
-      aggregates = query.aggregates
-      load_through = query.load_through
-      query = Ash.Query.for_read(query, action.name, args, opts)
+      previous = Map.take(query, [:load, :aggregates, :calculations, :load_through])
 
-      if strip_load?(initial_data) do
-        %{
-          query
-          | load: load,
-            aggregates: aggregates,
-            calculations: calculations,
-            load_through: load_through
-        }
-      else
-        if prefer_existing_loads?(query) do
-          %{
-            query
-            | load: Keyword.merge(load, query.load),
-              aggregates: Map.merge(aggregates, query.aggregates),
-              calculations: Map.merge(calculations, query.calculations),
-              load_through: %{
-                calculation:
-                  Map.merge(
-                    load_through[:calculation] || %{},
-                    query.load_through[:calculation] || %{}
-                  ),
-                attribute:
-                  Map.merge(
-                    load_through[:attribute] || %{},
-                    query.load_through[:attribute] || %{}
-                  )
-              }
-          }
-        else
-          %{
-            query
-            | load: Keyword.merge(query.load, load),
-              aggregates: Map.merge(query.aggregates, aggregates),
-              calculations: Map.merge(query.calculations, calculations),
-              load_through: %{
-                calculation:
-                  Map.merge(
-                    query.load_through[:calculation] || %{},
-                    load_through[:calculation] || %{}
-                  ),
-                attribute:
-                  Map.merge(
-                    query.load_through[:attribute] || %{},
-                    load_through[:attribute] || %{}
-                  )
-              }
-          }
-        end
-      end
+      query
+      |> Ash.Query.for_read(action.name, args, opts)
+      |> restore_loads(previous, initial_data)
     end
   end
 
   # `keep_read_action_loads_when_loading?` is a compile-time constant, so we
   # dispatch on it at compile time to avoid an always-true/always-false condition.
   if Ash.Actions.Helpers.keep_read_action_loads_when_loading?() do
-    defp strip_load?(_initial_data), do: false
+    defp restore_loads(query, previous, _initial_data), do: merge_loads(query, query, previous)
   else
-    defp strip_load?(initial_data), do: !!initial_data
+    defp restore_loads(query, previous, initial_data) do
+      cond do
+        initial_data -> Map.merge(query, previous)
+        query.context[:loading_relationships?] -> merge_loads(query, previous, query)
+        true -> merge_loads(query, query, previous)
+      end
+    end
   end
 
-  if Ash.Actions.Helpers.keep_read_action_loads_when_loading?() do
-    defp prefer_existing_loads?(_query), do: false
-  else
-    defp prefer_existing_loads?(query), do: !!query.context[:loading_relationships?]
+  defp merge_loads(query, base, overrides) do
+    %{
+      query
+      | load: Keyword.merge(base.load, overrides.load),
+        aggregates: Map.merge(base.aggregates, overrides.aggregates),
+        calculations: Map.merge(base.calculations, overrides.calculations),
+        load_through: %{
+          calculation:
+            Map.merge(
+              base.load_through[:calculation] || %{},
+              overrides.load_through[:calculation] || %{}
+            ),
+          attribute:
+            Map.merge(
+              base.load_through[:attribute] || %{},
+              overrides.load_through[:attribute] || %{}
+            )
+        }
+    }
   end
 
   defp validate_multitenancy(query) do
@@ -3007,6 +3015,15 @@ defmodule Ash.Actions.Read do
 
   defp apply_calculation_tenant(calculation), do: calculation
 
+  # Stamp the read's tenant and `as_of` onto each record's metadata so a later
+  # `Ash.load/3` of the same record can reuse them (same as tenants — see `Ash.load/3`).
+  # `put_new` so a value carried from an originating read is never overwritten.
+  defp add_read_metadata(data, query) do
+    data
+    |> add_tenant(query)
+    |> add_as_of(query)
+  end
+
   defp add_tenant(data, query) do
     if Ash.Resource.Info.multitenancy_strategy(query.resource) do
       Enum.map(data, fn item ->
@@ -3016,6 +3033,18 @@ defmodule Ash.Actions.Read do
       data
     end
   end
+
+  defp add_as_of(data, %{as_of: as_of} = query) when not is_nil(as_of) do
+    if Ash.Resource.Info.temporal?(query.resource) do
+      Enum.map(data, fn item ->
+        %{item | __metadata__: Map.put_new(item.__metadata__, :as_of, as_of)}
+      end)
+    else
+      data
+    end
+  end
+
+  defp add_as_of(data, _query), do: data
 
   defp add_query(result, query, opts) do
     if opts[:return_query?] do
@@ -3367,6 +3396,10 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain, opts) do
+    # Thread the query's `as_of` so `now()`/`ago()`/`from_now()` are anchored to it
+    # during calc/aggregate/filter expansion (see `add_calc_context_to_filter`).
+    opts = Keyword.put_new(opts, :as_of, Ash.Temporal.resolve_read_as_of(query.as_of))
+
     {:ok, sort} =
       add_calc_context_to_sort(
         query.sort,

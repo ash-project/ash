@@ -2352,6 +2352,13 @@ defmodule Ash.Actions.Destroy.Bulk do
                       do: Map.put(metadata, :tenant, changeset.to_tenant),
                       else: metadata
 
+                  metadata =
+                    Ash.Actions.Helpers.put_write_as_of(
+                      metadata,
+                      changeset.resource,
+                      changeset.as_of
+                    )
+
                   {[Ash.Resource.set_metadata(result, metadata)],
                    Map.put(changeset_map, changeset_id, changeset)}
                 else
@@ -2400,6 +2407,9 @@ defmodule Ash.Actions.Destroy.Bulk do
                 do: Map.put(metadata, :tenant, changeset.to_tenant),
                 else: metadata
 
+            metadata =
+              Ash.Actions.Helpers.put_write_as_of(metadata, changeset.resource, changeset.as_of)
+
             {[Ash.Resource.set_metadata(result, metadata)],
              Map.put(changeset_map, changeset_id, changeset)}
           else
@@ -2426,6 +2436,13 @@ defmodule Ash.Actions.Destroy.Bulk do
                     if changeset.to_tenant,
                       do: Map.put(metadata, :tenant, changeset.to_tenant),
                       else: metadata
+
+                  metadata =
+                    Ash.Actions.Helpers.put_write_as_of(
+                      metadata,
+                      changeset.resource,
+                      changeset.as_of
+                    )
 
                   {[Ash.Resource.set_metadata(result, metadata)],
                    Map.put(changeset_map, changeset_id, changeset)}
