@@ -893,4 +893,96 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert ["second"] = EtsIntegerExtent |> Ash.read!() |> Enum.map(& &1.name)
     end
   end
+
+  for {inner_type, resource, period} <- [
+        {:date, Ash.Test.Temporal.EtsDateVersioned, :valid_on},
+        {:naive_datetime, Ash.Test.Temporal.EtsNaiveVersioned, :valid_during}
+      ] do
+    describe "a period built from #{inner_type}" do
+      @resource resource
+      @inner_type inner_type
+      @period period
+
+      setup do
+        on_exit(fn -> Ash.DataLayer.Ets.stop(@resource) end)
+      end
+
+      test "a create with no as_of opens its period now" do
+        before = at(@inner_type, :now)
+        created = Ash.create!(@resource, %{id: 1, name: "now"})
+
+        assert %Ash.Range{lower: lower, upper: nil} = Map.fetch!(created, @period)
+        assert compare(lower, before) in [:eq, :gt]
+      end
+
+      test "a create as of an instant opens its period then" do
+        created =
+          Ash.create!(@resource, %{id: 1, name: "then"}, as_of: at(@inner_type, ~D[2020-06-15]))
+
+        assert %Ash.Range{lower: lower, upper: nil} = Map.fetch!(created, @period)
+        assert lower == at(@inner_type, ~D[2020-06-15])
+      end
+
+      test "a read as of an instant answers the version holding it" do
+        Ash.create!(@resource, %{id: 1, name: "first"}, as_of: at(@inner_type, ~D[2020-01-01]))
+
+        assert [] = names_at(@resource, at(@inner_type, ~D[2019-06-15]))
+        assert ["first"] = names_at(@resource, at(@inner_type, ~D[2020-06-15]))
+
+        assert ["first"] =
+                 @resource
+                 |> Ash.read!(as_of: at(@inner_type, ~D[2020-06-15]))
+                 |> Enum.map(& &1.name)
+      end
+
+      test "a read naming no instant answers the current version" do
+        Ash.create!(@resource, %{id: 1, name: "first"}, as_of: at(@inner_type, ~D[2020-01-01]))
+
+        assert ["first"] = @resource |> Ash.read!() |> Enum.map(& &1.name)
+      end
+
+      test "an update as of an instant supersedes the version from then" do
+        Ash.create!(@resource, %{id: 1, name: "first"}, as_of: at(@inner_type, ~D[2020-01-01]))
+
+        @resource
+        |> Ash.Query.as_of(at(@inner_type, ~D[2020-03-01]))
+        |> Ash.read_one!()
+        |> Ash.Changeset.for_update(:update, %{name: "second"},
+          as_of: at(@inner_type, ~D[2021-01-01])
+        )
+        |> Ash.update!()
+
+        assert ["first"] = names_at(@resource, at(@inner_type, ~D[2020-06-15]))
+        assert ["second"] = names_at(@resource, at(@inner_type, ~D[2021-06-15]))
+      end
+
+      test "a destroy as of an instant ends the version then" do
+        Ash.create!(@resource, %{id: 1, name: "first"}, as_of: at(@inner_type, ~D[2020-01-01]))
+
+        assert :ok =
+                 @resource
+                 |> Ash.Query.as_of(at(@inner_type, ~D[2020-03-01]))
+                 |> Ash.read_one!()
+                 |> Ash.Changeset.for_destroy(:destroy, %{},
+                   as_of: at(@inner_type, ~D[2021-01-01])
+                 )
+                 |> Ash.destroy()
+
+        assert ["first"] = names_at(@resource, at(@inner_type, ~D[2020-06-15]))
+        assert [] = names_at(@resource, at(@inner_type, ~D[2021-06-15]))
+      end
+    end
+  end
+
+  defp at(:date, :now), do: Date.utc_today()
+  defp at(:naive_datetime, :now), do: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+  defp at(:date, date), do: date
+  defp at(:naive_datetime, date), do: NaiveDateTime.new!(date, ~T[00:00:00])
+
+  defp compare(%Date{} = left, right), do: Date.compare(left, right)
+  defp compare(%NaiveDateTime{} = left, right), do: NaiveDateTime.compare(left, right)
+
+  defp names_at(resource, instant) do
+    resource |> Ash.Query.as_of(instant) |> Ash.read!() |> Enum.map(& &1.name)
+  end
 end
