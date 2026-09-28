@@ -2072,6 +2072,7 @@ defmodule Ash.DataLayer.Ets do
     |> case do
       {:ok, results} ->
         results
+        |> once_per_record(resource, changeset)
         |> Enum.reduce_while(acc, fn result, acc ->
           result_changeset = %{changeset | data: result}
 
@@ -2099,6 +2100,18 @@ defmodule Ash.DataLayer.Ets do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  defp once_per_record(results, resource, changeset) do
+    case write_as_of(changeset) do
+      %Ash.Range{} = as_of ->
+        results
+        |> Enum.filter(&touches_portion?(resource, &1, as_of))
+        |> then(&first_versions(resource, &1))
+
+      _ ->
+        results
     end
   end
 

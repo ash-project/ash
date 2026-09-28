@@ -341,6 +341,18 @@ defmodule Ash.Actions.Helpers do
   def put_write_as_of(metadata, _resource, _as_of), do: metadata
 
   @doc false
+  def unscope_write_read_as_of(%Ash.Query{} = query, %Ash.Range{}) do
+    context =
+      query.context
+      |> Map.delete(:as_of)
+      |> Map.update(:shared, %{}, &Map.delete(&1, :as_of))
+
+    %{query | as_of: nil, context: context}
+  end
+
+  def unscope_write_read_as_of(query, _as_of), do: query
+
+  @doc false
   # Stamp `tenant`/`as_of` onto each record's metadata, but only walk the list when there is
   # actually something to stamp — so a plain (non-tenant, non-temporal) result isn't
   # remapped for nothing.
@@ -866,6 +878,39 @@ defmodule Ash.Actions.Helpers do
       input
     end
   end
+
+  @doc false
+  # A write over a range spans every version it overlaps, so calculations, aggregates and
+  # relationships have no single instant to be answered at, and none can be loaded.
+  def refuse_load_over_range(%Ash.Changeset{as_of: %Ash.Range{} = as_of, load: load} = changeset)
+      when load not in [nil, []] do
+    Ash.Changeset.add_error(
+      changeset,
+      Ash.Error.Framework.LoadOverRange.exception(
+        resource: changeset.resource,
+        as_of: as_of,
+        load: load
+      )
+    )
+  end
+
+  def refuse_load_over_range(changeset), do: changeset
+
+  @doc false
+  # Only an atomic write updates each version a range overlaps from its own values, so a bulk
+  # write over a range that has fallen back to streaming is refused.
+  def refuse_stream_over_range(resource, action, %Ash.Range{} = as_of) do
+    {:error,
+     Ash.Error.to_error_class(
+       Ash.Error.Framework.NotAtomicOverRange.exception(
+         resource: resource,
+         action: action.name,
+         as_of: as_of
+       )
+     )}
+  end
+
+  def refuse_stream_over_range(_resource, _action, _as_of), do: :ok
 
   def load({:ok, result, instructions}, changeset, domain, opts) do
     notifier_query = notifier_query_for(changeset)

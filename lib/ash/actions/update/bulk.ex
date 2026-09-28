@@ -287,7 +287,10 @@ defmodule Ash.Actions.Update.Bulk do
             {atomic_changeset, opts} =
               Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
 
-            atomic_changeset = Ash.Actions.Helpers.apply_opts_load(atomic_changeset, opts)
+            atomic_changeset =
+              atomic_changeset
+              |> Ash.Actions.Helpers.apply_opts_load(opts)
+              |> Ash.Actions.Helpers.refuse_load_over_range()
 
             atomic_changeset =
               if opts[:select] do
@@ -1431,6 +1434,7 @@ defmodule Ash.Actions.Update.Bulk do
         |> Ash.Query.filter(^atomic_changeset.filter)
         |> Ash.Query.select([])
         |> Ash.Query.sort(opts[:query_sort] || [])
+        |> Ash.Actions.Helpers.unscope_write_read_as_of(atomic_changeset.as_of)
         |> then(fn query ->
           run(domain, query, action.name, input,
             actor: opts[:actor],
@@ -1494,6 +1498,34 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp do_stream_batches(
+         domain,
+         stream,
+         action,
+         input,
+         opts,
+         metadata_key,
+         ref_metadata_key,
+         context_key
+       ) do
+    case Ash.Actions.Helpers.refuse_stream_over_range(opts[:resource], action, opts[:as_of]) do
+      :ok ->
+        stream_batches(
+          domain,
+          stream,
+          action,
+          input,
+          opts,
+          metadata_key,
+          ref_metadata_key,
+          context_key
+        )
+
+      {:error, error} ->
+        %Ash.BulkResult{status: :error, error_count: 1, errors: [error]}
+    end
+  end
+
+  defp stream_batches(
          domain,
          stream,
          action,

@@ -36,6 +36,16 @@ defmodule Ash.Test.Temporal.EtsVersioned do
       accept [:name]
     end
 
+    update :update_and_load do
+      accept [:name]
+      change load(:shout)
+    end
+
+    update :update_before_2021 do
+      accept [:name]
+      change filter(expr(now() < ^~U[2021-01-01 00:00:00Z]))
+    end
+
     create :upsert do
       accept [:id, :name]
       upsert? true
@@ -45,6 +55,10 @@ defmodule Ash.Test.Temporal.EtsVersioned do
       soft? true
       change set_attribute(:name, "cancelled")
     end
+  end
+
+  calculations do
+    calculate :shout, :string, expr(name <> "!"), public?: true
   end
 
   attributes do

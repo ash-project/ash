@@ -286,7 +286,10 @@ defmodule Ash.Actions.Destroy.Bulk do
             {atomic_changeset, opts} =
               Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
 
-            atomic_changeset = Ash.Actions.Helpers.apply_opts_load(atomic_changeset, opts)
+            atomic_changeset =
+              atomic_changeset
+              |> Ash.Actions.Helpers.apply_opts_load(opts)
+              |> Ash.Actions.Helpers.refuse_load_over_range()
 
             atomic_changeset =
               if opts[:select] do
@@ -1095,6 +1098,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         |> Ash.Query.filter(^pkeys)
         |> Ash.Query.select([])
         |> Ash.Query.sort(opts[:query_sort] || [])
+        |> Ash.Actions.Helpers.unscope_write_read_as_of(atomic_changeset.as_of)
         |> then(fn query ->
           run(
             domain,
@@ -1159,6 +1163,13 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp do_stream_batches(domain, stream, action, input, opts) do
+    case Ash.Actions.Helpers.refuse_stream_over_range(opts[:resource], action, opts[:as_of]) do
+      :ok -> stream_batches(domain, stream, action, input, opts)
+      {:error, error} -> %Ash.BulkResult{status: :error, error_count: 1, errors: [error]}
+    end
+  end
+
+  defp stream_batches(domain, stream, action, input, opts) do
     resource = opts[:resource]
 
     manual_action_can_bulk? =
