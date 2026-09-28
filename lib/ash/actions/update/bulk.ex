@@ -299,6 +299,7 @@ defmodule Ash.Actions.Update.Bulk do
             atomic_changeset = %{atomic_changeset | domain: domain}
 
             notify? = !Process.put(:ash_started_transaction?, true)
+            queued_notifications = Process.get(:ash_notifications)
 
             try do
               context =
@@ -391,6 +392,7 @@ defmodule Ash.Actions.Update.Bulk do
                   {[{:error, error, atomic_changeset}], []}
 
                 {:error, error} ->
+                  Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
                   {[{:error, error, atomic_changeset}], []}
               end
               |> case do
@@ -450,6 +452,12 @@ defmodule Ash.Actions.Update.Bulk do
                   end
               end
               |> handle_atomic_notifications(atomic_changeset.resource, action, notify?, opts)
+            rescue
+              error ->
+                if notify?,
+                  do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
+                reraise error, __STACKTRACE__
             after
               if notify? do
                 Process.delete(:ash_started_transaction?)
@@ -566,6 +574,7 @@ defmodule Ash.Actions.Update.Bulk do
         if opts[:transaction] == :all &&
              Ash.DataLayer.data_layer_can?(resource, :transact) do
           notify? = !Process.put(:ash_started_transaction?, true)
+          queued_notifications = Process.get(:ash_notifications)
 
           try do
             Ash.DataLayer.transaction(
@@ -637,12 +646,20 @@ defmodule Ash.Actions.Update.Bulk do
                 handle_bulk_result(bulk_result, metadata_key, opts)
 
               {:error, error} ->
+                Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
                 handle_bulk_result(
                   %Ash.BulkResult{errors: [error], status: :error},
                   metadata_key,
                   opts
                 )
             end
+          rescue
+            error ->
+              if notify?,
+                do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
+              reraise error, __STACKTRACE__
           after
             if notify? do
               Process.delete(:ash_started_transaction?)
@@ -1020,7 +1037,16 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp handle_atomic_notifications(bulk_result, resource, action, notify?, opts) do
     if opts[:return_notifications?] do
-      bulk_result
+      if notify? do
+        %{
+          bulk_result
+          | notifications:
+              Ash.Actions.Helpers.take_queued_notifications() ++
+                List.wrap(bulk_result.notifications)
+        }
+      else
+        bulk_result
+      end
     else
       if notify? do
         notifications =
@@ -1986,6 +2012,7 @@ defmodule Ash.Actions.Update.Bulk do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
 
       notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
+      queued_notifications = Process.get(:ash_notifications)
 
       try do
         Ash.DataLayer.transaction(
@@ -2051,6 +2078,8 @@ defmodule Ash.Actions.Update.Bulk do
             end)
 
           {:error, error} ->
+            Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
             # Convert batch changesets to error tuples for after_transaction processing
             error_tagged_results =
               Enum.map(batch, fn changeset ->
@@ -2083,6 +2112,10 @@ defmodule Ash.Actions.Update.Bulk do
               end
             end)
         end
+      rescue
+        error ->
+          if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+          reraise error, __STACKTRACE__
       after
         if notify? do
           Process.delete(:ash_started_transaction?)

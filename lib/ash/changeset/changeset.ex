@@ -4758,6 +4758,7 @@ defmodule Ash.Changeset do
           |> Enum.uniq()
 
         notify? = !Process.put(:ash_started_transaction?, true)
+        queued_notifications = Process.get(:ash_notifications)
 
         resources = Enum.reject(resources, &Ash.DataLayer.in_transaction?/1)
 
@@ -4791,11 +4792,27 @@ defmodule Ash.Changeset do
               {:ok, value, changeset, Map.put(instructions, :gather_notifications?, notify?)}
 
             {:ok, {:error, error}} ->
+              # The transaction was committed (`rollback_on_error?: false`), so
+              # anything queued inside of it is real and must be sent now.
+              if notify? do
+                remaining =
+                  Ash.Notifier.notify(Ash.Actions.Helpers.take_queued_notifications())
+
+                Ash.Actions.Helpers.warn_missed!(changeset.resource, changeset.action, %{
+                  resource_notifications: remaining
+                })
+              end
+
               {:error, error}
 
             {:error, error} ->
+              Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
               {:error, error}
           end
+        rescue
+          error ->
+            if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+            reraise error, __STACKTRACE__
         after
           if notify? do
             Process.delete(:ash_started_transaction?)
@@ -4824,7 +4841,19 @@ defmodule Ash.Changeset do
     |> case do
       {:ok, value, changeset, instructions} ->
         if opts[:return_notifications?] do
-          {:ok, value, changeset, instructions}
+          if instructions[:gather_notifications?] do
+            # Notifications queued by nested actions in the transaction we started
+            # are returned along with our own, as they would otherwise never be sent
+            notifications =
+              Enum.concat(
+                Ash.Actions.Helpers.take_queued_notifications(),
+                instructions[:notifications] || []
+              )
+
+            {:ok, value, changeset, Map.put(instructions, :notifications, notifications)}
+          else
+            {:ok, value, changeset, instructions}
+          end
         else
           if Process.get(:ash_started_transaction?) do
             Ash.Actions.Helpers.queue_notifications(instructions[:notifications])

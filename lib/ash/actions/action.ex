@@ -183,6 +183,7 @@ defmodule Ash.Actions.Action do
     case Ash.ActionInput.run_before_transaction_hooks(input) do
       {:ok, input} ->
         notify? = !Process.put(:ash_started_transaction?, true)
+        queued_notifications = Process.get(:ash_notifications)
 
         try do
           resources =
@@ -251,10 +252,15 @@ defmodule Ash.Actions.Action do
               Ash.ActionInput.run_after_transaction_hooks(final_result, input)
 
             {:error, error} ->
+              Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
               error_result = {:error, Ash.Error.to_ash_error(error)}
               # Run after_transaction hooks even on error
               Ash.ActionInput.run_after_transaction_hooks(error_result, input)
           end
+        rescue
+          error ->
+            if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+            reraise error, __STACKTRACE__
         after
           if notify? do
             Process.delete(:ash_started_transaction?)

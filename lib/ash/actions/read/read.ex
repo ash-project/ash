@@ -1131,60 +1131,67 @@ defmodule Ash.Actions.Read do
              run: fn data_layer_query ->
                notify? = !Process.put(:ash_started_transaction?, true)
 
-               with {{:ok, results}, query} <-
-                      run_query(
-                        set_phase(query, :executing),
-                        data_layer_query,
-                        %{
-                          actor: opts[:actor],
-                          tenant: query.tenant,
-                          authorize?: opts[:authorize?],
-                          domain: query.domain
-                        },
-                        !Keyword.has_key?(opts, :initial_data)
-                      )
-                      |> Helpers.rollback_if_in_transaction(
-                        query.resource,
-                        query
-                      ),
-                    :ok <- validate_get(results, query.action, query),
-                    {query, results} <- drop_pagination_extra(query, results, opts),
-                    results <- add_keysets(query, results, query.sort),
-                    {:ok, results} <- run_authorize_results(query, results),
-                    {:ok, results, after_notifications} <- run_after_action(query, results),
-                    {:ok, resolved_count} <- count.() do
-                 notify_or_store(query, before_notifications ++ after_notifications, notify?)
+               try do
+                 with {{:ok, results}, query} <-
+                        run_query(
+                          set_phase(query, :executing),
+                          data_layer_query,
+                          %{
+                            actor: opts[:actor],
+                            tenant: query.tenant,
+                            authorize?: opts[:authorize?],
+                            domain: query.domain
+                          },
+                          !Keyword.has_key?(opts, :initial_data)
+                        )
+                        |> Helpers.rollback_if_in_transaction(
+                          query.resource,
+                          query
+                        ),
+                      :ok <- validate_get(results, query.action, query),
+                      {query, results} <- drop_pagination_extra(query, results, opts),
+                      results <- add_keysets(query, results, query.sort),
+                      {:ok, results} <- run_authorize_results(query, results),
+                      {:ok, results, after_notifications} <- run_after_action(query, results),
+                      {:ok, resolved_count} <- count.() do
+                   notify_or_store(query, before_notifications ++ after_notifications, notify?)
 
-                 {:ok,
-                  results
-                  |> add_read_metadata(query)
-                  |> add_page(
-                    query.action,
-                    resolved_count,
-                    query.sort,
-                    initial_query,
-                    query,
-                    page_opts
-                  )}
-               else
-                 {%{valid?: false} = query, before_notifications} ->
-                   notify_or_store(query, before_notifications, notify?)
-                   {:error, Ash.Error.to_ash_error(query)}
+                   {:ok,
+                    results
+                    |> add_read_metadata(query)
+                    |> add_page(
+                      query.action,
+                      resolved_count,
+                      query.sort,
+                      initial_query,
+                      query,
+                      page_opts
+                    )}
+                 else
+                   {%{valid?: false} = query, before_notifications} ->
+                     notify_or_store(query, before_notifications, notify?)
+                     {:error, Ash.Error.to_ash_error(query)}
 
-                 {{:error, %Ash.Query{} = query}, _} ->
-                   {:error, Ash.Error.to_ash_error(query)}
+                   {{:error, %Ash.Query{} = query}, _} ->
+                     {:error, Ash.Error.to_ash_error(query)}
 
-                 {{:error, error}, query} ->
-                   {:error, Ash.Error.to_ash_error(Ash.Query.add_error(query, error))}
+                   {{:error, error}, query} ->
+                     {:error, Ash.Error.to_ash_error(Ash.Query.add_error(query, error))}
 
-                 {:ok, %Ash.Query{valid?: false} = query} ->
-                   {:error, Ash.Error.to_ash_error(query)}
+                   {:ok, %Ash.Query{valid?: false} = query} ->
+                     {:error, Ash.Error.to_ash_error(query)}
 
-                 %Ash.Query{} = query ->
-                   {:error, Ash.Error.to_ash_error(query)}
+                   %Ash.Query{} = query ->
+                     {:error, Ash.Error.to_ash_error(query)}
 
-                 {:error, error} ->
-                   {:error, Ash.Error.to_ash_error(error)}
+                   {:error, error} ->
+                     {:error, Ash.Error.to_ash_error(error)}
+                 end
+               after
+                 if notify? do
+                   Process.delete(:ash_started_transaction?)
+                   notify_or_store(query, [], true)
+                 end
                end
              end,
              count: fn -> count.() end
@@ -1649,6 +1656,7 @@ defmodule Ash.Actions.Read do
 
   defp maybe_in_transaction(query, opts, func) do
     notify? = !Process.put(:ash_started_transaction?, true)
+    queued_notifications = Process.get(:ash_notifications)
 
     try do
       cond do
@@ -1673,6 +1681,8 @@ defmodule Ash.Actions.Read do
           )
           |> case do
             {:error, :rollback} when not is_nil(query.timeout) ->
+              Helpers.restore_queued_notifications(queued_notifications)
+
               {:error,
                Ash.Error.Invalid.Timeout.exception(
                  timeout: query.timeout,
@@ -1680,9 +1690,11 @@ defmodule Ash.Actions.Read do
                )}
 
             {:error, {:error, error}} ->
+              Helpers.restore_queued_notifications(queued_notifications)
               {:error, error}
 
             {:error, error} ->
+              Helpers.restore_queued_notifications(queued_notifications)
               {:error, error}
 
             {:ok, result} ->
@@ -1703,9 +1715,15 @@ defmodule Ash.Actions.Read do
         true ->
           func.(&notify_or_store(&1, &2, notify?))
       end
+    rescue
+      error ->
+        if notify?, do: Helpers.restore_queued_notifications(queued_notifications)
+        reraise error, __STACKTRACE__
     after
       if notify? do
         Process.delete(:ash_started_transaction?)
+        # Anything queued during a committed transaction can be sent now that it is over
+        notify_or_store(query, [], true)
       end
     end
   end

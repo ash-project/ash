@@ -530,6 +530,12 @@ defmodule Ash.Actions.Helpers do
   end
 
   @doc false
+  # Anything queued during a transaction that was rolled back never happened,
+  # so the queue is reset to what it was before that transaction started.
+  def restore_queued_notifications(nil), do: Process.delete(:ash_notifications)
+  def restore_queued_notifications(queued), do: Process.put(:ash_notifications, queued)
+
+  @doc false
   def peek_queued_notifications do
     :ash_notifications |> Process.get([]) |> List.flatten()
   end
