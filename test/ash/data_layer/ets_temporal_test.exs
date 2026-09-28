@@ -51,6 +51,23 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert [%{name: "open"}] = EtsVersioned |> Ash.read!()
     end
 
+    test "an aggregate over the resource is taken at the as_of instant" do
+      assert 1 = Ash.count!(EtsVersioned, as_of: ~U[2020-06-01 00:00:00Z])
+      assert 0 = Ash.count!(EtsVersioned, as_of: ~U[2019-01-01 00:00:00Z])
+      refute Ash.exists?(EtsVersioned, as_of: ~U[2019-01-01 00:00:00Z])
+      assert ["early"] = Ash.list!(EtsVersioned, :name, as_of: ~U[2020-06-01 00:00:00Z])
+
+      assert 1 =
+               EtsVersioned
+               |> Ash.Query.as_of(~U[2020-06-01 00:00:00Z])
+               |> Ash.count!()
+    end
+
+    test "an aggregate over the resource with no as_of sees current state" do
+      assert 1 = Ash.count!(EtsVersioned)
+      assert ["open"] = Ash.list!(EtsVersioned, :name)
+    end
+
     test "narrowing happens before the filter, not instead of it" do
       assert [] =
                EtsVersioned
@@ -1159,7 +1176,7 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       destroy = fn ->
         Ash.bulk_destroy([record], :destroy, %{},
           as_of: @portion,
-          strategy: [:stream],
+          strategy: [:atomic_batches],
           return_records?: true,
           return_errors?: true
         )
