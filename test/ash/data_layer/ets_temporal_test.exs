@@ -1153,20 +1153,22 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                ])
     end
 
-    test "a bulk hard destroy by list over a range reaching no stored version returns nothing" do
-      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+    for strategy <- [:atomic, :atomic_batches] do
+      test "a bulk hard destroy by list over a range reaching no stored version returns nothing, #{strategy}" do
+        record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
 
-      destroy = fn ->
-        Ash.bulk_destroy([record], :destroy, %{},
-          as_of: @portion,
-          strategy: [:stream],
-          return_records?: true,
-          return_errors?: true
-        )
+        destroy = fn ->
+          Ash.bulk_destroy([record], :destroy, %{},
+            as_of: @portion,
+            strategy: [unquote(strategy)],
+            return_records?: true,
+            return_errors?: true
+          )
+        end
+
+        assert %Ash.BulkResult{status: :success, records: [%{name: "first"}]} = destroy.()
+        assert %Ash.BulkResult{status: :success, records: []} = destroy.()
       end
-
-      assert %Ash.BulkResult{status: :success, records: [%{name: "first"}]} = destroy.()
-      assert %Ash.BulkResult{status: :success, records: []} = destroy.()
     end
 
     test "a hard destroy over all time removes a version with no lower bound" do
