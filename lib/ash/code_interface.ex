@@ -70,13 +70,21 @@ defmodule Ash.CodeInterface do
   @doc false
   # The `define` line, when it is in the file being compiled; `define_interface/3`
   # called by hand from another module keeps that call's line.
+  # Written as a `case` because the equivalent `with` sends dialyzer (OTP 29.0) into
+  # an unbounded loop when building a PLT that includes spark.
   def definition_line(interface, env) do
-    with anno when not is_nil(anno) <- Spark.Dsl.Entity.anno(interface),
-         line when is_integer(line) and line > 0 <- :erl_anno.line(anno),
-         true <- same_file?(:erl_anno.file(anno), env.file) do
-      line
-    else
-      _ -> env.line
+    case Spark.Dsl.Entity.anno(interface) do
+      nil ->
+        env.line
+
+      anno ->
+        line = :erl_anno.line(anno)
+
+        if line > 0 and same_file?(:erl_anno.file(anno), env.file) do
+          line
+        else
+          env.line
+        end
     end
   end
 
