@@ -753,6 +753,302 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                ])
     end
 
+    for strategy <- [:atomic, :atomic_batches] do
+      test "a bulk update by list whose portion spans two stored versions carves both, #{strategy}" do
+        Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+        Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+        record = EtsVersioned |> Ash.Query.as_of(~U[2020-01-01 00:00:00Z]) |> Ash.read_one!()
+
+        portion = %Ash.Range{
+          lower: ~U[2020-09-01 00:00:00Z],
+          upper: ~U[2021-06-01 00:00:00Z],
+          bounds: :"[)"
+        }
+
+        assert %Ash.BulkResult{status: :success, records: [written]} =
+                 Ash.bulk_update([record], :update, %{name: "third"},
+                   as_of: portion,
+                   strategy: [unquote(strategy)],
+                   return_records?: true,
+                   return_errors?: true
+                 )
+
+        assert %Ash.Range{lower: ~U[2020-09-01 00:00:00Z], upper: ~U[2021-01-01 00:00:00Z]} =
+                 written.valid_at
+
+        assert [
+                 {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-09-01 00:00:00Z]},
+                 {"third", ~U[2020-09-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]},
+                 {"third", ~U[2021-01-01 00:00:00Z], ~U[2021-06-01 00:00:00Z]},
+                 {"second", ~U[2021-06-01 00:00:00Z], nil}
+               ] =
+                 versions_at([
+                   ~U[2020-06-01 00:00:00Z],
+                   ~U[2020-10-01 00:00:00Z],
+                   ~U[2021-03-01 00:00:00Z],
+                   ~U[2021-09-01 00:00:00Z]
+                 ])
+      end
+
+      test "a bulk update by list over a range anchors `now()` to the instant it is written at, #{strategy}" do
+        Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+        Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+        record = EtsVersioned |> Ash.Query.as_of(~U[2020-01-01 00:00:00Z]) |> Ash.read_one!()
+
+        portion = %Ash.Range{
+          lower: ~U[2020-09-01 00:00:00Z],
+          upper: ~U[2021-06-01 00:00:00Z],
+          bounds: :"[)"
+        }
+
+        # The action only writes while `now()` is before 2021, which the portion's lower bound is.
+        assert %Ash.BulkResult{status: :success} =
+                 Ash.bulk_update([record], :update_before_2021, %{name: "third"},
+                   as_of: portion,
+                   strategy: [unquote(strategy)],
+                   return_errors?: true
+                 )
+
+        assert [
+                 {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-09-01 00:00:00Z]},
+                 {"third", ~U[2020-09-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]},
+                 {"third", ~U[2021-01-01 00:00:00Z], ~U[2021-06-01 00:00:00Z]},
+                 {"second", ~U[2021-06-01 00:00:00Z], nil}
+               ] =
+                 versions_at([
+                   ~U[2020-06-01 00:00:00Z],
+                   ~U[2020-10-01 00:00:00Z],
+                   ~U[2021-03-01 00:00:00Z],
+                   ~U[2021-09-01 00:00:00Z]
+                 ])
+      end
+
+      test "a bulk soft destroy by list whose portion spans two stored versions carves both, #{strategy}" do
+        Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+        Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+        record = EtsVersioned |> Ash.Query.as_of(~U[2020-01-01 00:00:00Z]) |> Ash.read_one!()
+
+        portion = %Ash.Range{
+          lower: ~U[2020-09-01 00:00:00Z],
+          upper: ~U[2021-06-01 00:00:00Z],
+          bounds: :"[)"
+        }
+
+        assert %Ash.BulkResult{status: :success} =
+                 Ash.bulk_destroy([record], :cancel, %{},
+                   as_of: portion,
+                   strategy: [unquote(strategy)],
+                   return_errors?: true
+                 )
+
+        assert [
+                 {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-09-01 00:00:00Z]},
+                 {"cancelled", ~U[2020-09-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]},
+                 {"cancelled", ~U[2021-01-01 00:00:00Z], ~U[2021-06-01 00:00:00Z]},
+                 {"second", ~U[2021-06-01 00:00:00Z], nil}
+               ] =
+                 versions_at([
+                   ~U[2020-06-01 00:00:00Z],
+                   ~U[2020-10-01 00:00:00Z],
+                   ~U[2021-03-01 00:00:00Z],
+                   ~U[2021-09-01 00:00:00Z]
+                 ])
+      end
+
+      test "a bulk hard destroy by list whose portion spans two stored versions carves both, #{strategy}" do
+        Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+        Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+        record = EtsVersioned |> Ash.Query.as_of(~U[2020-01-01 00:00:00Z]) |> Ash.read_one!()
+
+        portion = %Ash.Range{
+          lower: ~U[2020-09-01 00:00:00Z],
+          upper: ~U[2021-06-01 00:00:00Z],
+          bounds: :"[)"
+        }
+
+        assert %Ash.BulkResult{status: :success, records: [destroyed]} =
+                 Ash.bulk_destroy([record], :destroy, %{},
+                   as_of: portion,
+                   strategy: [unquote(strategy)],
+                   return_records?: true,
+                   return_errors?: true
+                 )
+
+        assert destroyed.name == "first"
+
+        assert [
+                 {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-09-01 00:00:00Z]},
+                 {"second", ~U[2021-06-01 00:00:00Z], nil}
+               ] =
+                 versions_at([
+                   ~U[2020-06-01 00:00:00Z],
+                   ~U[2020-10-01 00:00:00Z],
+                   ~U[2021-03-01 00:00:00Z],
+                   ~U[2021-09-01 00:00:00Z]
+                 ])
+
+        assert %Ash.BulkResult{status: :success, records: []} =
+                 Ash.bulk_destroy([record], :destroy, %{},
+                   as_of: portion,
+                   strategy: [unquote(strategy)],
+                   return_records?: true,
+                   return_errors?: true
+                 )
+      end
+    end
+
+    test "an update over a range refuses to load" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      portion = %Ash.Range{
+        lower: ~U[2020-09-01 00:00:00Z],
+        upper: ~U[2021-06-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.LoadOverRange{}]}} =
+               Ash.update(record, %{name: "second"}, as_of: portion, load: [:shout])
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.LoadOverRange{}]}} =
+               record
+               |> Ash.Changeset.for_update(:update_and_load, %{name: "second"}, as_of: portion)
+               |> Ash.update()
+
+      assert [{"first", ~U[2020-01-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]}] =
+               versions_at([~U[2020-10-01 00:00:00Z]])
+    end
+
+    for strategy <- [:atomic, :atomic_batches] do
+      test "a bulk update over a range refuses to load, #{strategy}" do
+        record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+        portion = %Ash.Range{
+          lower: ~U[2020-09-01 00:00:00Z],
+          upper: ~U[2021-06-01 00:00:00Z],
+          bounds: :"[)"
+        }
+
+        assert %Ash.BulkResult{
+                 status: :error,
+                 errors: [%Ash.Error.Framework{errors: [%Ash.Error.Framework.LoadOverRange{}]}]
+               } =
+                 Ash.bulk_update([record], :update, %{name: "second"},
+                   as_of: portion,
+                   strategy: [unquote(strategy)],
+                   load: [:shout],
+                   return_records?: true,
+                   return_errors?: true
+                 )
+
+        assert %Ash.BulkResult{
+                 status: :error,
+                 errors: [%Ash.Error.Framework{errors: [%Ash.Error.Framework.LoadOverRange{}]}]
+               } =
+                 Ash.bulk_update([record], :update_and_load, %{name: "second"},
+                   as_of: portion,
+                   strategy: [unquote(strategy)],
+                   return_records?: true,
+                   return_errors?: true
+                 )
+
+        assert [{"first", ~U[2020-01-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]}] =
+                 versions_at([~U[2020-10-01 00:00:00Z]])
+      end
+    end
+
+    test "a bulk update over a range refuses to stream" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      portion = %Ash.Range{
+        lower: ~U[2020-09-01 00:00:00Z],
+        upper: ~U[2021-06-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert %Ash.BulkResult{
+               status: :error,
+               errors: [%Ash.Error.Framework{errors: [%Ash.Error.Framework.NotAtomicOverRange{}]}]
+             } =
+               Ash.bulk_update([record], :update, %{name: "second"},
+                 as_of: portion,
+                 strategy: [:stream],
+                 return_errors?: true
+               )
+
+      assert [{"first", ~U[2020-01-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]}] =
+               versions_at([~U[2020-10-01 00:00:00Z]])
+    end
+
+    for action <- [:destroy, :cancel] do
+      test "a bulk #{action} over a range refuses to stream" do
+        record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+        portion = %Ash.Range{
+          lower: ~U[2020-09-01 00:00:00Z],
+          upper: ~U[2021-06-01 00:00:00Z],
+          bounds: :"[)"
+        }
+
+        assert %Ash.BulkResult{
+                 status: :error,
+                 errors: [
+                   %Ash.Error.Framework{errors: [%Ash.Error.Framework.NotAtomicOverRange{}]}
+                 ]
+               } =
+                 Ash.bulk_destroy([record], unquote(action), %{},
+                   as_of: portion,
+                   strategy: [:stream],
+                   return_errors?: true
+                 )
+
+        assert [{"first", ~U[2020-01-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]}] =
+                 versions_at([~U[2020-10-01 00:00:00Z]])
+      end
+    end
+
+    test "a destroy over a range refuses to load" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      portion = %Ash.Range{
+        lower: ~U[2020-09-01 00:00:00Z],
+        upper: ~U[2021-06-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.LoadOverRange{}]}} =
+               Ash.destroy(record, as_of: portion, return_destroyed?: true, load: [:shout])
+
+      assert [{"first", ~U[2020-01-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]}] =
+               versions_at([~U[2020-10-01 00:00:00Z]])
+    end
+
+    test "an update over a range can still load attributes" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      portion = %Ash.Range{
+        lower: ~U[2020-09-01 00:00:00Z],
+        upper: ~U[2021-06-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert {:ok, %{name: "second"}} =
+               Ash.update(record, %{name: "second"}, as_of: portion, load: [:name])
+    end
+
+    test "an update at an instant still loads" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+
+      assert {:ok, %{shout: "second!"}} =
+               Ash.update(record, %{name: "second"},
+                 as_of: ~U[2020-09-01 00:00:00Z],
+                 load: [:shout]
+               )
+    end
+
     # A bound reads `:now` off the same clock a bare `:now` does, so the two spellings agree.
     # Asserted on the resolver: an explicit `:now` does not reach the data layer today.
     test "a bound of :now resolves against the same clock a bare :now does" do

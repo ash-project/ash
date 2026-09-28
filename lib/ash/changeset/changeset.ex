@@ -693,10 +693,20 @@ defmodule Ash.Changeset do
       |> Ash.Query.load(changeset.load)
       |> Ash.Query.load(load)
 
-    changeset = %{
-      changeset
-      | load: Enum.concat(changeset.load || [], List.wrap(load))
-    }
+    # As in `Ash.Query.load/2`, loading a plain attribute just ensures it is selected.
+    {attributes, load} =
+      load
+      |> List.wrap()
+      |> Enum.split_with(&(is_atom(&1) && Ash.Resource.Info.attribute(changeset.resource, &1)))
+
+    changeset =
+      if attributes == [] do
+        changeset
+      else
+        ensure_selected(changeset, attributes)
+      end
+
+    changeset = %{changeset | load: Enum.concat(changeset.load || [], load)}
 
     Enum.reduce(query.errors, changeset, &add_error(&2, &1))
   end
@@ -718,7 +728,7 @@ defmodule Ash.Changeset do
         Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource)
         |> MapSet.to_list()
 
-      Ash.Changeset.select(changeset, to_select)
+      Ash.Changeset.select(changeset, to_select ++ List.wrap(fields))
     end
   end
 

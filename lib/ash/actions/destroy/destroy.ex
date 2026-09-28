@@ -54,7 +54,11 @@ defmodule Ash.Actions.Destroy do
 
   def run(domain, changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
-    changeset = Helpers.apply_opts_load(changeset, opts)
+
+    changeset =
+      changeset
+      |> Helpers.apply_opts_load(opts)
+      |> Helpers.refuse_load_over_range()
 
     Ash.Tracer.span :action,
                     fn ->

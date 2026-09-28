@@ -51,6 +51,7 @@ defmodule Ash.CodeInterface do
   @doc false
   # The head and body reach the `def` through the binding, so the evaluator only
   # substitutes two variables instead of walking the escaped body node by node.
+  # sobelow_skip ["RCE.CodeModule"]
   def eval_definition(call, body, meta, interface, env) do
     call_fragment = {:unquote, [], [{:call, [], nil}]}
 
