@@ -515,19 +515,6 @@ defmodule Ash.Actions.Read do
               {:error, %Ash.Query{errors: errors} = query} ->
                 {:error, Ash.Error.to_error_class(errors, query: query)}
 
-              {:error,
-               %Ash.Error.Forbidden.Placeholder{
-                 authorizer: authorizer
-               }} ->
-                error =
-                  Ash.Authorizer.exception(
-                    authorizer,
-                    :forbidden,
-                    query_ran.context[:private][:authorizer_state][authorizer]
-                  )
-
-                {:error, Ash.Error.to_error_class(error)}
-
               {:error, error} ->
                 {:error, Ash.Error.to_error_class(error, query: query)}
             end
@@ -837,14 +824,14 @@ defmodule Ash.Actions.Read do
                 else
                   other ->
                     other
-                    |> handle_failed_query(notify_callback)
+                    |> handle_failed_query(notify_callback, query)
                     |> run_after_transaction_hooks(query)
                 end
               end)
             else
               other ->
                 other
-                |> handle_failed_query(notify_callback)
+                |> handle_failed_query(notify_callback, query)
                 |> run_after_transaction_hooks(query)
             end
           end)
@@ -870,7 +857,7 @@ defmodule Ash.Actions.Read do
 
   defp ensure_task_stopped(_, fun), do: fun.()
 
-  defp handle_failed_query(result, notify_callback) do
+  defp handle_failed_query(result, notify_callback, authorized_query) do
     case result do
       {%{valid?: false} = query, before_notifications} ->
         notify_callback.(query, before_notifications)
@@ -880,7 +867,7 @@ defmodule Ash.Actions.Read do
         {:error, query}
 
       {{:error, error}, query} ->
-        {:error, Ash.Query.add_error(query, error)}
+        {:error, Ash.Query.add_error(query, replace_forbidden_placeholder(error, query))}
 
       {:ok, %Ash.Query{valid?: false} = query} ->
         {:error, query}
@@ -889,9 +876,22 @@ defmodule Ash.Actions.Read do
         {:error, query}
 
       {:error, error} ->
-        {:error, error}
+        {:error, replace_forbidden_placeholder(error, authorized_query)}
     end
   end
+
+  defp replace_forbidden_placeholder(
+         %Ash.Error.Forbidden.Placeholder{authorizer: authorizer},
+         query
+       ) do
+    Ash.Authorizer.exception(
+      authorizer,
+      :forbidden,
+      query.context[:private][:authorizer_state][authorizer]
+    )
+  end
+
+  defp replace_forbidden_placeholder(error, _query), do: error
 
   defp data_layer_query(
          %{action: action} = query,
@@ -1176,7 +1176,10 @@ defmodule Ash.Actions.Read do
                      {:error, Ash.Error.to_ash_error(query)}
 
                    {{:error, error}, query} ->
-                     {:error, Ash.Error.to_ash_error(Ash.Query.add_error(query, error))}
+                     {:error,
+                      Ash.Error.to_ash_error(
+                        Ash.Query.add_error(query, replace_forbidden_placeholder(error, query))
+                      )}
 
                    {:ok, %Ash.Query{valid?: false} = query} ->
                      {:error, Ash.Error.to_ash_error(query)}
@@ -1185,7 +1188,7 @@ defmodule Ash.Actions.Read do
                      {:error, Ash.Error.to_ash_error(query)}
 
                    {:error, error} ->
-                     {:error, Ash.Error.to_ash_error(error)}
+                     {:error, Ash.Error.to_ash_error(replace_forbidden_placeholder(error, query))}
                  end
                after
                  if notify? do
@@ -1365,16 +1368,6 @@ defmodule Ash.Actions.Read do
     else
       {:error, %Ash.Query{errors: errors} = query} ->
         {:error, Ash.Error.to_error_class(errors, query: query)}
-
-      {:error, %Ash.Error.Forbidden.Placeholder{authorizer: authorizer}} ->
-        error =
-          Ash.Authorizer.exception(
-            authorizer,
-            :forbidden,
-            query_ran.context[:private][:authorizer_state][authorizer]
-          )
-
-        {:error, Ash.Error.to_error_class(error)}
 
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error, query: query)}
