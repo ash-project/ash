@@ -75,7 +75,16 @@ defmodule Ash do
       doc: "A tenant to set on the query or changeset"
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      type:
+        {:or,
+         [
+           {:struct, DateTime},
+           {:struct, Date},
+           {:struct, NaiveDateTime},
+           {:struct, Ash.Range},
+           {:literal, :now},
+           {:literal, nil}
+         ]},
       doc: "A point in time to run the action \"as of\" (time travel). See `Ash.Query.as_of/2`."
     ],
     actor: [
@@ -94,7 +103,15 @@ defmodule Ash do
                       [
                         # Reads take an instant; the global entry takes a range for writes.
                         as_of: [
-                          type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+                          type:
+                            {:or,
+                             [
+                               {:struct, DateTime},
+                               {:struct, Date},
+                               {:struct, NaiveDateTime},
+                               {:literal, :now},
+                               {:literal, nil}
+                             ]},
                           doc:
                             "A point in time to read \"as of\" (time travel). See `Ash.Query.as_of/2`."
                         ],
@@ -266,7 +283,15 @@ defmodule Ash do
                        doc: "The tenant to set on the query being run"
                      ],
                      as_of: [
-                       type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+                       type:
+                         {:or,
+                          [
+                            {:struct, DateTime},
+                            {:struct, Date},
+                            {:struct, NaiveDateTime},
+                            {:literal, :now},
+                            {:literal, nil}
+                          ]},
                        doc:
                          "A point in time to run the read \"as of\" (time travel). See `Ash.Query.as_of/2`."
                      ],
@@ -803,7 +828,15 @@ defmodule Ash do
                     ],
                     # Reads take an instant; the global entry takes a range for writes.
                     as_of: [
-                      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+                      type:
+                        {:or,
+                         [
+                           {:struct, DateTime},
+                           {:struct, Date},
+                           {:struct, NaiveDateTime},
+                           {:literal, :now},
+                           {:literal, nil}
+                         ]},
                       doc:
                         "A point in time to aggregate \"as of\" (time travel). See `Ash.Query.as_of/2`."
                     ]
@@ -846,7 +879,15 @@ defmodule Ash do
       """
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      type:
+        {:or,
+         [
+           {:struct, DateTime},
+           {:struct, Date},
+           {:struct, NaiveDateTime},
+           {:literal, :now},
+           {:literal, nil}
+         ]},
       doc: """
       A point in time to run "as of" (time travel). See `Ash.Query.as_of/2`.
       """
@@ -917,7 +958,16 @@ defmodule Ash do
       """
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      type:
+        {:or,
+         [
+           {:struct, DateTime},
+           {:struct, Date},
+           {:struct, NaiveDateTime},
+           {:struct, Ash.Range},
+           {:literal, :now},
+           {:literal, nil}
+         ]},
       doc: """
       A point in time to run "as of" (time travel). See `Ash.Query.as_of/2`.
       """
@@ -1008,7 +1058,16 @@ defmodule Ash do
       doc: "The tenant to use for authorization"
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      type:
+        {:or,
+         [
+           {:struct, DateTime},
+           {:struct, Date},
+           {:struct, NaiveDateTime},
+           {:struct, Ash.Range},
+           {:literal, :now},
+           {:literal, nil}
+         ]},
       doc: "A point in time to authorize \"as of\" (time travel). See `Ash.Query.as_of/2`."
     ],
     alter_source?: [

@@ -165,7 +165,16 @@ defmodule Ash.ActionInput do
       doc: "The tenant to use for the action."
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      type:
+        {:or,
+         [
+           {:struct, DateTime},
+           {:struct, Date},
+           {:struct, NaiveDateTime},
+           {:struct, Ash.Range},
+           {:literal, :now},
+           {:literal, nil}
+         ]},
       doc: "A point in time to run the action \"as of\" (time travel). See `Ash.Query.as_of/2`."
     ],
     scope: [

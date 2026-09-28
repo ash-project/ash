@@ -424,14 +424,24 @@ defmodule Ash.Actions.Helpers do
   defp set_subject_as_of(%Ash.ActionInput{} = input, as_of),
     do: Ash.ActionInput.set_as_of(input, as_of)
 
-  defp resolve_query_as_of(_query, :now), do: DateTime.utc_now()
+  defp resolve_query_as_of(query, :now), do: now_for(query.resource)
   defp resolve_query_as_of(_query, %DateTime{} = as_of), do: as_of
+  defp resolve_query_as_of(_query, %Date{} = as_of), do: as_of
+  defp resolve_query_as_of(_query, %NaiveDateTime{} = as_of), do: as_of
 
   # Passed through so `Ash.Query.as_of/2` refuses it by name, as it does for the setter.
   defp resolve_query_as_of(_query, %Ash.Range{} = as_of), do: as_of
 
   defp resolve_query_as_of(query, nil) do
-    if Ash.Resource.Info.temporal?(query.resource), do: DateTime.utc_now()
+    if Ash.Resource.Info.temporal?(query.resource), do: now_for(query.resource)
+  end
+
+  # Now in the type the resource builds its periods from, a `DateTime` where it has none.
+  defp now_for(resource) do
+    case Ash.Temporal.now_for(Ash.Resource.Info.temporal_inner_type(resource)) do
+      {:ok, now} -> now
+      :error -> DateTime.utc_now()
+    end
   end
 
   defp add_actor(opts, query_or_changeset, domain) do

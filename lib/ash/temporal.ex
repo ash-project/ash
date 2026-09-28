@@ -232,6 +232,8 @@ defmodule Ash.Temporal do
   end
 
   defp raw_instant(%DateTime{} = as_of, _inner_type), do: {:ok, as_of}
+  defp raw_instant(%Date{} = as_of, _inner_type), do: {:ok, as_of}
+  defp raw_instant(%NaiveDateTime{} = as_of, _inner_type), do: {:ok, as_of}
   defp raw_instant(:now, inner_type), do: now_for(inner_type)
   defp raw_instant(%Ash.Range{lower: nil}, _inner_type), do: :error
   defp raw_instant(%Ash.Range{lower: lower}, inner_type), do: resolve_bound(lower, inner_type)

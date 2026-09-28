@@ -829,7 +829,15 @@ defmodule Ash.Query do
       doc: "set the tenant on the query"
     ],
     as_of: [
-      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      type:
+        {:or,
+         [
+           {:struct, DateTime},
+           {:struct, Date},
+           {:struct, NaiveDateTime},
+           {:literal, :now},
+           {:literal, nil}
+         ]},
       doc: "set the `as_of` point in time on the query (time travel). See `Ash.Query.as_of/2`."
     ],
     load: [
