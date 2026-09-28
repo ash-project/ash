@@ -1128,6 +1128,8 @@ defmodule Ash.Changeset do
 
     Enum.reduce_while(changes, changeset, fn
       %{change: _} = change, changeset ->
+        context = Map.put(context, :source_context, changeset.context)
+
         case run_atomic_change(changeset, change, context) do
           {:not_atomic, reason} ->
             {:halt, {:not_atomic, reason}}
@@ -1137,6 +1139,8 @@ defmodule Ash.Changeset do
         end
 
       %{validation: _} = validation, changeset ->
+        context = Map.put(context, :source_context, changeset.context)
+
         case run_atomic_validation(changeset, validation, context) do
           {:not_atomic, reason} ->
             {:halt, {:not_atomic, reason}}
@@ -3617,7 +3621,7 @@ defmodule Ash.Changeset do
     changes
     |> Enum.reduce(changeset, fn {location, change_or_validation}, changeset ->
       try do
-        context = %{context | tenant: changeset.tenant}
+        context = %{context | tenant: changeset.tenant, source_context: changeset.context}
 
         run_change_or_validation(
           change_or_validation,
