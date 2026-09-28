@@ -81,6 +81,16 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
           resource's period. Got #{inspect(attribute.type)}.
           """
 
+      not datetime_inner_type?(attribute.constraints) ->
+        raise Spark.Error.DslError,
+          module: module,
+          path: [:attributes, attribute.name],
+          message: """
+          Expected the attribute #{attribute.name} to be a range over datetimes, i.e \
+          `inner_type: :utc_datetime_usec`, `:utc_datetime` or `:datetime`, since it is this \
+          resource's period. Got #{inspect(attribute.constraints[:inner_type])}.
+          """
+
       not inclusive_exclusive?(attribute.constraints) ->
         raise Spark.Error.DslError,
           module: module,
@@ -105,6 +115,17 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
       true ->
         :ok
     end
+  end
+
+  @datetime_types [Ash.Type.DateTime, Ash.Type.UtcDatetime, Ash.Type.UtcDatetimeUsec]
+
+  defp datetime_inner_type?(constraints) do
+    type = Ash.Type.get_type(constraints[:inner_type])
+
+    type =
+      if Ash.Type.NewType.new_type?(type), do: Ash.Type.NewType.subtype_of(type), else: type
+
+    type in @datetime_types
   end
 
   defp inclusive_exclusive?(constraints) do

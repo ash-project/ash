@@ -4379,7 +4379,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`strategy`](#temporal-strategy){: #temporal-strategy } | `:context` | `:context` | Determines how temporality is implemented. Currently only `:context`, which defers to native data layer support using a single period column. |
-| [`attribute`](#temporal-attribute){: #temporal-attribute } | `atom` | `:valid_at` | The single period (range) attribute, e.g `valid_at`. |
+| [`attribute`](#temporal-attribute){: #temporal-attribute } | `atom` | `:valid_at` | The single period attribute, e.g `valid_at`. It must be an `Ash.Type.Range` over datetimes (`inner_type: :utc_datetime_usec`, `:utc_datetime` or `:datetime`). If the resource doesn't declare it, one over `:utc_datetime_usec` is added. |
 | [`recorded_at`](#temporal-recorded_at){: #temporal-recorded_at } | `atom` |  | An attribute to stamp with the time each version was actually written, e.g `recorded_at`. Other `&DateTime.utc_now/0` defaults resolve to the write's `as_of`, so a write back-dated into the past gets past timestamps. This one is always the wall clock, so it tells you when a version was recorded, not when it took effect. A write that isn't back-dated stamps it with the same instant its period starts at. If the resource doesn't declare the attribute, a `:utc_datetime_usec` one is added that is set on every create and update. |
 
 

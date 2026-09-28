@@ -84,9 +84,10 @@ exactly as above:
 ```
 
 Either way it is marked `generated?`: a period is never action input, its value comes
-from the instant of the write. Declare it yourself to choose the type of its bounds or
-their precision — a `:date` period for validity tracked by the day, say. It must be a
-range, must not allow nil, and must keep the `[from, to)` bounds.
+from the instant of the write. Declare it yourself to choose the datetime type of its
+bounds or their precision — `inner_type: :utc_datetime` for whole seconds, say. It must
+be a range over datetimes (`:utc_datetime_usec`, `:utc_datetime` or `:datetime`), must
+not allow nil, and must keep the `[from, to)` bounds.
 
 The migration generator emits the period column, a
 `PRIMARY KEY (id, valid_at WITHOUT OVERLAPS)` (a GiST exclusion that prevents
@@ -335,6 +336,8 @@ See the [changes](/documentation/topics/resources/changes.md#temporal-safety),
   and writes both halves, in that order, so a concurrent reader can see the record
   absent but never as two versions at once. Non-overlap is checked rather than
   locked: two concurrent creates can both land.
+- **Periods are ranges over datetimes.** A period over dates (validity tracked by the
+  day), naive datetimes, or any other ordered type is refused at compile time.
 - **No "all history" reads.** Every read is a single point in time. Querying
   across multiple periods of the same record at once is not supported.
 - **Manual actions bypass temporal handling** — the data layer is never

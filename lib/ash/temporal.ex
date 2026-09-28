@@ -7,7 +7,7 @@ defmodule Ash.Temporal do
   Resolves `as_of` into the point of time or period that the data layer stores.
 
   On a [temporal resource](/documentation/topics/advanced/temporal-resources.md) every
-  version of a record is valid for a period. You can provide a `DateTime`, a `Date`, or
+  version of a record is valid for a period of datetimes. You can provide a `DateTime`, or
   `:now` for resolution by the data layer.
 
   ```elixir
@@ -20,10 +20,8 @@ defmodule Ash.Temporal do
   {:ok, period} = Ash.Temporal.write_period(resource, :now)
   ```
 
-  The write functions return a value of the type the resource builds its periods from. On a
-  `:date` resource `:now` gives you a `Date`. On a `:datetime` one it gives you a `DateTime`
-  according to its constraints. Not every type has a current value. A resource that numbers
-  its versions from one has no `:now` to give and the write functions return `:error`.
+  The write functions return a `DateTime` cast to the precision the resource's period
+  declares.
 
   A write that provides no `as_of` takes effect now. Data layers provide `:now` for this.
   """
@@ -151,13 +149,13 @@ defmodule Ash.Temporal do
   @doc """
   Resolves the period a write is valid for.
 
-  The value comes back in the type the resource builds its periods from. It begins where
-  the write takes effect and extends forever unless a later write closes it.
+  The value comes back cast to the resource's period. It begins where the write takes effect
+  and extends forever unless a later write closes it.
   """
   @spec write_period(Ash.Resource.t(), as_of()) :: {:ok, Ash.Range.t()} | :error
   def write_period(resource, %Ash.Range{} = as_of) do
     with %{type: type, constraints: constraints} <- Ash.Resource.Info.temporal_period(resource),
-         {:ok, bounded} <- resolve_bounds(as_of, Ash.Resource.Info.temporal_inner_type(resource)),
+         bounded = resolve_bounds(as_of),
          {:ok, period} <- Ash.Type.cast_input(type, bounded, constraints) do
       {:ok, period}
     else
@@ -173,27 +171,23 @@ defmodule Ash.Temporal do
   end
 
   # A bound reads `:now` off the same clock a bare `:now` does, so the two spellings agree.
-  defp resolve_bounds(%Ash.Range{} = as_of, inner_type) do
-    with {:ok, lower} <- resolve_bound(as_of.lower, inner_type),
-         {:ok, upper} <- resolve_bound(as_of.upper, inner_type) do
-      {:ok, %{as_of | lower: lower, upper: upper}}
-    end
+  defp resolve_bounds(%Ash.Range{} = as_of) do
+    %{as_of | lower: resolve_bound(as_of.lower), upper: resolve_bound(as_of.upper)}
   end
 
-  defp resolve_bound(:now, inner_type), do: now_for(inner_type)
-  defp resolve_bound(bound, _inner_type), do: {:ok, bound}
+  defp resolve_bound(:now), do: DateTime.utc_now()
+  defp resolve_bound(bound), do: bound
 
   @doc """
   Resolves the point where a write first takes effect.
 
-  The value comes back in the type the resource builds its periods from. Converting applies
-  whatever precision its constraints declare.
+  The value comes back as a `DateTime`, cast to whatever precision the resource's period
+  declares.
   """
-  @spec write_instant(Ash.Resource.t(), as_of()) :: {:ok, term()} | :error
+  @spec write_instant(Ash.Resource.t(), as_of()) :: {:ok, DateTime.t()} | :error
   def write_instant(resource, as_of) do
-    inner_type = Ash.Resource.Info.temporal_inner_type(resource)
-
-    with {:ok, raw} <- raw_instant(as_of, inner_type),
+    with inner_type when not is_nil(inner_type) <- Ash.Resource.Info.temporal_inner_type(resource),
+         {:ok, raw} <- raw_instant(as_of),
          {:ok, instant} <-
            Ash.Type.cast_input(
              inner_type,
@@ -206,34 +200,9 @@ defmodule Ash.Temporal do
     end
   end
 
-  @doc """
-  Returns the current time as `inner_type`.
-
-  `:date` gives you a `Date` and `:naive_datetime` a `NaiveDateTime`. The datetime types
-  give you a `DateTime`. Anything else has no current time so this returns `:error`.
-  """
-  @spec now_for(Ash.Type.t() | nil) :: {:ok, term()} | :error
-  # Resolved through `get_type/1`: an inner type reads back as a module, and matching the
-  # short names alone silently answers `:error`.
-  def now_for(inner_type) do
-    case Ash.Type.get_type(inner_type) do
-      type when type in [Ash.Type.DateTime, Ash.Type.UtcDatetime, Ash.Type.UtcDatetimeUsec] ->
-        {:ok, DateTime.utc_now()}
-
-      Ash.Type.NaiveDatetime ->
-        {:ok, NaiveDateTime.utc_now()}
-
-      Ash.Type.Date ->
-        {:ok, Date.utc_today()}
-
-      _ ->
-        :error
-    end
-  end
-
-  defp raw_instant(%DateTime{} = as_of, _inner_type), do: {:ok, as_of}
-  defp raw_instant(:now, inner_type), do: now_for(inner_type)
-  defp raw_instant(%Ash.Range{lower: nil}, _inner_type), do: :error
-  defp raw_instant(%Ash.Range{lower: lower}, inner_type), do: resolve_bound(lower, inner_type)
-  defp raw_instant(_as_of, _inner_type), do: :error
+  defp raw_instant(%DateTime{} = as_of), do: {:ok, as_of}
+  defp raw_instant(:now), do: {:ok, DateTime.utc_now()}
+  defp raw_instant(%Ash.Range{lower: nil}), do: :error
+  defp raw_instant(%Ash.Range{lower: lower}), do: raw_instant(lower)
+  defp raw_instant(_as_of), do: :error
 end

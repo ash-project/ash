@@ -112,31 +112,6 @@ defmodule Ash.Test.Resource.TemporalTest do
       assert Ash.Resource.Info.temporal_inner_constraints(Versioned)[:precision] == :second
     end
 
-    test "keeps an inner type that is not time at all" do
-      defmodule IntegerExtent do
-        @moduledoc false
-        use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.Test.Temporal.StubDataLayer
-
-        temporal do
-          attribute :valid_over
-        end
-
-        attributes do
-          attribute :id, :integer, primary_key?: true, allow_nil?: false
-
-          attribute :valid_over, Ash.Type.Range,
-            allow_nil?: false,
-            constraints: [
-              inner_type: :integer,
-              lower: [inclusive?: true],
-              upper: [inclusive?: false]
-            ]
-        end
-      end
-
-      assert Ash.Resource.Info.temporal_inner_type(IntegerExtent) == Ash.Type.Integer
-    end
-
     test "keeps sub-second detail when it asks for it" do
       defmodule MicrosecondPeriod do
         @moduledoc false
@@ -215,6 +190,35 @@ defmodule Ash.Test.Resource.TemporalTest do
           attributes do
             attribute :id, :integer, primary_key?: true, allow_nil?: false
             attribute :valid_at, :datetime, allow_nil?: false
+          end
+        end
+      end
+    end
+
+    for inner_type <- [:date, :naive_datetime, :integer] do
+      test "must be a range over datetimes, not #{inner_type}" do
+        assert_raise Spark.Error.DslError, ~r/to be a range over datetimes/, fn ->
+          defmodule Module.concat(__MODULE__, "PeriodOver#{unquote(inner_type)}") do
+            @moduledoc false
+            use Ash.Resource,
+              domain: Ash.Test.Domain,
+              data_layer: Ash.Test.Temporal.StubDataLayer
+
+            temporal do
+              attribute :valid_at
+            end
+
+            attributes do
+              attribute :id, :integer, primary_key?: true, allow_nil?: false
+
+              attribute :valid_at, Ash.Type.Range,
+                allow_nil?: false,
+                constraints: [
+                  inner_type: unquote(inner_type),
+                  lower: [inclusive?: true],
+                  upper: [inclusive?: false]
+                ]
+            end
           end
         end
       end

@@ -347,21 +347,6 @@ defmodule Ash.TemporalTest do
     end
   end
 
-  describe "Ash.Temporal.now_for/1" do
-    test "answers now in the extent's own type" do
-      assert {:ok, %DateTime{}} = Ash.Temporal.now_for(:datetime)
-      assert {:ok, %DateTime{}} = Ash.Temporal.now_for(:utc_datetime)
-      assert {:ok, %DateTime{}} = Ash.Temporal.now_for(:utc_datetime_usec)
-      assert {:ok, %NaiveDateTime{}} = Ash.Temporal.now_for(:naive_datetime)
-      assert {:ok, %Date{}} = Ash.Temporal.now_for(:date)
-    end
-
-    test "refuses an extent that is not made of time" do
-      assert :error = Ash.Temporal.now_for(:integer)
-      assert :error = Ash.Temporal.now_for(nil)
-    end
-  end
-
   describe "Ash.Temporal.write_instant/2" do
     test "casts an instant through the resource's inner type" do
       assert {:ok, instant} =
@@ -373,10 +358,6 @@ defmodule Ash.TemporalTest do
     test "resolves :now in the resource's inner type" do
       assert {:ok, %DateTime{microsecond: {0, 0}}} =
                Ash.Temporal.write_instant(Ash.Test.Temporal.EtsVersioned, :now)
-    end
-
-    test "refuses :now on an extent with no current value" do
-      assert :error = Ash.Temporal.write_instant(Ash.Test.Temporal.EtsIntegerExtent, :now)
     end
 
     test "refuses an as_of that is not an instant, rather than guessing one" do

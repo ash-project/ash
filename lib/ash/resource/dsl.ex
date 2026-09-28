@@ -1765,7 +1765,11 @@ defmodule Ash.Resource.Dsl do
       attribute: [
         type: :atom,
         default: :valid_at,
-        doc: "The single period (range) attribute, e.g `valid_at`."
+        doc: """
+        The single period attribute, e.g `valid_at`. It must be an `Ash.Type.Range` over
+        datetimes (`inner_type: :utc_datetime_usec`, `:utc_datetime` or `:datetime`). If the
+        resource doesn't declare it, one over `:utc_datetime_usec` is added.
+        """
       ],
       recorded_at: [
         type: :atom,
