@@ -2165,24 +2165,17 @@ defmodule Ash.DataLayer.Ets do
   end
 
   # A range reaches every version it overlaps. An instant closes only the version given.
-  defp retire(table, _pkey, resource, record, {period, %Ash.Range{lower: lower} = written}, true)
-       when not is_nil(lower) do
+  defp retire(table, _pkey, resource, record, {period, %Ash.Range{} = written}, true) do
     with {:ok, periods} <- stored_periods(table, resource, record) do
       primary_key = primary_key(resource, record)
 
       periods
       |> Map.get(primary_key, [])
       |> Enum.filter(&Ash.Range.intersects?(&1, written))
-      |> Enum.reduce_while(:ok, fn version, :ok ->
-        key = Map.put(primary_key, period, version)
-
-        with {:ok, {_key, stored}} <- ETS.Set.get(table, key),
-             :ok <- close_version(table, key, stored, resource, period, overlap(version, written)) do
-          {:cont, :ok}
-        else
-          error -> {:halt, error}
-        end
-      end)
+      |> case do
+        [] -> {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
+        versions -> close_versions(table, resource, primary_key, period, versions, written)
+      end
     end
   end
 
@@ -2197,6 +2190,19 @@ defmodule Ash.DataLayer.Ets do
       _ ->
         with {:ok, _} <- ETS.Set.delete(table, pkey), do: :ok
     end
+  end
+
+  defp close_versions(table, resource, primary_key, period, versions, written) do
+    Enum.reduce_while(versions, :ok, fn version, :ok ->
+      key = Map.put(primary_key, period, version)
+
+      with {:ok, {_key, stored}} <- ETS.Set.get(table, key),
+           :ok <- close_version(table, key, stored, resource, period, overlap(version, written)) do
+        {:cont, :ok}
+      else
+        error -> {:halt, error}
+      end
+    end)
   end
 
   # A destroy ends validity over the period it names. Closing a version at the instant it
@@ -2612,6 +2618,9 @@ defmodule Ash.DataLayer.Ets do
   end
 
   # An instant the version does not hold cannot split it. `nil` drops a half holding none.
+  # Nothing lies before an unbounded lower, so nothing is kept.
+  defp close_at(%Ash.Range{}, nil, _resource, _period), do: {:ok, nil}
+
   defp close_at(%Ash.Range{} = prior, as_of, resource, period) do
     closed = %{prior | upper: as_of}
 
