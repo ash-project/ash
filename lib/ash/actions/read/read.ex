@@ -3561,6 +3561,18 @@ defmodule Ash.Actions.Read do
         |> Ash.Query.set_context(%{shared: opts[:source_context][:shared]})
       end
 
+    query = %{
+      query
+      | filter:
+          Ash.Expr.fill_template(
+            query.filter,
+            actor: actor,
+            tenant: tenant,
+            args: %{},
+            context: opts[:source_context] || %{}
+          )
+    }
+
     authorize? =
       case agg.name do
         {:__calc_dep__, _} ->
