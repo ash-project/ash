@@ -79,6 +79,7 @@ defmodule Ash.Policy.Authorizer do
       "authorize_if actor_attribute_matches_record(:group, :group)"
     ],
     target: Ash.Policy.Check,
+    no_depend_modules: [:check],
     transform: {Ash.Policy.Check, :transform, []},
     auto_set_fields: [
       type: :authorize_if
@@ -91,6 +92,7 @@ defmodule Ash.Policy.Authorizer do
     args: [:check],
     schema: @check_schema,
     target: Ash.Policy.Check,
+    no_depend_modules: [:check],
     transform: {Ash.Policy.Check, :transform, []},
     examples: [
       "forbid_if not_logged_in()",
@@ -107,6 +109,7 @@ defmodule Ash.Policy.Authorizer do
     args: [:check],
     schema: @check_schema,
     target: Ash.Policy.Check,
+    no_depend_modules: [:check],
     transform: {Ash.Policy.Check, :transform, []},
     examples: [
       "authorize_unless not_logged_in()",
@@ -123,6 +126,7 @@ defmodule Ash.Policy.Authorizer do
     args: [:check],
     schema: @check_schema,
     target: Ash.Policy.Check,
+    no_depend_modules: [:check],
     transform: {Ash.Policy.Check, :transform, []},
     examples: [
       "forbid_unless logged_in()",
