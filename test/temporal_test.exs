@@ -63,6 +63,37 @@ defmodule Ash.TemporalTest do
 
   alias Ash.Test.Temporal.Thing
 
+  defmodule Versioned do
+    @moduledoc false
+    use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    temporal do
+      strategy :context
+      attribute :valid_at
+    end
+
+    actions do
+      defaults [:read, :destroy, create: [:id, :name], update: [:name]]
+    end
+
+    attributes do
+      attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
+      attribute :name, :string, public?: true
+
+      attribute :valid_at, Ash.Type.Range,
+        allow_nil?: false,
+        constraints: [
+          inner_type: :utc_datetime_usec,
+          lower: [inclusive?: true],
+          upper: [inclusive?: false]
+        ]
+    end
+  end
+
   describe "as_of threaded through builder opts (like tenant)" do
     test "Ash.Query.for_read/4 reads :as_of from opts" do
       query = Ash.Query.for_read(Thing, :read, %{}, as_of: @as_of)
@@ -131,6 +162,84 @@ defmodule Ash.TemporalTest do
     test "Ash.run_action/1 sees as_of set on the input itself" do
       input = Ash.ActionInput.for_action(Thing, :reveal_as_of, %{}, as_of: @as_of)
       assert {:ok, @as_of} = Ash.run_action(input)
+    end
+
+    test "Ash.create/2 refuses an :as_of different from the one a validated changeset holds" do
+      assert {:error, %Ash.Error.Framework{errors: [error]}} =
+               Versioned
+               |> Ash.Changeset.for_create(:create, %{id: 1})
+               |> Ash.create(as_of: @as_of)
+
+      assert %Ash.Error.Framework.OptionAlreadySet{option: :as_of, given: @as_of} = error
+      assert [] = Ash.read!(Versioned)
+    end
+
+    test "Ash.create/2 accepts the :as_of a validated changeset holds" do
+      created =
+        Versioned
+        |> Ash.Changeset.for_create(:create, %{id: 1}, as_of: @as_of)
+        |> Ash.create!(as_of: ~U[2020-06-15 12:00:00Z])
+
+      assert created.valid_at.lower == @as_of
+    end
+
+    test "Ash.update/2 refuses an :as_of different from the one a validated changeset holds" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.OptionAlreadySet{}]}} =
+               Versioned
+               |> Ash.read_one!()
+               |> Ash.Changeset.for_update(:update, %{name: "b"})
+               |> Ash.update(as_of: @as_of)
+
+      assert [%{name: "a"}] = Ash.read!(Versioned)
+    end
+
+    test "Ash.update/2 accepts the :as_of a validated changeset holds" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      updated =
+        Versioned
+        |> Ash.read_one!()
+        |> Ash.Changeset.for_update(:update, %{name: "b"}, as_of: @as_of)
+        |> Ash.update!(as_of: @as_of)
+
+      assert updated.valid_at.lower == @as_of
+    end
+
+    test "Ash.update/2 given no :as_of runs a changeset for a record read at an instant" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      assert {:ok, %{name: "b"}} =
+               Versioned
+               |> Ash.Query.as_of(@as_of)
+               |> Ash.read_one!()
+               |> Ash.Changeset.for_update(:update, %{name: "b"})
+               |> Ash.update()
+    end
+
+    test "Ash.destroy/2 refuses an :as_of different from the one a validated changeset holds" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.OptionAlreadySet{}]}} =
+               Versioned
+               |> Ash.read_one!()
+               |> Ash.Changeset.for_destroy(:destroy)
+               |> Ash.destroy(as_of: @as_of)
+
+      assert [%{name: "a"}] = Ash.read!(Versioned)
+    end
+
+    test "Ash.destroy/2 accepts the :as_of a validated changeset holds" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      assert :ok =
+               Versioned
+               |> Ash.read_one!()
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: @as_of)
+               |> Ash.destroy(as_of: @as_of)
+
+      assert [] = Ash.read!(Versioned)
     end
   end
 
