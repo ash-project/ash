@@ -33,8 +33,6 @@ defmodule Ash.Actions.Update do
   end
 
   def run(domain, changeset, action, opts) do
-    changeset = Ash.Changeset.put_run_as_of(changeset, opts[:as_of])
-
     if changeset.atomics != [] &&
          !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :update}) do
       {:error,

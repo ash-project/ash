@@ -14,7 +14,6 @@ defmodule Ash.Actions.Create do
           | {:ok, Ash.Resource.Record.t()}
           | {:error, term}
   def run(domain, changeset, action, opts) do
-    changeset = Ash.Changeset.put_run_as_of(changeset, opts[:as_of])
     is_upsert? = changeset.context[:private][:upsert?]
 
     create_atomics_unsupported? =

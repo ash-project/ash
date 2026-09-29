@@ -3576,7 +3576,8 @@ defmodule Ash do
           changeset
       end
 
-    with {:ok, opts} <- CreateOptions.validate(opts),
+    with :ok <- check_as_of_option(changeset, opts),
+         {:ok, opts} <- CreateOptions.validate(opts),
          opts <- CreateOptions.to_options(opts),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
          {:ok, action} <- Ash.Helpers.get_action(resource, opts, :create, changeset.action) do
@@ -4170,10 +4171,12 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(changeset, opts)
 
+    checked = check_as_of_option(changeset, opts)
     opts = Keyword.put_new(opts, :tenant, Map.get(changeset.data.__metadata__, :tenant))
     opts = Keyword.put_new(opts, :as_of, Map.get(changeset.data.__metadata__, :as_of))
 
-    with {:ok, opts} <- UpdateOpts.validate(opts),
+    with :ok <- checked,
+         {:ok, opts} <- UpdateOpts.validate(opts),
          opts <- UpdateOpts.to_options(opts),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
          {:ok, action} <- Ash.Helpers.get_action(resource, opts, :update, changeset.action),
@@ -4311,6 +4314,8 @@ defmodule Ash do
         record -> record
       end
 
+    checked = check_as_of_option(changeset_or_record, opts)
+
     opts =
       case Map.fetch(data.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
@@ -4331,7 +4336,8 @@ defmodule Ash do
         record -> Ash.Changeset.new(record)
       end
 
-    with {:ok, opts} <- DestroyOpts.validate(opts),
+    with :ok <- checked,
+         {:ok, opts} <- DestroyOpts.validate(opts),
          opts <- DestroyOpts.to_options(opts),
          domain = Ash.Helpers.domain!(changeset, opts),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
@@ -4349,6 +4355,34 @@ defmodule Ash do
         :ok
     end
   end
+
+  # A changeset validated for its action holds its `as_of`; an option may repeat it, not change it.
+  defp check_as_of_option(
+         %Ash.Changeset{__validated_for_action__: action} = changeset,
+         opts
+       )
+       when not is_nil(action) do
+    case Keyword.get(opts, :as_of) do
+      nil ->
+        :ok
+
+      as_of ->
+        if Ash.Temporal.cast_write_as_of(changeset.resource, as_of) == changeset.as_of do
+          :ok
+        else
+          {:error,
+           Ash.Error.Framework.OptionAlreadySet.exception(
+             resource: changeset.resource,
+             action: action,
+             option: :as_of,
+             given: as_of,
+             set: changeset.as_of
+           )}
+        end
+    end
+  end
+
+  defp check_as_of_option(_changeset_or_record, _opts), do: :ok
 
   @transaction_opts_schema [
     tenant: [

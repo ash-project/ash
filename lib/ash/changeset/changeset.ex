@@ -4265,21 +4265,6 @@ defmodule Ash.Changeset do
 
   defp pin_temporal_write_now(changeset), do: changeset
 
-  @doc false
-  # An `as_of` given as the action runs replaces one pinned to now, as a tenant fills an unset
-  # one. An `as_of` the changeset was built with wins.
-  def put_run_as_of(changeset, nil), do: changeset
-
-  def put_run_as_of(changeset, as_of) do
-    pinned = changeset.context[:private][:temporal_recorded_at]
-
-    if not is_nil(pinned) and changeset.as_of == pinned do
-      as_of(changeset, as_of)
-    else
-      changeset
-    end
-  end
-
   # A `&DateTime.utc_now/0` default on a write that carries an `as_of` resolves to that
   # instant rather than the wall clock (see `Ash.Helpers.resolve_default/2`), except on the
   # resource's `recorded_at` attribute, which is always the time of the write itself.

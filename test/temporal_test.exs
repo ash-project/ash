@@ -63,7 +63,7 @@ defmodule Ash.TemporalTest do
 
   alias Ash.Test.Temporal.Thing
 
-  defmodule Stamped do
+  defmodule Versioned do
     @moduledoc false
     use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
 
@@ -77,7 +77,7 @@ defmodule Ash.TemporalTest do
     end
 
     actions do
-      defaults [:read, create: [:id, :name], update: [:name]]
+      defaults [:read, :destroy, create: [:id, :name], update: [:name]]
     end
 
     attributes do
@@ -91,9 +91,6 @@ defmodule Ash.TemporalTest do
           lower: [inclusive?: true],
           upper: [inclusive?: false]
         ]
-
-      create_timestamp :inserted_at
-      update_timestamp :updated_at
     end
   end
 
@@ -167,48 +164,82 @@ defmodule Ash.TemporalTest do
       assert {:ok, @as_of} = Ash.run_action(input)
     end
 
-    test "Ash.create/2 threads :as_of onto a changeset built without one" do
-      stamped =
-        Stamped
-        |> Ash.Changeset.for_create(:create, %{id: 1})
-        |> Ash.create!(as_of: @as_of)
+    test "Ash.create/2 refuses an :as_of different from the one a validated changeset holds" do
+      assert {:error, %Ash.Error.Framework{errors: [error]}} =
+               Versioned
+               |> Ash.Changeset.for_create(:create, %{id: 1})
+               |> Ash.create(as_of: @as_of)
 
-      assert stamped.valid_at.lower == @as_of
-      assert stamped.inserted_at == @as_of
+      assert %Ash.Error.Framework.OptionAlreadySet{option: :as_of, given: @as_of} = error
+      assert [] = Ash.read!(Versioned)
     end
 
-    test "Ash.create/2 leaves the :as_of a changeset was built with" do
-      stamped =
-        Stamped
+    test "Ash.create/2 accepts the :as_of a validated changeset holds" do
+      created =
+        Versioned
         |> Ash.Changeset.for_create(:create, %{id: 1}, as_of: @as_of)
-        |> Ash.create!(as_of: ~U[2022-01-01 00:00:00.000000Z])
+        |> Ash.create!(as_of: ~U[2020-06-15 12:00:00Z])
 
-      assert stamped.valid_at.lower == @as_of
+      assert created.valid_at.lower == @as_of
     end
 
-    test "Ash.update/2 threads :as_of onto a changeset built without one" do
-      Ash.create!(Stamped, %{id: 1}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+    test "Ash.update/2 refuses an :as_of different from the one a validated changeset holds" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.OptionAlreadySet{}]}} =
+               Versioned
+               |> Ash.read_one!()
+               |> Ash.Changeset.for_update(:update, %{name: "b"})
+               |> Ash.update(as_of: @as_of)
+
+      assert [%{name: "a"}] = Ash.read!(Versioned)
+    end
+
+    test "Ash.update/2 accepts the :as_of a validated changeset holds" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
 
       updated =
-        Stamped
+        Versioned
         |> Ash.read_one!()
-        |> Ash.Changeset.for_update(:update, %{name: "b"})
+        |> Ash.Changeset.for_update(:update, %{name: "b"}, as_of: @as_of)
         |> Ash.update!(as_of: @as_of)
 
       assert updated.valid_at.lower == @as_of
-      assert updated.updated_at == @as_of
     end
 
-    test "Ash.update/2 leaves the :as_of a changeset was built with" do
-      Ash.create!(Stamped, %{id: 1}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+    test "Ash.update/2 given no :as_of runs a changeset for a record read at an instant" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
 
-      updated =
-        Stamped
-        |> Ash.read_one!()
-        |> Ash.Changeset.for_update(:update, %{name: "b"}, as_of: @as_of)
-        |> Ash.update!(as_of: ~U[2022-01-01 00:00:00.000000Z])
+      assert {:ok, %{name: "b"}} =
+               Versioned
+               |> Ash.Query.as_of(@as_of)
+               |> Ash.read_one!()
+               |> Ash.Changeset.for_update(:update, %{name: "b"})
+               |> Ash.update()
+    end
 
-      assert updated.valid_at.lower == @as_of
+    test "Ash.destroy/2 refuses an :as_of different from the one a validated changeset holds" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.OptionAlreadySet{}]}} =
+               Versioned
+               |> Ash.read_one!()
+               |> Ash.Changeset.for_destroy(:destroy)
+               |> Ash.destroy(as_of: @as_of)
+
+      assert [%{name: "a"}] = Ash.read!(Versioned)
+    end
+
+    test "Ash.destroy/2 accepts the :as_of a validated changeset holds" do
+      Ash.create!(Versioned, %{id: 1, name: "a"}, as_of: ~U[2020-01-01 00:00:00.000000Z])
+
+      assert :ok =
+               Versioned
+               |> Ash.read_one!()
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: @as_of)
+               |> Ash.destroy(as_of: @as_of)
+
+      assert [] = Ash.read!(Versioned)
     end
   end
 
