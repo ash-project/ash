@@ -115,6 +115,7 @@ defmodule Ash.Actions.Aggregate do
                       with {:ok, data_layer_query} <-
                              Ash.Query.data_layer_query(%Ash.Query{
                                action: Ash.Resource.Info.action(query.resource, read_action),
+                               arguments: query.arguments,
                                resource: query.resource,
                                limit: query.limit,
                                offset: query.offset,
