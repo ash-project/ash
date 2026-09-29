@@ -623,7 +623,7 @@ defmodule Ash.Resource.Dsl do
       Ash.Expr
     ],
     target: Ash.Resource.Actions.Action,
-    no_depend_modules: [:touches_resources, :error_handler],
+    no_depend_modules: [:touches_resources, :error_handler, :run],
     schema: Ash.Resource.Actions.Action.opt_schema(),
     transform: {Ash.Resource.Actions.Action, :transform, []},
     entities: [
