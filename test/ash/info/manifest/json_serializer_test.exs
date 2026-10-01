@@ -85,6 +85,8 @@ defmodule Ash.Test.Info.Manifest.JsonSerializerTest do
 
       assert todo_read != nil
       assert is_binary(todo_read["resource"])
+      assert is_binary(todo_read["action"]["name"])
+      assert todo_read["action"]["name"] != ""
       assert is_boolean(todo_read["action"]["primary"])
       assert is_list(todo_read["action"]["inputs"])
     end
