@@ -2518,8 +2518,9 @@ defmodule Ash.DataLayer.Ets do
                   write_version(table, pkey, record, data, resource, supersede)
 
                 atomics ->
-                  with {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_record) do
-                    data = record |> Map.merge(casted) |> Map.merge(atomics)
+                  with {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_record),
+                       {:ok, dumped_atomics} <- dump_atomics(atomics, attributes) do
+                    data = record |> Map.merge(casted) |> Map.merge(dumped_atomics)
                     write_version(table, pkey, record, data, resource, supersede)
                   end
               end
@@ -2674,6 +2675,33 @@ defmodule Ash.DataLayer.Ets do
 
       error ->
         error
+    end
+  end
+
+  defp dump_atomics(atomics, attributes) do
+    attributes
+    |> Enum.filter(&Map.has_key?(atomics, &1.name))
+    |> Enum.reduce_while({:ok, %{}}, fn attribute, {:ok, acc} ->
+      case Ash.Type.cast_input(
+             attribute.type,
+             Map.get(atomics, attribute.name),
+             attribute.constraints
+           ) do
+        {:ok, value} ->
+          {:cont, {:ok, Map.put(acc, attribute.name, value)}}
+
+        _ ->
+          {:halt,
+           {:error,
+            Ash.Error.Changes.InvalidAttribute.exception(
+              field: attribute.name,
+              message: "is invalid"
+            )}}
+      end
+    end)
+    |> case do
+      {:ok, casted} -> dump_to_native(casted, attributes)
+      {:error, error} -> {:error, error}
     end
   end
 
