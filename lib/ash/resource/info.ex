@@ -530,6 +530,60 @@ defmodule Ash.Resource.Info do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :template, nil)
   end
 
+  @doc "The temporal strategy for a resource, or `nil` if it is not temporal"
+  @spec temporal_strategy(Spark.Dsl.t() | Ash.Resource.t()) :: :context | nil
+  def temporal_strategy(resource) do
+    Spark.Dsl.Extension.get_opt(resource, [:temporal], :strategy, nil)
+  end
+
+  @doc "Whether or not the resource is temporal (keyed on the presence of a strategy)"
+  @spec temporal?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean
+  def temporal?(resource) do
+    not is_nil(temporal_strategy(resource))
+  end
+
+  @doc "The single period (range) attribute for a temporal resource"
+  @spec temporal_attribute(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
+  def temporal_attribute(resource) do
+    if temporal?(resource) do
+      Spark.Dsl.Extension.get_opt(resource, [:temporal], :attribute, :valid_at)
+    end
+  end
+
+  @doc "The attribute a temporal resource stamps with the time each version was written, if any"
+  @spec temporal_recorded_at(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
+  def temporal_recorded_at(resource) do
+    if temporal?(resource) do
+      Spark.Dsl.Extension.get_opt(resource, [:temporal], :recorded_at, nil)
+    end
+  end
+
+  @doc "The period attribute of a temporal resource, carrying its type and constraints."
+  @spec temporal_period(Spark.Dsl.t() | Ash.Resource.t()) :: Ash.Resource.Attribute.t() | nil
+  def temporal_period(resource) do
+    if name = temporal_attribute(resource) do
+      attribute(resource, name)
+    end
+  end
+
+  @doc "The resolved type of a temporal resource's period bounds."
+  @spec temporal_inner_type(Spark.Dsl.t() | Ash.Resource.t()) :: Ash.Type.t() | nil
+  def temporal_inner_type(resource) do
+    case temporal_period(resource) do
+      %{constraints: constraints} -> constraints[:inner_type]
+      _ -> nil
+    end
+  end
+
+  @doc "The constraints on a temporal resource's period bounds."
+  @spec temporal_inner_constraints(Spark.Dsl.t() | Ash.Resource.t()) :: Keyword.t() | nil
+  def temporal_inner_constraints(resource) do
+    case temporal_period(resource) do
+      %{constraints: constraints} -> constraints[:inner_constraints] || []
+      _ -> nil
+    end
+  end
+
   @doc "Returns all pipelines of a resource"
   @spec pipelines(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Pipeline.t())
   def pipelines(resource) do

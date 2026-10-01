@@ -20,9 +20,20 @@ defmodule Ash.Query.Function do
 
   @doc """
   The return type for each corresponding set of args.
+
+  Besides a type, an entry may be `:same` (the arguments' type), `{:array, :same}`, or
+  `{:referenced_type, via}`: the type the arguments' type refers to under `via`, as its
+  `c:Ash.Type.referenced_types/1` describes it. `range_lower/1` returns
+  `{:referenced_type, {:inner_type_of, :range}}`, the type of its range's bounds.
   """
   @callback returns() ::
-              [Ash.Type.t() | {Ash.Type.t(), constraints :: Keyword.t()}]
+              [
+                Ash.Type.t()
+                | {Ash.Type.t(), constraints :: Keyword.t()}
+                | :same
+                | {:array, :same}
+                | {:referenced_type, via :: term()}
+              ]
               | Ash.Type.t()
               | {Ash.Type.t(), constraints :: Keyword.t()}
               | :unknown

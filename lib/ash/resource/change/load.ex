@@ -5,6 +5,10 @@
 defmodule Ash.Resource.Change.Load do
   @moduledoc false
   use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   alias Ash.Changeset
 
   @impl true

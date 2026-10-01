@@ -161,8 +161,22 @@ defmodule Ash.Actions.Update do
             |> Ash.Changeset.set_context(%{data_layer: %{use_atomic_update_data?: true}})
             |> Map.put(:load, changeset.load)
             |> Map.put(:select, changeset.select)
-            |> Map.put(:filter, changeset.added_filter)
             |> Ash.Changeset.set_context(changeset.context)
+
+          # the atomic changeset carries filters added by the action's changes,
+          # so the caller's filters are added to it rather than replacing it
+          atomic_changeset =
+            if changeset.added_filter do
+              case Ash.Filter.add_to_filter(atomic_changeset.filter, changeset.added_filter) do
+                {:ok, filter} ->
+                  %{atomic_changeset | filter: filter}
+
+                {:error, error} ->
+                  Ash.Changeset.add_error(atomic_changeset, error)
+              end
+            else
+              atomic_changeset
+            end
 
           {atomic_changeset, opts} =
             Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
@@ -192,6 +206,7 @@ defmodule Ash.Actions.Update do
               tracer: opts[:tracer]
             )
             |> Ash.Query.do_filter(primary_key_filter)
+            |> Ash.Actions.Helpers.unscope_write_read_as_of(atomic_changeset.as_of)
 
           authorize_changeset_with =
             if Ash.DataLayer.data_layer_can?(atomic_changeset.resource, :expr_error) do
@@ -256,7 +271,10 @@ defmodule Ash.Actions.Update do
             {changeset, opts} =
               Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
 
-            changeset = Helpers.apply_opts_load(changeset, opts)
+            changeset =
+              changeset
+              |> Helpers.apply_opts_load(opts)
+              |> Helpers.refuse_load_over_range()
 
             Ash.Tracer.span :action,
                             fn ->
@@ -395,11 +413,14 @@ defmodule Ash.Actions.Update do
   end
 
   defp add_tenant({:ok, data}, changeset) do
-    if changeset.tenant do
-      {:ok, %{data | __metadata__: Map.put(data.__metadata__, :tenant, changeset.tenant)}}
-    else
-      {:ok, data}
-    end
+    metadata =
+      data.__metadata__
+      |> then(fn metadata ->
+        if changeset.tenant, do: Map.put(metadata, :tenant, changeset.tenant), else: metadata
+      end)
+      |> Ash.Actions.Helpers.put_write_as_of(changeset.resource, changeset.as_of)
+
+    {:ok, %{data | __metadata__: metadata}}
   end
 
   defp add_tenant(other, _changeset) do

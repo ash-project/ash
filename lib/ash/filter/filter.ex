@@ -3522,16 +3522,6 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part(
-         %{__struct__: field_struct} = calc,
-         _context,
-         expression,
-         _could_be_function?
-       )
-       when field_struct in [Ash.Query.Calculation, Ash.Query.Aggregate] do
-    {:ok, BooleanExpression.optimized_new(:and, calc, expression)}
-  end
-
   defp add_expression_part(value, context, expression, _could_be_function?) when is_map(value) do
     # Can't call `parse_expression/2` here because it will loop
 

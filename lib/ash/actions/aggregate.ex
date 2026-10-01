@@ -101,7 +101,7 @@ defmodule Ash.Actions.Aggregate do
                 Enum.reduce_while(
                   [
                     {bypass_aggs,
-                     Map.merge(query.context || %{}, %{
+                     Ash.Helpers.deep_merge_maps(query.context || %{}, %{
                        shared: %{private: %{multitenancy: :bypass_all}}
                      })},
                     {tenant_aggs, query.context}
@@ -115,6 +115,7 @@ defmodule Ash.Actions.Aggregate do
                       with {:ok, data_layer_query} <-
                              Ash.Query.data_layer_query(%Ash.Query{
                                action: Ash.Resource.Info.action(query.resource, read_action),
+                               arguments: query.arguments,
                                resource: query.resource,
                                limit: query.limit,
                                offset: query.offset,
@@ -125,6 +126,7 @@ defmodule Ash.Actions.Aggregate do
                                tenant: query.tenant,
                                filter: query.filter,
                                to_tenant: query.to_tenant,
+                               as_of: query.as_of,
                                context: context
                              }),
                            {:ok, group_results} <-

@@ -27,6 +27,71 @@ defmodule Ash.CodeInterface do
   end
 
   @doc false
+  # Defines the `def` in `do` with the line of the `define` that declared it, so its
+  # debug info points editors at that line. The file and the body's lines stay this
+  # module's, so stacktraces are unchanged.
+  defmacro define_at(interface, env, do: {:def, meta, [call | body]}) do
+    body =
+      case body do
+        [[do: body]] -> Macro.escape(body, unquote: true)
+        [] -> nil
+      end
+
+    quote do
+      Ash.CodeInterface.eval_definition(
+        unquote(Macro.escape(call, unquote: true)),
+        unquote(body),
+        unquote(Keyword.delete(meta, :line)),
+        unquote(interface),
+        unquote(env)
+      )
+    end
+  end
+
+  @doc false
+  # The head and body reach the `def` through the binding, so the evaluator only
+  # substitutes two variables instead of walking the escaped body node by node.
+  # sobelow_skip ["RCE.CodeModule"]
+  def eval_definition(call, body, meta, interface, env) do
+    call_fragment = {:unquote, [], [{:call, [], nil}]}
+
+    args =
+      case body do
+        nil -> [call_fragment]
+        _ -> [call_fragment, [do: {:unquote, [], [{:body, [], nil}]}]]
+      end
+
+    Code.eval_quoted({:def, meta, args}, [call: call, body: body], %{
+      env
+      | line: definition_line(interface, env)
+    })
+  end
+
+  @doc false
+  # The `define` line, when it is in the file being compiled; `define_interface/3`
+  # called by hand from another module keeps that call's line.
+  # Written as a `case` because the equivalent `with` sends dialyzer (OTP 29.0) into
+  # an unbounded loop when building a PLT that includes spark.
+  def definition_line(interface, env) do
+    case Spark.Dsl.Entity.anno(interface) do
+      nil ->
+        env.line
+
+      anno ->
+        line = :erl_anno.line(anno)
+
+        if line > 0 and same_file?(:erl_anno.file(anno), env.file) do
+          line
+        else
+          env.line
+        end
+    end
+  end
+
+  defp same_file?(:undefined, _env_file), do: true
+  defp same_file?(file, env_file), do: Path.expand(to_string(file)) == Path.expand(env_file)
+
+  @doc false
   def default_value(resource, action, key) do
     {field_type, field} =
       case Enum.find(action.arguments, fn argument ->
@@ -430,6 +495,8 @@ defmodule Ash.CodeInterface do
     quote bind_quoted: [domain: domain, resource: resource, definitions: definitions],
           generated: true,
           location: :keep do
+      interface_env = __ENV__
+
       calculation_interfaces =
         case definitions do
           nil ->
@@ -514,8 +581,13 @@ defmodule Ash.CodeInterface do
 
         {safe_name, bang_name} = Ash.CodeInterface.resolve_calc_method_names(name)
 
-        def unquote(bang_name)(unquote_splicing(args), opts \\ [])
-        def unquote(safe_name)(unquote_splicing(args), opts \\ [])
+        Ash.CodeInterface.define_at hd(interfaces), interface_env do
+          def unquote(bang_name)(unquote_splicing(args), opts \\ [])
+        end
+
+        Ash.CodeInterface.define_at hd(interfaces), interface_env do
+          def unquote(safe_name)(unquote_splicing(args), opts \\ [])
+        end
       end
 
       for interface <- calculation_interfaces do
@@ -545,56 +617,58 @@ defmodule Ash.CodeInterface do
         @doc spark_opts: [
                {opts_location, interface_options.schema()}
              ]
-        def unquote(bang_name)(unquote_splicing(arg_bindings), opts) do
-          {refs, arguments, record} =
-            Enum.reduce(
-              [unquote_splicing(arg_access)],
-              {opts[:refs] || %{}, opts[:args] || %{}, nil},
-              fn config, {refs, arguments, record} ->
-                case config[:type] do
-                  :_record ->
-                    {refs, arguments, config[:value]}
+        Ash.CodeInterface.define_at interface, interface_env do
+          def unquote(bang_name)(unquote_splicing(arg_bindings), opts) do
+            {refs, arguments, record} =
+              Enum.reduce(
+                [unquote_splicing(arg_access)],
+                {opts[:refs] || %{}, opts[:args] || %{}, nil},
+                fn config, {refs, arguments, record} ->
+                  case config[:type] do
+                    :_record ->
+                      {refs, arguments, config[:value]}
 
-                  :both ->
-                    {Map.put(refs, config[:name], config[:value]),
-                     Map.put(arguments, config[:name], config[:value]), record}
+                    :both ->
+                      {Map.put(refs, config[:name], config[:value]),
+                       Map.put(arguments, config[:name], config[:value]), record}
 
-                  :ref ->
-                    {Map.put(refs, config[:name], config[:value]), arguments, record}
+                    :ref ->
+                      {Map.put(refs, config[:name], config[:value]), arguments, record}
 
-                  :arg ->
-                    {refs, Map.put(arguments, config[:name], config[:value]), record}
+                    :arg ->
+                      {refs, Map.put(arguments, config[:name], config[:value]), record}
+                  end
                 end
-              end
-            )
+              )
 
-          case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
-                 Map.has_key?(arguments, input) || Map.has_key?(arguments, to_string(input))
-               end) do
-            [] ->
-              :ok
+            case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
+                   Map.has_key?(arguments, input) || Map.has_key?(arguments, to_string(input))
+                 end) do
+              [] ->
+                :ok
 
-            inputs ->
-              raise ArgumentError,
-                    "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.calculation)}/#{unquote(Enum.count(arg_bindings) + 1)}"
-          end
+              inputs ->
+                raise ArgumentError,
+                      "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.calculation)}/#{unquote(Enum.count(arg_bindings) + 1)}"
+            end
 
-          {arguments, custom_input_errors} =
-            Ash.CodeInterface.handle_custom_inputs(
-              arguments,
-              unquote(custom_inputs),
-              unquote(resource)
-            )
+            {arguments, custom_input_errors} =
+              Ash.CodeInterface.handle_custom_inputs(
+                arguments,
+                unquote(custom_inputs),
+                unquote(resource)
+              )
 
-          case custom_input_errors do
-            [] ->
-              opts =
-                [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
+            case custom_input_errors do
+              [] ->
+                opts =
+                  [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
 
-              Ash.calculate!(unquote(resource), unquote(interface.calculation), opts)
+                Ash.calculate!(unquote(resource), unquote(interface.calculation), opts)
 
-            errors ->
-              raise Ash.Error.to_error_class(errors)
+              errors ->
+                raise Ash.Error.to_error_class(errors)
+            end
           end
         end
 
@@ -611,56 +685,58 @@ defmodule Ash.CodeInterface do
         @doc spark_opts: [
                {opts_location, interface_options.schema()}
              ]
-        def unquote(safe_name)(unquote_splicing(arg_bindings), opts) do
-          {refs, arguments, record} =
-            Enum.reduce(
-              [unquote_splicing(arg_access)],
-              {opts[:refs] || %{}, opts[:args] || %{}, nil},
-              fn config, {refs, arguments, record} ->
-                case config[:type] do
-                  :_record ->
-                    {refs, arguments, config[:value]}
+        Ash.CodeInterface.define_at interface, interface_env do
+          def unquote(safe_name)(unquote_splicing(arg_bindings), opts) do
+            {refs, arguments, record} =
+              Enum.reduce(
+                [unquote_splicing(arg_access)],
+                {opts[:refs] || %{}, opts[:args] || %{}, nil},
+                fn config, {refs, arguments, record} ->
+                  case config[:type] do
+                    :_record ->
+                      {refs, arguments, config[:value]}
 
-                  :both ->
-                    {Map.put(refs, config[:name], config[:value]),
-                     Map.put(arguments, config[:name], config[:value]), record}
+                    :both ->
+                      {Map.put(refs, config[:name], config[:value]),
+                       Map.put(arguments, config[:name], config[:value]), record}
 
-                  :ref ->
-                    {Map.put(refs, config[:name], config[:value]), arguments, record}
+                    :ref ->
+                      {Map.put(refs, config[:name], config[:value]), arguments, record}
 
-                  :arg ->
-                    {refs, Map.put(arguments, config[:name], config[:value]), record}
+                    :arg ->
+                      {refs, Map.put(arguments, config[:name], config[:value]), record}
+                  end
                 end
-              end
-            )
+              )
 
-          case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
-                 Map.has_key?(arguments, input) || Map.has_key?(arguments, to_string(input))
-               end) do
-            [] ->
-              :ok
+            case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
+                   Map.has_key?(arguments, input) || Map.has_key?(arguments, to_string(input))
+                 end) do
+              [] ->
+                :ok
 
-            inputs ->
-              raise ArgumentError,
-                    "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.calculation)}/#{unquote(Enum.count(arg_bindings) + 1)}"
-          end
+              inputs ->
+                raise ArgumentError,
+                      "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.calculation)}/#{unquote(Enum.count(arg_bindings) + 1)}"
+            end
 
-          {arguments, custom_input_errors} =
-            Ash.CodeInterface.handle_custom_inputs(
-              arguments,
-              unquote(custom_inputs),
-              unquote(resource)
-            )
+            {arguments, custom_input_errors} =
+              Ash.CodeInterface.handle_custom_inputs(
+                arguments,
+                unquote(custom_inputs),
+                unquote(resource)
+              )
 
-          case custom_input_errors do
-            [] ->
-              opts =
-                [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
+            case custom_input_errors do
+              [] ->
+                opts =
+                  [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
 
-              Ash.calculate(unquote(resource), unquote(interface.calculation), opts)
+                Ash.calculate(unquote(resource), unquote(interface.calculation), opts)
 
-            errors ->
-              {:error, Ash.Error.to_error_class(errors)}
+              errors ->
+                {:error, Ash.Error.to_error_class(errors)}
+            end
           end
         end
       end
@@ -1109,16 +1185,18 @@ defmodule Ash.CodeInterface do
                  {first_opts_location + 1, interface_options.schema()}
                ]
 
-          def unquote(action_fn)(
-                unquote_splicing(common_args),
-                params \\ nil,
-                opts \\ nil
-              ) do
-            {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
+          Ash.CodeInterface.define_at interface, interface_env do
+            def unquote(action_fn)(
+                  unquote_splicing(common_args),
+                  params \\ nil,
+                  opts \\ nil
+                ) do
+              {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
 
-            unquote(resolve_params_and_opts)
-            unquote(resolve_subject)
-            unquote(act)
+              unquote(resolve_params_and_opts)
+              unquote(resolve_subject)
+              unquote(act)
+            end
           end
         end
 
@@ -1138,15 +1216,17 @@ defmodule Ash.CodeInterface do
                  {first_opts_location, interface_options.schema()},
                  {first_opts_location + 1, interface_options.schema()}
                ]
-          def unquote(bang_fn)(
-                unquote_splicing(common_args),
-                params \\ nil,
-                opts \\ nil
-              ) do
-            {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
-            unquote(resolve_params_and_opts)
-            unquote(resolve_subject)
-            unquote(act!)
+          Ash.CodeInterface.define_at interface, interface_env do
+            def unquote(bang_fn)(
+                  unquote_splicing(common_args),
+                  params \\ nil,
+                  opts \\ nil
+                ) do
+              {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
+              unquote(resolve_params_and_opts)
+              unquote(resolve_subject)
+              unquote(act!)
+            end
           end
         end
 
@@ -1156,6 +1236,7 @@ defmodule Ash.CodeInterface do
             Keyword.take(interface_options.schema(), [
               :actor,
               :tenant,
+              :as_of,
               :scope,
               :authorize?,
               :tracer,
@@ -1176,14 +1257,16 @@ defmodule Ash.CodeInterface do
                  {first_opts_location, subject_opts},
                  {first_opts_location + 1, subject_opts}
                ]
-          def unquote(:"#{subject_name}_to_#{interface.name}")(
-                unquote_splicing(common_args),
-                params_or_opts \\ %{},
-                opts \\ []
-              ) do
-            unquote(resolve_params_and_opts)
-            unquote(resolve_subject)
-            unquote(subject)
+          Ash.CodeInterface.define_at interface, interface_env do
+            def unquote(:"#{subject_name}_to_#{interface.name}")(
+                  unquote_splicing(common_args),
+                  params_or_opts \\ %{},
+                  opts \\ []
+                ) do
+              unquote(resolve_params_and_opts)
+              unquote(resolve_subject)
+              unquote(subject)
+            end
           end
         end
 
@@ -1195,36 +1278,38 @@ defmodule Ash.CodeInterface do
                  {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
                  {first_opts_location + 2, Ash.Resource.Interface.CanOpts.schema()}
                ]
-          def unquote(can_fn)(
-                actor,
-                unquote_splicing(common_args),
-                params_or_opts \\ %{},
-                opts \\ []
-              ) do
-            {params, opts, custom_input_errors} =
-              Ash.CodeInterface.can_opts(
-                params_or_opts,
+          Ash.CodeInterface.define_at interface, interface_env do
+            def unquote(can_fn)(
+                  actor,
+                  unquote_splicing(common_args),
+                  params_or_opts \\ %{},
+                  opts \\ []
+                ) do
+              {params, opts, custom_input_errors} =
+                Ash.CodeInterface.can_opts(
+                  params_or_opts,
+                  opts,
+                  unquote(arg_params),
+                  unquote(resource),
+                  unquote(interface.name),
+                  unquote(interface.exclude_inputs),
+                  unquote(Enum.count(interface.args || []) + 2),
+                  unquote(custom_inputs),
+                  unquote(interface_options),
+                  actor
+                )
+
+              unquote(resolve_subject)
+
+              Ash.CodeInterface.can(
+                params,
                 opts,
-                unquote(arg_params),
-                unquote(resource),
-                unquote(interface.name),
-                unquote(interface.exclude_inputs),
-                unquote(Enum.count(interface.args || []) + 2),
-                unquote(custom_inputs),
-                unquote(interface_options),
-                actor
+                actor,
+                unquote(subject),
+                unquote(action.name),
+                unquote(interface.name)
               )
-
-            unquote(resolve_subject)
-
-            Ash.CodeInterface.can(
-              params,
-              opts,
-              actor,
-              unquote(subject),
-              unquote(action.name),
-              unquote(interface.name)
-            )
+            end
           end
         end
 
@@ -1236,36 +1321,38 @@ defmodule Ash.CodeInterface do
                  {first_opts_location + 2, Ash.Resource.Interface.CanQuestionMarkOpts.schema()}
                ]
           @doc Ash.CodeInterface.docs_can?(resource, action)
-          def unquote(can_question_fn)(
-                actor,
-                unquote_splicing(common_args),
-                params_or_opts \\ %{},
-                opts \\ []
-              ) do
-            {params, opts, custom_input_errors} =
-              Ash.CodeInterface.can_opts(
-                params_or_opts,
+          Ash.CodeInterface.define_at interface, interface_env do
+            def unquote(can_question_fn)(
+                  actor,
+                  unquote_splicing(common_args),
+                  params_or_opts \\ %{},
+                  opts \\ []
+                ) do
+              {params, opts, custom_input_errors} =
+                Ash.CodeInterface.can_opts(
+                  params_or_opts,
+                  opts,
+                  unquote(arg_params),
+                  unquote(resource),
+                  unquote(interface.name),
+                  unquote(interface.exclude_inputs),
+                  unquote(Enum.count(interface.args || []) + 2),
+                  unquote(custom_inputs),
+                  unquote(interface_options),
+                  actor
+                )
+
+              unquote(resolve_subject)
+
+              Ash.CodeInterface.can?(
+                params,
                 opts,
-                unquote(arg_params),
-                unquote(resource),
-                unquote(interface.name),
-                unquote(interface.exclude_inputs),
-                unquote(Enum.count(interface.args || []) + 2),
-                unquote(custom_inputs),
-                unquote(interface_options),
-                actor
+                actor,
+                unquote(subject),
+                unquote(action.name),
+                unquote(interface.name)
               )
-
-            unquote(resolve_subject)
-
-            Ash.CodeInterface.can?(
-              params,
-              opts,
-              actor,
-              unquote(subject),
-              unquote(action.name),
-              unquote(interface.name)
-            )
+            end
           end
         end
       end
@@ -1278,6 +1365,7 @@ defmodule Ash.CodeInterface do
       opts
       |> Keyword.take([
         :tenant,
+        :as_of,
         :authorize?,
         :tracer,
         :context,
@@ -2056,6 +2144,7 @@ defmodule Ash.CodeInterface do
         :input,
         :actor,
         :tenant,
+        :as_of,
         :authorize?,
         :tracer,
         :scope,
@@ -2093,6 +2182,7 @@ defmodule Ash.CodeInterface do
         :query,
         :actor,
         :tenant,
+        :as_of,
         :authorize?,
         :tracer,
         :context,
@@ -2214,6 +2304,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :scope,
         :authorize?,
         :tracer,
@@ -2322,6 +2413,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :authorize?,
         :scope,
         :tracer,
@@ -2353,6 +2445,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :scope,
         :authorize?,
         :tracer,
@@ -2616,6 +2709,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :scope,
         :authorize?,
         :tracer,
@@ -2685,6 +2779,7 @@ defmodule Ash.CodeInterface do
       Keyword.split(opts, [
         :actor,
         :tenant,
+        :as_of,
         :scope,
         :authorize?,
         :tracer,

@@ -319,6 +319,11 @@ defmodule Ash.Test.Sort.SortTest do
                Ash.Sort.parse_input(Post, %{"title" => "asc"})
     end
 
+    test "a relationship cannot be sorted by directly (clean error, not a crash)" do
+      assert {:error, %Ash.Error.Query.UnsortableField{field: :author}} =
+               Ash.Sort.parse_input(Post, author: :asc)
+    end
+
     test "a list sort parses properly" do
       assert {:ok, [title: :asc, contents: :desc]} =
                Ash.Sort.parse_input(Post, ["title", "-contents"])

@@ -7,6 +7,9 @@ defmodule Ash.Resource.Change.Select do
   use Ash.Resource.Change
 
   @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
   def change(changeset, opts, _) do
     if opts[:ensure?] do
       Ash.Changeset.ensure_selected(changeset, opts[:target] || [])

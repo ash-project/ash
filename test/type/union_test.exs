@@ -6,6 +6,8 @@ defmodule Ash.Test.Filter.UnionTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Query
+
   alias Ash.Test.Domain, as: Domain
   alias Ash.Test.DumpTestType
 
@@ -372,6 +374,127 @@ defmodule Ash.Test.Filter.UnionTest do
     end
   end
 
+  defmodule Circle do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :type, :atom, public?: true, default: :circle, writable?: false
+      attribute :radius, :integer, public?: true, allow_nil?: false
+    end
+  end
+
+  defmodule ShapeUnion do
+    use Ash.Type.NewType,
+      subtype_of: :union,
+      constraints: [
+        storage: :map_with_tag,
+        types: [circle: [type: Circle, tag: :type, tag_value: :circle]]
+      ]
+  end
+
+  defmodule Drawing do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:read, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :shape, :union,
+        public?: true,
+        constraints: [
+          storage: :map_with_tag,
+          types: [circle: [type: Circle, tag: :type, tag_value: :circle]]
+        ]
+
+      attribute :new_type_shape, ShapeUnion, public?: true
+
+      attribute :shapes, {:array, :union},
+        public?: true,
+        constraints: [
+          items: [
+            storage: :map_with_tag,
+            types: [circle: [type: Circle, tag: :type, tag_value: :circle]]
+          ]
+        ]
+    end
+  end
+
+  describe "equality" do
+    setup do
+      drawing =
+        Drawing
+        |> Ash.Changeset.for_create(:create, %{
+          shape: %{type: :circle, radius: 5},
+          new_type_shape: %{type: :circle, radius: 5},
+          shapes: [%{type: :circle, radius: 5}]
+        })
+        |> Ash.create!()
+
+      %{drawing: Ash.get!(Drawing, drawing.id)}
+    end
+
+    test "setting a union attribute to its current value is not a change", %{drawing: drawing} do
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{shape: %{type: :circle, radius: 5}})
+
+      refute Ash.Changeset.changing_attribute?(changeset, :shape)
+
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{shape: %{type: :circle, radius: 6}})
+
+      assert Ash.Changeset.changing_attribute?(changeset, :shape)
+    end
+
+    test "setting a NewType union attribute to its current value is not a change", %{
+      drawing: drawing
+    } do
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{new_type_shape: %{type: :circle, radius: 5}})
+
+      refute Ash.Changeset.changing_attribute?(changeset, :new_type_shape)
+
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{new_type_shape: %{type: :circle, radius: 6}})
+
+      assert Ash.Changeset.changing_attribute?(changeset, :new_type_shape)
+    end
+
+    test "setting an array of unions to its current value is not a change", %{drawing: drawing} do
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{shapes: [%{type: :circle, radius: 5}]})
+
+      refute Ash.Changeset.changing_attribute?(changeset, :shapes)
+
+      changeset =
+        Ash.Changeset.for_update(drawing, :update, %{shapes: [%{type: :circle, radius: 6}]})
+
+      assert Ash.Changeset.changing_attribute?(changeset, :shapes)
+    end
+
+    test "Ash.Type.equal?/4 compares union members using the member type", %{drawing: drawing} do
+      constraints = Ash.Resource.Info.attribute(Drawing, :shape).constraints
+
+      {:ok, new} =
+        Ash.Type.cast_input(:union, %{type: :circle, radius: 5}, constraints)
+
+      assert Ash.Type.equal?(:union, drawing.shape, new, constraints)
+
+      refute Ash.Type.equal?(
+               :union,
+               drawing.shape,
+               %{new | value: %{new.value | radius: 6}},
+               constraints
+             )
+    end
+  end
+
   test "it handles UUIDs and strings" do
     constraints = [types: [id: [type: :uuid], slug: [type: :string]]]
 
@@ -722,6 +845,112 @@ defmodule Ash.Test.Filter.UnionTest do
                things: [%Ash.Union{type: :foo, value: %{type: :foo, foo: "foo"}}]
              })
              |> Ash.update()
+  end
+
+  defmodule AtomicAddress do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :street, :string, public?: true, allow_nil?: false
+      attribute :city, :string, public?: true
+    end
+  end
+
+  defmodule AtomicUnionWidget do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:read, create: :*]
+
+      update :update do
+        accept [:name, :content]
+      end
+
+      update :update_non_atomic do
+        require_atomic? false
+        accept [:name, :content]
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true, allow_nil?: false
+
+      attribute :content, :union,
+        public?: true,
+        constraints: [
+          types: [
+            text: [type: :string],
+            number: [type: :integer],
+            address: [type: AtomicAddress]
+          ]
+        ]
+    end
+  end
+
+  describe "atomic updates of union attributes in ETS" do
+    setup do
+      widget =
+        AtomicUnionWidget
+        |> Ash.Changeset.for_create(:create, %{
+          name: "x",
+          content: %Ash.Union{type: :text, value: "a"}
+        })
+        |> Ash.create!()
+
+      %{widget: widget}
+    end
+
+    for action <- [:update, :update_non_atomic] do
+      test "#{action} changes the union member type from text to number", %{widget: widget} do
+        assert {:ok, %{content: %Ash.Union{type: :number, value: 10}} = updated} =
+                 widget
+                 |> Ash.Changeset.for_update(unquote(action), %{content: 10})
+                 |> Ash.update()
+
+        assert %{content: %Ash.Union{type: :number, value: 10}} =
+                 Ash.get!(AtomicUnionWidget, updated.id)
+      end
+
+      test "#{action} changes the union member type to and from an embedded resource", %{
+        widget: widget
+      } do
+        assert {:ok,
+                %{
+                  content: %Ash.Union{
+                    type: :address,
+                    value: %AtomicAddress{street: "1 Main St", city: "Springfield"}
+                  }
+                } = updated} =
+                 widget
+                 |> Ash.Changeset.for_update(unquote(action), %{
+                   content: %Ash.Union{
+                     type: :address,
+                     value: %{street: "1 Main St", city: "Springfield"}
+                   }
+                 })
+                 |> Ash.update()
+
+        assert %{
+                 content: %Ash.Union{
+                   type: :address,
+                   value: %AtomicAddress{street: "1 Main St", city: "Springfield"}
+                 }
+               } = Ash.get!(AtomicUnionWidget, updated.id)
+
+        assert {:ok, %{content: %Ash.Union{type: :text, value: "b"}} = updated} =
+                 updated
+                 |> Ash.Changeset.for_update(unquote(action), %{content: "b"})
+                 |> Ash.update()
+
+        assert %{content: %Ash.Union{type: :text, value: "b"}} =
+                 Ash.get!(AtomicUnionWidget, updated.id)
+      end
+    end
   end
 
   test "it handles updates to and from array in union types" do
