@@ -41,7 +41,7 @@ defmodule Ash.ActionInput do
 
   Receives an action input and returns a modified action input, optionally with notifications.
   """
-  @type before_action_fun :: (t -> t | {t, %{notifications: [Ash.Notifier.Notification.t()]}})
+  @type before_action_fun :: (t -> t | {t, Ash.Notifier.Notification.input()})
 
   @typedoc """
   Function type for after action hooks.
@@ -52,9 +52,9 @@ defmodule Ash.ActionInput do
   @type after_action_fun ::
           (t, term ->
              :ok
-             | {:ok, [Ash.Notifier.Notification.t()]}
+             | {:ok, Ash.Notifier.Notification.input()}
              | {:ok, term}
-             | {:ok, term, [Ash.Notifier.Notification.t()]}
+             | {:ok, term, Ash.Notifier.Notification.input()}
              | {:error, any})
 
   @typedoc """
@@ -1602,7 +1602,9 @@ defmodule Ash.ActionInput do
           {:error, error} ->
             {:halt, {:error, error}}
 
-          {input, %{notifications: notifications}} ->
+          {%Ash.ActionInput{} = input, notification_input} ->
+            notifications = Ash.Notifier.Notification.normalize(notification_input)
+
             cont =
               if input.valid? do
                 :cont
@@ -1614,7 +1616,7 @@ defmodule Ash.ActionInput do
              {input,
               %{
                 instructions
-                | notifications: List.wrap(instructions.notifications) ++ List.wrap(notifications)
+                | notifications: List.wrap(instructions.notifications) ++ notifications
               }}}
 
           %Ash.ActionInput{} = input ->
@@ -1755,7 +1757,7 @@ defmodule Ash.ActionInput do
 
   defp merge_after_action_notifications(input, result, old_notifications, new_notifications) do
     Enum.map(
-      List.wrap(old_notifications) ++ List.wrap(new_notifications),
+      List.wrap(old_notifications) ++ Ash.Notifier.Notification.normalize(new_notifications),
       fn notification ->
         %{
           notification

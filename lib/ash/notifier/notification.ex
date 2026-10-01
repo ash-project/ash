@@ -23,6 +23,21 @@ defmodule Ash.Notifier.Notification do
 
   @type t :: %__MODULE__{}
 
+  @typedoc """
+  Any of the shapes a notification-producing hook may return: a single
+  notification, a list of them, a map with a `:notifications` key, or nil.
+  """
+  @type input :: t() | [t()] | %{optional(:notifications) => t() | [t()]} | nil
+
+  @doc """
+  Normalizes any accepted notification return shape into a flat list.
+  """
+  @spec normalize(input()) :: [t()]
+  def normalize(nil), do: []
+  def normalize(%{notifications: notifications}), do: normalize(notifications)
+  def normalize(%__MODULE__{} = notification), do: [notification]
+  def normalize(notifications) when is_list(notifications), do: notifications
+
   def new(resource, opts) do
     struct(%__MODULE__{resource: resource}, opts)
   end
