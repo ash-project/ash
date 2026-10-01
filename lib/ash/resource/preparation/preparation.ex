@@ -108,6 +108,8 @@ defmodule Ash.Resource.Preparation do
           Ash.Resource.Preparation.Context.t()
         ) :: Ash.Query.t() | Ash.ActionInput.t()
   def prepare(module, query_or_input, opts, context) do
+    Ash.Temporal.assert_temporal_safe!(:preparation, module, opts, query_or_input)
+
     Ash.BehaviourHelpers.call_and_validate_return(
       module,
       :prepare,
@@ -142,6 +144,24 @@ defmodule Ash.Resource.Preparation do
               Ash.Query.t() | Ash.ActionInput.t()
   @callback supports(opts :: Keyword.t()) :: [Ash.Query | Ash.ActionInput]
 
+  @doc """
+  Whether this preparation is safe to run as part of an action on a temporal resource.
+
+  Every action on a [temporal resource](/documentation/topics/advanced/temporal-resources.md)
+  runs "as of" a point in time, which may be in the past or the future. A preparation that
+  runs there must not assume the action is happening now: it must not read the wall clock
+  (use `now()` in expressions, or the subject's `as_of`), must not have side effects that
+  assume the present, and must perform any reads through Ash so that `as_of` is threaded
+  to them.
+
+  Defaults to `false`. Running a preparation that is not temporal safe on a temporal
+  resource raises `Ash.Error.Framework.NotTemporalSafe`. Return `true` to declare the
+  preparation safe, inspecting `opts` if it is only safe for some configurations.
+  """
+  @callback temporal_safe?(opts :: Keyword.t()) :: boolean
+
+  @optional_callbacks temporal_safe?: 1
+
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Preparation
@@ -151,8 +171,9 @@ defmodule Ash.Resource.Preparation do
 
       def init(opts), do: {:ok, opts}
       def supports(_opts), do: [Ash.Query]
+      def temporal_safe?(_opts), do: false
 
-      defoverridable init: 1, supports: 1
+      defoverridable init: 1, supports: 1, temporal_safe?: 1
     end
   end
 end

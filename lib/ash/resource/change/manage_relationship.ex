@@ -5,12 +5,17 @@
 defmodule Ash.Resource.Change.ManageRelationship do
   @moduledoc false
   use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   alias Ash.Changeset
 
   def init(opts) do
     {:ok, opts}
   end
 
+  @impl true
   def change(changeset, opts, _) do
     case Changeset.fetch_argument(changeset, opts[:argument]) do
       {:ok, argument_value} ->
@@ -35,6 +40,7 @@ defmodule Ash.Resource.Change.ManageRelationship do
     end
   end
 
+  @impl true
   def atomic(changeset, opts, context) do
     if opts[:opts][:ignore?] do
       {:ok, change(changeset, opts, context)}

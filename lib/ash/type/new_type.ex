@@ -479,6 +479,11 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def equal?(left, right, constraints) do
+        unquote(subtype_of).equal?(left, right, subtype_constraints(constraints))
+      end
+
+      @impl Ash.Type
       def generator(constraints) do
         Ash.Type.generator(unquote(subtype_of), constraints)
       end

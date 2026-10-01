@@ -7,8 +7,13 @@ defmodule Ash.Resource.Preparation.SetContext do
 
   use Ash.Resource.Preparation
 
+  @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
   def supports(_opts), do: [Ash.Query, Ash.ActionInput]
 
+  @impl true
   def prepare(subject, opts, _context) do
     context =
       case opts[:context] do

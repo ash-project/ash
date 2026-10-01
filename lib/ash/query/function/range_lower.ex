@@ -16,7 +16,8 @@ defmodule Ash.Query.Function.RangeLower do
 
   def args, do: [[:any]]
 
-  def returns, do: [:any]
+  # The type of the range's bounds, which only its constraints know.
+  def returns, do: [{:referenced_type, {:inner_type_of, :range}}]
 
   def evaluate(%{arguments: [nil]}), do: {:known, nil}
   def evaluate(%{arguments: [%Range{lower: lower}]}), do: {:known, lower}

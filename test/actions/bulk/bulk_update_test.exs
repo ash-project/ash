@@ -2514,4 +2514,47 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                )
     end
   end
+
+  defmodule PrivateArgResource do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :audit_note, :string, public?: true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :create]
+
+      update :relabel do
+        require_atomic? false
+        argument :internal_reason, :string, public?: false
+        change set_attribute(:audit_note, arg(:internal_reason))
+      end
+    end
+  end
+
+  describe "private action arguments" do
+    test "are not settable from a user parameter map" do
+      record =
+        PrivateArgResource
+        |> Ash.Changeset.for_create(:create, %{audit_note: "original"})
+        |> Ash.create!()
+
+      result =
+        Ash.bulk_update!([record], :relabel, %{"internal_reason" => "ATTACKER_CONTROLLED"},
+          strategy: [:stream],
+          return_records?: true
+        )
+
+      [updated] = result.records
+      refute updated.audit_note == "ATTACKER_CONTROLLED"
+    end
+  end
 end

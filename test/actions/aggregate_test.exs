@@ -17,6 +17,13 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
   end
 
+  defmodule Comment.FilterByThingArgument do
+    def modify(ash_query, data_layer_query) do
+      filter = Ash.Filter.parse!(ash_query.resource, thing: ash_query.arguments.thing)
+      Ash.DataLayer.filter(data_layer_query, filter, ash_query.resource)
+    end
+  end
+
   defmodule Comment do
     use Ash.Resource,
       domain: Domain,
@@ -29,6 +36,11 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       read :with_modify_query do
         modify_query {Comment.ReadActionModifyQuery, :modify, []}
+      end
+
+      read :by_thing_argument do
+        argument :thing, :string, allow_nil?: false
+        modify_query {Comment.FilterByThingArgument, :modify, []}
       end
     end
 
@@ -803,6 +815,18 @@ defmodule Ash.Test.Actions.AggregateTest do
       assert_raise Ash.Error.Unknown, ~r/Should raise!/, fn ->
         Ash.load!(post, :count_of_comments_modify_query, authorize?: false)
       end
+    end
+
+    test "aggregates over a read action give modify_query the action's arguments" do
+      for thing <- ["a", "a", "b"] do
+        Ash.create!(Comment, %{public: true, thing: thing}, authorize?: false)
+      end
+
+      query = Ash.Query.for_read(Comment, :by_thing_argument, %{thing: "a"})
+
+      assert length(Ash.read!(query, authorize?: false)) == 2
+      assert Ash.count!(query, authorize?: false) == 2
+      assert Ash.exists?(query, authorize?: false)
     end
 
     test "aggregates can reference calculations" do

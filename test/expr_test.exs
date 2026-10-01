@@ -26,6 +26,16 @@ defmodule Ash.Test.ExprTest do
   defmacrop sigil_SQL(query, _modifiers)
   defmacrop sigil_SQL({:<<>>, _, [binary]}, []) when is_binary(binary), do: binary
 
+  describe "compile time constants" do
+    test "aggregate kinds match `Ash.Query.Aggregate.kinds/0`" do
+      assert Ash.Expr.aggregate_kinds() == Ash.Query.Aggregate.kinds()
+    end
+
+    test "operator symbols match `Ash.Query.Operator.operator_symbols/0`" do
+      assert Ash.Expr.operator_symbols() == Ash.Query.Operator.operator_symbols() -- [:is_nil]
+    end
+  end
+
   describe "fragments" do
     test "allow pure binary sigils" do
       assert expr(fragment(~SQL"? > ?", 2, 1)) = expr(fragment("? > ?", 2, 1))

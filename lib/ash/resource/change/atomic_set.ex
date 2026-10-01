@@ -23,6 +23,9 @@ defmodule Ash.Resource.Change.AtomicSet do
   use Ash.Resource.Change
 
   @impl true
+  def temporal_safe?(_opts), do: true
+
+  @impl true
   def change(changeset, opts, _) do
     if opts[:cast_atomic?] do
       Ash.Changeset.atomic_set(changeset, opts[:attribute], opts[:expr])

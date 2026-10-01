@@ -74,6 +74,10 @@ defmodule Ash do
       type: {:protocol, Ash.ToTenant},
       doc: "A tenant to set on the query or changeset"
     ],
+    as_of: [
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      doc: "A point in time to run the action \"as of\" (time travel). See `Ash.Query.as_of/2`."
+    ],
     actor: [
       type: :any,
       doc:
@@ -88,6 +92,12 @@ defmodule Ash do
 
   @read_opts_schema Spark.Options.merge(
                       [
+                        # Reads take an instant; the global entry takes a range for writes.
+                        as_of: [
+                          type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+                          doc:
+                            "A point in time to read \"as of\" (time travel). See `Ash.Query.as_of/2`."
+                        ],
                         page: [
                           doc: "Pagination options, see `Ash.read/2` for more.",
                           type: {:custom, Ash.Page, :page_opts, []}
@@ -146,7 +156,7 @@ defmodule Ash do
                             "If set to `:error`, instead of applying authorization filters as a filter, any records not matching the authorization filter will cause an error to be returned."
                         ]
                       ],
-                      @global_opts,
+                      Keyword.delete(@global_opts, :as_of),
                       "Global Options"
                     )
 
@@ -254,6 +264,11 @@ defmodule Ash do
                      tenant: [
                        type: {:protocol, Ash.ToTenant},
                        doc: "The tenant to set on the query being run"
+                     ],
+                     as_of: [
+                       type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+                       doc:
+                         "A point in time to run the read \"as of\" (time travel). See `Ash.Query.as_of/2`."
                      ],
                      action: [
                        type: :atom,
@@ -577,7 +592,8 @@ defmodule Ash do
                              "Global options"
                            )
                            |> Spark.Options.merge(
-                             Keyword.delete(@stream_opts, :batch_size),
+                             # A write's `as_of` takes a range; the stream's is a read's instant.
+                             Keyword.drop(@stream_opts, [:batch_size, :as_of]),
                              "Stream Options"
                            )
                            |> Spark.Options.merge(
@@ -638,7 +654,8 @@ defmodule Ash do
                               "Global options"
                             )
                             |> Spark.Options.merge(
-                              Keyword.delete(@stream_opts, :batch_size),
+                              # A write's `as_of` takes a range; the stream's is a read's instant.
+                              Keyword.drop(@stream_opts, [:batch_size, :as_of]),
                               "Stream Options"
                             )
                             |> Spark.Options.merge(
@@ -783,9 +800,18 @@ defmodule Ash do
                       `list`/`min`/`max`/`first`/`sum`/`avg` could otherwise reveal a field-policy-protected
                       value.
                       """
+                    ],
+                    # Reads take an instant; the global entry takes a range for writes.
+                    as_of: [
+                      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+                      doc:
+                        "A point in time to aggregate \"as of\" (time travel). See `Ash.Query.as_of/2`."
                     ]
                   ]
-                  |> Spark.Options.merge(@global_opts, "Global Options")
+                  |> Spark.Options.merge(
+                    Keyword.delete(@global_opts, :as_of),
+                    "Global Options"
+                  )
 
   @calculate_opts [
     args: [
@@ -817,6 +843,12 @@ defmodule Ash do
       type: {:protocol, Ash.ToTenant},
       doc: """
       The tenant, supplied to calculation context.
+      """
+    ],
+    as_of: [
+      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      doc: """
+      A point in time to run "as of" (time travel). See `Ash.Query.as_of/2`.
       """
     ],
     context: [
@@ -882,6 +914,12 @@ defmodule Ash do
       type: {:protocol, Ash.ToTenant},
       doc: """
       The tenant, supplied to calculation context.
+      """
+    ],
+    as_of: [
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      doc: """
+      A point in time to run "as of" (time travel). See `Ash.Query.as_of/2`.
       """
     ],
     authorize?: [
@@ -968,6 +1006,10 @@ defmodule Ash do
     tenant: [
       type: {:protocol, Ash.ToTenant},
       doc: "The tenant to use for authorization"
+    ],
+    as_of: [
+      type: {:or, [{:struct, DateTime}, {:struct, Ash.Range}, {:literal, :now}, {:literal, nil}]},
+      doc: "A point in time to authorize \"as of\" (time travel). See `Ash.Query.as_of/2`."
     ],
     alter_source?: [
       type: :boolean,
@@ -2445,15 +2487,28 @@ defmodule Ash do
       {:ok, result}
     else
       {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
     end
   end
+
+  # The `:page` option is validated by `Ash.Page.page_opts/1`, the same function
+  # `Ash.Query.page/2` uses, but here a failure arrives as an options validation
+  # error that `Ash.Error.to_error_class/2` has no class for. Page options are
+  # user input, so they get the invalid-class error the query path already returns.
+  defp invalid_page_error(%Spark.Options.ValidationError{key: :page}, opts) do
+    Ash.Error.Query.InvalidPage.exception(page: opts[:page])
+  end
+
+  defp invalid_page_error(error, _opts), do: error
 
   defp do_get(resource, filter, domain, opts, action, read_opts) do
     query =
       resource
       |> Ash.Query.new(domain: domain)
       |> Ash.Query.set_tenant(opts[:tenant])
+      |> then(fn query ->
+        if opts[:as_of], do: Ash.Query.as_of(query, opts[:as_of]), else: query
+      end)
       |> Ash.Query.filter(^filter)
       |> Ash.Query.set_context(opts[:context] || %{})
       |> Ash.Query.lock(opts[:lock])
@@ -2861,15 +2916,17 @@ defmodule Ash do
     query =
       case query do
         %Ash.Query{} = query ->
-          Ash.Query.set_tenant(
-            query,
+          query
+          |> Ash.Query.set_tenant(
             opts[:tenant] || query.tenant || Map.get(record.__metadata__, :tenant)
           )
+          |> Ash.Query.as_of(opts[:as_of] || query.as_of || Map.get(record.__metadata__, :as_of))
 
         keyword ->
           resource
           |> Ash.Query.new()
           |> Ash.Query.set_tenant(opts[:tenant] || Map.get(record.__metadata__, :tenant))
+          |> Ash.Query.as_of(opts[:as_of] || Map.get(record.__metadata__, :as_of))
           |> Ash.Query.load(keyword, opts)
       end
 
@@ -3158,7 +3215,7 @@ defmodule Ash do
       end
     else
       {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
     end
   end
 
@@ -3217,6 +3274,12 @@ defmodule Ash do
     opts =
       case Map.fetch(record.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
+    opts =
+      case Map.fetch(record.__metadata__, :as_of) do
+        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 
@@ -3301,7 +3364,7 @@ defmodule Ash do
       end
     else
       {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
     end
   end
 
@@ -3381,7 +3444,7 @@ defmodule Ash do
       end
     else
       {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
     end
   end
 
@@ -3513,7 +3576,8 @@ defmodule Ash do
           changeset
       end
 
-    with {:ok, opts} <- CreateOptions.validate(opts),
+    with :ok <- check_as_of_option(changeset, opts),
+         {:ok, opts} <- CreateOptions.validate(opts),
          opts <- CreateOptions.to_options(opts),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
          {:ok, action} <- Ash.Helpers.get_action(resource, opts, :create, changeset.action) do
@@ -4107,9 +4171,12 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(changeset, opts)
 
+    checked = check_as_of_option(changeset, opts)
     opts = Keyword.put_new(opts, :tenant, Map.get(changeset.data.__metadata__, :tenant))
+    opts = Keyword.put_new(opts, :as_of, Map.get(changeset.data.__metadata__, :as_of))
 
-    with {:ok, opts} <- UpdateOpts.validate(opts),
+    with :ok <- checked,
+         {:ok, opts} <- UpdateOpts.validate(opts),
          opts <- UpdateOpts.to_options(opts),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
          {:ok, action} <- Ash.Helpers.get_action(resource, opts, :update, changeset.action),
@@ -4134,6 +4201,12 @@ defmodule Ash do
     opts =
       case Map.fetch(record.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
+    opts =
+      case Map.fetch(record.__metadata__, :as_of) do
+        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 
@@ -4241,9 +4314,17 @@ defmodule Ash do
         record -> record
       end
 
+    checked = check_as_of_option(changeset_or_record, opts)
+
     opts =
       case Map.fetch(data.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
+    opts =
+      case Map.fetch(data.__metadata__, :as_of) do
+        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 
@@ -4255,7 +4336,8 @@ defmodule Ash do
         record -> Ash.Changeset.new(record)
       end
 
-    with {:ok, opts} <- DestroyOpts.validate(opts),
+    with :ok <- checked,
+         {:ok, opts} <- DestroyOpts.validate(opts),
          opts <- DestroyOpts.to_options(opts),
          domain = Ash.Helpers.domain!(changeset, opts),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
@@ -4273,6 +4355,34 @@ defmodule Ash do
         :ok
     end
   end
+
+  # A changeset validated for its action holds its `as_of`; an option may repeat it, not change it.
+  defp check_as_of_option(
+         %Ash.Changeset{__validated_for_action__: action} = changeset,
+         opts
+       )
+       when not is_nil(action) do
+    case Keyword.get(opts, :as_of) do
+      nil ->
+        :ok
+
+      as_of ->
+        if Ash.Temporal.cast_write_as_of(changeset.resource, as_of) == changeset.as_of do
+          :ok
+        else
+          {:error,
+           Ash.Error.Framework.OptionAlreadySet.exception(
+             resource: changeset.resource,
+             action: action,
+             option: :as_of,
+             given: as_of,
+             set: changeset.as_of
+           )}
+        end
+    end
+  end
+
+  defp check_as_of_option(_changeset_or_record, _opts), do: :ok
 
   @transaction_opts_schema [
     tenant: [

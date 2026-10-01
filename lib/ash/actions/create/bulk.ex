@@ -66,48 +66,72 @@ defmodule Ash.Actions.Create.Bulk do
         if opts[:transaction] == :all &&
              Ash.DataLayer.data_layer_can?(resource, :transact) do
           notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
+          queued_notifications = Process.get(:ash_notifications)
 
-          Ash.DataLayer.transaction(
-            List.wrap(resource) ++ action.touches_resources,
-            fn ->
-              do_run(domain, resource, action, inputs, opts)
-            end,
-            opts[:timeout],
-            %{
-              type: :bulk_create,
-              metadata: %{
-                resource: resource,
-                action: action.name,
-                actor: opts[:actor]
+          try do
+            Ash.DataLayer.transaction(
+              List.wrap(resource) ++ action.touches_resources,
+              fn ->
+                do_run(domain, resource, action, inputs, opts)
+              end,
+              opts[:timeout],
+              %{
+                type: :bulk_create,
+                metadata: %{
+                  resource: resource,
+                  action: action.name,
+                  actor: opts[:actor]
+                },
+                tenant: opts[:tenant],
+                data_layer_context: opts[:data_layer_context] || %{}
               },
-              tenant: opts[:tenant],
-              data_layer_context: opts[:data_layer_context] || %{}
-            },
-            rollback_on_error?: false
-          )
-          |> case do
-            {:ok, bulk_result} ->
-              bulk_result =
-                if notify? do
-                  %{
+              rollback_on_error?: false
+            )
+            |> case do
+              {:ok, bulk_result} ->
+                bulk_result =
+                  if notify? do
+                    notifications =
+                      (bulk_result.notifications || []) ++
+                        Ash.Actions.Helpers.take_queued_notifications()
+
+                    if opts[:return_notifications?] do
+                      %{bulk_result | notifications: notifications}
+                    else
+                      remaining_notifications = Ash.Notifier.notify(notifications)
+
+                      Ash.Actions.Helpers.warn_missed!(resource, action, %{
+                        resource_notifications: remaining_notifications
+                      })
+
+                      %{bulk_result | notifications: nil}
+                    end
+                  else
                     bulk_result
-                    | notifications:
-                        (bulk_result.notifications || []) ++
-                          Ash.Actions.Helpers.take_queued_notifications()
-                  }
-                else
-                  bulk_result
-                end
+                  end
 
-              handle_bulk_result(bulk_result, resource, action, opts)
+                handle_bulk_result(bulk_result, resource, action, opts)
 
-            {:error, error} ->
-              handle_bulk_result(
-                %Ash.BulkResult{errors: [error], status: :error},
-                resource,
-                action,
-                opts
-              )
+              {:error, error} ->
+                Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
+                handle_bulk_result(
+                  %Ash.BulkResult{errors: [error], status: :error},
+                  resource,
+                  action,
+                  opts
+                )
+            end
+          rescue
+            error ->
+              if notify?,
+                do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
+              reraise error, __STACKTRACE__
+          after
+            if notify? do
+              Process.delete(:ash_started_transaction?)
+            end
           end
         else
           domain
@@ -644,6 +668,7 @@ defmodule Ash.Actions.Create.Bulk do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
 
       notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
+      queued_notifications = Process.get(:ash_notifications)
 
       try do
         Ash.DataLayer.transaction(
@@ -706,6 +731,8 @@ defmodule Ash.Actions.Create.Bulk do
             end)
 
           {:error, error} ->
+            Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
             # Convert batch changesets to error tuples for after_transaction processing
             error_tagged_results =
               Enum.map(batch, fn changeset ->
@@ -736,6 +763,10 @@ defmodule Ash.Actions.Create.Bulk do
               end
             end)
         end
+      rescue
+        error ->
+          if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+          reraise error, __STACKTRACE__
       after
         if notify? do
           notifications = Ash.Actions.Helpers.take_queued_notifications()
@@ -1458,28 +1489,14 @@ defmodule Ash.Actions.Create.Bulk do
               tagged_results
 
             {:ok, result} ->
-              result =
-                if tenant = opts[:tenant] do
-                  Enum.map(result, fn record ->
-                    %{record | __metadata__: Map.put(record.__metadata__, :tenant, tenant)}
-                  end)
-                else
-                  result
-                end
+              result = Ash.Actions.Helpers.stamp_record_metadata(result, resource, opts)
 
               Ash.Actions.Helpers.select(result, %{resource: resource, select: action_select})
 
             {:partial_success, failed, results} ->
               Process.put({:any_success?, ref}, true)
 
-              results =
-                if tenant = opts[:tenant] do
-                  Enum.map(results, fn record ->
-                    %{record | __metadata__: Map.put(record.__metadata__, :tenant, tenant)}
-                  end)
-                else
-                  results
-                end
+              results = Ash.Actions.Helpers.stamp_record_metadata(results, resource, opts)
 
               selected_results =
                 Ash.Actions.Helpers.select(results, %{resource: resource, select: action_select})

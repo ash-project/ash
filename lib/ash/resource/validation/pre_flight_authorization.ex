@@ -5,6 +5,10 @@
 defmodule Ash.Resource.Validation.PreFlightAuthorization do
   @moduledoc "Validates that the action is being run in a pre-flight authorization context (i.e. `Ash.can?/3`)."
   use Ash.Resource.Validation
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   import Ash.Gettext
 
   @impl true
