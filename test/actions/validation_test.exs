@@ -616,4 +616,82 @@ defmodule Ash.Test.Actions.ValidationTest do
       )
     end
   end
+
+  describe "validations returning multiple errors" do
+    defmodule MultipleErrors do
+      @moduledoc false
+      use Ash.Resource.Validation
+
+      @impl true
+      def validate(_changeset, _opts, _context) do
+        {:error, ["first error", "second error"]}
+      end
+    end
+
+    defmodule NeverRuns do
+      @moduledoc false
+      use Ash.Resource.Validation
+
+      @impl true
+      def validate(_changeset, _opts, _context) do
+        {:error, "this validation should have been skipped"}
+      end
+    end
+
+    defmodule MultiErrorProfile do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Domain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private? true
+      end
+
+      attributes do
+        uuid_primary_key :id
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*, update: :*]
+
+        create :multiple_errors do
+          validate {MultipleErrors, []}
+        end
+
+        create :only_when_valid do
+          validate {MultipleErrors, []}
+
+          validate {NeverRuns, []} do
+            only_when_valid? true
+          end
+        end
+      end
+    end
+
+    test "a validation returning a list of errors produces one error per item" do
+      assert {:error, error} =
+               MultiErrorProfile
+               |> Ash.Changeset.for_create(:multiple_errors, %{})
+               |> Ash.create()
+
+      assert [
+               %Ash.Error.Changes.InvalidChanges{message: "first error"},
+               %Ash.Error.Changes.InvalidChanges{message: "second error"}
+             ] = error.errors
+    end
+
+    test "`only_when_valid?` skips validations after a previous one returned multiple errors" do
+      assert {:error, error} =
+               MultiErrorProfile
+               |> Ash.Changeset.for_create(:only_when_valid, %{})
+               |> Ash.create()
+
+      assert [
+               %Ash.Error.Changes.InvalidChanges{message: "first error"},
+               %Ash.Error.Changes.InvalidChanges{message: "second error"}
+             ] = error.errors
+    end
+  end
 end
