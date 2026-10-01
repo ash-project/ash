@@ -78,7 +78,11 @@ defmodule Ash.Resource.Calculation do
     allow_nil?: [
       type: :boolean,
       default: true,
-      doc: "Whether or not the calculation can return nil."
+      doc: """
+      Whether or not the calculation can return nil.
+
+      When `false`, the calculation must never return `nil`. Ash does not validate the result, so a `nil` will not raise an error.
+      """
     ],
     filterable?: [
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
