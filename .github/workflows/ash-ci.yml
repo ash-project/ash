@@ -142,7 +142,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.repository_owner == 'ash-project'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: erlef/mix-dependency-submission@764980370c6cdddd16b9c00141a628203dee1b7b # v1.3.3
+      - uses: erlef/mix-dependency-submission@257b2df58056895d7a0f3f7dba5b0520d71d9a46 # v1.3.4
     permissions:
       # Give the default GITHUB_TOKEN write permission to call the dependencies API
       contents: write
@@ -411,7 +411,7 @@ jobs:
     steps:
       - name: Deploy to GitHub pages
         id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
   conventional-commit:
     name: mix git_ops.check_message
     runs-on: ubuntu-latest
@@ -581,7 +581,7 @@ jobs:
         with:
           task: credo --format sarif > results.sarif
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: results.sarif
           category: credo
