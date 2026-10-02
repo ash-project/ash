@@ -3206,6 +3206,16 @@ defmodule Ash.Changeset do
     |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
     |> maybe_set_as_of(opts[:as_of] || changeset.as_of)
     |> Map.put(:action_type, action.type)
+    |> apply_action_filter(action)
+  end
+
+  defp apply_action_filter(changeset, %{filter: nil}), do: changeset
+
+  defp apply_action_filter(changeset, action) do
+    case Map.get(action, :filter) do
+      nil -> changeset
+      action_filter -> filter(changeset, action_filter)
+    end
   end
 
   # Apply an `as_of` from opts without clobbering an unset changeset when there is none.

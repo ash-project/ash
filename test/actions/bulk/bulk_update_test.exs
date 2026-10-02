@@ -431,7 +431,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
 
       update :update_with_filter do
-        change filter(expr(title == "foo"))
+        change filter_where(expr(title == "foo"))
       end
 
       update :update_fails_on_title2 do
