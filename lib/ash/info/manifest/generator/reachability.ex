@@ -346,7 +346,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
           is_resource?(type) ->
             traverse_resource_ref(type, visited, opts)
 
-          Code.ensure_loaded?(type) == true ->
+          TypeResolver.module_available?(type) ->
             traverse_field_constraints(constraints, visited, opts)
 
           true ->
@@ -451,7 +451,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
   defp calculation_arguments(_field), do: []
 
   defp is_resource?(module) when is_atom(module) do
-    Code.ensure_loaded?(module) == true and Ash.Resource.Info.resource?(module)
+    TypeResolver.module_available?(module) and Ash.Resource.Info.resource?(module)
   end
 
   defp is_resource?(_), do: false

@@ -209,9 +209,7 @@ defmodule Ash.Info.Manifest.Generator.OperatorResolver do
 
   defp candidate_types(%Type{module: module} = field_type)
        when is_atom(module) and not is_nil(module) do
-    Code.ensure_loaded(module)
-
-    if Ash.Type.NewType.new_type?(module) do
+    if TypeResolver.module_available?(module) and Ash.Type.NewType.new_type?(module) do
       base = Ash.Type.NewType.subtype_of(module)
       [field_type, TypeResolver.resolve(base)]
     else
@@ -225,9 +223,8 @@ defmodule Ash.Info.Manifest.Generator.OperatorResolver do
 
   defp overloaded_operator_names(%Type{module: module})
        when is_atom(module) and not is_nil(module) do
-    Code.ensure_loaded(module)
-
-    if function_exported?(module, :operator_overloads, 0) do
+    if TypeResolver.module_available?(module) and
+         function_exported?(module, :operator_overloads, 0) do
       module.operator_overloads()
       |> Map.keys()
       |> MapSet.new()

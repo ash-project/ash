@@ -151,7 +151,7 @@ defmodule Ash.Info.Manifest.Generator do
     named_type_entries =
       standalone_types
       |> Enum.sort_by(fn module ->
-        if is_atom(module) and Code.ensure_loaded?(module) == true do
+        if is_atom(module) and TypeResolver.module_available?(module) do
           Module.split(module)
         else
           [to_string(module)]
