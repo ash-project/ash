@@ -8,6 +8,35 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.34.0](https://github.com/ash-project/ash/compare/v3.33.11...v3.34.0) (2026-10-03)
+
+
+
+
+### Features:
+
+* add temporal resources by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* record the define line on code interface functions (#2971) by Onni Hakala [(#2971)](https://github.com/ash-project/ash/pull/2971)
+
+### Bug Fixes:
+
+* add action name to JSON-serialized manifest dumps (#2982) by [@Torkan](https://github.com/Torkan) [(#2982)](https://github.com/ash-project/ash/pull/2982)
+
+* properly dump atomic values in ETS data layer by [@zachdaniel](https://github.com/zachdaniel)
+
+* give modify_query the read action's arguments when running aggregates (#2980) by Alt-iOS [(#2980)](https://github.com/ash-project/ash/pull/2980)
+
+* handle forbidden placeholder errors properly everywhere by [@zachdaniel](https://github.com/zachdaniel)
+
+* various fixes for notification accumulation by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly combine filters during atomic upgrade by [@zachdaniel](https://github.com/zachdaniel)
+
+* keep the original literal default when a compile-time cast is not escapable (#2966) by alter [(#2966)](https://github.com/ash-project/ash/pull/2966)
+
 ## [v3.33.11](https://github.com/ash-project/ash/compare/v3.33.10...v3.33.11) (2026-09-25)
 
 
