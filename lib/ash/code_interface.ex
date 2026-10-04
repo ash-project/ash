@@ -485,6 +485,8 @@ defmodule Ash.CodeInterface do
   # functions inside the macro's quoted output meant that the whole thing was
   # interpreted by `erl_eval` in every resource's `__before_compile__`, which made
   # code interfaces the most expensive part of compiling a resource.
+  #
+  # sobelow_skip ["DOS.StringToAtom", "DOS.BinToAtom"]
   def __define_interface__(domain, resource, definitions, interface_env) do
     calculation_interfaces =
       case definitions do
