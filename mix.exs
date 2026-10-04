@@ -382,7 +382,7 @@ defmodule Ash.MixProject do
   defp deps do
     [
       # DSLs
-      {:spark, ">= 2.6.0"},
+      {:spark, "~> 2.7 and >= 2.7.6"},
       # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.14"},
       # Used by the ETS data layer

@@ -73,6 +73,7 @@ defmodule Ash.Policy.Authorizer do
     name: :authorize_if,
     describe: "If the check is true, the request is authorized, otherwise run remaining checks.",
     args: [:check],
+    depend_on_only_behaviour_modules: [:check],
     schema: @check_schema,
     examples: [
       "authorize_if logged_in()",
@@ -89,6 +90,7 @@ defmodule Ash.Policy.Authorizer do
     name: :forbid_if,
     describe: "If the check is true, the request is forbidden, otherwise run remaining checks.",
     args: [:check],
+    depend_on_only_behaviour_modules: [:check],
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
@@ -105,6 +107,7 @@ defmodule Ash.Policy.Authorizer do
     name: :authorize_unless,
     describe: "If the check is true, run remaining checks, otherwise the request is authorized.",
     args: [:check],
+    depend_on_only_behaviour_modules: [:check],
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
@@ -121,6 +124,7 @@ defmodule Ash.Policy.Authorizer do
     name: :forbid_unless,
     describe: "If the check is true, run remaining checks, otherwise the request is forbidden.",
     args: [:check],
+    depend_on_only_behaviour_modules: [:check],
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
@@ -202,7 +206,7 @@ defmodule Ash.Policy.Authorizer do
     ],
     args: [{:optional, :condition}],
     target: Ash.Policy.Policy,
-    no_depend_modules: [:condition],
+    depend_on_only_behaviour_modules: [:condition],
     transform: {Ash.Policy.Policy, :transform, []},
     entities: [
       policies: [
@@ -262,7 +266,7 @@ defmodule Ash.Policy.Authorizer do
       ]
     ],
     args: [:condition],
-    no_depend_modules: [:condition],
+    depend_on_only_behaviour_modules: [:condition],
     recursive_as: :policies,
     entities: [
       policies: [
@@ -355,6 +359,7 @@ defmodule Ash.Policy.Authorizer do
       ]
     ],
     args: [:fields, {:optional, :condition}],
+    depend_on_only_behaviour_modules: [:condition],
     target: Ash.Policy.FieldPolicy,
     transform: {Ash.Policy.FieldPolicy, :transform, []},
     entities: [
