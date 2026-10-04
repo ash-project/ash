@@ -9,10 +9,10 @@ SPDX-License-Identifier: MIT
 > ### Experimental {: .warning}
 >
 > Temporal resources are experimental, and the API may change. In production they need
-> `ash_postgres` running on **PostgreSQL 19+**, which is still in beta itself. It's what gives
-> us SQL:2011 application-time period tables: `PRIMARY KEY (... WITHOUT OVERLAPS)`, `PERIOD`
-> foreign keys, and `UPDATE/DELETE ... FOR PORTION OF`. This guide is written against
-> PostgreSQL for that reason. `Ash.DataLayer.Ets` supports temporal resources too, in memory.
+> `ash_postgres` running on **PostgreSQL 18+**. It's what gives us SQL:2011 application-time
+> period tables: `PRIMARY KEY (... WITHOUT OVERLAPS)` and `PERIOD` foreign keys. This guide is
+> written against PostgreSQL for that reason. `Ash.DataLayer.Ets` supports temporal resources
+> too, in memory.
 
 Your standard resource only knows what's true right now. Update a row, and whatever it said
 before is gone. A *temporal* resource keeps all of it. Every row is valid for a *period*, a
@@ -157,6 +157,16 @@ sub
 > `manage_relationship`, and identity pre-checks and eager checks. For writes like those, pass
 > `as_of` as the **action option** (`for_create(:create, input, as_of: ...)`), not with
 > `Ash.Changeset.as_of/2` afterwards. By then it's too late.
+
+> ### Where the split happens {: .info}
+>
+> SQL:2011 has a statement for exactly this: `UPDATE/DELETE ... FOR PORTION OF`. It was slated
+> for PostgreSQL 19, and this feature was first built on it, but PostgreSQL reverted it before
+> release: concurrent writes under `READ COMMITTED` could silently lose part of an update. So
+> `ash_postgres` splits versions itself instead, in a single statement, on PostgreSQL 18, and
+> makes sure concurrent writes don't lose anything. Once PostgreSQL ships `FOR PORTION OF`
+> natively, `ash_postgres` will use it. See the
+> [AshPostgres guide](https://hexdocs.pm/ash_postgres/temporal-resources.html) for the details.
 
 ### When no version is valid at that instant
 
@@ -309,12 +319,19 @@ See the [changes](/documentation/topics/resources/changes.md#temporal-safety),
 
 ## Limitations
 
-- **`ash_postgres` on PostgreSQL 19+, or `Ash.DataLayer.Ets`.** Every other data layer reports
+- **`ash_postgres` on PostgreSQL 18+, or `Ash.DataLayer.Ets`.** Every other data layer reports
   `Ash.DataLayer.can?(:temporal)` as `false`, and a resource that declares itself temporal on
   one of them won't compile. The two supported data layers behave the same on everything above,
   in different ways. Postgres keys the table `PRIMARY KEY (id, valid_at WITHOUT OVERLAPS)` and
-  splits rows with `FOR PORTION OF`. ETS puts the period in its storage key and rewrites the
-  versions it affects.
+  splits a version by writing the slice inside the write's period and putting back the rest,
+  in one statement. ETS puts the period in its storage key and rewrites the versions it affects.
+- **Concurrent writes to one record are retried.** Under `READ COMMITTED`, a write locks the
+  versions it's about to split. If another transaction changed one of them in the meantime, the
+  write does nothing and runs again. Two upserts that race to create the same record are
+  retried the same way. After 25 conflicts in a row, which takes many transactions writing the
+  same slice of the same record at once, the action fails with
+  `AshPostgres.Temporal.WriteConflict`, and retrying it is safe. Under `REPEATABLE READ` or
+  `SERIALIZABLE`, PostgreSQL raises a serialization failure instead, and retrying is up to you.
 - **`Ash.DataLayer.Ets` writes aren't transactional.** A split deletes the version and then
   writes both halves, in that order, so someone reading at the same time can see the record
   missing, but never as two versions at once. Overlaps are checked, not locked, so two creates
