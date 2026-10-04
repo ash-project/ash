@@ -8,6 +8,21 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.34.3](https://github.com/ash-project/ash/compare/v3.34.2...v3.34.3) (2026-10-04)
+
+
+
+
+### Bug Fixes:
+
+* don't create atoms when filtering on an atom by [@zachdaniel](https://github.com/zachdaniel)
+
+Fixes CVE-2026-94201
+
+* track calculation nullability through dynamic calculations by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle defaults in aggregate nullability for manifests by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.34.2](https://github.com/ash-project/ash/compare/v3.34.1...v3.34.2) (2026-10-04)
 
 
