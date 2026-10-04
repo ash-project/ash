@@ -8,6 +8,19 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.34.1](https://github.com/ash-project/ash/compare/v3.34.0...v3.34.1) (2026-10-04)
+
+
+
+
+### Bug Fixes:
+
+* manifest: wait for type modules still compiling instead of treating them as missing by [@Torkan](https://github.com/Torkan) [(#2986)](https://github.com/ash-project/ash/pull/2986)
+
+### Performance Improvements:
+
+* speed up compiles and lower module size by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.34.0](https://github.com/ash-project/ash/compare/v3.33.11...v3.34.0) (2026-10-03)
 
 
