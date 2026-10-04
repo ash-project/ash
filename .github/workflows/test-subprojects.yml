@@ -72,7 +72,7 @@ jobs:
         with:
           egress-policy: audit
 
-      - run: sudo apt-get install --yes erlang-dev
+      - run: sudo apt-get update && sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{matrix.project.org}}/${{matrix.project.name}}

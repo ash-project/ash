@@ -1047,12 +1047,37 @@ jobs:
     runs-on: ubuntu-latest
     name: Hex Publish
     steps:
+      - name: Check if version is already on Hex
+        id: hex-check
+        env:
+          PACKAGE: ${{ github.event.repository.name }}
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "https://hex.pm/api/packages/$PACKAGE/releases/$VERSION")
+          case "$STATUS" in
+            200)
+              echo "$PACKAGE@$VERSION is already on hex — skipping publish"
+              echo "on_hex=true" >> $GITHUB_OUTPUT
+              ;;
+            404)
+              echo "$PACKAGE@$VERSION is not on hex — publishing"
+              echo "on_hex=false" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Unexpected status $STATUS from hex.pm when checking $PACKAGE@$VERSION"
+              exit 1
+              ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ steps.hex-check.outputs.on_hex == 'false' }}
       - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
-        if: ${{inputs.rustler-precompiled-module}}
+        if: ${{ steps.hex-check.outputs.on_hex == 'false' && inputs.rustler-precompiled-module }}
         with:
           task: rustler_precompiled.download ${{inputs.rustler-precompiled-module}} --only-local --all --print
       - uses: team-alembic/staple-actions/actions/mix-hex-publish@325af91762b51931c459503300c22c057251b3cf # main
+        if: ${{ steps.hex-check.outputs.on_hex == 'false' }}
         with:
           mix-env: dev
           hex-api-key: ${{secrets.HEX_API_KEY}}
