@@ -46,10 +46,7 @@ defmodule Ash.Resource.Transformers.CacheActionInputs do
           )
         end
 
-      inputs
-      |> Enum.reduce(dsl_state, fn input, dsl_state ->
-        Transformer.persist(dsl_state, {:action_inputs, action.name, input}, true)
-      end)
+      dsl_state
       |> Transformer.persist({:action_inputs, action.name}, MapSet.new(inputs))
       |> then(&cache_action_select(&1, action))
       |> Transformer.persist(

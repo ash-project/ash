@@ -27,28 +27,6 @@ defmodule Ash.CodeInterface do
   end
 
   @doc false
-  # Defines the `def` in `do` with the line of the `define` that declared it, so its
-  # debug info points editors at that line. The file and the body's lines stay this
-  # module's, so stacktraces are unchanged.
-  defmacro define_at(interface, env, do: {:def, meta, [call | body]}) do
-    body =
-      case body do
-        [[do: body]] -> Macro.escape(body, unquote: true)
-        [] -> nil
-      end
-
-    quote do
-      Ash.CodeInterface.eval_definition(
-        unquote(Macro.escape(call, unquote: true)),
-        unquote(body),
-        unquote(Keyword.delete(meta, :line)),
-        unquote(interface),
-        unquote(env)
-      )
-    end
-  end
-
-  @doc false
   # The head and body reach the `def` through the binding, so the evaluator only
   # substitutes two variables instead of walking the escaped body node by node.
   # sobelow_skip ["RCE.CodeModule"]
@@ -492,700 +470,632 @@ defmodule Ash.CodeInterface do
   ```
   """
   defmacro define_interface(domain, resource, definitions \\ nil) do
-    quote bind_quoted: [domain: domain, resource: resource, definitions: definitions],
-          generated: true,
-          location: :keep do
-      interface_env = __ENV__
+    quote generated: true do
+      Ash.CodeInterface.__define_interface__(
+        unquote(domain),
+        unquote(resource),
+        unquote(definitions),
+        __ENV__
+      )
+    end
+  end
 
-      calculation_interfaces =
-        case definitions do
-          nil ->
-            Ash.Resource.Info.calculation_interfaces(resource)
+  @doc false
+  # Does the work of `define_interface/3` as compiled code. Building the interface
+  # functions inside the macro's quoted output meant that the whole thing was
+  # interpreted by `erl_eval` in every resource's `__before_compile__`, which made
+  # code interfaces the most expensive part of compiling a resource.
+  def __define_interface__(domain, resource, definitions, interface_env) do
+    calculation_interfaces =
+      case definitions do
+        nil ->
+          Ash.Resource.Info.calculation_interfaces(resource)
 
-          definitions ->
-            Enum.filter(definitions, &match?(%Ash.Resource.CalculationInterface{}, &1))
-        end
+        definitions ->
+          Enum.filter(definitions, &match?(%Ash.Resource.CalculationInterface{}, &1))
+      end
 
-      interfaces =
-        case definitions do
-          nil ->
-            Ash.Resource.Info.interfaces(resource)
+    interfaces =
+      case definitions do
+        nil ->
+          Ash.Resource.Info.interfaces(resource)
 
-          definitions ->
-            Enum.filter(definitions, &match?(%Ash.Resource.Interface{}, &1))
-        end
+        definitions ->
+          Enum.filter(definitions, &match?(%Ash.Resource.Interface{}, &1))
+      end
 
-      interfaces_for_defaults =
-        Enum.group_by(calculation_interfaces, fn interface ->
-          {interface.name, Enum.count(interface.args, &is_atom/1), Enum.count(interface.args)}
-        end)
+    interfaces_for_defaults =
+      Enum.group_by(calculation_interfaces, fn interface ->
+        {interface.name, Enum.count(interface.args, &is_atom/1), Enum.count(interface.args)}
+      end)
 
-      for {{name, arity, optional_arity}, interfaces} <- interfaces_for_defaults do
-        args =
-          case interfaces do
-            [%{args: args, calculation: calculation}] ->
-              calculation = Ash.Resource.Info.calculation(resource, calculation)
+    for {{name, arity, optional_arity}, interfaces} <- interfaces_for_defaults do
+      args =
+        case interfaces do
+          [%{args: args, calculation: calculation}] ->
+            calculation = Ash.Resource.Info.calculation(resource, calculation)
 
-              {arg_bindings, _arg_access} =
-                args
-                |> Kernel.||([])
-                |> Ash.CodeInterface.unwrap_calc_interface_args(
-                  resource,
-                  calculation.arguments,
-                  true
-                )
+            {arg_bindings, _arg_access} =
+              args
+              |> Kernel.||([])
+              |> Ash.CodeInterface.unwrap_calc_interface_args(
+                resource,
+                calculation.arguments,
+                true
+              )
 
-              arg_bindings
+            arg_bindings
 
-            multiple ->
-              multiple
-              |> Enum.map(fn interface ->
-                interface.args
-                |> Enum.flat_map(fn
-                  {:optional, value} ->
-                    calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
-                    [Ash.CodeInterface.default_calc_value(resource, calculation.arguments, value)]
-
-                  {:optional, _, value} ->
-                    [value]
-
-                  _ ->
-                    []
-                end)
-              end)
-              |> Enum.uniq()
-              |> case do
-                [_] ->
-                  interface = hd(multiple)
+          multiple ->
+            multiple
+            |> Enum.map(fn interface ->
+              interface.args
+              |> Enum.flat_map(fn
+                {:optional, value} ->
                   calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
+                  [Ash.CodeInterface.default_calc_value(resource, calculation.arguments, value)]
 
-                  {arg_bindings, _arg_access} =
-                    interface.args
-                    |> Kernel.||([])
-                    |> Ash.CodeInterface.unwrap_calc_interface_args(
-                      resource,
-                      calculation.arguments,
-                      true
-                    )
+                {:optional, _, value} ->
+                  [value]
 
-                  arg_bindings
+                _ ->
+                  []
+              end)
+            end)
+            |> Enum.uniq()
+            |> case do
+              [_] ->
+                interface = hd(multiple)
+                calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
 
-                _duplicates ->
-                  raise """
-                  The generated function #{name}/#{arity + optional_arity} would have
-                  multiple different sets of default values for arguments. Please use a different
-                  name for conflicting code interface functions.
-                  """
-              end
-          end
+                {arg_bindings, _arg_access} =
+                  interface.args
+                  |> Kernel.||([])
+                  |> Ash.CodeInterface.unwrap_calc_interface_args(
+                    resource,
+                    calculation.arguments,
+                    true
+                  )
 
-        {safe_name, bang_name} = Ash.CodeInterface.resolve_calc_method_names(name)
+                arg_bindings
 
-        Ash.CodeInterface.define_at hd(interfaces), interface_env do
+              _duplicates ->
+                raise """
+                The generated function #{name}/#{arity + optional_arity} would have
+                multiple different sets of default values for arguments. Please use a different
+                name for conflicting code interface functions.
+                """
+            end
+        end
+
+      {safe_name, bang_name} = Ash.CodeInterface.resolve_calc_method_names(name)
+
+      Ash.CodeInterface.Define.define_at(
+        hd(interfaces),
+        interface_env,
+        quote location: :keep, generated: true do
           def unquote(bang_name)(unquote_splicing(args), opts \\ [])
         end
+      )
 
-        Ash.CodeInterface.define_at hd(interfaces), interface_env do
+      Ash.CodeInterface.Define.define_at(
+        hd(interfaces),
+        interface_env,
+        quote location: :keep, generated: true do
           def unquote(safe_name)(unquote_splicing(args), opts \\ [])
         end
-      end
+      )
+    end
 
-      for interface <- calculation_interfaces do
-        calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
-        custom_inputs = Macro.escape(interface.custom_inputs)
+    for interface <- calculation_interfaces do
+      calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
+      custom_inputs = Macro.escape(interface.custom_inputs)
 
-        {arg_bindings, arg_access} =
-          interface.args
-          |> Kernel.||([])
-          |> Ash.CodeInterface.unwrap_calc_interface_args(resource, calculation.arguments)
+      {arg_bindings, arg_access} =
+        interface.args
+        |> Kernel.||([])
+        |> Ash.CodeInterface.unwrap_calc_interface_args(resource, calculation.arguments)
 
-        {safe_name, bang_name} = Ash.CodeInterface.resolve_calc_method_names(interface.name)
+      {safe_name, bang_name} = Ash.CodeInterface.resolve_calc_method_names(interface.name)
 
-        opts_location = Enum.count(arg_bindings)
-        interface_options = Ash.Resource.Interface.interface_options(:calculate, nil)
+      opts_location = Enum.count(arg_bindings)
+      interface_options = Ash.Resource.Interface.interface_options(:calculate, nil)
 
-        @doc """
-             #{calculation.description || "Calculates #{calculation.name} action on #{inspect(resource)}."}
+      calculation_doc =
+        """
+        #{calculation.description || "Calculates #{calculation.name} action on #{inspect(resource)}."}
 
-             #{Ash.CodeInterface.describe_calculation(resource, calculation, interface.args, interface.exclude_inputs, interface.custom_inputs)}
+        #{Ash.CodeInterface.describe_calculation(resource, calculation, interface.args, interface.exclude_inputs, interface.custom_inputs)}
 
-             ### Options
+        ### Options
 
-             #{interface_options.docs()}
-             """
-             |> Ash.CodeInterface.trim_double_newlines()
-        @doc spark_opts: [
-               {opts_location, interface_options.schema()}
-             ]
-        Ash.CodeInterface.define_at interface, interface_env do
+        #{interface_options.docs()}
+        """
+        |> Ash.CodeInterface.trim_double_newlines()
+
+      Ash.CodeInterface.Define.put_doc(interface_env, calculation_doc)
+
+      Ash.CodeInterface.Define.put_doc(interface_env,
+        spark_opts: [
+          {opts_location, interface_options.schema()}
+        ]
+      )
+
+      Ash.CodeInterface.Define.define_at(
+        interface,
+        interface_env,
+        quote location: :keep, generated: true do
           def unquote(bang_name)(unquote_splicing(arg_bindings), opts) do
-            {refs, arguments, record} =
-              Enum.reduce(
-                [unquote_splicing(arg_access)],
-                {opts[:refs] || %{}, opts[:args] || %{}, nil},
-                fn config, {refs, arguments, record} ->
-                  case config[:type] do
-                    :_record ->
-                      {refs, arguments, config[:value]}
-
-                    :both ->
-                      {Map.put(refs, config[:name], config[:value]),
-                       Map.put(arguments, config[:name], config[:value]), record}
-
-                    :ref ->
-                      {Map.put(refs, config[:name], config[:value]), arguments, record}
-
-                    :arg ->
-                      {refs, Map.put(arguments, config[:name], config[:value]), record}
-                  end
-                end
-              )
-
-            case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
-                   Map.has_key?(arguments, input) || Map.has_key?(arguments, to_string(input))
-                 end) do
-              [] ->
-                :ok
-
-              inputs ->
-                raise ArgumentError,
-                      "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.calculation)}/#{unquote(Enum.count(arg_bindings) + 1)}"
-            end
-
-            {arguments, custom_input_errors} =
-              Ash.CodeInterface.handle_custom_inputs(
-                arguments,
-                unquote(custom_inputs),
-                unquote(resource)
-              )
-
-            case custom_input_errors do
-              [] ->
-                opts =
-                  [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
-
-                Ash.calculate!(unquote(resource), unquote(interface.calculation), opts)
-
-              errors ->
-                raise Ash.Error.to_error_class(errors)
-            end
+            Ash.CodeInterface.calculate_interface(
+              [unquote_splicing(arg_access)],
+              opts,
+              unquote(resource),
+              unquote(domain),
+              unquote(interface.calculation),
+              unquote(interface.exclude_inputs || []),
+              unquote(custom_inputs),
+              unquote(Enum.count(arg_bindings) + 1),
+              true
+            )
           end
         end
+      )
 
-        @doc """
-             #{calculation.description || "Calculates #{calculation.name} action on #{inspect(resource)}."}
+      Ash.CodeInterface.Define.put_doc(interface_env, calculation_doc)
 
-             #{Ash.CodeInterface.describe_calculation(resource, calculation, interface.args, interface.exclude_inputs, interface.custom_inputs)}
+      Ash.CodeInterface.Define.put_doc(interface_env,
+        spark_opts: [
+          {opts_location, interface_options.schema()}
+        ]
+      )
 
-             ### Options
-
-             #{interface_options.docs()}
-             """
-             |> Ash.CodeInterface.trim_double_newlines()
-        @doc spark_opts: [
-               {opts_location, interface_options.schema()}
-             ]
-        Ash.CodeInterface.define_at interface, interface_env do
+      Ash.CodeInterface.Define.define_at(
+        interface,
+        interface_env,
+        quote location: :keep, generated: true do
           def unquote(safe_name)(unquote_splicing(arg_bindings), opts) do
-            {refs, arguments, record} =
-              Enum.reduce(
-                [unquote_splicing(arg_access)],
-                {opts[:refs] || %{}, opts[:args] || %{}, nil},
-                fn config, {refs, arguments, record} ->
-                  case config[:type] do
-                    :_record ->
-                      {refs, arguments, config[:value]}
-
-                    :both ->
-                      {Map.put(refs, config[:name], config[:value]),
-                       Map.put(arguments, config[:name], config[:value]), record}
-
-                    :ref ->
-                      {Map.put(refs, config[:name], config[:value]), arguments, record}
-
-                    :arg ->
-                      {refs, Map.put(arguments, config[:name], config[:value]), record}
-                  end
-                end
-              )
-
-            case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
-                   Map.has_key?(arguments, input) || Map.has_key?(arguments, to_string(input))
-                 end) do
-              [] ->
-                :ok
-
-              inputs ->
-                raise ArgumentError,
-                      "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.calculation)}/#{unquote(Enum.count(arg_bindings) + 1)}"
-            end
-
-            {arguments, custom_input_errors} =
-              Ash.CodeInterface.handle_custom_inputs(
-                arguments,
-                unquote(custom_inputs),
-                unquote(resource)
-              )
-
-            case custom_input_errors do
-              [] ->
-                opts =
-                  [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
-
-                Ash.calculate(unquote(resource), unquote(interface.calculation), opts)
-
-              errors ->
-                {:error, Ash.Error.to_error_class(errors)}
-            end
+            Ash.CodeInterface.calculate_interface(
+              [unquote_splicing(arg_access)],
+              opts,
+              unquote(resource),
+              unquote(domain),
+              unquote(interface.calculation),
+              unquote(interface.exclude_inputs || []),
+              unquote(custom_inputs),
+              unquote(Enum.count(arg_bindings) + 1),
+              false
+            )
           end
         end
+      )
+    end
+
+    for interface <- interfaces do
+      action = Ash.CodeInterface.require_action(resource, interface)
+
+      filter_keys =
+        cond do
+          action.type not in [:read, :update, :destroy] ->
+            []
+
+          interface.get_by_identity ->
+            Ash.Resource.Info.identity(resource, interface.get_by_identity).keys
+
+          interface.get_by ->
+            interface.get_by
+
+          true ->
+            []
+        end
+
+      arg_names = Ash.CodeInterface.without_optional(interface.args || [])
+
+      all_args =
+        List.wrap(filter_keys) ++ arg_names
+
+      arg_params = {:%{}, [], Enum.map(arg_names, fn arg -> {arg, {arg, [], Elixir}} end)}
+      filter_params = {:%{}, [], Enum.map(filter_keys, fn key -> {key, {key, [], Elixir}} end)}
+
+      arg_vars_function =
+        filter_keys
+        |> List.wrap()
+        |> Enum.concat(interface.args || [])
+        |> Enum.map(fn
+          {:optional, key} ->
+            default = Ash.CodeInterface.default_value(resource, action, key)
+            {:\\, [], [{key, [], Elixir}, default]}
+
+          key ->
+            {key, [], Elixir}
+        end)
+
+      if Enum.uniq(all_args) != all_args do
+        raise """
+        Arguments #{inspect(all_args)} for #{interface.name} are not unique!
+        """
       end
 
-      for interface <- interfaces do
-        action = Ash.CodeInterface.require_action(resource, interface)
-
-        filter_keys =
-          cond do
-            action.type not in [:read, :update, :destroy] ->
-              []
-
-            interface.get_by_identity ->
-              Ash.Resource.Info.identity(resource, interface.get_by_identity).keys
-
-            interface.get_by ->
-              interface.get_by
-
-            true ->
-              []
-          end
-
-        arg_names = Ash.CodeInterface.without_optional(interface.args || [])
-
-        all_args =
-          List.wrap(filter_keys) ++ arg_names
-
-        arg_vars = Enum.map(all_args, &{&1, [], Elixir})
-
-        arg_params = {:%{}, [], Enum.map(arg_names, fn arg -> {arg, {arg, [], Elixir}} end)}
-        filter_params = {:%{}, [], Enum.map(filter_keys, fn key -> {key, {key, [], Elixir}} end)}
-
-        arg_vars_function =
-          filter_keys
-          |> List.wrap()
-          |> Enum.concat(interface.args || [])
-          |> Enum.map(fn
-            {:optional, key} ->
-              default = Ash.CodeInterface.default_value(resource, action, key)
-              {:\\, [], [{key, [], Elixir}, default]}
-
-            key ->
-              {key, [], Elixir}
-          end)
-
-        if Enum.uniq(all_args) != all_args do
-          raise """
-          Arguments #{inspect(all_args)} for #{interface.name} are not unique!
-          """
+      interface =
+        if Map.get(action, :get?) do
+          %{interface | get?: true}
+        else
+          interface
         end
 
-        interface =
-          if Map.get(action, :get?) do
-            %{interface | get?: true}
-          else
-            interface
-          end
+      interface_options = Ash.Resource.Interface.interface_options(action.type, interface)
 
-        interface_options = Ash.Resource.Interface.interface_options(action.type, interface)
+      custom_inputs = Macro.escape(interface.custom_inputs)
 
-        custom_inputs = Macro.escape(interface.custom_inputs)
+      resolve_params_and_opts =
+        quote do
+          # Used in opts validation error hints so messages name the exact code interface function.
+          {function_name, function_arity} = __ENV__.function
 
-        resolve_params_and_opts =
-          quote do
-            # Used in opts validation error hints so messages name the exact code interface function.
-            {function_name, function_arity} = __ENV__.function
+          {params, opts, arg_params, filter_params, custom_input_errors} =
+            Ash.CodeInterface.resolve_params_and_opts(
+              params_or_opts,
+              opts,
+              unquote(Macro.escape(interface.default_options)),
+              unquote(interface_options),
+              unquote(arg_params),
+              unquote(interface.exclude_inputs || []),
+              unquote(resource),
+              unquote(interface.name),
+              unquote(action.name),
+              unquote(action.type),
+              unquote(interface.require_reference?),
+              __MODULE__,
+              function_name,
+              function_arity,
+              unquote(custom_inputs),
+              unquote(filter_params)
+            )
+        end
 
-            {params, opts, arg_params, filter_params, custom_input_errors} =
-              Ash.CodeInterface.resolve_params_and_opts(
-                params_or_opts,
-                opts,
-                unquote(Macro.escape(interface.default_options)),
-                unquote(interface_options),
-                unquote(arg_params),
-                unquote(interface.exclude_inputs || []),
-                unquote(resource),
-                unquote(interface.name),
-                unquote(action.name),
-                unquote(action.type),
-                unquote(interface.require_reference?),
-                __MODULE__,
-                function_name,
-                function_arity,
-                unquote(custom_inputs),
-                unquote(filter_params)
-              )
-          end
+      {subject, subject_args, resolve_subject, act, act!} =
+        case action.type do
+          :action ->
+            subject = quote do: input
 
-        {subject, subject_args, resolve_subject, act, act!} =
-          case action.type do
-            :action ->
-              subject = quote do: input
+            resolve_subject =
+              quote do
+                {input, input_opts, opts} =
+                  Ash.CodeInterface.resolve_action_subject(
+                    opts,
+                    params,
+                    unquote(domain),
+                    unquote(resource),
+                    unquote(action.name),
+                    custom_input_errors
+                  )
+              end
 
-              resolve_subject =
+            act = quote do: Ash.run_action(input, opts)
+            act! = quote do: Ash.run_action!(input, opts)
+
+            {subject, [], resolve_subject, act, act!}
+
+          :read ->
+            subject = quote do: query
+
+            filter_subject =
+              if filter_keys && !Enum.empty?(filter_keys) do
                 quote do
-                  {input, input_opts, opts} =
-                    Ash.CodeInterface.resolve_action_subject(
+                  require Ash.Query
+
+                  query
+                  |> Ash.Query.for_read(unquote(action.name), params, query_opts)
+                  |> Ash.CodeInterface.apply_get_by_filter(
+                    unquote(resource),
+                    unquote(filter_params)
+                  )
+                  |> Ash.Query.add_error(custom_input_errors)
+                end
+              else
+                quote do
+                  query
+                  |> Ash.Query.for_read(unquote(action.name), params, query_opts)
+                  |> Ash.Query.add_error(custom_input_errors)
+                end
+              end
+
+            resolve_subject =
+              quote do
+                {query, query_opts, opts} =
+                  Ash.CodeInterface.resolve_read_subject(
+                    opts,
+                    unquote(domain),
+                    unquote(resource),
+                    custom_input_errors
+                  )
+
+                query =
+                  unquote(filter_subject)
+              end
+
+            act =
+              if interface.get? do
+                quote do
+                  Ash.CodeInterface.read_get_act(
+                    query,
+                    unquote(interface.not_found_error?),
+                    opts
+                  )
+                end
+              else
+                quote do
+                  Ash.CodeInterface.read_list_act(
+                    query,
+                    opts
+                  )
+                end
+              end
+
+            act! =
+              if interface.get? do
+                quote do
+                  Ash.CodeInterface.read_get_act!(
+                    query,
+                    unquote(interface.not_found_error?),
+                    opts
+                  )
+                end
+              else
+                quote do
+                  Ash.CodeInterface.read_list_act!(query, opts)
+                end
+              end
+
+            {subject, [], resolve_subject, act, act!}
+
+          :create ->
+            subject = quote do: changeset
+
+            resolve_subject =
+              quote do
+                {changeset, changeset_opts, opts} =
+                  Ash.CodeInterface.resolve_create_subject(
+                    opts,
+                    params,
+                    custom_input_errors,
+                    unquote(domain),
+                    unquote(resource),
+                    unquote(action.name)
+                  )
+              end
+
+            act =
+              quote do
+                Ash.CodeInterface.create_act(
+                  changeset,
+                  custom_input_errors,
+                  opts,
+                  changeset_opts,
+                  unquote(resource),
+                  unquote(action.name)
+                )
+              end
+
+            act! =
+              quote do
+                Ash.CodeInterface.create_act!(
+                  changeset,
+                  custom_input_errors,
+                  opts,
+                  changeset_opts,
+                  unquote(resource),
+                  unquote(action.name)
+                )
+              end
+
+            {subject, [], resolve_subject, act, act!}
+
+          :update ->
+            subject = quote do: changeset
+
+            subject_args =
+              if interface.require_reference? do
+                quote do: [record]
+              else
+                []
+              end
+
+            resolve_subject =
+              if Enum.empty?(filter_keys) and interface.require_reference? do
+                quote do
+                  {changeset, changeset_opts, opts} =
+                    Ash.CodeInterface.resolve_update_subject_with_record(
                       opts,
                       params,
                       unquote(domain),
                       unquote(resource),
                       unquote(action.name),
+                      record,
+                      unquote(filter_params),
                       custom_input_errors
                     )
                 end
-
-              act = quote do: Ash.run_action(input, opts)
-              act! = quote do: Ash.run_action!(input, opts)
-
-              {subject, [], resolve_subject, act, act!}
-
-            :read ->
-              subject = quote do: query
-
-              filter_subject =
-                if filter_keys && !Enum.empty?(filter_keys) do
-                  quote do
-                    require Ash.Query
-
-                    query
-                    |> Ash.Query.for_read(unquote(action.name), params, query_opts)
-                    |> Ash.CodeInterface.apply_get_by_filter(
+              else
+                quote do
+                  {changeset, changeset_opts, opts} =
+                    Ash.CodeInterface.resolve_update_subject_without_record(
+                      opts,
+                      unquote(domain),
                       unquote(resource),
                       unquote(filter_params)
                     )
-                    |> Ash.Query.add_error(custom_input_errors)
-                  end
-                else
-                  quote do
-                    query
-                    |> Ash.Query.for_read(unquote(action.name), params, query_opts)
-                    |> Ash.Query.add_error(custom_input_errors)
-                  end
                 end
+              end
 
-              resolve_subject =
-                quote do
-                  {query, query_opts, opts} =
-                    Ash.CodeInterface.resolve_read_subject(
-                      opts,
-                      unquote(domain),
-                      unquote(resource),
-                      custom_input_errors
-                    )
+            act =
+              quote do
+                Ash.CodeInterface.update_act(
+                  changeset,
+                  custom_input_errors,
+                  params,
+                  opts,
+                  changeset_opts,
+                  unquote(filter_params),
+                  unquote(resource),
+                  unquote(action.name),
+                  unquote(interface.get?)
+                )
+              end
 
-                  query =
-                    unquote(filter_subject)
-                end
+            act! =
+              quote do
+                Ash.CodeInterface.update_act!(
+                  changeset,
+                  custom_input_errors,
+                  params,
+                  opts,
+                  changeset_opts,
+                  unquote(filter_params),
+                  unquote(resource),
+                  unquote(action.name),
+                  unquote(interface.get?)
+                )
+              end
 
-              act =
-                if interface.get? do
-                  quote do
-                    Ash.CodeInterface.read_get_act(
-                      query,
-                      unquote(interface.not_found_error?),
-                      opts
-                    )
-                  end
-                else
-                  quote do
-                    Ash.CodeInterface.read_list_act(
-                      query,
-                      opts
-                    )
-                  end
-                end
+            {subject, subject_args, resolve_subject, act, act!}
 
-              act! =
-                if interface.get? do
-                  quote do
-                    Ash.CodeInterface.read_get_act!(
-                      query,
-                      unquote(interface.not_found_error?),
-                      opts
-                    )
-                  end
-                else
-                  quote do
-                    Ash.CodeInterface.read_list_act!(query, opts)
-                  end
-                end
+          :destroy ->
+            subject = quote do: changeset
 
-              {subject, [], resolve_subject, act, act!}
+            subject_args =
+              if interface.require_reference? do
+                quote do: [record]
+              else
+                []
+              end
 
-            :create ->
-              subject = quote do: changeset
-
-              resolve_subject =
+            resolve_subject =
+              if interface.require_reference? do
                 quote do
                   {changeset, changeset_opts, opts} =
-                    Ash.CodeInterface.resolve_create_subject(
+                    Ash.CodeInterface.resolve_destroy_subject_with_record(
                       opts,
                       params,
-                      custom_input_errors,
                       unquote(domain),
                       unquote(resource),
-                      unquote(action.name)
+                      unquote(action.name),
+                      record,
+                      unquote(filter_params),
+                      custom_input_errors
                     )
                 end
-
-              act =
-                quote do
-                  Ash.CodeInterface.create_act(
-                    changeset,
-                    custom_input_errors,
-                    opts,
-                    changeset_opts,
-                    unquote(resource),
-                    unquote(action.name)
-                  )
-                end
-
-              act! =
-                quote do
-                  Ash.CodeInterface.create_act!(
-                    changeset,
-                    custom_input_errors,
-                    opts,
-                    changeset_opts,
-                    unquote(resource),
-                    unquote(action.name)
-                  )
-                end
-
-              {subject, [], resolve_subject, act, act!}
-
-            :update ->
-              subject = quote do: changeset
-
-              subject_args =
-                if interface.require_reference? do
-                  quote do: [record]
-                else
-                  []
-                end
-
-              resolve_subject =
-                if Enum.empty?(filter_keys) and interface.require_reference? do
-                  quote do
-                    {changeset, changeset_opts, opts} =
-                      Ash.CodeInterface.resolve_update_subject_with_record(
-                        opts,
-                        params,
-                        unquote(domain),
-                        unquote(resource),
-                        unquote(action.name),
-                        record,
-                        unquote(filter_params),
-                        custom_input_errors
-                      )
-                  end
-                else
-                  quote do
-                    {changeset, changeset_opts, opts} =
-                      Ash.CodeInterface.resolve_update_subject_without_record(
-                        opts,
-                        unquote(domain),
-                        unquote(resource),
-                        unquote(filter_params)
-                      )
-                  end
-                end
-
-              act =
-                quote do
-                  Ash.CodeInterface.update_act(
-                    changeset,
-                    custom_input_errors,
-                    params,
-                    opts,
-                    changeset_opts,
-                    unquote(filter_params),
-                    unquote(resource),
-                    unquote(action.name),
-                    unquote(interface.get?)
-                  )
-                end
-
-              act! =
-                quote do
-                  Ash.CodeInterface.update_act!(
-                    changeset,
-                    custom_input_errors,
-                    params,
-                    opts,
-                    changeset_opts,
-                    unquote(filter_params),
-                    unquote(resource),
-                    unquote(action.name),
-                    unquote(interface.get?)
-                  )
-                end
-
-              {subject, subject_args, resolve_subject, act, act!}
-
-            :destroy ->
-              subject = quote do: changeset
-
-              subject_args =
-                if interface.require_reference? do
-                  quote do: [record]
-                else
-                  []
-                end
-
-              resolve_subject =
-                if interface.require_reference? do
-                  quote do
-                    {changeset, changeset_opts, opts} =
-                      Ash.CodeInterface.resolve_destroy_subject_with_record(
-                        opts,
-                        params,
-                        unquote(domain),
-                        unquote(resource),
-                        unquote(action.name),
-                        record,
-                        unquote(filter_params),
-                        custom_input_errors
-                      )
-                  end
-                else
-                  quote do
-                    {changeset, changeset_opts, opts} =
-                      Ash.CodeInterface.resolve_destroy_subject_without_record(
-                        opts,
-                        unquote(domain),
-                        unquote(resource),
-                        unquote(filter_params)
-                      )
-                  end
-                end
-
-              act =
-                quote do
-                  Ash.CodeInterface.destroy_act(
-                    changeset,
-                    custom_input_errors,
-                    params,
-                    opts,
-                    changeset_opts,
-                    unquote(filter_params),
-                    unquote(resource),
-                    unquote(action.name),
-                    unquote(interface.get?)
-                  )
-                end
-
-              act! =
-                quote do
-                  Ash.CodeInterface.destroy_act!(
-                    changeset,
-                    custom_input_errors,
-                    params,
-                    opts,
-                    changeset_opts,
-                    unquote(filter_params),
-                    unquote(resource),
-                    unquote(action.name),
-                    unquote(interface.get?)
-                  )
-                end
-
-              {subject, subject_args, resolve_subject, act, act!}
-          end
-
-        subject_name = elem(subject, 0)
-
-        common_args =
-          quote do: [
-                  unquote_splicing(subject_args),
-                  unquote_splicing(arg_vars_function)
-                ]
-
-        first_opts_location = Enum.count(subject_args) + Enum.count(arg_vars_function)
-
-        params_handling_bulk_empty_params =
-          if action.type == :create do
-            quote do
-              if params == [] and opts == nil do
-                {name, arity} = __ENV__.function
-
-                raise ArgumentError, """
-                Cannot provide an empty list for params `#{__MODULE__}.#{name}/#{arity}` without also specifying options.
-
-                We cannot tell the difference between an empty list of inputs and an empty list of options.
-
-                If you are trying to provide an empty list of options,
-                you should also specify empty `params`, i.e `#{name}(..., %{}, params)`
-
-                If you are trying to provide an empty list of records to create,
-                you should also specify empty `opts`, i.e `#{name}(...,  params, [])`
-                """
               else
-                if Keyword.keyword?(params) and is_nil(opts) do
-                  {%{}, params}
-                else
-                  {params || %{}, opts || []}
+                quote do
+                  {changeset, changeset_opts, opts} =
+                    Ash.CodeInterface.resolve_destroy_subject_without_record(
+                      opts,
+                      unquote(domain),
+                      unquote(resource),
+                      unquote(filter_params)
+                    )
                 end
               end
-            end
-          else
-            quote do
-              keyword? = Keyword.keyword?(params)
 
-              if keyword? and is_nil(opts) do
-                {%{}, params}
-              else
-                if keyword? do
-                  {Map.new(params), opts || []}
-                else
-                  {params || %{}, opts || []}
-                end
+            act =
+              quote do
+                Ash.CodeInterface.destroy_act(
+                  changeset,
+                  custom_input_errors,
+                  params,
+                  opts,
+                  changeset_opts,
+                  unquote(filter_params),
+                  unquote(resource),
+                  unquote(action.name),
+                  unquote(interface.get?)
+                )
               end
-            end
+
+            act! =
+              quote do
+                Ash.CodeInterface.destroy_act!(
+                  changeset,
+                  custom_input_errors,
+                  params,
+                  opts,
+                  changeset_opts,
+                  unquote(filter_params),
+                  unquote(resource),
+                  unquote(action.name),
+                  unquote(interface.get?)
+                )
+              end
+
+            {subject, subject_args, resolve_subject, act, act!}
+        end
+
+      subject_name = elem(subject, 0)
+
+      common_args =
+        quote do: [
+                unquote_splicing(subject_args),
+                unquote_splicing(arg_vars_function)
+              ]
+
+      first_opts_location = Enum.count(subject_args) + Enum.count(arg_vars_function)
+
+      params_handling_bulk_empty_params =
+        if action.type == :create do
+          quote do
+            Ash.CodeInterface.create_params_and_opts(params, opts, __MODULE__, __ENV__.function)
           end
-
-        predicate? = interface.name |> to_string() |> String.ends_with?("?")
-
-        {action_fn, bang_fn} =
-          if predicate? do
-            base = interface.name |> to_string() |> String.trim_trailing("?") |> String.to_atom()
-            {base, interface.name}
-          else
-            {interface.name, :"#{interface.name}!"}
+        else
+          quote do
+            Ash.CodeInterface.normalize_params_and_opts(params, opts)
           end
+        end
 
-        {can_fn, can_question_fn} =
-          if predicate? do
-            {:"can_#{action_fn}", :"can_#{bang_fn}"}
-          else
-            {:"can_#{interface.name}", :"can_#{interface.name}?"}
-          end
+      predicate? = interface.name |> to_string() |> String.ends_with?("?")
 
-        if :action in interface.functions do
-          @dialyzer {:nowarn_function, {action_fn, length(common_args) + 2}}
-          @doc Ash.CodeInterface.docs(
-                 resource,
-                 action,
-                 interface.args,
-                 interface.exclude_inputs,
-                 interface.custom_inputs,
-                 interface_options
-               )
-          @doc spark_opts: [
-                 {first_opts_location, interface_options.schema()},
-                 {first_opts_location + 1, interface_options.schema()}
-               ]
+      {action_fn, bang_fn} =
+        if predicate? do
+          base = interface.name |> to_string() |> String.trim_trailing("?") |> String.to_atom()
+          {base, interface.name}
+        else
+          {interface.name, :"#{interface.name}!"}
+        end
 
-          Ash.CodeInterface.define_at interface, interface_env do
+      {can_fn, can_question_fn} =
+        if predicate? do
+          {:"can_#{action_fn}", :"can_#{bang_fn}"}
+        else
+          {:"can_#{interface.name}", :"can_#{interface.name}?"}
+        end
+
+      if :action in interface.functions do
+        Ash.CodeInterface.Define.put_dialyzer(
+          interface_env,
+          {:nowarn_function, {action_fn, length(common_args) + 2}}
+        )
+
+        Ash.CodeInterface.Define.put_doc(
+          interface_env,
+          Ash.CodeInterface.docs(
+            resource,
+            action,
+            interface.args,
+            interface.exclude_inputs,
+            interface.custom_inputs,
+            interface_options
+          )
+        )
+
+        Ash.CodeInterface.Define.put_doc(interface_env,
+          spark_opts: [
+            {first_opts_location, interface_options.schema()},
+            {first_opts_location + 1, interface_options.schema()}
+          ]
+        )
+
+        Ash.CodeInterface.Define.define_at(
+          interface,
+          interface_env,
+          quote location: :keep, generated: true do
             def unquote(action_fn)(
                   unquote_splicing(common_args),
                   params \\ nil,
@@ -1198,25 +1108,40 @@ defmodule Ash.CodeInterface do
               unquote(act)
             end
           end
-        end
+        )
+      end
 
-        # sobelow_skip ["DOS.BinToAtom"]
-        if :action! in interface.functions do
-          @dialyzer {:nowarn_function, {bang_fn, length(common_args) + 2}}
-          @doc Ash.CodeInterface.docs(
-                 resource,
-                 action,
-                 interface.args,
-                 interface.exclude_inputs,
-                 interface.custom_inputs,
-                 interface_options,
-                 true
-               )
-          @doc spark_opts: [
-                 {first_opts_location, interface_options.schema()},
-                 {first_opts_location + 1, interface_options.schema()}
-               ]
-          Ash.CodeInterface.define_at interface, interface_env do
+      # sobelow_skip ["DOS.BinToAtom"]
+      if :action! in interface.functions do
+        Ash.CodeInterface.Define.put_dialyzer(
+          interface_env,
+          {:nowarn_function, {bang_fn, length(common_args) + 2}}
+        )
+
+        Ash.CodeInterface.Define.put_doc(
+          interface_env,
+          Ash.CodeInterface.docs(
+            resource,
+            action,
+            interface.args,
+            interface.exclude_inputs,
+            interface.custom_inputs,
+            interface_options,
+            true
+          )
+        )
+
+        Ash.CodeInterface.Define.put_doc(interface_env,
+          spark_opts: [
+            {first_opts_location, interface_options.schema()},
+            {first_opts_location + 1, interface_options.schema()}
+          ]
+        )
+
+        Ash.CodeInterface.Define.define_at(
+          interface,
+          interface_env,
+          quote location: :keep, generated: true do
             def unquote(bang_fn)(
                   unquote_splicing(common_args),
                   params \\ nil,
@@ -1228,36 +1153,52 @@ defmodule Ash.CodeInterface do
               unquote(act!)
             end
           end
-        end
+        )
+      end
 
-        # sobelow_skip ["DOS.BinToAtom"]
-        if subject_name in [:changeset, :query, :input] && :subject in interface.functions do
-          subject_opts =
-            Keyword.take(interface_options.schema(), [
-              :actor,
-              :tenant,
-              :as_of,
-              :scope,
-              :authorize?,
-              :tracer,
-              :changeset,
-              :query,
-              :input
-            ])
+      # sobelow_skip ["DOS.BinToAtom"]
+      if subject_name in [:changeset, :query, :input] && :subject in interface.functions do
+        subject_opts =
+          Keyword.take(interface_options.schema(), [
+            :actor,
+            :tenant,
+            :as_of,
+            :scope,
+            :authorize?,
+            :tracer,
+            :changeset,
+            :query,
+            :input
+          ])
 
-          @dialyzer {:nowarn_function,
-                     {:"#{subject_name}_to_#{interface.name}", length(common_args) + 2}}
+        Ash.CodeInterface.Define.put_dialyzer(
+          interface_env,
+          {:nowarn_function, {:"#{subject_name}_to_#{interface.name}", length(common_args) + 2}}
+        )
 
-          @doc spark_opts: [
-                 {first_opts_location, interface_options.schema()},
-                 {first_opts_location + 1, interface_options.schema()}
-               ]
-          @doc Ash.CodeInterface.docs_subject(subject_name, subject_opts)
-          @doc spark_opts: [
-                 {first_opts_location, subject_opts},
-                 {first_opts_location + 1, subject_opts}
-               ]
-          Ash.CodeInterface.define_at interface, interface_env do
+        Ash.CodeInterface.Define.put_doc(interface_env,
+          spark_opts: [
+            {first_opts_location, interface_options.schema()},
+            {first_opts_location + 1, interface_options.schema()}
+          ]
+        )
+
+        Ash.CodeInterface.Define.put_doc(
+          interface_env,
+          Ash.CodeInterface.docs_subject(subject_name, subject_opts)
+        )
+
+        Ash.CodeInterface.Define.put_doc(interface_env,
+          spark_opts: [
+            {first_opts_location, subject_opts},
+            {first_opts_location + 1, subject_opts}
+          ]
+        )
+
+        Ash.CodeInterface.Define.define_at(
+          interface,
+          interface_env,
+          quote location: :keep, generated: true do
             def unquote(:"#{subject_name}_to_#{interface.name}")(
                   unquote_splicing(common_args),
                   params_or_opts \\ %{},
@@ -1268,17 +1209,32 @@ defmodule Ash.CodeInterface do
               unquote(subject)
             end
           end
-        end
+        )
+      end
 
-        # sobelow_skip ["DOS.BinToAtom"]
-        if :can in interface.functions do
-          @doc Ash.CodeInterface.docs_can(resource, action)
-          @dialyzer {:nowarn_function, {can_fn, length(common_args) + 3}}
-          @doc spark_opts: [
-                 {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
-                 {first_opts_location + 2, Ash.Resource.Interface.CanOpts.schema()}
-               ]
-          Ash.CodeInterface.define_at interface, interface_env do
+      # sobelow_skip ["DOS.BinToAtom"]
+      if :can in interface.functions do
+        Ash.CodeInterface.Define.put_doc(
+          interface_env,
+          Ash.CodeInterface.docs_can(resource, action)
+        )
+
+        Ash.CodeInterface.Define.put_dialyzer(
+          interface_env,
+          {:nowarn_function, {can_fn, length(common_args) + 3}}
+        )
+
+        Ash.CodeInterface.Define.put_doc(interface_env,
+          spark_opts: [
+            {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
+            {first_opts_location + 2, Ash.Resource.Interface.CanOpts.schema()}
+          ]
+        )
+
+        Ash.CodeInterface.Define.define_at(
+          interface,
+          interface_env,
+          quote location: :keep, generated: true do
             def unquote(can_fn)(
                   actor,
                   unquote_splicing(common_args),
@@ -1311,17 +1267,32 @@ defmodule Ash.CodeInterface do
               )
             end
           end
-        end
+        )
+      end
 
-        # sobelow_skip ["DOS.BinToAtom"]
-        if :can? in interface.functions do
-          @dialyzer {:nowarn_function, {can_question_fn, length(common_args) + 3}}
-          @doc spark_opts: [
-                 {first_opts_location + 1, Ash.Resource.Interface.CanQuestionMarkOpts.schema()},
-                 {first_opts_location + 2, Ash.Resource.Interface.CanQuestionMarkOpts.schema()}
-               ]
-          @doc Ash.CodeInterface.docs_can?(resource, action)
-          Ash.CodeInterface.define_at interface, interface_env do
+      # sobelow_skip ["DOS.BinToAtom"]
+      if :can? in interface.functions do
+        Ash.CodeInterface.Define.put_dialyzer(
+          interface_env,
+          {:nowarn_function, {can_question_fn, length(common_args) + 3}}
+        )
+
+        Ash.CodeInterface.Define.put_doc(interface_env,
+          spark_opts: [
+            {first_opts_location + 1, Ash.Resource.Interface.CanQuestionMarkOpts.schema()},
+            {first_opts_location + 2, Ash.Resource.Interface.CanQuestionMarkOpts.schema()}
+          ]
+        )
+
+        Ash.CodeInterface.Define.put_doc(
+          interface_env,
+          Ash.CodeInterface.docs_can?(resource, action)
+        )
+
+        Ash.CodeInterface.Define.define_at(
+          interface,
+          interface_env,
+          quote location: :keep, generated: true do
             def unquote(can_question_fn)(
                   actor,
                   unquote_splicing(common_args),
@@ -1354,9 +1325,121 @@ defmodule Ash.CodeInterface do
               )
             end
           end
-        end
+        )
       end
     end
+  end
+
+  @doc false
+  def create_params_and_opts([], nil, module, {name, arity}) do
+    raise ArgumentError, """
+    Cannot provide an empty list for params `#{module}.#{name}/#{arity}` without also specifying options.
+
+    We cannot tell the difference between an empty list of inputs and an empty list of options.
+
+    If you are trying to provide an empty list of options,
+    you should also specify empty `params`, i.e `#{name}(..., %{}, params)`
+
+    If you are trying to provide an empty list of records to create,
+    you should also specify empty `opts`, i.e `#{name}(...,  params, [])`
+    """
+  end
+
+  def create_params_and_opts(params, opts, _module, _function) do
+    if Keyword.keyword?(params) and is_nil(opts) do
+      {%{}, params}
+    else
+      {params || %{}, opts || []}
+    end
+  end
+
+  @doc false
+  def normalize_params_and_opts(params, opts) do
+    keyword? = Keyword.keyword?(params)
+
+    if keyword? and is_nil(opts) do
+      {%{}, params}
+    else
+      if keyword? do
+        {Map.new(params), opts || []}
+      else
+        {params || %{}, opts || []}
+      end
+    end
+  end
+
+  @doc false
+  def calculate_interface(
+        arg_access,
+        opts,
+        resource,
+        domain,
+        calculation,
+        exclude_inputs,
+        custom_inputs,
+        arity,
+        bang?
+      ) do
+    {refs, arguments, record} =
+      Enum.reduce(
+        arg_access,
+        {opts[:refs] || %{}, opts[:args] || %{}, nil},
+        fn config, {refs, arguments, record} ->
+          case config[:type] do
+            :_record ->
+              {refs, arguments, config[:value]}
+
+            :both ->
+              {Map.put(refs, config[:name], config[:value]),
+               Map.put(arguments, config[:name], config[:value]), record}
+
+            :ref ->
+              {Map.put(refs, config[:name], config[:value]), arguments, record}
+
+            :arg ->
+              {refs, Map.put(arguments, config[:name], config[:value]), record}
+          end
+        end
+      )
+
+    case Enum.filter(exclude_inputs, fn input ->
+           Map.has_key?(arguments, input) || Map.has_key?(arguments, to_string(input))
+         end) do
+      [] ->
+        :ok
+
+      inputs ->
+        raise ArgumentError,
+              "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(resource)}.#{calculation}/#{arity}"
+    end
+
+    {arguments, custom_input_errors} = handle_custom_inputs(arguments, custom_inputs, resource)
+
+    case {custom_input_errors, bang?} do
+      {[], true} ->
+        Ash.calculate!(
+          resource,
+          calculation,
+          calculate_opts(domain, refs, arguments, record, opts)
+        )
+
+      {[], false} ->
+        Ash.calculate(
+          resource,
+          calculation,
+          calculate_opts(domain, refs, arguments, record, opts)
+        )
+
+      {errors, true} ->
+        raise Ash.Error.to_error_class(errors)
+
+      {errors, false} ->
+        {:error, Ash.Error.to_error_class(errors)}
+    end
+  end
+
+  defp calculate_opts(domain, refs, arguments, record, opts) do
+    [domain: domain, refs: refs, args: arguments, record: record] ++ opts
   end
 
   @doc false

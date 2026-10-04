@@ -21,7 +21,9 @@ defmodule Ash.Resource.Transformers.CacheCalculations do
       |> Enum.reduce(%{}, fn %{name: name} = calc, acc ->
         acc
         |> Map.put(name, calc)
-        |> Map.put(to_string(name), calc)
+        # String keys point at the name rather than holding a second copy of the struct,
+        # which would otherwise be embedded twice in the compiled module.
+        |> Map.put(to_string(name), name)
       end)
 
     calculation_names = Enum.map(calculations, & &1.name)
