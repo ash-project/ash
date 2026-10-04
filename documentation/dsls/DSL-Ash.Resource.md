@@ -984,7 +984,7 @@ end
 |------|------|---------|------|
 | [`constraints`](#actions-action-constraints){: #actions-action-constraints } | `keyword` |  | Constraints for the return type. See `Ash.Type` for more. |
 | [`allow_nil?`](#actions-action-allow_nil?){: #actions-action-allow_nil? } | `boolean` | `false` | Whether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`. |
-| [`run`](#actions-action-run){: #actions-action-run } | `(any, any -> any) \| module \| module` |  | Module may be an `Ash.Resource.Actions.Implementation` or `Reactor`. |
+| [`run`](#actions-action-run){: #actions-action-run } | `(any, any -> any) \| module \| module` |  | Module may be an `Ash.Resource.Actions.Implementation`. To run a `Reactor`, use `reactor(MyReactor)`. See `Ash.Resource.Actions.Implementation.Builtins.reactor/2`. |
 | [`error_handler`](#actions-action-error_handler){: #actions-action-error_handler } | `mfa \| (any, any -> any)` |  | Sets the error handler on the action input. See `Ash.ActionInput.handle_errors/2` for more |
 | [`primary?`](#actions-action-primary?){: #actions-action-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-action-description){: #actions-action-description } | `String.t` |  | An optional description for the action |

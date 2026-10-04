@@ -37,7 +37,8 @@ defmodule Mix.Tasks.Ash.InstallTest do
                bulk_actions_default_to_errors?: true,
                transaction_rollback_on_error?: true,
                redact_sensitive_values_in_errors?: true,
-               default_string_length_count: :codepoints\
+               default_string_length_count: :codepoints,
+               infer_generic_action_reactors?: false\
              """
   end
 end

@@ -205,6 +205,8 @@ defmodule Ash.MixProject do
         Resources: [
           Ash.Resource.Calculation,
           Ash.Resource.Calculation.Builtins,
+          Ash.Resource.Actions.Implementation,
+          Ash.Resource.Actions.Implementation.Builtins,
           Ash.CodeInterface,
           Ash.Notifier,
           Ash.Notifier.Notification,
