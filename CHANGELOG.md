@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.34.2](https://github.com/ash-project/ash/compare/v3.34.1...v3.34.2) (2026-10-04)
+
+
+
+
+### Performance Improvements:
+
+* less compile time dependencies for policies by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.34.1](https://github.com/ash-project/ash/compare/v3.34.0...v3.34.1) (2026-10-04)
 
 
