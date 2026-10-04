@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.34.4](https://github.com/ash-project/ash/compare/v3.34.3...v3.34.4) (2026-10-04)
+
+
+
+
+### Improvements:
+
+* allow opting out of `run` compile time dependencies by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.34.3](https://github.com/ash-project/ash/compare/v3.34.2...v3.34.3) (2026-10-04)
 
 
