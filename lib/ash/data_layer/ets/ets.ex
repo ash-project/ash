@@ -914,7 +914,11 @@ defmodule Ash.DataLayer.Ets do
                      authorize?: context[:authorize?] || false
                    ) do
                 {:ok, results} ->
-                  value = Map.get(results, name) || default_value
+                  value =
+                    case Map.get(results, name) do
+                      nil -> default_value
+                      value -> value
+                    end
 
                   if load do
                     {:cont, {:ok, Map.put(record, load, value)}}
