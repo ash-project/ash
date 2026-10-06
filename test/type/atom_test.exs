@@ -6,6 +6,8 @@ defmodule Ash.Test.Type.AtomTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Query
+
   defmodule TestResource do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
@@ -101,6 +103,47 @@ defmodule Ash.Test.Type.AtomTest do
 
     # Ensure that the atom is created
     assert cast_atom == String.to_existing_atom(new_atom)
+  end
+
+  test "filtering an unsafe_to_atom? attribute by a string does not create atoms" do
+    TestResource
+    |> Ash.Changeset.for_create(:create, %{unsafe_value: :seeded_value})
+    |> Ash.create!()
+
+    for _ <- 1..100 do
+      value = "atom_filter_dos_#{System.unique_integer([:positive])}"
+
+      assert [] = TestResource |> Ash.Query.filter(unsafe_value == ^value) |> Ash.read!()
+
+      assert_raise ArgumentError, fn -> String.to_existing_atom(value) end
+    end
+  end
+
+  test "filtering a one_of atom attribute by a string matches without interning" do
+    %{id: id} =
+      TestResource
+      |> Ash.Changeset.for_create(:create, %{value: :value_a})
+      |> Ash.create!()
+
+    assert [%{id: ^id}] = TestResource |> Ash.Query.filter(value == "value_a") |> Ash.read!()
+    assert [] = TestResource |> Ash.Query.filter(value == "value_b") |> Ash.read!()
+
+    bogus = non_existing_atom_string()
+    assert [] = TestResource |> Ash.Query.filter(value == ^bogus) |> Ash.read!()
+    assert_raise ArgumentError, fn -> String.to_existing_atom(bogus) end
+  end
+
+  test "filtering an atom attribute by a string still matches the stored value" do
+    %{id: id} =
+      TestResource
+      |> Ash.Changeset.for_create(:create, %{unsafe_value: :matchme})
+      |> Ash.create!()
+
+    assert [%{id: ^id}] =
+             TestResource |> Ash.Query.filter(unsafe_value == "matchme") |> Ash.read!()
+
+    assert [] =
+             TestResource |> Ash.Query.filter(unsafe_value == "nomatch_xyz") |> Ash.read!()
   end
 
   def non_existing_atom_string do

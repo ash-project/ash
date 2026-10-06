@@ -226,6 +226,19 @@ defmodule Ash.Test.Actions.AggregateTest do
         authorize? false
       end
 
+      first :first_comment_public_or_false, :comments, :public do
+        public? true
+        authorize? false
+        default false
+      end
+
+      first :first_unrelated_comment_public, Comment, :public do
+        public? true
+        authorize? false
+        default true
+        filter expr(thing == "unrelated-first-public")
+      end
+
       max :max_of_thing2, :comments, :thing2 do
         public? true
         authorize? false
@@ -352,6 +365,15 @@ defmodule Ash.Test.Actions.AggregateTest do
       |> Ash.create!(authorize?: false)
 
       assert %{count: 2} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
+    end
+
+    test "a false default is returned when there is nothing to aggregate" do
+      mine = Ash.Query.filter(Comment, thing == "no-such-comment")
+
+      assert %{v: false} =
+               Ash.aggregate!(mine, {:v, :first, field: :public, default: false},
+                 authorize?: false
+               )
     end
 
     test "min, max and sum over no records at all return the default" do
@@ -572,6 +594,30 @@ defmodule Ash.Test.Actions.AggregateTest do
   end
 
   describe "aggregate loading" do
+    test "a false default is used when the relationship is empty" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+        |> Ash.create!(authorize?: false)
+
+      assert %{first_comment_public_or_false: false} =
+               Ash.load!(post, :first_comment_public_or_false, authorize?: false)
+    end
+
+    test "an unrelated aggregate's false result is not replaced by its default" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+        |> Ash.create!(authorize?: false)
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{thing: "unrelated-first-public", public: false})
+      |> Ash.create!(authorize?: false)
+
+      assert %{first_unrelated_comment_public: false} =
+               Ash.load!(post, :first_unrelated_comment_public, authorize?: false)
+    end
+
     test "the actor can be used in aggregate filters" do
       post =
         Post

@@ -8,6 +8,81 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.34.4](https://github.com/ash-project/ash/compare/v3.34.3...v3.34.4) (2026-10-04)
+
+
+
+
+### Improvements:
+
+* allow opting out of `run` compile time dependencies by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.34.3](https://github.com/ash-project/ash/compare/v3.34.2...v3.34.3) (2026-10-04)
+
+
+
+
+### Bug Fixes:
+
+* don't create atoms when filtering on an atom by [@zachdaniel](https://github.com/zachdaniel)
+
+Fixes CVE-2026-94201
+
+* track calculation nullability through dynamic calculations by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle defaults in aggregate nullability for manifests by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.34.2](https://github.com/ash-project/ash/compare/v3.34.1...v3.34.2) (2026-10-04)
+
+
+
+
+### Performance Improvements:
+
+* less compile time dependencies for policies by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.34.1](https://github.com/ash-project/ash/compare/v3.34.0...v3.34.1) (2026-10-04)
+
+
+
+
+### Bug Fixes:
+
+* manifest: wait for type modules still compiling instead of treating them as missing by [@Torkan](https://github.com/Torkan) [(#2986)](https://github.com/ash-project/ash/pull/2986)
+
+### Performance Improvements:
+
+* speed up compiles and lower module size by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.34.0](https://github.com/ash-project/ash/compare/v3.33.11...v3.34.0) (2026-10-03)
+
+
+
+
+### Features:
+
+* add temporal resources by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* record the define line on code interface functions (#2971) by Onni Hakala [(#2971)](https://github.com/ash-project/ash/pull/2971)
+
+### Bug Fixes:
+
+* add action name to JSON-serialized manifest dumps (#2982) by [@Torkan](https://github.com/Torkan) [(#2982)](https://github.com/ash-project/ash/pull/2982)
+
+* properly dump atomic values in ETS data layer by [@zachdaniel](https://github.com/zachdaniel)
+
+* give modify_query the read action's arguments when running aggregates (#2980) by Alt-iOS [(#2980)](https://github.com/ash-project/ash/pull/2980)
+
+* handle forbidden placeholder errors properly everywhere by [@zachdaniel](https://github.com/zachdaniel)
+
+* various fixes for notification accumulation by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly combine filters during atomic upgrade by [@zachdaniel](https://github.com/zachdaniel)
+
+* keep the original literal default when a compile-time cast is not escapable (#2966) by alter [(#2966)](https://github.com/ash-project/ash/pull/2966)
+
 ## [v3.33.11](https://github.com/ash-project/ash/compare/v3.33.10...v3.33.11) (2026-09-25)
 
 

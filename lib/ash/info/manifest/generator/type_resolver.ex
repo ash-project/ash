@@ -127,7 +127,7 @@ defmodule Ash.Info.Manifest.Generator.TypeResolver do
   """
   @spec named_type_module?(term()) :: boolean()
   def named_type_module?(type) when is_atom(type) do
-    Code.ensure_loaded?(type) == true and
+    module_available?(type) and
       (is_enum_type?(type) or Ash.Type.NewType.new_type?(type))
   end
 
@@ -211,7 +211,7 @@ defmodule Ash.Info.Manifest.Generator.TypeResolver do
 
   defp resolve_enum(type, constraints) do
     values =
-      if Code.ensure_loaded?(type) and function_exported?(type, :values, 0) do
+      if module_available?(type) and function_exported?(type, :values, 0) do
         type.values()
       else
         []
@@ -363,7 +363,7 @@ defmodule Ash.Info.Manifest.Generator.TypeResolver do
 
   @doc false
   def unwrap_new_type(type, constraints) when is_atom(type) do
-    if Code.ensure_loaded?(type) == true and
+    if module_available?(type) and
          Ash.Type.NewType.new_type?(type) do
       subtype = Ash.Type.NewType.subtype_of(type)
 
@@ -381,18 +381,33 @@ defmodule Ash.Info.Manifest.Generator.TypeResolver do
 
   def unwrap_new_type(type, constraints), do: {type, constraints}
 
+  # Uses `Code.ensure_compiled/1` for Elixir modules so that, during compilation,
+  # we wait for modules still being compiled instead of treating them as missing.
+  # Bare atoms (e.g. short type names like `:string`) only get a load attempt, as
+  # waiting on an atom that is never defined would stall the parallel compiler.
+  @doc false
+  @spec module_available?(term()) :: boolean()
+  def module_available?(module) when is_atom(module) do
+    case Atom.to_string(module) do
+      "Elixir." <> _ -> match?({:module, _}, Code.ensure_compiled(module))
+      _ -> Code.ensure_loaded?(module)
+    end
+  end
+
+  def module_available?(_), do: false
+
   defp is_embedded_resource?(module) when is_atom(module) do
     is_resource?(module) and Ash.Resource.Info.embedded?(module)
   end
 
   defp is_resource?(module) when is_atom(module) do
-    Code.ensure_loaded?(module) == true and Ash.Resource.Info.resource?(module)
+    module_available?(module) and Ash.Resource.Info.resource?(module)
   end
 
   defp is_resource?(_), do: false
 
   defp is_enum_type?(type) when is_atom(type) do
-    Code.ensure_loaded?(type) == true and
+    module_available?(type) and
       Spark.implements_behaviour?(type, Ash.Type.Enum)
   end
 
@@ -403,7 +418,7 @@ defmodule Ash.Info.Manifest.Generator.TypeResolver do
   end
 
   defp type_name_from_module(module) when is_atom(module) do
-    if Code.ensure_loaded?(module) == true do
+    if module_available?(module) do
       module
       |> Module.split()
       |> List.last()

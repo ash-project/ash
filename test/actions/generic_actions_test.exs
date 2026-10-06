@@ -933,11 +933,26 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
           run EchoReactorWithOptionalInput
         end
+
+        action :echo_explicit, :string do
+          argument :input, :string, allow_nil?: false
+
+          run reactor(EchoReactor)
+        end
+
+        action :echo_explicit_in_transaction, :string do
+          argument :input, :string, allow_nil?: false
+          transaction? true
+
+          run reactor(EchoReactor)
+        end
       end
 
       code_interface do
         define :echo, args: [:input]
         define :echo2, args: [:input]
+        define :echo_explicit, args: [:input]
+        define :echo_explicit_in_transaction, args: [:input]
       end
     end
 
@@ -947,6 +962,47 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
     test "it does not require setting optional inputs" do
       assert {:ok, "Marty"} = EchoResource.echo2("Marty")
+    end
+
+    test "reactor/2 runs the given reactor" do
+      assert {:ok, "Marty"} = EchoResource.echo_explicit("Marty")
+      assert {:ok, "Marty"} = EchoResource.echo_explicit_in_transaction("Marty")
+    end
+
+    test "reactor/2 requires a Reactor module" do
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          defmodule RunReactorWithoutReactor do
+            @moduledoc false
+            use Ash.Resource, domain: Domain
+
+            actions do
+              action :echo, :string do
+                run reactor(String)
+              end
+            end
+          end
+        end)
+
+      assert output =~ "`reactor/2` expects a Reactor module"
+    end
+
+    test "reactor/2 checks the reactor's inputs against the action's arguments" do
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          defmodule RunReactorMissingInput do
+            @moduledoc false
+            use Ash.Resource, domain: Domain
+
+            actions do
+              action :echo, :string do
+                run reactor(EchoReactor)
+              end
+            end
+          end
+        end)
+
+      assert output =~ "Missing `:input`"
     end
 
     defmodule FailingReactor do

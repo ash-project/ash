@@ -20,7 +20,8 @@ defmodule Ash.Query.Calculation do
     filterable?: true,
     async?: false,
     sortable?: true,
-    sensitive?: false
+    sensitive?: false,
+    allow_nil?: true
   ]
 
   @type t :: %__MODULE__{}
@@ -50,6 +51,11 @@ defmodule Ash.Query.Calculation do
       type: :boolean,
       doc: "Whether or not references to this calculation will be considered sensitive",
       default: false
+    ],
+    allow_nil?: [
+      type: :boolean,
+      doc: "Whether or not the calculation can return `nil`.",
+      default: true
     ],
     load: [
       type: :any,
@@ -143,7 +149,8 @@ defmodule Ash.Query.Calculation do
          required_loads: opts.load,
          filterable?: opts.filterable?,
          sortable?: opts.sortable?,
-         sensitive?: opts.sensitive?
+         sensitive?: opts.sensitive?,
+         allow_nil?: opts.allow_nil?
        }}
     end
   end
@@ -230,6 +237,7 @@ defmodule Ash.Query.Calculation do
              filterable?: resource_calculation.filterable?,
              sortable?: resource_calculation.sortable?,
              sensitive?: resource_calculation.sensitive?,
+             allow_nil?: resource_calculation.allow_nil?,
              load: resource_calculation.load,
              source_context: opts.source_context,
              calc_name: resource_calculation.name

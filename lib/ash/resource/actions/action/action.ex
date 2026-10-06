@@ -91,7 +91,7 @@ defmodule Ash.Resource.Actions.Action do
                        {:spark, Reactor}
                      ]},
                   doc: """
-                  Module may be an `Ash.Resource.Actions.Implementation` or `Reactor`.
+                  Module may be an `Ash.Resource.Actions.Implementation`. To run a `Reactor`, use `reactor(MyReactor)`. See `Ash.Resource.Actions.Implementation.Builtins.reactor/2`.
                   """
                 ],
                 error_handler: [
