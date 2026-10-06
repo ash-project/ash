@@ -1102,8 +1102,17 @@ defmodule Ash.ActionInput do
       ...>     action: input.action,
       ...>     data: %{audit: "before_action"}
       ...>   }
-      ...>   {input, %{notifications: [notification]}}
+      ...>   {input, [notification]}
       ...> end)
+
+  A `before_action` hook may return notifications in any of these forms:
+
+    {input, notification}
+    {input, [notification]}
+    {input, %{notifications: [notification]}}
+    {input, nil}
+
+  Returning `input` without a tuple is equivalent to returning no notifications.
 
   ## Options
 
@@ -1141,7 +1150,7 @@ defmodule Ash.ActionInput do
   > After action hooks will work for generic actions without a return type,
   > however they will receive `nil` as their `result` argument and are
   > expected to return
-  > `:ok | {:ok, [Ash.Notifier.Notification.t()]} | {:error, term}`.
+  > `:ok | {:ok, Ash.Notifier.Notification.input()} | {:error, term}`.
 
   ## Examples
 
@@ -1172,6 +1181,14 @@ defmodule Ash.ActionInput do
       ...>   }
       ...>   {:ok, result, [notification]}
       ...> end)
+
+    The notification value may also be returned as a single notification,
+    a map containing a `:notifications` key, or `nil`:
+
+        {:ok, result, notification}
+        {:ok, result, [notification]}
+        {:ok, result, %{notifications: [notification]}}
+        {:ok, result, nil}
 
       # Handle errors
       iex> MyApp.Post
@@ -1655,7 +1672,10 @@ defmodule Ash.ActionInput do
             Invalid return value from before_action hook. Expected one of:
 
             * %Ash.ActionInput{}
-            * {%Ash.ActionInput{}, %{notifications: [...]}}
+            * {%Ash.ActionInput{}, notification}
+            * {%Ash.ActionInput{}, [notification]}
+            * {%Ash.ActionInput{}, %{notifications: notifications}}
+            * {%Ash.ActionInput{}, nil}
             * {:error, error}
 
             Got:

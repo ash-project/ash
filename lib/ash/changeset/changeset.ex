@@ -7312,6 +7312,15 @@ defmodule Ash.Changeset do
       ...>   end
       ...> end)
 
+    A `before_action` hook may return notifications in any of these forms:
+
+      {changeset, notification}
+      {changeset, [notification]}
+      {changeset, %{notifications: [notification]}}
+      {changeset, nil}
+
+    Returning `changeset` without a tuple is equivalent to returning no notifications.
+
   ## See also
 
   - `after_action/3` for hooks that run after the action succeeds
@@ -7458,6 +7467,13 @@ defmodule Ash.Changeset do
       ...>
       ...>   {:ok, post}
       ...> end)
+
+    The notification value may also be returned as a single notification, a map containing a `:notifications` key, or `nil`:
+
+      {:ok, result, notification}
+      {:ok, result, [notification]}
+      {:ok, result, %{notifications: [notification]}}
+      {:ok, result, nil}
 
   ## See also
 
