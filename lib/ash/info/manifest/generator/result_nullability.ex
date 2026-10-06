@@ -17,14 +17,25 @@ defmodule Ash.Info.Manifest.Generator.ResultNullability do
     * `:custom` — preserves the aggregate's own `allow_nil?` if set; otherwise
       defaults to `true` (the safe assumption, since the callback's behavior is
       unknown).
+
+  A non-nil `default` makes any aggregate non-nullable, since it is used in place of
+  `nil`. A function default doesn't count, because the function may return `nil`.
   """
 
   @spec for_aggregate(map()) :: boolean()
   def for_aggregate(%{kind: kind} = aggregate) do
-    case kind do
-      k when k in [:count, :exists, :list] -> false
-      k when k in [:first, :max, :min, :sum, :avg] -> true
-      :custom -> Map.get(aggregate, :allow_nil?, true)
+    if guaranteed_default?(Map.get(aggregate, :default)) do
+      false
+    else
+      case kind do
+        k when k in [:count, :exists, :list] -> false
+        k when k in [:first, :max, :min, :sum, :avg] -> true
+        :custom -> Map.get(aggregate, :allow_nil?, true)
+      end
     end
   end
+
+  defp guaranteed_default?(nil), do: false
+  defp guaranteed_default?(default) when is_function(default), do: false
+  defp guaranteed_default?(_default), do: true
 end

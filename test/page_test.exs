@@ -36,6 +36,55 @@ defmodule ThisTest.Obj do
   end
 end
 
+defmodule ThisTest.Scored do
+  use Ash.Resource,
+    domain: Ash.Test.Domain,
+    data_layer: Ash.DataLayer.Ets
+
+  actions do
+    defaults [:read, create: :*]
+  end
+
+  attributes do
+    uuid_v7_primary_key :id
+    attribute :score, :integer, allow_nil?: false, public?: true
+  end
+
+  relationships do
+    has_many :children, ThisTest.ScoredChild, public?: true
+  end
+
+  calculations do
+    calculate :strict_score, :integer, expr(score), allow_nil?: false, public?: true
+    calculate :loose_score, :integer, expr(score), public?: true
+  end
+
+  aggregates do
+    count :child_count, :children, public?: true
+    sum :child_total, :children, :score, default: 0, public?: true
+    sum :child_total_nullable, :children, :score, public?: true
+  end
+end
+
+defmodule ThisTest.ScoredChild do
+  use Ash.Resource,
+    domain: Ash.Test.Domain,
+    data_layer: Ash.DataLayer.Ets
+
+  actions do
+    defaults [:read, create: :*]
+  end
+
+  attributes do
+    uuid_v7_primary_key :id
+    attribute :score, :integer, public?: true
+  end
+
+  relationships do
+    belongs_to :scored, ThisTest.Scored, public?: true
+  end
+end
+
 defmodule ThisTest.Domain do
   use Ash.Domain
 
@@ -167,6 +216,87 @@ defmodule Ash.Test.PageTest do
 
       assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
                Keyset.filter(query, cursor, sort, :after)
+    end
+  end
+
+  describe "keyset filters and allow_nil?" do
+    alias Ash.Page.Keyset
+    require Ash.Expr
+
+    defp keyset_filter(query) do
+      cursor = Base.encode64(:erlang.term_to_binary([5]))
+      {:ok, filter} = Keyset.filter(query, cursor, query.sort, :after)
+      filter
+    end
+
+    defp checks_nil?(filter), do: inspect(filter) =~ "is_nil"
+
+    defp anonymous_score(opts) do
+      Ash.Query.Calculation.new(
+        :anonymous_score,
+        Ash.Resource.Calculation.Expression,
+        [expr: Ash.Expr.expr(score)],
+        :integer,
+        [],
+        opts
+      )
+    end
+
+    test "an allow_nil?: false attribute sort has no nil checks" do
+      refute ThisTest.Scored |> Ash.Query.sort(score: :asc) |> keyset_filter() |> checks_nil?()
+    end
+
+    test "an allow_nil?: false calculation sort has no nil checks" do
+      refute ThisTest.Scored
+             |> Ash.Query.sort(strict_score: :asc)
+             |> keyset_filter()
+             |> checks_nil?()
+    end
+
+    test "a nullable calculation sort keeps its nil checks" do
+      assert ThisTest.Scored
+             |> Ash.Query.sort(loose_score: :asc)
+             |> keyset_filter()
+             |> checks_nil?()
+    end
+
+    test "an anonymous calculation can declare allow_nil?: false" do
+      {:ok, calc} = anonymous_score(allow_nil?: false)
+
+      refute ThisTest.Scored
+             |> Ash.Query.sort([{calc, :asc}])
+             |> keyset_filter()
+             |> checks_nil?()
+    end
+
+    test "an aggregate that is never nil has no nil checks" do
+      refute ThisTest.Scored
+             |> Ash.Query.sort(child_count: :asc)
+             |> keyset_filter()
+             |> checks_nil?()
+    end
+
+    test "an aggregate with a default has no nil checks" do
+      refute ThisTest.Scored
+             |> Ash.Query.sort(child_total: :asc)
+             |> keyset_filter()
+             |> checks_nil?()
+    end
+
+    test "a nullable aggregate keeps its nil checks" do
+      assert ThisTest.Scored
+             |> Ash.Query.sort(child_total_nullable: :asc)
+             |> keyset_filter()
+             |> checks_nil?()
+    end
+
+    test "an anonymous calculation is nullable by default" do
+      {:ok, calc} = anonymous_score([])
+
+      assert ThisTest.Scored
+             |> Ash.Query.sort([{calc, :asc}])
+             |> keyset_filter()
+             |> checks_nil?()
     end
   end
 

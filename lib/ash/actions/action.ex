@@ -309,45 +309,15 @@ defmodule Ash.Actions.Action do
     end
   end
 
-  defp is_reactor?(module) when is_atom(module) do
-    module.spark_is() == Reactor
-  rescue
-    UndefinedFunctionError -> false
-  end
+  @infer_generic_action_reactors? Application.compile_env(
+                                    :ash,
+                                    :infer_generic_action_reactors?,
+                                    true
+                                  )
 
-  defp call_run_function(module, input, run_opts, context, in_transaction?) do
-    if is_reactor?(module) do
-      run_opts =
-        if in_transaction?,
-          do: Keyword.put(run_opts, :async?, false),
-          else: run_opts
-
-      context =
-        context
-        |> Ash.Context.to_opts()
-        |> Map.new()
-
-      arguments =
-        Enum.reduce(module.reactor().inputs, input.arguments, fn reactor_input, arguments ->
-          Map.put_new(arguments, reactor_input.name, nil)
-        end)
-
-      Reactor.run(
-        module,
-        arguments,
-        context,
-        run_opts
-      )
-      |> case do
-        {:ok, _v} when is_nil(input.action.returns) ->
-          :ok
-
-        {:error, %{splode: Reactor.Error, errors: errors}} ->
-          {:error, errors}
-
-        other ->
-          other
-      end
+  defp call_run_function(module, input, run_opts, context) do
+    if @infer_generic_action_reactors? and Ash.Resource.Actions.RunReactor.reactor?(module) do
+      Ash.Resource.Actions.RunReactor.run(input, Keyword.put(run_opts, :reactor, module), context)
     else
       Ash.Resource.Actions.Implementation.run(module, input, run_opts, context)
     end
@@ -446,7 +416,7 @@ defmodule Ash.Actions.Action do
 
       {input, %{notifications: before_action_notifications}} ->
         # Run the actual action
-        case call_run_function(module, input, run_opts, context, in_transaction?) do
+        case call_run_function(module, input, run_opts, context) do
           :ok when is_nil(input.action.returns) ->
             # Run after_action hooks
             case Ash.ActionInput.run_after_actions(nil, input, before_action_notifications) do

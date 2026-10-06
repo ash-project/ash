@@ -280,11 +280,24 @@ defmodule Ash.Page.Keyset do
     case Ash.Resource.Info.field(resource, field) do
       %Ash.Resource.Attribute{allow_nil?: allow_nil?} -> allow_nil?
       %Ash.Resource.Calculation{allow_nil?: allow_nil?} -> allow_nil?
+      %Ash.Resource.Aggregate{kind: kind, default: default} -> aggregate_allow_nil?(kind, default)
       _ -> true
     end
   end
 
+  defp allow_nil?(_, %Ash.Query.Calculation{allow_nil?: allow_nil?}), do: allow_nil?
+
+  defp allow_nil?(_, %Ash.Query.Aggregate{kind: kind, default_value: default}),
+    do: aggregate_allow_nil?(kind, default)
+
   defp allow_nil?(_, _), do: true
+
+  # An aggregate can only be `nil` if its kind can produce `nil` and it has no
+  # default to use in its place.
+  defp aggregate_allow_nil?(kind, _default) when kind in [:count, :exists, :list], do: false
+  defp aggregate_allow_nil?(_kind, nil), do: true
+  defp aggregate_allow_nil?(_kind, default) when is_function(default), do: true
+  defp aggregate_allow_nil?(_kind, _default), do: false
 
   defp operator(:after, :asc), do: {:gt, false}
   defp operator(:after, :asc_nils_first), do: {:gt, true}

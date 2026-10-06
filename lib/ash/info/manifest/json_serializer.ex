@@ -218,6 +218,7 @@ defmodule Ash.Info.Manifest.JsonSerializer do
 
   defp serialize_action(%Ash.Info.Manifest.Action{} = action) do
     %{
+      "name" => to_string(action.name),
       "type" => to_string(action.type),
       "primary" => action.primary?,
       "get" => action.get?,

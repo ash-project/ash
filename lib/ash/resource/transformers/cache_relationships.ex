@@ -21,7 +21,9 @@ defmodule Ash.Resource.Transformers.CacheRelationships do
       |> Enum.reduce(%{}, fn %{name: name} = attr, acc ->
         acc
         |> Map.put(name, attr)
-        |> Map.put(to_string(name), attr)
+        # String keys point at the name rather than holding a second copy of the struct,
+        # which would otherwise be embedded twice in the compiled module.
+        |> Map.put(to_string(name), name)
       end)
 
     relationship_names = Enum.map(relationships, & &1.name)
