@@ -228,6 +228,83 @@ defmodule Ash.Type.RangeTest do
       assert {:ok, _} = apply!(range, constraints)
     end
 
+    test "a lower bound must be at or above its limit, whatever its inclusivity" do
+      constraints = init!(inner_type: :datetime, lower: [limit: @lower])
+
+      assert {:ok, _} = apply!(%Range{lower: @lower, upper: @upper, bounds: :"[)"}, constraints)
+      assert {:ok, _} = apply!(%Range{lower: @lower, upper: @upper, bounds: :"()"}, constraints)
+
+      assert {:error, _} =
+               apply!(
+                 %Range{lower: ~U[2025-12-31 23:59:59.999999Z], upper: @upper, bounds: :"(]"},
+                 constraints
+               )
+    end
+
+    test "an upper limit is excluded: an exclusive bound may meet it, an inclusive one may not" do
+      constraints = init!(inner_type: :datetime, upper: [limit: @upper])
+
+      assert {:ok, _} = apply!(%Range{lower: @lower, upper: @upper, bounds: :"[)"}, constraints)
+
+      assert {:error, _} =
+               apply!(%Range{lower: @lower, upper: @upper, bounds: :"[]"}, constraints)
+
+      assert {:ok, _} =
+               apply!(
+                 %Range{lower: @lower, upper: ~U[2026-01-31 23:59:59.999999Z], bounds: :"[]"},
+                 constraints
+               )
+
+      assert {:error, _} =
+               apply!(
+                 %Range{lower: @lower, upper: ~U[2026-02-01 00:00:00.000001Z], bounds: :"[)"},
+                 constraints
+               )
+    end
+
+    test "a limited end must be there, since an unbounded end runs past any limit" do
+      lower = init!(inner_type: :integer, lower: [limit: 1])
+      upper = init!(inner_type: :integer, upper: [limit: 10])
+
+      assert {:error, _} = apply!(%Range{lower: nil, upper: 5, bounds: :"()"}, lower)
+      assert {:error, _} = apply!(%Range{lower: 1, upper: nil, bounds: :"[)"}, upper)
+    end
+
+    test "a discrete inclusive upper at the limit canonicalizes past it" do
+      constraints = init!(inner_type: :integer, upper: [limit: 10])
+
+      {:ok, at_limit} =
+        Ash.Type.cast_input(
+          Ash.Type.Range,
+          %Range{lower: 1, upper: 10, bounds: :"[]"},
+          constraints
+        )
+
+      {:ok, below} =
+        Ash.Type.cast_input(
+          Ash.Type.Range,
+          %Range{lower: 1, upper: 9, bounds: :"[]"},
+          constraints
+        )
+
+      assert {:error, _} = apply!(at_limit, constraints)
+      assert {:ok, %Range{upper: 10, bounds: :"[)"}} = apply!(below, constraints)
+    end
+
+    test "a limit is cast by the inner type" do
+      constraints = init!(inner_type: :date, lower: [limit: "2025-01-01"])
+
+      assert constraints[:lower][:limit] == ~D[2025-01-01]
+
+      assert {:error, _} =
+               apply!(%Range{lower: ~D[2024-12-31], upper: ~D[2025-02-01]}, constraints)
+    end
+
+    test "a limit the inner type cannot cast is refused" do
+      assert {:error, _} =
+               Ash.Type.init(Ash.Type.Range, inner_type: :date, lower: [limit: "never"])
+    end
+
     test "unconstrained by default" do
       constraints = init!(inner_type: :integer)
 

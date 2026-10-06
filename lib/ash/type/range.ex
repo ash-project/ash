@@ -30,6 +30,10 @@ defmodule Ash.Type.Range do
         inclusive?: [
           type: :boolean,
           doc: "The lower bound, where there is one, must include its own value."
+        ],
+        limit: [
+          type: :any,
+          doc: "The least value the range may start at."
         ]
       ],
       doc: "Constraints on the range's lower bound."
@@ -46,6 +50,10 @@ defmodule Ash.Type.Range do
         inclusive?: [
           type: :boolean,
           doc: "The upper bound, where there is one, must include its own value."
+        ],
+        limit: [
+          type: :any,
+          doc: "The greatest value the range may end at."
         ]
       ],
       doc: "Constraints on the range's upper bound."
@@ -128,17 +136,39 @@ defmodule Ash.Type.Range do
   def init(constraints) do
     type = Ash.Type.get_type(constraints[:inner_type])
 
-    case Ash.Type.init(type, constraints[:inner_constraints] || []) do
-      {:ok, inner_constraints} ->
-        {:ok,
-         constraints
-         |> Keyword.put(:inner_type, type)
-         |> Keyword.put(:inner_constraints, inner_constraints)}
-
-      {:error, error} ->
-        {:error, error}
+    with {:ok, inner_constraints} <- Ash.Type.init(type, constraints[:inner_constraints] || []),
+         {:ok, lower} <- init_limit(:lower, constraints[:lower], type, inner_constraints),
+         {:ok, upper} <- init_limit(:upper, constraints[:upper], type, inner_constraints) do
+      {:ok,
+       constraints
+       |> Keyword.put(:inner_type, type)
+       |> Keyword.put(:inner_constraints, inner_constraints)
+       |> put_present(:lower, lower)
+       |> put_present(:upper, upper)}
     end
   end
+
+  # A limit is cast by the inner type once, so it compares with bounds in their own form.
+  defp init_limit(_end_name, nil, _type, _inner_constraints), do: {:ok, nil}
+
+  defp init_limit(end_name, bound_constraints, type, inner_constraints) do
+    case Keyword.fetch(bound_constraints, :limit) do
+      {:ok, limit} when not is_nil(limit) ->
+        case Ash.Type.cast_input(type, limit, inner_constraints) do
+          {:ok, cast} when not is_nil(cast) ->
+            {:ok, Keyword.put(bound_constraints, :limit, cast)}
+
+          _ ->
+            {:error, "the #{end_name} limit #{inspect(limit)} is not a value of the inner type"}
+        end
+
+      _ ->
+        {:ok, bound_constraints}
+    end
+  end
+
+  defp put_present(constraints, _key, nil), do: constraints
+  defp put_present(constraints, key, value), do: Keyword.put(constraints, key, value)
 
   @impl true
   # Logical storage type. The concrete native range type (e.g. Postgres
@@ -265,28 +295,40 @@ defmodule Ash.Type.Range do
     end
   end
 
-  # Each end on its own terms: there if required, and of the asked-for inclusivity if
-  # there. An absent end includes nothing, so only its presence can be constrained.
+  # Each end on its own terms: there if required or limited, of the asked-for inclusivity
+  # if there, and within its limit. An unbounded end runs past any limit.
   defp check_bound(end_name, range, bound_constraints) do
     value = Map.fetch!(range, end_name)
     inclusive? = inclusive?(end_name, range.bounds)
+    limit = bound_constraints[:limit]
 
     cond do
-      is_nil(value) and Keyword.get(bound_constraints, :required?, false) ->
+      is_nil(value) and (Keyword.get(bound_constraints, :required?, false) or not is_nil(limit)) ->
         {:error, message: "range must have a %{bound} bound", vars: [bound: end_name]}
 
       is_nil(value) ->
         :ok
 
-      matches_inclusivity?(inclusive?, bound_constraints[:inclusive?]) ->
-        :ok
-
-      true ->
+      not matches_inclusivity?(inclusive?, bound_constraints[:inclusive?]) ->
         {:error,
          message: "range %{bound} bound must be %{required}",
          vars: [bound: end_name, required: inclusivity_name(bound_constraints[:inclusive?])]}
+
+      not within_limit?(end_name, value, inclusive?, limit) ->
+        {:error,
+         message: "range %{bound} bound must be within its limit %{limit}",
+         vars: [bound: end_name, limit: limit]}
+
+      true ->
+        :ok
     end
   end
+
+  # The limits bound a `[)` window: from the lower limit, up to the upper limit excluded.
+  defp within_limit?(_end_name, _value, _inclusive?, nil), do: true
+  defp within_limit?(:lower, value, _inclusive?, limit), do: Comp.compare(value, limit) != :lt
+  defp within_limit?(:upper, value, false, limit), do: Comp.compare(value, limit) != :gt
+  defp within_limit?(:upper, value, true, limit), do: Comp.compare(value, limit) == :lt
 
   defp inclusive?(:lower, bounds), do: Range.lower_inclusive?(bounds)
   defp inclusive?(:upper, bounds), do: Range.upper_inclusive?(bounds)
