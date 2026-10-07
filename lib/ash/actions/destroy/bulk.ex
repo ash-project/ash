@@ -1866,6 +1866,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
       |> Ash.Changeset.put_context(:bulk_destroy, %{index: index, ref: make_ref()})
       |> Ash.Changeset.set_context(opts[:context] || %{})
+      |> Ash.Changeset.pin_temporal_write_now()
 
     changeset =
       handle_params(

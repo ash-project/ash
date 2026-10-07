@@ -593,6 +593,21 @@ graph TD
   - Webhook calls
 - **Transaction Context**: Outside transaction
 
+- **Custom notifications from hooks**: `before_action` and `after_action` hooks
+  may return custom notifications as a single notification, a list of
+  notifications, a map containing a `:notifications` key, or `nil`:
+
+```elixir
+  Ash.Changeset.after_action(changeset, fn changeset, result ->
+    notification = %Ash.Notifier.Notification{
+      resource: changeset.resource,
+      metadata: %{event: :created}
+    }
+
+    {:ok, result, [notification]}
+  end)
+```
+
 ##### 18. Return Result
 - **Success**: Returns data with metadata
 - **Error**: Returns error details and context

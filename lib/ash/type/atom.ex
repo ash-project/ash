@@ -83,6 +83,13 @@ defmodule Ash.Type.Atom do
   end
 
   @impl true
+  def coerce(value, _constraints) when is_binary(value), do: {:ok, value}
+
+  def coerce(value, _constraints) when is_atom(value), do: {:ok, value}
+
+  def coerce(_value, _constraints), do: :error
+
+  @impl true
   def cast_input(value, _) when is_atom(value) do
     {:ok, value}
   end
@@ -121,6 +128,10 @@ defmodule Ash.Type.Atom do
 
   def dump_to_native(value, _) when is_atom(value) do
     {:ok, to_string(value)}
+  end
+
+  def dump_to_native(value, _) when is_binary(value) do
+    {:ok, value}
   end
 
   def dump_to_native(_, _), do: :error

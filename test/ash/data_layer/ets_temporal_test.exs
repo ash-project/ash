@@ -6,12 +6,15 @@ defmodule Ash.DataLayer.EtsTemporalTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  alias Ash.Test.Temporal.EtsVersioned
+  alias Ash.Test.Temporal.{EtsVersioned, Precise}
 
   require Ash.Query
 
   setup do
-    on_exit(fn -> Ash.DataLayer.Ets.stop(EtsVersioned) end)
+    on_exit(fn ->
+      Ash.DataLayer.Ets.stop(EtsVersioned)
+      Ash.DataLayer.Ets.stop(Precise)
+    end)
   end
 
   @early %Ash.Range{
@@ -248,6 +251,108 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                Ash.DataLayer.update(EtsVersioned, changeset)
 
       assert ["first"] = names_at(~U[2020-06-01 00:00:00Z])
+    end
+  end
+
+  describe "every temporal write is made as of one instant Ash resolves" do
+    # Seeded, so a record carries no instant from a read.
+    setup do
+      %{
+        record: Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @open}),
+        other: Ash.Seed.seed!(%EtsVersioned{id: 2, name: "first", valid_at: @open})
+      }
+    end
+
+    defp written_as_of(record) do
+      assert %DateTime{} = as_of = record.__metadata__[:as_of]
+      as_of
+    end
+
+    defp version_ending_at(id, instant) do
+      EtsVersioned
+      |> Ash.get!(id, as_of: DateTime.add(instant, -1, :second))
+      |> Map.get(:valid_at)
+    end
+
+    test "a hard destroy closes the version at the instant it reports", %{record: record} do
+      {:ok, destroyed} = Ash.destroy(record, return_destroyed?: true)
+      as_of = written_as_of(destroyed)
+
+      assert %Ash.Range{upper: ^as_of} = version_ending_at(1, as_of)
+    end
+
+    test "a soft destroy opens its version at the instant it reports", %{record: record} do
+      {:ok, cancelled} =
+        record |> Ash.Changeset.for_destroy(:cancel, %{}) |> Ash.destroy(return_destroyed?: true)
+
+      as_of = written_as_of(cancelled)
+
+      assert %Ash.Range{lower: ^as_of} = Ash.get!(EtsVersioned, 1, as_of: as_of).valid_at
+    end
+
+    for strategy <- [:atomic, :atomic_batches] do
+      test "an atomic bulk update makes every record's version at one instant, #{strategy}" do
+        %Ash.BulkResult{status: :success, records: records} =
+          EtsVersioned
+          |> Ash.Query.new()
+          |> Ash.bulk_update(:update, %{name: "second"},
+            strategy: unquote(strategy),
+            return_records?: true
+          )
+
+        assert [as_of] = records |> Enum.map(&written_as_of/1) |> Enum.uniq()
+
+        for id <- [1, 2] do
+          assert %Ash.Range{lower: ^as_of} = Ash.get!(EtsVersioned, id, as_of: as_of).valid_at
+        end
+      end
+    end
+
+    for {action, strategy} <- [
+          {:bulk_update, :atomic},
+          {:bulk_update, :stream},
+          {:bulk_destroy, :atomic},
+          {:bulk_destroy, :stream}
+        ] do
+      test "#{action}, #{strategy}, takes one instant for every record, to the microsecond" do
+        records =
+          for id <- 1..5, do: Ash.Seed.seed!(%Precise{id: id, name: "first", valid_at: @open})
+
+        %Ash.BulkResult{status: :success, records: written} =
+          case unquote(action) do
+            :bulk_update ->
+              Ash.bulk_update(records, :update, %{name: "second"},
+                resource: Precise,
+                strategy: unquote(strategy),
+                return_records?: true
+              )
+
+            :bulk_destroy ->
+              Ash.bulk_destroy(records, :destroy, %{},
+                resource: Precise,
+                strategy: unquote(strategy),
+                return_records?: true
+              )
+          end
+
+        assert [%DateTime{microsecond: {_, 6}}] =
+                 written |> Enum.map(& &1.__metadata__[:as_of]) |> Enum.uniq()
+      end
+    end
+
+    for strategy <- [:atomic, :stream] do
+      test "a bulk destroy closes every record's version at one instant, #{strategy}" do
+        %Ash.BulkResult{status: :success, records: records} =
+          EtsVersioned
+          |> Ash.Query.new()
+          |> Ash.bulk_destroy(:destroy, %{}, strategy: unquote(strategy), return_records?: true)
+
+        assert [as_of] = records |> Enum.map(&written_as_of/1) |> Enum.uniq()
+
+        for id <- [1, 2] do
+          assert %Ash.Range{upper: ^as_of} = version_ending_at(id, as_of)
+        end
+      end
     end
   end
 

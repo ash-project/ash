@@ -24,15 +24,20 @@ or for your convenience you can use `use Ash.Reactor` which expands to exactly t
 
 ## Running Reactors as an action
 
-Ash's [generic actions](actions.md#generic-actions) support providing a Reactor module directly as their `run` option.
+Ash's [generic actions](actions.md#generic-actions) can run a Reactor using `reactor/2` (see `Ash.Resource.Actions.Implementation.Builtins.reactor/2`).
 This is the preferred way for you to initiate reactors in your application. These actions could be defined on your existing resources, or you could even have a resource with a single action on it that runs a reactor, and no attributes/data layer etc. for example.
+
+```elixir
+run reactor(MyReactor)
+```
 
 Notes:
 
 - Every Reactor input must have a corresponding action argument.
 - Ash's action context is passed in as the Reactor's context (including things like actor, tenant, etc).
-- [Reactor runtime options](`t:Reactor.run_options/0`) can be set by setting `run {MyReactor, opts}` instead of just `run MyReactor`.
+- [Reactor runtime options](`t:Reactor.run_options/0`) can be passed as the second argument, i.e `run reactor(MyReactor, async?: false)`.
 - If you set the `transaction?` action DSL option to true then the Reactor will be run synchronously - regardless of the value of the `async?` runtime option.
+- Unless `config :ash, infer_generic_action_reactors?: false` is set, a Reactor can also be passed directly, i.e `run MyReactor` or `run {MyReactor, opts}`. With that config set, resources no longer depend at compile time on their `run` modules, bare Reactors are no longer supported, and the Reactor's inputs are not checked against the action's arguments at compile time. See the [backwards compatibility guide](/documentation/topics/development/backwards-compatibility-config.md#infer_generic_action_reactors).
 
 ### Example
 
@@ -52,7 +57,7 @@ defmodule MyApp.Blog.Actions do
     argument :blog_body, :string, allow_nil?: false
     argument :author_email, :ci_string, allow_nil?: false
 
-    run MyApp.Blog.Reactors.CreatePost
+    run reactor(MyApp.Blog.Reactors.CreatePost)
   end
 end
 ```

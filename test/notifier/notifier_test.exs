@@ -434,6 +434,112 @@ defmodule Ash.Test.NotifierTest do
       assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{custom?: true}}}
       assert_receive {:telemetry_metadata, %{action: nil, resource: Comment}}
     end
+
+    test "a custom notification can be returned as a bare list from an after_action hook" do
+      Comment
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.Changeset.after_action(fn changeset, result ->
+        {:ok, result,
+         [
+           %Ash.Notifier.Notification{
+             resource: changeset.resource,
+             domain: Ash.Resource.Info.domain(changeset.resource),
+             metadata: %{custom?: true}
+           }
+         ]}
+      end)
+      |> Ash.create!()
+
+      assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{custom?: true}}}
+    end
+
+    test "a custom notification can be returned as a map from an after_action hook" do
+      Comment
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.Changeset.after_action(fn changeset, result ->
+        {:ok, result,
+         %{
+           notifications: [
+             %Ash.Notifier.Notification{
+               resource: changeset.resource,
+               domain: Ash.Resource.Info.domain(changeset.resource),
+               metadata: %{custom?: true}
+             }
+           ]
+         }}
+      end)
+      |> Ash.create!()
+
+      assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{custom?: true}}}
+    end
+
+    test "notifications from before and after action hooks are both delivered" do
+      Comment
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.Changeset.before_action(fn changeset ->
+        {changeset,
+         [
+           %Ash.Notifier.Notification{
+             resource: changeset.resource,
+             domain: Ash.Resource.Info.domain(changeset.resource),
+             metadata: %{phase: :before}
+           }
+         ]}
+      end)
+      |> Ash.Changeset.after_action(fn changeset, result ->
+        {:ok, result,
+         [
+           %Ash.Notifier.Notification{
+             resource: changeset.resource,
+             domain: Ash.Resource.Info.domain(changeset.resource),
+             metadata: %{phase: :after}
+           }
+         ]}
+      end)
+      |> Ash.create!()
+
+      assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{phase: :before}}}
+      assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{phase: :after}}}
+    end
+
+    test "all notifications returned from an after_action hook are delivered" do
+      Comment
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.Changeset.after_action(fn changeset, result ->
+        notifications =
+          for phase <- [:first, :second] do
+            %Ash.Notifier.Notification{
+              resource: changeset.resource,
+              domain: Ash.Resource.Info.domain(changeset.resource),
+              metadata: %{phase: phase}
+            }
+          end
+
+        {:ok, result, notifications}
+      end)
+      |> Ash.create!()
+
+      assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{phase: :first}}}
+      assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{phase: :second}}}
+    end
+
+    test "a custom notification can be returned as a bare list from a before_action hook" do
+      Comment
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.Changeset.before_action(fn changeset ->
+        {changeset,
+         [
+           %Ash.Notifier.Notification{
+             resource: changeset.resource,
+             domain: Ash.Resource.Info.domain(changeset.resource),
+             metadata: %{custom?: true}
+           }
+         ]}
+      end)
+      |> Ash.create!()
+
+      assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{custom?: true}}}
+    end
   end
 
   test "a nested notification is sent automatically" do

@@ -421,7 +421,7 @@ defmodule Ash.Resource.Info do
       when is_binary(relationship_name) or is_atom(relationship_name) do
     case Extension.get_persisted(resource, :relationships_by_name) do
       value when is_map(value) ->
-        value[relationship_name]
+        fetch_by_name(value, relationship_name)
 
       nil ->
         resource
@@ -610,7 +610,7 @@ defmodule Ash.Resource.Info do
   def calculation(resource, name) when is_binary(name) or is_atom(name) do
     case Extension.get_persisted(resource, :calculations_by_name) do
       value when is_map(value) ->
-        value[name]
+        fetch_by_name(value, name)
 
       nil ->
         resource
@@ -798,8 +798,6 @@ defmodule Ash.Resource.Info do
   @spec action_input?(Ash.Resource.t(), action :: atom(), input :: atom() | String.t()) ::
           boolean()
   def action_input?(resource, action, input) do
-    # Extension.get_persisted(resource, {:action_inputs, action, input}) || false
-
     case Extension.get_persisted(resource, {:action_inputs, action}) do
       nil -> false
       map_set -> input in map_set
@@ -913,12 +911,27 @@ defmodule Ash.Resource.Info do
   def attribute(resource, name) when is_binary(name) or is_atom(name) do
     case Extension.get_persisted(resource, :attributes_by_name) do
       value when is_map(value) ->
-        value[name]
+        fetch_by_name(value, name)
 
       nil ->
         resource
         |> attributes()
         |> Enum.find(&(to_string(&1.name) == to_string(name)))
+    end
+  end
+
+  # The `*_by_name` maps hold each struct under its atom name, and map the string
+  # form of the name to the atom name.
+  defp fetch_by_name(by_name, name) do
+    case by_name do
+      %{^name => atom_name} when is_atom(atom_name) and not is_nil(atom_name) ->
+        Map.get(by_name, atom_name)
+
+      %{^name => value} ->
+        value
+
+      _ ->
+        nil
     end
   end
 

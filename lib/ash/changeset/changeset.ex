@@ -239,7 +239,7 @@ defmodule Ash.Changeset do
   @type after_action_fun ::
           (t, Ash.Resource.Record.t() ->
              {:ok, Ash.Resource.Record.t()}
-             | {:ok, Ash.Resource.Record.t(), [Ash.Notifier.Notification.t()]}
+             | {:ok, Ash.Resource.Record.t(), Ash.Notifier.Notification.input()}
              | {:error, any})
 
   @typedoc """
@@ -257,7 +257,7 @@ defmodule Ash.Changeset do
 
   Receives a changeset and returns a modified changeset, optionally with notifications.
   """
-  @type before_action_fun :: (t -> t | {t, %{notifications: [Ash.Notifier.Notification.t()]}})
+  @type before_action_fun :: (t -> t | {t, Ash.Notifier.Notification.input()})
 
   @typedoc """
   Function type for before transaction hooks.
@@ -850,7 +850,8 @@ defmodule Ash.Changeset do
       # This changeset is rebuilt from scratch (carrying context but not every
       # field); restore the temporal `as_of` from the carried context so it is
       # not lost on the way to the data layer.
-      changeset = %{changeset | as_of: changeset.context[:private][:as_of]}
+      changeset =
+        pin_temporal_write_now(%{changeset | as_of: changeset.context[:private][:as_of]})
 
       changeset = set_phase(changeset, :atomic)
 
@@ -4264,9 +4265,10 @@ defmodule Ash.Changeset do
   #
   # The pinned instant is also what the resource's `recorded_at` attribute is stamped with,
   # so a write that isn't back-dated records the same instant its period starts at.
-  defp pin_temporal_write_now(%{as_of: nil} = changeset) do
+  @doc false
+  def pin_temporal_write_now(%{as_of: nil} = changeset) do
     if Ash.Resource.Info.temporal?(changeset.resource) do
-      changeset = as_of(changeset, :now)
+      changeset = as_of(changeset, changeset.context[:private][:temporal_now] || :now)
 
       case changeset.as_of do
         %DateTime{} = now -> set_context(changeset, %{private: %{temporal_recorded_at: now}})
@@ -4277,7 +4279,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp pin_temporal_write_now(changeset), do: changeset
+  def pin_temporal_write_now(changeset), do: changeset
 
   # A `&DateTime.utc_now/0` default on a write that carries an `as_of` resolves to that
   # instant rather than the wall clock (see `Ash.Helpers.resolve_default/2`), except on the
@@ -5152,7 +5154,9 @@ defmodule Ash.Changeset do
           {:error, error} ->
             {:halt, {:error, error}}
 
-          {changeset, %{notifications: notifications}} ->
+          {%Ash.Changeset{} = changeset, notification_input} ->
+            notifications = Ash.Notifier.Notification.normalize(notification_input)
+
             cont =
               if changeset.valid? do
                 :cont
@@ -5341,7 +5345,7 @@ defmodule Ash.Changeset do
           {:ok, new_result, new_notifications} ->
             all_notifications =
               Enum.map(
-                List.wrap(notifications) ++ List.wrap(new_notifications),
+                List.wrap(notifications) ++ Ash.Notifier.Notification.normalize(new_notifications),
                 fn notification ->
                   %{
                     notification
@@ -7310,6 +7314,15 @@ defmodule Ash.Changeset do
       ...>   end
       ...> end)
 
+    A `before_action` hook may return notifications in any of these forms:
+
+      {changeset, notification}
+      {changeset, [notification]}
+      {changeset, %{notifications: [notification]}}
+      {changeset, nil}
+
+    Returning `changeset` without a tuple is equivalent to returning no notifications.
+
   ## See also
 
   - `after_action/3` for hooks that run after the action succeeds
@@ -7456,6 +7469,13 @@ defmodule Ash.Changeset do
       ...>
       ...>   {:ok, post}
       ...> end)
+
+    The notification value may also be returned as a single notification, a map containing a `:notifications` key, or `nil`:
+
+      {:ok, result, notification}
+      {:ok, result, [notification]}
+      {:ok, result, %{notifications: [notification]}}
+      {:ok, result, nil}
 
   ## See also
 

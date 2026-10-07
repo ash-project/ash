@@ -356,5 +356,51 @@ defmodule Ash.Test.Info.Manifest.Generator.TypeResolverTest do
     test "returns false for non-atoms" do
       refute TypeResolver.named_type_module?({:array, :string})
     end
+
+    test "waits for a type module that is still being compiled" do
+      tmp_dir =
+        Path.join(System.tmp_dir!(), "ash_manifest_#{System.unique_integer([:positive])}")
+
+      File.mkdir_p!(tmp_dir)
+
+      # The sleep makes sure the checker runs while the enum is still compiling.
+      enum_file = Path.join(tmp_dir, "enum.ex")
+
+      File.write!(enum_file, """
+      Process.sleep(200)
+
+      defmodule Ash.Test.Manifest.CompilingEnum do
+        use Ash.Type.Enum, values: [:a, :b]
+      end
+      """)
+
+      checker_file = Path.join(tmp_dir, "checker.ex")
+
+      File.write!(checker_file, """
+      defmodule Ash.Test.Manifest.CompilingEnumChecker do
+        @named_type? Ash.Info.Manifest.Generator.TypeResolver.named_type_module?(
+                       Ash.Test.Manifest.CompilingEnum
+                     )
+
+        def named_type?, do: @named_type?
+      end
+      """)
+
+      on_exit(fn ->
+        File.rm_rf!(tmp_dir)
+
+        for module <- [Ash.Test.Manifest.CompilingEnum, Ash.Test.Manifest.CompilingEnumChecker] do
+          :code.purge(module)
+          :code.delete(module)
+        end
+      end)
+
+      assert {:ok, _modules, _warnings} =
+               Kernel.ParallelCompiler.compile([checker_file, enum_file],
+                 return_diagnostics: true
+               )
+
+      assert apply(Ash.Test.Manifest.CompilingEnumChecker, :named_type?, [])
+    end
   end
 end

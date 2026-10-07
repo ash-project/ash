@@ -2688,6 +2688,7 @@ defmodule Ash.Actions.Read do
             filterable?: calc.filterable?,
             sortable?: calc.sortable?,
             sensitive?: calc.sensitive?,
+            allow_nil?: calc.allow_nil?,
             load: calc.load,
             select: calc.select,
             context: calc.context

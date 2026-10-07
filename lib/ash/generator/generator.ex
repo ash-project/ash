@@ -144,7 +144,7 @@ defmodule Ash.Generator do
   This can be used to define generators in tests. A useful pattern is defining a function like so:
 
   ```elixir
-  def blog_post(opts \\ []) do
+  def blog_post(opts \\\\ []) do
     changeset_generator(
       MyApp.Blog.Post,
       :create,
@@ -161,7 +161,7 @@ defmodule Ash.Generator do
   this pattern could be expanded, yielding a resource with a new child resource:
 
   ```elixir
-  def post_for(author, opts \\ []) do
+  def post_for(author, opts \\\\ []) do
     changeset_generator(
       author,
       :new_post,
@@ -204,7 +204,7 @@ defmodule Ash.Generator do
   ## The `uses` option
 
   ```elixir
-  def blog_post(opts \\ []) do
+  def blog_post(opts \\\\ []) do
     changeset_generator(
       MyApp.Blog.Post,
       :create,
@@ -381,7 +381,7 @@ defmodule Ash.Generator do
   This can be used to define seed generators in tests. A useful pattern is defining a function like so:
 
   ```elixir
-  def blog_post(opts \\ []) do
+  def blog_post(opts \\\\ []) do
     seed_generator(
       %MyApp.Blog.Post{
         name: sequence(:blog_post_title, &"My Blog Post \#{&1}")

@@ -318,3 +318,35 @@ the destination record (using the given action) and the join record (using the
 primary destroy action on the join resource). This makes the 2-tuple behavior
 consistent with the `:destroy` shorthand and the explicit 3-tuple
 `{:destroy, :dest_action, :join_action}`.
+
+## infer_generic_action_reactors?
+
+```elixir
+config :ash, infer_generic_action_reactors?: false
+```
+
+### Old Behavior
+
+A generic action's `run` option accepted a `Reactor` module directly, i.e
+`run MyReactor`. To support this, Ash had to check whether every `run` module
+was a Reactor, which made each resource depend at compile time on all of the
+modules used in its generic actions. Changing any of those modules recompiled
+the resource, and everything that depends on it at compile time.
+
+### New Behavior
+
+`run` modules are always treated as `Ash.Resource.Actions.Implementation`s, and
+resources no longer take a compile-time dependency on them. Ash no longer checks
+whether a `run` module is a Reactor, so passing one directly fails at runtime,
+since it doesn't implement `run/3`. Reactors must be wrapped with `reactor/2`
+(see `Ash.Resource.Actions.Implementation.Builtins.reactor/2`):
+
+```elixir
+run reactor(MyReactor)
+```
+
+Options given to `reactor/2` are passed to `Reactor.run/4`. Because the resource doesn't
+depend on the Reactor at compile time, Ash also doesn't verify at compile time
+that the action has an argument for each of the Reactor's inputs.
+`reactor/2` works with either setting, so you can migrate
+before enabling it.

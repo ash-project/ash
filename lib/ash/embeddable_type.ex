@@ -863,6 +863,19 @@ defmodule Ash.EmbeddableType do
 
       @meta_keys [:__metadata__, :__meta__, :__lateral_join_source__, :__order__]
 
+      def equal?(%__MODULE__{} = left, %__MODULE__{} = right) do
+        __MODULE__
+        |> Ash.Resource.Info.attributes()
+        |> Enum.all?(fn attribute ->
+          Ash.Type.equal?(
+            attribute.type,
+            Map.get(left, attribute.name),
+            Map.get(right, attribute.name),
+            attribute.constraints
+          )
+        end)
+      end
+
       def equal?(left, right) when is_map(left) and is_map(right) do
         Map.drop(left, @meta_keys) == Map.drop(right, @meta_keys)
       end

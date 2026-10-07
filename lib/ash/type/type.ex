@@ -1710,8 +1710,7 @@ defmodule Ash.Type do
   @spec equal?(t(), term, term, constraints()) :: boolean
   def equal?(type, left, right, constraints \\ [])
 
-  def equal?({:array, type}, [nil | xs], [nil | ys], constraints),
-    do: equal?({:array, type}, xs, ys, constraints)
+  def equal?(_type, nil, nil, _constraints), do: true
 
   def equal?({:array, type}, [x | xs], [y | ys], constraints),
     do:

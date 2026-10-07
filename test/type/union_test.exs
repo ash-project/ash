@@ -6,6 +6,8 @@ defmodule Ash.Test.Filter.UnionTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Query
+
   alias Ash.Test.Domain, as: Domain
   alias Ash.Test.DumpTestType
 
@@ -843,6 +845,112 @@ defmodule Ash.Test.Filter.UnionTest do
                things: [%Ash.Union{type: :foo, value: %{type: :foo, foo: "foo"}}]
              })
              |> Ash.update()
+  end
+
+  defmodule AtomicAddress do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :street, :string, public?: true, allow_nil?: false
+      attribute :city, :string, public?: true
+    end
+  end
+
+  defmodule AtomicUnionWidget do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:read, create: :*]
+
+      update :update do
+        accept [:name, :content]
+      end
+
+      update :update_non_atomic do
+        require_atomic? false
+        accept [:name, :content]
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true, allow_nil?: false
+
+      attribute :content, :union,
+        public?: true,
+        constraints: [
+          types: [
+            text: [type: :string],
+            number: [type: :integer],
+            address: [type: AtomicAddress]
+          ]
+        ]
+    end
+  end
+
+  describe "atomic updates of union attributes in ETS" do
+    setup do
+      widget =
+        AtomicUnionWidget
+        |> Ash.Changeset.for_create(:create, %{
+          name: "x",
+          content: %Ash.Union{type: :text, value: "a"}
+        })
+        |> Ash.create!()
+
+      %{widget: widget}
+    end
+
+    for action <- [:update, :update_non_atomic] do
+      test "#{action} changes the union member type from text to number", %{widget: widget} do
+        assert {:ok, %{content: %Ash.Union{type: :number, value: 10}} = updated} =
+                 widget
+                 |> Ash.Changeset.for_update(unquote(action), %{content: 10})
+                 |> Ash.update()
+
+        assert %{content: %Ash.Union{type: :number, value: 10}} =
+                 Ash.get!(AtomicUnionWidget, updated.id)
+      end
+
+      test "#{action} changes the union member type to and from an embedded resource", %{
+        widget: widget
+      } do
+        assert {:ok,
+                %{
+                  content: %Ash.Union{
+                    type: :address,
+                    value: %AtomicAddress{street: "1 Main St", city: "Springfield"}
+                  }
+                } = updated} =
+                 widget
+                 |> Ash.Changeset.for_update(unquote(action), %{
+                   content: %Ash.Union{
+                     type: :address,
+                     value: %{street: "1 Main St", city: "Springfield"}
+                   }
+                 })
+                 |> Ash.update()
+
+        assert %{
+                 content: %Ash.Union{
+                   type: :address,
+                   value: %AtomicAddress{street: "1 Main St", city: "Springfield"}
+                 }
+               } = Ash.get!(AtomicUnionWidget, updated.id)
+
+        assert {:ok, %{content: %Ash.Union{type: :text, value: "b"}} = updated} =
+                 updated
+                 |> Ash.Changeset.for_update(unquote(action), %{content: "b"})
+                 |> Ash.update()
+
+        assert %{content: %Ash.Union{type: :text, value: "b"}} =
+                 Ash.get!(AtomicUnionWidget, updated.id)
+      end
+    end
   end
 
   test "it handles updates to and from array in union types" do

@@ -598,6 +598,12 @@ defmodule Ash.Resource.Dsl do
     args: [:preparation]
   }
 
+  if Application.compile_env(:ash, :infer_generic_action_reactors?, true) do
+    @action_no_depend_modules [:touches_resources, :error_handler]
+  else
+    @action_no_depend_modules [:run, :touches_resources, :error_handler]
+  end
+
   @action %Spark.Dsl.Entity{
     name: :action,
     describe: """
@@ -618,12 +624,13 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     imports: [
+      Ash.Resource.Actions.Implementation.Builtins,
       Ash.Resource.Preparation.Builtins,
       Ash.Resource.Validation.Builtins,
       Ash.Expr
     ],
     target: Ash.Resource.Actions.Action,
-    no_depend_modules: [:touches_resources, :error_handler],
+    no_depend_modules: @action_no_depend_modules,
     schema: Ash.Resource.Actions.Action.opt_schema(),
     transform: {Ash.Resource.Actions.Action, :transform, []},
     entities: [

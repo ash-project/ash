@@ -341,6 +341,23 @@ defmodule Ash.Actions.Helpers do
   def put_write_as_of(metadata, _resource, _as_of), do: metadata
 
   @doc false
+  # A bulk write given no `as_of` takes one `now`, pinned here, for every record it writes.
+  def pin_temporal_now(opts, resource) do
+    context = opts[:context] || %{}
+
+    if is_nil(opts[:as_of]) and Ash.Resource.Info.temporal?(resource) and
+         is_nil(context[:private][:temporal_now]) do
+      Keyword.put(
+        opts,
+        :context,
+        Ash.Helpers.deep_merge_maps(context, %{private: %{temporal_now: DateTime.utc_now()}})
+      )
+    else
+      opts
+    end
+  end
+
+  @doc false
   def unscope_write_read_as_of(%Ash.Query{} = query, %Ash.Range{}) do
     context =
       query.context

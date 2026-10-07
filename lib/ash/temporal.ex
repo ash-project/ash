@@ -8,7 +8,7 @@ defmodule Ash.Temporal do
 
   On a [temporal resource](/documentation/topics/advanced/temporal-resources.md) every
   version of a record is valid for a period of datetimes. You can provide a `DateTime`, or
-  `:now` for resolution by the data layer.
+  `:now`.
 
   ```elixir
   # a read resolves as_of a point in time
@@ -23,7 +23,9 @@ defmodule Ash.Temporal do
   The write functions return a `DateTime` cast to the precision the resource's period
   declares.
 
-  A write that provides no `as_of` takes effect now. Data layers provide `:now` for this.
+  A write that provides no `as_of` takes effect now. Ash resolves it once for the whole write,
+  before the data layer is called, so a data layer receives a temporal write's `as_of` as an
+  instant or a range, never `nil` or `:now`.
   """
 
   @temporal_safe_modules Application.compile_env(:ash, :temporal_safe_modules, [])

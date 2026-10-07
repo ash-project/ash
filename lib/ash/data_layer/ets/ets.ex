@@ -914,7 +914,11 @@ defmodule Ash.DataLayer.Ets do
                      authorize?: context[:authorize?] || false
                    ) do
                 {:ok, results} ->
-                  value = Map.get(results, name) || default_value
+                  value =
+                    case Map.get(results, name) do
+                      nil -> default_value
+                      value -> value
+                    end
 
                   if load do
                     {:cont, {:ok, Map.put(record, load, value)}}
@@ -1892,7 +1896,7 @@ defmodule Ash.DataLayer.Ets do
   defp put_established_period(record, _attribute, %Ash.Range{}, _resource, _changeset), do: record
 
   defp put_established_period(record, attribute, nil, resource, changeset) do
-    case Ash.Temporal.write_period(resource, write_as_of(changeset)) do
+    case Ash.Temporal.write_period(resource, changeset.as_of) do
       {:ok, period} -> Map.put(record, attribute, period)
       :error -> record
     end
@@ -1902,15 +1906,11 @@ defmodule Ash.DataLayer.Ets do
 
   # Without an instant the query sees every version, not the one holding it.
   defp upsert_instant(resource, changeset) do
-    case Ash.Temporal.write_instant(resource, write_as_of(changeset)) do
+    case Ash.Temporal.write_instant(resource, changeset.as_of) do
       {:ok, instant} -> instant
       :error -> nil
     end
   end
-
-  # A write that is not time travelling names no instant, and takes effect now.
-  defp write_as_of(%{as_of: nil}), do: :now
-  defp write_as_of(%{as_of: as_of}), do: as_of
 
   defp set_loaded(%resource{} = record) do
     %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}
@@ -2104,7 +2104,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp once_per_record(results, resource, changeset) do
-    case write_as_of(changeset) do
+    case changeset.as_of do
       %Ash.Range{} = as_of ->
         results
         |> Enum.filter(&touches_portion?(resource, &1, as_of))
@@ -2126,7 +2126,7 @@ defmodule Ash.DataLayer.Ets do
       changeset.domain,
       changeset.context[:private][:actor],
       supersession(resource, changeset),
-      match?(%Ash.Range{}, write_as_of(changeset))
+      match?(%Ash.Range{}, changeset.as_of)
     )
   end
 
@@ -2444,7 +2444,7 @@ defmodule Ash.DataLayer.Ets do
   # `nil` writes in place: no period, or a period with no now to supersede at.
   defp supersession(resource, changeset) do
     with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
-         {:ok, written} <- Ash.Temporal.write_period(resource, write_as_of(changeset)) do
+         {:ok, written} <- Ash.Temporal.write_period(resource, changeset.as_of) do
       {period, written}
     else
       _ -> nil
@@ -2518,8 +2518,9 @@ defmodule Ash.DataLayer.Ets do
                   write_version(table, pkey, record, data, resource, supersede)
 
                 atomics ->
-                  with {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_record) do
-                    data = record |> Map.merge(casted) |> Map.merge(atomics)
+                  with {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_record),
+                       {:ok, dumped_atomics} <- dump_atomics(atomics, attributes) do
+                    data = record |> Map.merge(casted) |> Map.merge(dumped_atomics)
                     write_version(table, pkey, record, data, resource, supersede)
                   end
               end
@@ -2674,6 +2675,33 @@ defmodule Ash.DataLayer.Ets do
 
       error ->
         error
+    end
+  end
+
+  defp dump_atomics(atomics, attributes) do
+    attributes
+    |> Enum.filter(&Map.has_key?(atomics, &1.name))
+    |> Enum.reduce_while({:ok, %{}}, fn attribute, {:ok, acc} ->
+      case Ash.Type.cast_input(
+             attribute.type,
+             Map.get(atomics, attribute.name),
+             attribute.constraints
+           ) do
+        {:ok, value} ->
+          {:cont, {:ok, Map.put(acc, attribute.name, value)}}
+
+        _ ->
+          {:halt,
+           {:error,
+            Ash.Error.Changes.InvalidAttribute.exception(
+              field: attribute.name,
+              message: "is invalid"
+            )}}
+      end
+    end)
+    |> case do
+      {:ok, casted} -> dump_to_native(casted, attributes)
+      {:error, error} -> {:error, error}
     end
   end
 

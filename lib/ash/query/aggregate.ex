@@ -422,7 +422,7 @@ defmodule Ash.Query.Aggregate do
                agg_name: agg_name,
                resource: if(related?, do: resource, else: target_resource),
                constraints: constraints,
-               default_value: default || default_value(kind),
+               default_value: if(is_nil(default), do: default_value(kind), else: default),
                relationship_path: relationship_path,
                implementation: implementation,
                include_nil?: include_nil?,
