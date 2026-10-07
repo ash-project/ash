@@ -6,6 +6,11 @@ defmodule Ash.Resource.Validation.Function do
   @moduledoc false
 
   use Ash.Resource.Validation
+
+  # Wraps an arbitrary function, whose temporal safety cannot be known.
+  @impl true
+  def temporal_safe?(_opts), do: false
+
   import Ash.Gettext
 
   @impl true

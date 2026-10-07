@@ -1078,6 +1078,9 @@ defmodule Ash.Actions.Read.Calculations do
            Ash.Resource.Calculation.has_calculate?(calculation.module) do
         {:ok, calculation}
       else
+        expression =
+          Ash.Expr.fill_template(expression, context: calculation.context.source_context)
+
         Enum.reduce_while(initial_data, {:ok, []}, fn record, {:ok, results} ->
           case Ash.Expr.eval(expression,
                  record: record,
@@ -1110,6 +1113,8 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp try_evaluate(expression, resource, calculation, _, _) do
+    expression = Ash.Expr.fill_template(expression, context: calculation.context.source_context)
+
     case Ash.Expr.eval(expression,
            resource: resource,
            unknown_on_unknown_refs?: true

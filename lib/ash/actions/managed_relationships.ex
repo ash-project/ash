@@ -2775,7 +2775,7 @@ defmodule Ash.Actions.ManagedRelationships do
          {:ok, input_val} when not is_nil(input_val) <- fetch_field(input, field),
          {:ok, current_val} <- Ash.Type.cast_input(type, current_val, constraints),
          {:ok, input_val} <- Ash.Type.cast_input(type, input_val, constraints) do
-      Ash.Type.equal?(type, current_val, input_val)
+      Ash.Type.equal?(type, current_val, input_val, constraints)
     else
       _ ->
         false

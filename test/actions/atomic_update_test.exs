@@ -99,6 +99,11 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
         accept []
         change relate_actor(:owner)
       end
+
+      update :update_if_no_bio do
+        accept [:name]
+        change filter(expr(is_nil(bio)))
+      end
     end
 
     attributes do
@@ -188,6 +193,41 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       |> Ash.update!()
 
     assert author.name == "fred weasley"
+  end
+
+  test "filters added by an action's changes are applied when upgraded to an atomic update" do
+    author =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "fred", bio: "a bio"})
+      |> Ash.create!()
+
+    assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+             author
+             |> Ash.Changeset.for_update(:update_if_no_bio, %{name: "george"})
+             |> Ash.update()
+
+    assert Ash.get!(Author, author.id).name == "fred"
+  end
+
+  test "filters added by an action's changes and by the caller are both applied when upgraded to an atomic update" do
+    author =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "fred"})
+      |> Ash.create!()
+
+    assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+             author
+             |> Ash.Changeset.new()
+             |> Ash.Changeset.filter(Ash.Expr.expr(name == "george"))
+             |> Ash.Changeset.for_update(:update_if_no_bio, %{name: "george"})
+             |> Ash.update()
+
+    assert %{name: "george"} =
+             author
+             |> Ash.Changeset.new()
+             |> Ash.Changeset.filter(Ash.Expr.expr(name == "fred"))
+             |> Ash.Changeset.for_update(:update_if_no_bio, %{name: "george"})
+             |> Ash.update!()
   end
 
   test "a changeset can be fully atomic" do

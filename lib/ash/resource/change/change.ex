@@ -100,6 +100,8 @@ defmodule Ash.Resource.Change do
   @spec change(module(), Ash.Changeset.t(), Keyword.t(), Ash.Resource.Change.Context.t()) ::
           Ash.Changeset.t()
   def change(module, changeset, opts, context) do
+    Ash.Temporal.assert_temporal_safe!(:change, module, opts, changeset)
+
     Ash.BehaviourHelpers.call_and_validate_return(
       module,
       :change,
@@ -139,6 +141,8 @@ defmodule Ash.Resource.Change do
           | :ok
           | {:error, term()}
   def atomic(module, changeset, opts, context) do
+    Ash.Temporal.assert_temporal_safe!(:change, module, opts, changeset)
+
     result = apply(module, :atomic, [changeset, opts, context])
 
     if valid_atomic_result?(result) do
@@ -181,6 +185,8 @@ defmodule Ash.Resource.Change do
   @spec batch_change(module(), [Ash.Changeset.t()], Keyword.t(), Ash.Resource.Change.Context.t()) ::
           [Ash.Changeset.t()]
   def batch_change(module, changesets, opts, context) do
+    Ash.Temporal.assert_temporal_safe!(:change, module, opts, changesets)
+
     result = apply(module, :batch_change, [changesets, opts, context])
     result_list = Enum.to_list(result)
 
@@ -435,11 +441,28 @@ defmodule Ash.Resource.Change do
   @callback has_after_batch?() :: boolean
   @callback has_before_batch?() :: boolean
 
+  @doc """
+  Whether this change is safe to run as part of an action on a temporal resource.
+
+  Every action on a [temporal resource](/documentation/topics/advanced/temporal-resources.md)
+  runs "as of" a point in time, which may be in the past or the future. A change that runs
+  there must not assume the write is happening now: it must not read the wall clock (use
+  `now()` in expressions, or the changeset's `as_of`), must not have side effects that
+  assume the present, and must perform any reads or nested actions through Ash so that
+  `as_of` is threaded to them.
+
+  Defaults to `false`. Running a change that is not temporal safe on a temporal resource
+  raises `Ash.Error.Framework.NotTemporalSafe`. Return `true` to declare the change safe,
+  inspecting `opts` if it is only safe for some configurations.
+  """
+  @callback temporal_safe?(opts :: Keyword.t()) :: boolean
+
   @optional_callbacks before_batch: 3,
                       after_batch: 3,
                       batch_change: 3,
                       change: 3,
-                      atomic: 3
+                      atomic: 3,
+                      temporal_safe?: 1
 
   defmacro __using__(_) do
     quote do
@@ -455,7 +478,10 @@ defmodule Ash.Resource.Change do
       @impl true
       def batch_callbacks?(_, _, _), do: true
 
-      defoverridable init: 1, batch_callbacks?: 3
+      @impl true
+      def temporal_safe?(_opts), do: false
+
+      defoverridable init: 1, batch_callbacks?: 3, temporal_safe?: 1
     end
   end
 

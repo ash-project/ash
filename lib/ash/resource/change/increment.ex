@@ -7,6 +7,10 @@ defmodule Ash.Resource.Change.Increment do
   Increments an attribute's value by the amount specified, which defaults to 1.
   """
   use Ash.Resource.Change
+
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   import Ash.Expr
 
   @impl true

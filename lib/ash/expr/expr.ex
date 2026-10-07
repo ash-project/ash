@@ -11,7 +11,17 @@ defmodule Ash.Expr do
 
   @type t :: any
   @pass_through_funcs [:where, :or_where, :expr, :@]
-  @aggregate_kinds Ash.Query.Aggregate.kinds()
+  # Literals rather than `Ash.Query.Aggregate.kinds/0` and `Ash.Query.Operator.operator_symbols/0`,
+  # because calling those at compile time makes this module depend on theirs at compile time,
+  # and much of Ash depends on this module at compile time. Tests keep these in sync.
+  @aggregate_kinds [:count, :first, :sum, :list, :max, :min, :avg, :exists, :custom]
+  @operator_symbols [:==, :>=, :>, :in, :<=, :<, :!=, :&&, :||, :<>, :/, :-, :*, :+]
+
+  @doc false
+  def aggregate_kinds, do: @aggregate_kinds
+
+  @doc false
+  def operator_symbols, do: @operator_symbols
 
   @doc """
   Evaluate an expression. See `eval/2` for more.
@@ -215,6 +225,40 @@ defmodule Ash.Expr do
       )
       when is_list(opts) do
     walk_template(template, fn
+      # Anchor relative-time expressions to a temporal query/changeset's `as_of`
+      # (threaded via `context`). Idempotent with `add_calc_context_to_filter`'s
+      # rewrite — once replaced with a DateTime there is no `now()` left to map.
+      %{__struct__: Ash.Query.Function.Now} = now ->
+        fill_template_as_of(opts) || now
+
+      %{__struct__: Ash.Query.Function.Ago, arguments: [factor, interval]} = ago
+      when is_integer(factor) ->
+        case fill_template_as_of(opts) do
+          nil -> ago
+          as_of -> Ash.Query.Function.Ago.datetime_add(as_of, -factor, interval)
+        end
+
+      %{__struct__: Ash.Query.Function.FromNow, arguments: [factor, interval]} = from_now
+      when is_integer(factor) ->
+        case fill_template_as_of(opts) do
+          nil -> from_now
+          as_of -> Ash.Query.Function.Ago.datetime_add(as_of, factor, interval)
+        end
+
+      %{__struct__: Ash.Query.Function.Ago, arguments: [duration]} = ago
+      when is_struct(duration, Duration) ->
+        case fill_template_as_of(opts) do
+          nil -> ago
+          as_of -> Ash.Query.Function.Ago.datetime_add(as_of, Duration.negate(duration))
+        end
+
+      # A date rather than a datetime, so it anchors by taking the date of `as_of`.
+      %{__struct__: Ash.Query.Function.Today} = today ->
+        case fill_template_as_of(opts) do
+          nil -> today
+          as_of -> DateTime.to_date(as_of)
+        end
+
       {:_actor, :_primary_key} ->
         actor = opts[:actor]
 
@@ -291,6 +335,13 @@ defmodule Ash.Expr do
       context: context,
       changeset: changeset
     )
+  end
+
+  defp fill_template_as_of(opts) do
+    context = opts[:context] || %{}
+
+    (get_in(context, [:private, :as_of]) || get_in(context, [:shared, :as_of]))
+    |> Ash.Temporal.resolve_write_as_of()
   end
 
   @doc false
@@ -571,8 +622,6 @@ defmodule Ash.Expr do
   end
 
   def walk_template(value, mapper), do: mapper.(value)
-
-  @operator_symbols Ash.Query.Operator.operator_symbols() -- [:is_nil]
 
   @doc false
   def do_expr(expr, escape? \\ true)
@@ -1230,6 +1279,7 @@ defmodule Ash.Expr do
           {:array, any} when any in [:same, :any] -> {:array, any}
           {type, any} when any in [:same, :any] -> {Ash.Type.get_type(type), any}
           any when any in [:same, :any] -> any
+          {:referenced_type, _via} = referenced -> referenced
           {type, constraints} -> get_type({type, constraints})
           type -> get_type({type, []})
         end)
@@ -1554,7 +1604,7 @@ defmodule Ash.Expr do
           nil
 
         %{basis: nil, must_adopt_basis: [], types: types, last_resort?: last_resort?} ->
-          if returns not in [:same, :any, {:array, :same}, {:array, :any}] do
+          if not vague_return?(returns) do
             output_types =
               cast_as_types || Enum.reverse(types)
 
@@ -1579,6 +1629,9 @@ defmodule Ash.Expr do
               same when same in [{:array, :same}, {:array, :any}] ->
                 {type, constraints} = basis
                 {{:array, type}, items: constraints}
+
+              {:referenced_type, via} ->
+                referenced_type(basis, via)
 
               other ->
                 other
@@ -1736,6 +1789,34 @@ defmodule Ash.Expr do
         end
     end
   end
+
+  # A return spec that stands for a type only known once the arguments' is: the same
+  # type (`:same`/`:any`), a list of it, or a type it refers to.
+  defp vague_return?(returns) do
+    returns in [:same, :any, {:array, :same}, {:array, :any}] or
+      match?({:referenced_type, _}, returns)
+  end
+
+  # The type the basis type refers to under `via`, as `c:Ash.Type.referenced_types/1`
+  # describes it. `range_lower/1` returns the type of its range's bounds, say, which is
+  # only known from the range type's constraints.
+  defp referenced_type({type, constraints}, via) do
+    type = Ash.Type.get_type(type)
+
+    if Code.ensure_loaded?(type) and function_exported?(type, :referenced_types, 1) do
+      type
+      |> apply(:referenced_types, [constraints || []])
+      |> Enum.find_value(fn
+        {referenced, referenced_constraints, ^via} ->
+          get_type({referenced, referenced_constraints})
+
+        _ ->
+          nil
+      end)
+    end
+  end
+
+  defp referenced_type(_basis, _via), do: nil
 
   def determine_type(value) do
     case value do

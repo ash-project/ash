@@ -6,6 +6,9 @@ defmodule Ash.Resource.Validation.AttributesPresent do
   @moduledoc false
   use Ash.Resource.Validation
 
+  @impl true
+  def temporal_safe?(_opts), do: true
+
   alias Ash.Resource.Validation.Present
   import Ash.Expr
 

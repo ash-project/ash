@@ -14,6 +14,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :context,
     :description,
     :filter,
+    :temporal_keys,
     :limit,
     :offset,
     :sort,

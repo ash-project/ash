@@ -13,6 +13,10 @@ defmodule Ash.Page do
   @spec page_opts(page() | false | nil | Keyword.t()) :: {:ok, page()} | {:error, String.t()}
   def page_opts(term) when term in [false, nil], do: {:ok, term}
 
+  def page_opts(term) when not is_list(term) do
+    {:error, "#{inspect(term)} is not a valid page option, expected a keyword list"}
+  end
+
   def page_opts(page_opts) do
     if page_opts[:after] || page_opts[:before] do
       validate_or_error(page_opts, Ash.Page.Keyset.Opts)

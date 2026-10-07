@@ -613,6 +613,17 @@ defmodule Ash.Type do
   @callback equal?(term, term) :: boolean
 
   @doc """
+  Determine if two valid instances of the type are equal, given the type's constraints.
+
+  Defaults to calling `c:equal?/2`. Define this instead of `c:equal?/2` if your type
+  needs its constraints to compare values, for example to compare nested values
+  using the types described by those constraints.
+
+  *Do not define this* if `==` is sufficient for your type. See `c:simple_equality?/0` for more.
+  """
+  @callback equal?(term, term, constraints) :: boolean
+
+  @doc """
   Whether or not `==` can be used to compare instances of the type.
 
   This is defined automatically to return `false` if `c:equal?/2` is defined.
@@ -1696,17 +1707,22 @@ defmodule Ash.Type do
 
   Maps to `Ecto.Type.equal?/3`
   """
-  @spec equal?(t(), term, term) :: boolean
-  def equal?({:array, type}, [nil | xs], [nil | ys]), do: equal?({:array, type}, xs, ys)
+  @spec equal?(t(), term, term, constraints()) :: boolean
+  def equal?(type, left, right, constraints \\ [])
 
-  def equal?({:array, type}, [x | xs], [y | ys]),
-    do: equal?(type, x, y) && equal?({:array, type}, xs, ys)
+  def equal?({:array, type}, [nil | xs], [nil | ys], constraints),
+    do: equal?({:array, type}, xs, ys, constraints)
 
-  def equal?({:array, _}, [], []), do: true
-  def equal?({:array, _}, _, _), do: false
+  def equal?({:array, type}, [x | xs], [y | ys], constraints),
+    do:
+      equal?(type, x, y, constraints[:items] || []) &&
+        equal?({:array, type}, xs, ys, constraints)
 
-  def equal?(type, left, right) do
-    type.equal?(left, right)
+  def equal?({:array, _}, [], [], _), do: true
+  def equal?({:array, _}, _, _, _), do: false
+
+  def equal?(type, left, right, constraints) do
+    get_type(type).equal?(left, right, constraints)
   end
 
   @doc """
@@ -2106,8 +2122,8 @@ defmodule Ash.Type do
         end
 
         @impl true
-        def equal?(left, right, _params) do
-          @parent.equal?(left, right)
+        def equal?(left, right, params) do
+          @parent.equal?(left, right, params)
         end
 
         @impl true
@@ -2603,7 +2619,16 @@ defmodule Ash.Type do
        when not is_nil(default) and not is_function(default) do
     case Ash.Type.cast_input(type, default, constraints) do
       {:ok, value} ->
-        {:ok, %{thing | default: value}}
+        if literal?(value) do
+          {:ok, %{thing | default: value}}
+        else
+          # The cast value cannot be embedded as a compile-time literal (for example, a
+          # struct whose fields contain a reference, pid from another process, or local
+          # function). Keep the original, uncast default instead of persisting the cast
+          # result into the DSL state, which would crash `Spark.Dsl.__before_compile__/1`
+          # when it tries to escape it. The default is still cast normally at change time.
+          {:ok, thing}
+        end
 
       :error ->
         {:error, "Could not cast #{inspect(default)} to #{inspect(type)}"}
@@ -2614,6 +2639,13 @@ defmodule Ash.Type do
   end
 
   defp set_default(thing, _type, _constraints), do: {:ok, thing}
+
+  defp literal?(value) do
+    Macro.escape(value)
+    true
+  rescue
+    ArgumentError -> false
+  end
 
   @doc false
   def field_referenced_types(nil), do: []
@@ -2809,7 +2841,8 @@ defmodule Ash.Type do
   # Credit to @immutable from elixir discord for the idea
   defmacro __before_compile__(_env) do
     quote generated: true do
-      if Module.defines?(__MODULE__, {:equal?, 2}, :def) do
+      if Module.defines?(__MODULE__, {:equal?, 2}, :def) ||
+           Module.defines?(__MODULE__, {:equal?, 3}, :def) do
         if !Module.defines?(__MODULE__, {:simple_equality, 0}, :def) do
           @impl true
           def simple_equality?, do: false
@@ -2819,9 +2852,27 @@ defmodule Ash.Type do
           @impl true
           def simple_equality?, do: true
         end
+      end
 
-        @impl true
-        def equal?(left, right), do: left == right
+      cond do
+        Module.defines?(__MODULE__, {:equal?, 2}, :def) &&
+            Module.defines?(__MODULE__, {:equal?, 3}, :def) ->
+          :ok
+
+        Module.defines?(__MODULE__, {:equal?, 2}, :def) ->
+          @impl true
+          def equal?(left, right, _constraints), do: equal?(left, right)
+
+        Module.defines?(__MODULE__, {:equal?, 3}, :def) ->
+          @impl true
+          def equal?(left, right), do: equal?(left, right, [])
+
+        true ->
+          @impl true
+          def equal?(left, right), do: left == right
+
+          @impl true
+          def equal?(left, right, _constraints), do: left == right
       end
 
       if Module.defines?(__MODULE__, {:to_simple_equality_comparable, 1}, :def) do

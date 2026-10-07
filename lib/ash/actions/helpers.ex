@@ -277,6 +277,13 @@ defmodule Ash.Actions.Helpers do
       end
 
     opts =
+      if as_of = Map.get(query_or_changeset, :as_of) do
+        Keyword.put_new(opts, :as_of, as_of)
+      else
+        opts
+      end
+
+    opts =
       case query_or_changeset.context do
         %{
           private: %{
@@ -313,6 +320,60 @@ defmodule Ash.Actions.Helpers do
   end
 
   @doc false
+  # Stamp an explicit point-in-time `as_of` onto a written record's metadata, so a later
+  # `Ash.load/3` of that record reuses the same instant (parity with how tenant is
+  # stamped — see `Ash.load/3`). Only a concrete `DateTime` is stamped: a `:now`/`nil`
+  # write is anchored at the *data layer's* clock, which core never observes, so stamping
+  # a (slightly earlier) core `now()` could place `as_of` before the row's validity and
+  # make the reload miss it. Those are left for `load` to default to the current instant.
+  # A range is concrete in the same way, and stamps the instant it begins at.
+  def put_write_as_of(metadata, resource, %Ash.Range{} = as_of),
+    do: put_write_as_of(metadata, resource, Ash.Temporal.resolve_write_as_of(as_of))
+
+  def put_write_as_of(metadata, resource, %DateTime{} = as_of) do
+    if Ash.Resource.Info.temporal?(resource) do
+      Map.put_new(metadata, :as_of, as_of)
+    else
+      metadata
+    end
+  end
+
+  def put_write_as_of(metadata, _resource, _as_of), do: metadata
+
+  @doc false
+  def unscope_write_read_as_of(%Ash.Query{} = query, %Ash.Range{}) do
+    context =
+      query.context
+      |> Map.delete(:as_of)
+      |> Map.update(:shared, %{}, &Map.delete(&1, :as_of))
+
+    %{query | as_of: nil, context: context}
+  end
+
+  def unscope_write_read_as_of(query, _as_of), do: query
+
+  @doc false
+  # Stamp `tenant`/`as_of` onto each record's metadata, but only walk the list when there is
+  # actually something to stamp — so a plain (non-tenant, non-temporal) result isn't
+  # remapped for nothing.
+  def stamp_record_metadata(records, resource, opts) do
+    tenant = opts[:tenant]
+    as_of = Ash.Temporal.resolve_write_as_of(opts[:as_of])
+    stamp_as_of? = match?(%DateTime{}, as_of) and Ash.Resource.Info.temporal?(resource)
+
+    if is_nil(tenant) and not stamp_as_of? do
+      records
+    else
+      Enum.map(records, fn record ->
+        metadata =
+          if tenant, do: Map.put(record.__metadata__, :tenant, tenant), else: record.__metadata__
+
+        %{record | __metadata__: put_write_as_of(metadata, resource, as_of)}
+      end)
+    end
+  end
+
+  @doc false
   def set_when_ok(opts, key, value, merger \\ fn _l, r -> r end)
 
   def set_when_ok(opts, key, {:ok, value}, merger) do
@@ -336,11 +397,13 @@ defmodule Ash.Actions.Helpers do
         query_or_changeset
         |> Ash.ActionInput.set_context(%{private: private_context})
         |> Ash.ActionInput.set_tenant(query_or_changeset.tenant || opts[:tenant])
+        |> set_subject_as_of(query_or_changeset.as_of || opts[:as_of])
 
       %Ash.Query{} ->
         query_or_changeset
         |> Ash.Query.set_context(%{private: private_context})
         |> Ash.Query.set_tenant(query_or_changeset.tenant || opts[:tenant])
+        |> set_subject_as_of(query_or_changeset.as_of || opts[:as_of])
 
       %Ash.Changeset{} ->
         query_or_changeset
@@ -348,7 +411,39 @@ defmodule Ash.Actions.Helpers do
           private: private_context
         })
         |> Ash.Changeset.set_tenant(query_or_changeset.tenant || opts[:tenant])
+        |> set_subject_as_of(query_or_changeset.as_of || opts[:as_of])
     end
+  end
+
+  # `as_of` is threaded like `tenant`. For reads this is the single point it's set on the
+  # query, so we resolve `:now` (and the temporal default — a temporal resource with no
+  # `as_of` reads as current-state) to a concrete `DateTime` here; it's then never
+  # re-evaluated downstream, so every consumer (the `@> as_of` filter, `now()`/`ago()`
+  # anchoring, related loads, aggregates, subqueries) threads the exact same instant.
+  # Writes are left as-is — the data layer resolves the write's `as_of` once at execution.
+  defp set_subject_as_of(%Ash.Query{} = query, as_of) do
+    case resolve_query_as_of(query, as_of) do
+      nil -> query
+      resolved -> Ash.Query.as_of(query, resolved)
+    end
+  end
+
+  defp set_subject_as_of(subject, nil), do: subject
+
+  defp set_subject_as_of(%Ash.Changeset{} = changeset, as_of),
+    do: Ash.Changeset.as_of(changeset, as_of)
+
+  defp set_subject_as_of(%Ash.ActionInput{} = input, as_of),
+    do: Ash.ActionInput.set_as_of(input, as_of)
+
+  defp resolve_query_as_of(_query, :now), do: DateTime.utc_now()
+  defp resolve_query_as_of(_query, %DateTime{} = as_of), do: as_of
+
+  # Passed through so `Ash.Query.as_of/2` refuses it by name, as it does for the setter.
+  defp resolve_query_as_of(_query, %Ash.Range{} = as_of), do: as_of
+
+  defp resolve_query_as_of(query, nil) do
+    if Ash.Resource.Info.temporal?(query.resource), do: DateTime.utc_now()
   end
 
   defp add_actor(opts, query_or_changeset, domain) do
@@ -445,6 +540,12 @@ defmodule Ash.Actions.Helpers do
         :ok
     end
   end
+
+  @doc false
+  # Anything queued during a transaction that was rolled back never happened,
+  # so the queue is reset to what it was before that transaction started.
+  def restore_queued_notifications(nil), do: Process.delete(:ash_notifications)
+  def restore_queued_notifications(queued), do: Process.put(:ash_notifications, queued)
 
   @doc false
   def peek_queued_notifications do
@@ -777,6 +878,39 @@ defmodule Ash.Actions.Helpers do
       input
     end
   end
+
+  @doc false
+  # A write over a range spans every version it overlaps, so calculations, aggregates and
+  # relationships have no single instant to be answered at, and none can be loaded.
+  def refuse_load_over_range(%Ash.Changeset{as_of: %Ash.Range{} = as_of, load: load} = changeset)
+      when load not in [nil, []] do
+    Ash.Changeset.add_error(
+      changeset,
+      Ash.Error.Framework.LoadOverRange.exception(
+        resource: changeset.resource,
+        as_of: as_of,
+        load: load
+      )
+    )
+  end
+
+  def refuse_load_over_range(changeset), do: changeset
+
+  @doc false
+  # Only an atomic write updates each version a range overlaps from its own values, so a bulk
+  # write over a range that has fallen back to streaming is refused.
+  def refuse_stream_over_range(resource, action, %Ash.Range{} = as_of) do
+    {:error,
+     Ash.Error.to_error_class(
+       Ash.Error.Framework.NotAtomicOverRange.exception(
+         resource: resource,
+         action: action.name,
+         as_of: as_of
+       )
+     )}
+  end
+
+  def refuse_stream_over_range(_resource, _action, _as_of), do: :ok
 
   def load({:ok, result, instructions}, changeset, domain, opts) do
     notifier_query = notifier_query_for(changeset)
