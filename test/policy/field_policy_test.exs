@@ -428,6 +428,26 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                type: :aggregate
              }
     end
+
+    test "a field policy expression on a related resource is evaluated against the related record",
+         %{ticket: ticket, user: user} do
+      # `User.points` is visible only when `id == ^actor(:id)`, and `user` is the ticket's reporter
+      assert [_] =
+               User
+               |> Ash.Query.for_read(:read, %{}, actor: user)
+               |> Ash.Query.filter(id == ^user.id)
+               |> Ash.Query.filter_input(points: 3)
+               |> Ash.read!(authorize?: true)
+
+      assert [%{id: id}] =
+               Ticket
+               |> Ash.Query.for_read(:read, %{}, actor: user)
+               |> Ash.Query.filter(id == ^ticket.id)
+               |> Ash.Query.filter_input(reporter: [points: 3])
+               |> Ash.read!(authorize?: true)
+
+      assert id == ticket.id
+    end
   end
 
   describe "sorts" do
