@@ -42,7 +42,7 @@ defmodule Ash.ActionInput do
 
   Receives an action input and returns a modified action input, optionally with notifications.
   """
-  @type before_action_fun :: (t -> t | {t, %{notifications: [Ash.Notifier.Notification.t()]}})
+  @type before_action_fun :: (t -> t | {t, Ash.Notifier.Notification.input()})
 
   @typedoc """
   Function type for after action hooks.
@@ -53,9 +53,9 @@ defmodule Ash.ActionInput do
   @type after_action_fun ::
           (t, term ->
              :ok
-             | {:ok, [Ash.Notifier.Notification.t()]}
+             | {:ok, Ash.Notifier.Notification.input()}
              | {:ok, term}
-             | {:ok, term, [Ash.Notifier.Notification.t()]}
+             | {:ok, term, Ash.Notifier.Notification.input()}
              | {:error, any})
 
   @typedoc """
@@ -1102,8 +1102,17 @@ defmodule Ash.ActionInput do
       ...>     action: input.action,
       ...>     data: %{audit: "before_action"}
       ...>   }
-      ...>   {input, %{notifications: [notification]}}
+      ...>   {input, [notification]}
       ...> end)
+
+  A `before_action` hook may return notifications in any of these forms:
+
+    {input, notification}
+    {input, [notification]}
+    {input, %{notifications: [notification]}}
+    {input, nil}
+
+  Returning `input` without a tuple is equivalent to returning no notifications.
 
   ## Options
 
@@ -1141,7 +1150,7 @@ defmodule Ash.ActionInput do
   > After action hooks will work for generic actions without a return type,
   > however they will receive `nil` as their `result` argument and are
   > expected to return
-  > `:ok | {:ok, [Ash.Notifier.Notification.t()]} | {:error, term}`.
+  > `:ok | {:ok, Ash.Notifier.Notification.input()} | {:error, term}`.
 
   ## Examples
 
@@ -1172,6 +1181,14 @@ defmodule Ash.ActionInput do
       ...>   }
       ...>   {:ok, result, [notification]}
       ...> end)
+
+    The notification value may also be returned as a single notification,
+    a map containing a `:notifications` key, or `nil`:
+
+        {:ok, result, notification}
+        {:ok, result, [notification]}
+        {:ok, result, %{notifications: [notification]}}
+        {:ok, result, nil}
 
       # Handle errors
       iex> MyApp.Post
@@ -1623,7 +1640,9 @@ defmodule Ash.ActionInput do
           {:error, error} ->
             {:halt, {:error, error}}
 
-          {input, %{notifications: notifications}} ->
+          {%Ash.ActionInput{} = input, notification_input} ->
+            notifications = Ash.Notifier.Notification.normalize(notification_input)
+
             cont =
               if input.valid? do
                 :cont
@@ -1635,7 +1654,7 @@ defmodule Ash.ActionInput do
              {input,
               %{
                 instructions
-                | notifications: List.wrap(instructions.notifications) ++ List.wrap(notifications)
+                | notifications: List.wrap(instructions.notifications) ++ notifications
               }}}
 
           %Ash.ActionInput{} = input ->
@@ -1653,7 +1672,10 @@ defmodule Ash.ActionInput do
             Invalid return value from before_action hook. Expected one of:
 
             * %Ash.ActionInput{}
-            * {%Ash.ActionInput{}, %{notifications: [...]}}
+            * {%Ash.ActionInput{}, notification}
+            * {%Ash.ActionInput{}, [notification]}
+            * {%Ash.ActionInput{}, %{notifications: notifications}}
+            * {%Ash.ActionInput{}, nil}
             * {:error, error}
 
             Got:
@@ -1776,7 +1798,7 @@ defmodule Ash.ActionInput do
 
   defp merge_after_action_notifications(input, result, old_notifications, new_notifications) do
     Enum.map(
-      List.wrap(old_notifications) ++ List.wrap(new_notifications),
+      List.wrap(old_notifications) ++ Ash.Notifier.Notification.normalize(new_notifications),
       fn notification ->
         %{
           notification
