@@ -54,6 +54,8 @@ defmodule Ash.Actions.Destroy do
 
   def run(domain, changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
+    # Pinned as the action runs, so an `as_of` set after the changeset was built is the one used.
+    changeset = Ash.Changeset.pin_temporal_write_now(changeset)
 
     changeset =
       changeset
@@ -155,7 +157,7 @@ defmodule Ash.Actions.Destroy do
         instructions,
         opts[:return_notifications?]
       )
-      |> add_destroyed(return_destroyed?, result)
+      |> add_destroyed(return_destroyed?, with_write_as_of(result, changeset))
     end
     |> case do
       {:ok, result} ->
@@ -478,6 +480,16 @@ defmodule Ash.Actions.Destroy do
       :ok
     end
   end
+
+  defp with_write_as_of(%{__metadata__: metadata} = record, changeset) do
+    %{
+      record
+      | __metadata__:
+          Ash.Actions.Helpers.put_write_as_of(metadata, changeset.resource, changeset.as_of)
+    }
+  end
+
+  defp with_write_as_of(result, _changeset), do: result
 
   defp add_destroyed(:ok, true, destroyed) do
     {:ok, destroyed}
