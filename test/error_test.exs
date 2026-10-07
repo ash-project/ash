@@ -333,6 +333,62 @@ defmodule Ash.Test.ErrorTest do
     end
   end
 
+  describe "keyword error inputs" do
+    test "converts a field payload to InvalidAttribute" do
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: :name,
+                   message: "is invalid",
+                   value: "bad"
+                 }
+               ]
+             } =
+               Ash.Error.to_error_class(
+                 field: :name,
+                 message: "is invalid",
+                 value: "bad"
+               )
+    end
+
+    test "converts a fields payload to InvalidChanges" do
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidChanges{
+                   fields: [:first_name, :last_name],
+                   message: "is invalid"
+                 }
+               ]
+             } =
+               Ash.Error.to_error_class(fields: [:first_name, :last_name], message: "is invalid")
+    end
+
+    test "preserves an index as the error path" do
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{field: :data_type, path: [0]}
+               ]
+             } =
+               Ash.Error.to_error_class(field: :data_type, message: "is invalid", index: 0)
+    end
+
+    test "does not convert an unrelated keyword list to InvalidChanges" do
+      result = Ash.Error.to_error_class(foo: :bar)
+
+      refute Enum.any?(result.errors, &match?(%Ash.Error.Changes.InvalidChanges{}, &1))
+    end
+
+    test "leaves an existing Ash exception unchanged" do
+      error = Ash.Error.Changes.InvalidAttribute.exception(field: :name, message: "is invalid")
+
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{field: :name, message: "is invalid"}
+               ]
+             } = Ash.Error.to_error_class(error)
+    end
+  end
+
   describe "assert_has_error" do
     test "raises if the value is :ok" do
       assert_raise ExUnit.AssertionError, ~r/it had no errors/, fn ->
