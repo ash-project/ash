@@ -4375,17 +4375,22 @@ defmodule Ash do
         :ok
 
       as_of ->
-        if Ash.Temporal.cast_write_as_of(changeset.resource, as_of) == changeset.as_of do
-          :ok
-        else
-          {:error,
-           Ash.Error.Framework.OptionAlreadySet.exception(
-             resource: changeset.resource,
-             action: action,
-             option: :as_of,
-             given: as_of,
-             set: changeset.as_of
-           )}
+        case Ash.Temporal.check_write_as_of(changeset.resource, as_of) do
+          {:ok, cast} when cast == changeset.as_of ->
+            :ok
+
+          {:ok, _cast} ->
+            {:error,
+             Ash.Error.Framework.OptionAlreadySet.exception(
+               resource: changeset.resource,
+               action: action,
+               option: :as_of,
+               given: as_of,
+               set: changeset.as_of
+             )}
+
+          {:error, error} ->
+            {:error, error}
         end
     end
   end
