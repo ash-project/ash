@@ -296,7 +296,7 @@ defmodule Ash.Query.Operator do
          :any,
          {:array, :same}
        ]) do
-    if Ash.Expr.expr?(right) do
+    if Ash.Expr.expr?(right) and not match?(%Ref{}, right) do
       {:ok, left, right}
     else
       case right do
@@ -334,6 +334,10 @@ defmodule Ash.Query.Operator do
           nil
       end
     end
+  end
+
+  defp try_cast(_left, %Ref{}, [:any, {:array, :same}]) do
+    nil
   end
 
   # We don't have a way to infer types from values right now

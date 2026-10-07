@@ -313,6 +313,19 @@ defmodule Ash.Test.Filter.FilterTest do
       assert stringified_query =~ ~S(title == "foo" or title == "bar")
     end
 
+    test "in with a scalar ref on the right returns an invalid filter error" do
+      import Ash.Expr
+
+      expr = expr(^"foo" in ^ref(:title))
+
+      query =
+        Post
+        |> Ash.Query.filter(^expr)
+
+      assert [%Ash.Error.Query.InvalidFilterValue{}] = query.errors
+      refute query.valid?
+    end
+
     test "in with equality does not simplify to `in`" do
       stringified_query =
         Post
