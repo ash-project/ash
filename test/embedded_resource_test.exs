@@ -1188,4 +1188,104 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
       refute error_string =~ "not_an_integer"
     end
   end
+
+  describe "equality of nested embedded resources" do
+    defmodule NestedInner do
+      @moduledoc false
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :value, :integer, public?: true
+      end
+    end
+
+    defmodule NestedOuter do
+      @moduledoc false
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :inner, NestedInner, public?: true
+      end
+    end
+
+    defmodule NestedEmbedsDomain do
+      @moduledoc false
+      use Ash.Domain
+
+      resources do
+        resource Ash.Test.Changeset.EmbeddedResourceTest.ResourceWithNestedEmbeds
+      end
+    end
+
+    defmodule ResourceWithNestedEmbeds do
+      @moduledoc false
+
+      use Ash.Resource,
+        domain: NestedEmbedsDomain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private?(true)
+      end
+
+      actions do
+        default_accept :*
+        defaults [:create, :read, :update]
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :items, {:array, NestedOuter}, public?: true
+      end
+    end
+
+    test "nested embeds are compared without metadata" do
+      items = [%{inner: %{value: 1}}]
+
+      record =
+        ResourceWithNestedEmbeds
+        |> Ash.Changeset.for_create(:create, %{items: items})
+        |> Ash.create!()
+        |> then(&Ash.get!(ResourceWithNestedEmbeds, &1.id))
+
+      {:ok, [new]} = Ash.Type.cast_input({:array, NestedOuter}, items)
+      [old] = record.items
+
+      assert old.inner.__metadata__ != new.inner.__metadata__
+      assert Ash.Type.equal?(NestedOuter, old, new)
+
+      changeset = Ash.Changeset.for_update(record, :update, %{items: items})
+      refute Ash.Changeset.changing_attribute?(changeset, :items)
+    end
+
+    test "nested embeds with different values are not equal" do
+      record =
+        ResourceWithNestedEmbeds
+        |> Ash.Changeset.for_create(:create, %{items: [%{inner: %{value: 1}}]})
+        |> Ash.create!()
+        |> then(&Ash.get!(ResourceWithNestedEmbeds, &1.id))
+
+      changeset =
+        Ash.Changeset.for_update(record, :update, %{items: [%{inner: %{value: 2}}]})
+
+      [old] = record.items
+      [new] = changeset.attributes.items
+
+      refute Ash.Type.equal?(NestedOuter, old, new)
+      assert Ash.Changeset.changing_attribute?(changeset, :items)
+    end
+
+    test "nested embeds that are nil on both sides are equal" do
+      items = [%{inner: nil}]
+
+      record =
+        ResourceWithNestedEmbeds
+        |> Ash.Changeset.for_create(:create, %{items: items})
+        |> Ash.create!()
+        |> then(&Ash.get!(ResourceWithNestedEmbeds, &1.id))
+
+      changeset = Ash.Changeset.for_update(record, :update, %{items: items})
+      refute Ash.Changeset.changing_attribute?(changeset, :items)
+    end
+  end
 end
