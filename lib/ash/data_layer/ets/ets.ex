@@ -1896,7 +1896,7 @@ defmodule Ash.DataLayer.Ets do
   defp put_established_period(record, _attribute, %Ash.Range{}, _resource, _changeset), do: record
 
   defp put_established_period(record, attribute, nil, resource, changeset) do
-    case Ash.Temporal.write_period(resource, write_as_of(changeset)) do
+    case Ash.Temporal.write_period(resource, changeset.as_of) do
       {:ok, period} -> Map.put(record, attribute, period)
       :error -> record
     end
@@ -1906,15 +1906,11 @@ defmodule Ash.DataLayer.Ets do
 
   # Without an instant the query sees every version, not the one holding it.
   defp upsert_instant(resource, changeset) do
-    case Ash.Temporal.write_instant(resource, write_as_of(changeset)) do
+    case Ash.Temporal.write_instant(resource, changeset.as_of) do
       {:ok, instant} -> instant
       :error -> nil
     end
   end
-
-  # A write that is not time travelling names no instant, and takes effect now.
-  defp write_as_of(%{as_of: nil}), do: :now
-  defp write_as_of(%{as_of: as_of}), do: as_of
 
   defp set_loaded(%resource{} = record) do
     %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}
@@ -2108,7 +2104,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp once_per_record(results, resource, changeset) do
-    case write_as_of(changeset) do
+    case changeset.as_of do
       %Ash.Range{} = as_of ->
         results
         |> Enum.filter(&touches_portion?(resource, &1, as_of))
@@ -2130,7 +2126,7 @@ defmodule Ash.DataLayer.Ets do
       changeset.domain,
       changeset.context[:private][:actor],
       supersession(resource, changeset),
-      match?(%Ash.Range{}, write_as_of(changeset))
+      match?(%Ash.Range{}, changeset.as_of)
     )
   end
 
@@ -2448,7 +2444,7 @@ defmodule Ash.DataLayer.Ets do
   # `nil` writes in place: no period, or a period with no now to supersede at.
   defp supersession(resource, changeset) do
     with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
-         {:ok, written} <- Ash.Temporal.write_period(resource, write_as_of(changeset)) do
+         {:ok, written} <- Ash.Temporal.write_period(resource, changeset.as_of) do
       {period, written}
     else
       _ -> nil
