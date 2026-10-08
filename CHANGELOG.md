@@ -8,6 +8,29 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.34.5](https://github.com/ash-project/ash/compare/v3.34.4...v3.34.5) (2026-10-08)
+
+
+
+
+### Improvements:
+
+* normalize all notification return shapes by [@zachdaniel](https://github.com/zachdaniel) [(#2991)](https://github.com/ash-project/ash/pull/2991)
+
+### Bug Fixes:
+
+* field policy related filter fix (#3002) by Moxley Stratton [(#3002)](https://github.com/ash-project/ash/pull/3002)
+
+* refuse a read as_of that names no instant, rather than raising FunctionClauseError (#2999) by [@matt-beanland](https://github.com/matt-beanland) [(#2999)](https://github.com/ash-project/ash/pull/2999)
+
+* hold a temporal write's as_of to its period's type and constraints (#2997) by [@matt-beanland](https://github.com/matt-beanland) [(#2997)](https://github.com/ash-project/ash/pull/2997)
+
+* make every temporal write as of one instant Ash resolves (#2995) by [@matt-beanland](https://github.com/matt-beanland) [(#2995)](https://github.com/ash-project/ash/pull/2995)
+
+* compare embedded resources attribute by attribute by [@zachdaniel](https://github.com/zachdaniel) [(#2993)](https://github.com/ash-project/ash/pull/2993)
+
+* compare embedded resources attribute by attribute by [@padde](https://github.com/padde) [(#2993)](https://github.com/ash-project/ash/pull/2993)
+
 ## [v3.34.4](https://github.com/ash-project/ash/compare/v3.34.3...v3.34.4) (2026-10-04)
 
 
