@@ -5617,12 +5617,17 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Pins a write to a temporal resource to a point in time.
+  Pins a write to a temporal resource to an instant or a period.
 
-  `as_of` is the instant the write takes effect, defaulting to now when unset
-  (also settable explicitly as `:now`). The write only guarantees its rules hold
-  *at* `as_of`, at the time it is made — exactly like any non-temporal write,
-  which guarantees its validations only at write time, not for any future moment.
+  `as_of` is an instant of the resource's period, or a range. An instant is where the
+  write takes effect: a create opens a period from it, and an update or destroy splits
+  the version valid at it. `:now`, the default when unset, is the current instant. A
+  range is the period the write applies to, and satisfies the period attribute's
+  constraints.
+
+  The write only guarantees its rules hold *at* `as_of`, at the time it is made —
+  exactly like any non-temporal write, which guarantees its validations only at write
+  time, not for any future moment.
 
   `now()`/`ago()`/`from_now()` in validations and atomic changes resolve to
   `as_of`. How (and whether) a period of validity is stored is up to the data
@@ -5632,14 +5637,18 @@ defmodule Ash.Changeset do
   def as_of(changeset, nil), do: changeset
 
   def as_of(changeset, as_of) do
-    as_of = Ash.Temporal.cast_write_as_of(changeset.resource, as_of)
+    case Ash.Temporal.check_write_as_of(changeset.resource, as_of) do
+      {:ok, as_of} ->
+        # Read legs inherit the instant through `shared`; the range stays on `private`.
+        %{changeset | as_of: as_of}
+        |> set_context(%{
+          private: %{as_of: as_of},
+          shared: %{as_of: Ash.Temporal.resolve_write_as_of(as_of)}
+        })
 
-    # Read legs inherit the instant through `shared`; the range stays on `private`.
-    %{changeset | as_of: as_of}
-    |> set_context(%{
-      private: %{as_of: as_of},
-      shared: %{as_of: Ash.Temporal.resolve_write_as_of(as_of)}
-    })
+      {:error, error} ->
+        add_error(changeset, error)
+    end
   end
 
   @spec timeout(t(), nil | pos_integer, nil | pos_integer) :: t()
