@@ -146,16 +146,18 @@ defmodule Ash.Temporal do
   @doc """
   Resolves the `as_of` a read answers at.
 
-  `:now` resolves to the current time. `nil` means no particular time was provided. A range
-  raises `Ash.Error.Query.AsOfNotAnInstant`.
+  `:now` resolves to the current time, and a `DateTime` is that instant. `nil` means no
+  particular time was provided. Anything else, such as a range or a `Date`, raises
+  `Ash.Error.Query.AsOfNotAnInstant`.
   """
-  @spec resolve_read_as_of(as_of()) :: term() | nil
-  def resolve_read_as_of(%Ash.Range{} = as_of) do
+  @spec resolve_read_as_of(as_of()) :: DateTime.t() | nil
+  def resolve_read_as_of(:now), do: DateTime.utc_now()
+  def resolve_read_as_of(nil), do: nil
+  def resolve_read_as_of(%DateTime{} = as_of), do: as_of
+
+  def resolve_read_as_of(as_of) do
     raise Ash.Error.Query.AsOfNotAnInstant.exception(resource: nil, as_of: as_of)
   end
-
-  def resolve_read_as_of(:now), do: DateTime.utc_now()
-  def resolve_read_as_of(other), do: other
 
   @doc """
   Whether a change, validation or preparation module declares itself safe to run on a

@@ -1280,6 +1280,20 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert [%Ash.Error.Query.AsOfNotAnInstant{}] = error.errors
     end
 
+    test "a value that names no instant is refused as naming no instant, not by a FunctionClauseError" do
+      for as_of <- [
+            "the day before yesterday",
+            ~D[2020-06-01],
+            ~N[2020-06-01 00:00:00],
+            {:soon, 1}
+          ] do
+        query = Ash.Query.as_of(EtsVersioned, as_of)
+
+        error = assert_raise Ash.Error.Invalid, fn -> Ash.read!(query) end
+        assert [%Ash.Error.Query.AsOfNotAnInstant{as_of: ^as_of}] = error.errors
+      end
+    end
+
     # A write's read legs inherit the instant, so the rule above does not refuse them.
     test "a write keeps its range, and propagates an instant" do
       changeset = EtsVersioned |> Ash.Changeset.new() |> Ash.Changeset.as_of(@portion)
