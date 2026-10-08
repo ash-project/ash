@@ -863,7 +863,7 @@ defmodule Ash.EmbeddableType do
 
       @meta_keys [:__metadata__, :__meta__, :__lateral_join_source__, :__order__]
 
-      def equal?(%__MODULE__{} = left, %__MODULE__{} = right) do
+      def equal?(%{__struct__: __MODULE__} = left, %{__struct__: __MODULE__} = right) do
         __MODULE__
         |> Ash.Resource.Info.attributes()
         |> Enum.all?(fn attribute ->
