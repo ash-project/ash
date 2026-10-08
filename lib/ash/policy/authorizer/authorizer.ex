@@ -1211,6 +1211,9 @@ defmodule Ash.Policy.Authorizer do
         {ref, acc}
 
       {:expr, expr, acc} ->
+        # the field condition is relative to `resource`, so move it to the ref's path
+        expr = Ash.Filter.move_to_relationship_path(expr, ref.relationship_path)
+
         {Ash.Expr.expr(
            if ^expr do
              ^ref
