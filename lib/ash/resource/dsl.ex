@@ -735,6 +735,9 @@ defmodule Ash.Resource.Dsl do
       ],
       arguments: [
         @action_argument
+      ],
+      filters: [
+        @filter
       ]
     ],
     deprecations: [
@@ -781,6 +784,9 @@ defmodule Ash.Resource.Dsl do
       ],
       arguments: [
         @action_argument
+      ],
+      filters: [
+        @filter
       ]
     ],
     target: Ash.Resource.Actions.Destroy,
