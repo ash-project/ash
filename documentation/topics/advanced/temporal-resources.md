@@ -121,8 +121,9 @@ Evaluate `expr(activated_at < now())` as of last year, and it compares against *
 
 ## Writing
 
-A temporal write makes something true *from `as_of` onward*. The new row is `[as_of, ∞)`. A few
-things follow from that:
+As of an instant, a temporal write makes something true *from `as_of` onward*. The new row is
+`[as_of, ∞)`. As of a range, it makes it true *over that range* (see
+[Writing over a period](#writing-over-a-period)). A few things follow from that:
 
 - **You never set `valid_at` as action input.** You pass `as_of` instead, so leave the period
   attribute out of every action's `accept`. Set the instant with the `as_of` option or
@@ -168,6 +169,26 @@ sub
 > natively, `ash_postgres` will use it. See the
 > [AshPostgres guide](https://hexdocs.pm/ash_postgres/temporal-resources.html) for the details.
 
+### Writing over a period
+
+Pass a range as `as_of`, and the write applies over that period. A create opens exactly that
+period. An update or a destroy acts on each version the range overlaps, over the part of the
+range that version holds. The range satisfies the period attribute's constraints, so with
+`upper: [inclusive?: false]` it is written `[from, to)`:
+
+```elixir
+# a trial for the first half of 2027 only
+MyApp.Subscription
+|> Ash.Changeset.for_create(:create, %{id: 2, plan: "trial"},
+  as_of: %Ash.Range{
+    lower: ~U[2027-01-01 00:00:00Z],
+    upper: ~U[2027-07-01 00:00:00Z],
+    bounds: :"[)"
+  }
+)
+|> Ash.create!()
+```
+
 ### When no version is valid at that instant
 
 An update or destroy acts on the version that's valid at `as_of`. If there isn't one, there's
@@ -180,10 +201,10 @@ own instants.
 
 ### Scheduling a change ahead of now
 
-A create always opens `[as_of, ∞)`, so two creates always overlap. That means you can't create a
-record now if a later version of it already exists. Only an update produces a bounded period,
-because it inherits the end of the version it splits, so a change in the future is written as
-an update:
+A create as of an instant opens `[as_of, ∞)`, so it overlaps any later version of the record.
+Two writes produce a bounded period instead: a create as of a range, which opens exactly that
+range, and an update, which inherits the end of the version it splits. So a change in the future
+is written as an update:
 
 ```elixir
 # splits into [now, 2027-01-01) and [2027-01-01, ∞)
@@ -194,7 +215,7 @@ sub
 
 > ### A future version that was created has to be unwound {: .warning}
 >
-> If the later version was *created* rather than written as an update, it holds
+> If the later version was *created as of an instant* rather than written as an update, it holds
 > `[its instant, ∞)`, and nothing can be written before it. To get out of that, destroy that
 > version, create the present one, and then make the future change again as an update.
 

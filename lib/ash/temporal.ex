@@ -62,6 +62,76 @@ defmodule Ash.Temporal do
   end
 
   @doc """
+  Checks the `as_of` of a write to a temporal resource, casting it as `cast_write_as_of/2` does.
+
+  An instant must cast to the type the resource's periods are built from. A range must
+  cast to the resource's period, and satisfy its constraints. Returns the cast `as_of`, or
+  an `Ash.Error.Changes.InvalidAsOf` saying why it is refused. Any `as_of` of a resource
+  that isn't temporal is returned unchanged.
+  """
+  @spec check_write_as_of(Ash.Resource.t(), as_of()) :: {:ok, term()} | {:error, Exception.t()}
+  def check_write_as_of(_resource, nil), do: {:ok, nil}
+
+  def check_write_as_of(resource, as_of) do
+    if Ash.Resource.Info.temporal?(resource) do
+      do_check_write_as_of(resource, as_of)
+    else
+      {:ok, as_of}
+    end
+  end
+
+  defp do_check_write_as_of(resource, %Ash.Range{} = as_of) do
+    %{type: type, constraints: constraints} = Ash.Resource.Info.temporal_period(resource)
+
+    with {:ok, period} <- cast_or_refuse(resource, as_of, write_period(resource, as_of)),
+         {:ok, _} <-
+           refuse_unless_ok(
+             resource,
+             as_of,
+             Ash.Type.apply_constraints(type, period, constraints)
+           ) do
+      {:ok, period}
+    end
+  end
+
+  defp do_check_write_as_of(resource, as_of),
+    do: cast_or_refuse(resource, as_of, write_instant(resource, as_of))
+
+  defp cast_or_refuse(_resource, _as_of, {:ok, cast}), do: {:ok, cast}
+
+  defp cast_or_refuse(resource, as_of, :error),
+    do:
+      {:error,
+       invalid_as_of(
+         resource,
+         as_of,
+         "an `as_of` is an instant of the resource's period, `:now`, or a range"
+       )}
+
+  defp refuse_unless_ok(_resource, _as_of, {:ok, value}), do: {:ok, value}
+
+  defp refuse_unless_ok(resource, as_of, {:error, [{key, _} | _] = error}) when is_atom(key),
+    do: {:error, invalid_as_of(resource, as_of, error[:message] || "invalid", error[:vars] || [])}
+
+  defp refuse_unless_ok(resource, as_of, {:error, [first | _]}),
+    do: refuse_unless_ok(resource, as_of, {:error, first})
+
+  defp refuse_unless_ok(resource, as_of, {:error, message}) when is_binary(message),
+    do: {:error, invalid_as_of(resource, as_of, message)}
+
+  defp refuse_unless_ok(resource, as_of, _error),
+    do: {:error, invalid_as_of(resource, as_of, "invalid")}
+
+  defp invalid_as_of(resource, as_of, message, vars \\ []) do
+    Ash.Error.Changes.InvalidAsOf.exception(
+      resource: resource,
+      as_of: as_of,
+      message: message,
+      vars: vars
+    )
+  end
+
+  @doc """
   Resolves the `as_of` a write takes effect at.
 
   `:now` resolves to the current time. A range resolves to its lower bound. Anything else is
@@ -76,16 +146,18 @@ defmodule Ash.Temporal do
   @doc """
   Resolves the `as_of` a read answers at.
 
-  `:now` resolves to the current time. `nil` means no particular time was provided. A range
-  raises `Ash.Error.Query.AsOfNotAnInstant`.
+  `:now` resolves to the current time, and a `DateTime` is that instant. `nil` means no
+  particular time was provided. Anything else, such as a range or a `Date`, raises
+  `Ash.Error.Query.AsOfNotAnInstant`.
   """
-  @spec resolve_read_as_of(as_of()) :: term() | nil
-  def resolve_read_as_of(%Ash.Range{} = as_of) do
+  @spec resolve_read_as_of(as_of()) :: DateTime.t() | nil
+  def resolve_read_as_of(:now), do: DateTime.utc_now()
+  def resolve_read_as_of(nil), do: nil
+  def resolve_read_as_of(%DateTime{} = as_of), do: as_of
+
+  def resolve_read_as_of(as_of) do
     raise Ash.Error.Query.AsOfNotAnInstant.exception(resource: nil, as_of: as_of)
   end
-
-  def resolve_read_as_of(:now), do: DateTime.utc_now()
-  def resolve_read_as_of(other), do: other
 
   @doc """
   Whether a change, validation or preparation module declares itself safe to run on a

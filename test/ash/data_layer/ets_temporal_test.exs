@@ -513,6 +513,78 @@ defmodule Ash.DataLayer.EtsTemporalTest do
     end
   end
 
+  describe "an as_of that does not make a valid period" do
+    setup do
+      %{record: Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @open})}
+    end
+
+    defp name_at(instant), do: Ash.get!(EtsVersioned, 1, as_of: instant).name
+
+    test "an upper bound the period refuses is refused, and nothing is written", %{record: record} do
+      inclusive = %Ash.Range{
+        lower: ~U[2021-03-01 00:00:00Z],
+        upper: ~U[2021-04-01 00:00:00Z],
+        bounds: :"[]"
+      }
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Ash.update(record, %{name: "second"}, as_of: inclusive)
+
+      assert Exception.message(error) =~ ~s(upper bound must be "exclusive")
+      assert name_at(~U[2021-03-15 00:00:00Z]) == "first"
+    end
+
+    test "an inverted range is refused for being inverted, not as a stale record", %{
+      record: record
+    } do
+      inverted = %Ash.Range{
+        lower: ~U[2021-04-01 00:00:00Z],
+        upper: ~U[2021-03-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Ash.update(record, %{name: "second"}, as_of: inverted)
+
+      assert Exception.message(error) =~ "lower bound must not be greater than upper bound"
+    end
+
+    test "an empty range is refused for being empty, not as a stale record", %{record: record} do
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Ash.update(record, %{name: "second"}, as_of: Ash.Range.empty())
+
+      assert Exception.message(error) =~ "range must not be empty"
+    end
+
+    test "an as_of the period cannot cast is refused, and no record is stored" do
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               EtsVersioned
+               |> Ash.Changeset.for_create(:create, %{id: 2, name: "bad"}, as_of: "banana")
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "banana"
+      refute Enum.any?(Ash.read!(EtsVersioned), &(&1.id == 2))
+    end
+
+    test "an atom other than :now is refused" do
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               EtsVersioned
+               |> Ash.Changeset.for_create(:create, %{id: 2, name: "bad"})
+               |> Ash.create(as_of: :manana)
+
+      assert Exception.message(error) =~ ":manana"
+      refute Enum.any?(Ash.read!(EtsVersioned), &(&1.id == 2))
+    end
+
+    test "an as_of set on a changeset the period cannot cast is refused" do
+      assert {:error, %Ash.Error.Invalid{}} =
+               EtsVersioned
+               |> Ash.Changeset.for_create(:create, %{id: 2, name: "bad"})
+               |> Ash.Changeset.as_of("banana")
+               |> Ash.create()
+    end
+  end
+
   test "a non-temporal resource is untouched by an as_of" do
     name = "unversioned-#{System.unique_integer([:positive])}"
     Ash.create!(Ash.Test.Temporal.Thing, %{name: name})
@@ -1206,6 +1278,20 @@ defmodule Ash.DataLayer.EtsTemporalTest do
 
       error = assert_raise Ash.Error.Invalid, fn -> Ash.read!(query) end
       assert [%Ash.Error.Query.AsOfNotAnInstant{}] = error.errors
+    end
+
+    test "a value that names no instant is refused as naming no instant, not by a FunctionClauseError" do
+      for as_of <- [
+            "the day before yesterday",
+            ~D[2020-06-01],
+            ~N[2020-06-01 00:00:00],
+            {:soon, 1}
+          ] do
+        query = Ash.Query.as_of(EtsVersioned, as_of)
+
+        error = assert_raise Ash.Error.Invalid, fn -> Ash.read!(query) end
+        assert [%Ash.Error.Query.AsOfNotAnInstant{as_of: ^as_of}] = error.errors
+      end
     end
 
     # A write's read legs inherit the instant, so the rule above does not refuse them.
