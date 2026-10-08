@@ -144,6 +144,20 @@ query
 |> Ash.Query.sort(full_name: {%{separator: " "}, :asc})
 ```
 
+## Nullability
+
+Setting `allow_nil?` to `false` on a calculation means it must never return `nil`. Ash does not check this for you.
+
+Example:
+
+```elixir
+calculate :display_name, :string, expr(name), allow_nil?: false
+```
+
+If the `name` is `nil`, then the `display_name` is `nil` as well, and no error is raised.
+
+`allow_nil?` on a calculation's arguments is different. Ash does validate those.
+
 ## Loading Calculations
 
 When loading calculations, you specify them in the load statement just like relationships and aggregates.
