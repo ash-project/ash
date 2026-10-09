@@ -341,7 +341,7 @@ defmodule Ash.Actions.Read.Calculations do
       raise """
       Circular calculation dependency detected. Remaining calculations
 
-      #{Enum.map_join(do_later, "\n\n", fn {key, calc} -> "* " <> inspect(calc) <> "\n" <> inspect(ash_query.context[:calculation_dependencies][key]) end)}
+      #{Enum.map_join(do_later, "\n\n", fn calc -> "* " <> inspect(calc) <> "\n" <> inspect(ash_query.context[:calculation_dependencies][calc.name]) end)}
       """
     end
 
@@ -1268,6 +1268,7 @@ defmodule Ash.Actions.Read.Calculations do
             domain,
             query,
             calculation.name,
+            calculation.name,
             calculation.load,
             calc_path,
             Ash.Resource.Calculation.strict_loads?(calculation.module),
@@ -1282,11 +1283,14 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
+  # `calc_name`/`calc_load`/`calc_path` identify the top level calculation for rewrites,
+  # `dep_source` is the calculation in `query` that depends on the requirements, if any
   defp do_load_calculation_requirements(
          requirements,
          domain,
          query,
          calc_name,
+         dep_source,
          calc_load,
          calc_path,
          strict_loads?,
@@ -1312,6 +1316,7 @@ defmodule Ash.Actions.Read.Calculations do
         &2,
         domain,
         calc_name,
+        dep_source,
         calc_load,
         calc_path,
         strict_loads?,
@@ -1330,6 +1335,7 @@ defmodule Ash.Actions.Read.Calculations do
          query,
          domain,
          calc_name,
+         dep_source,
          calc_load,
          calc_path,
          strict_loads?,
@@ -1348,6 +1354,7 @@ defmodule Ash.Actions.Read.Calculations do
           further,
           domain,
           calc_name,
+          dep_source,
           calc_load,
           calc_path,
           relationship_path,
@@ -1388,7 +1395,7 @@ defmodule Ash.Actions.Read.Calculations do
                   equivalent_aggregate.constraints,
                   equivalent_aggregate.context
                 )
-                |> add_calculation_dependency(calc_name, new_calc_name)
+                |> add_calculation_dependency(dep_source, new_calc_name)
               end
 
             :error ->
@@ -1527,6 +1534,7 @@ defmodule Ash.Actions.Read.Calculations do
               query,
               domain,
               calc_name,
+              dep_source,
               calc_load,
               calc_path,
               strict_loads?,
@@ -1606,7 +1614,8 @@ defmodule Ash.Actions.Read.Calculations do
                         relationship_path ++ [relationship.name],
                         initial_data,
                         strict_loads?,
-                        reuse_values?
+                        reuse_values?,
+                        authorize?
                       )
                     )
               }
@@ -1616,6 +1625,7 @@ defmodule Ash.Actions.Read.Calculations do
                 query,
                 domain,
                 calc_name,
+                dep_source,
                 calc_load,
                 calc_path,
                 strict_loads?,
@@ -1632,6 +1642,7 @@ defmodule Ash.Actions.Read.Calculations do
                 query,
                 domain,
                 calc_name,
+                dep_source,
                 calc_load,
                 calc_path,
                 strict_loads?,
@@ -1656,6 +1667,7 @@ defmodule Ash.Actions.Read.Calculations do
          query,
          domain,
          calc_name,
+         dep_source,
          calc_load,
          calc_path,
          strict_loads?,
@@ -1698,7 +1710,7 @@ defmodule Ash.Actions.Read.Calculations do
           %{},
           constraints
         )
-        |> add_calculation_dependency(calc_name, new_calc_name)
+        |> add_calculation_dependency(dep_source, new_calc_name)
 
       {key, existing_calculation} ->
         new_calculation =
@@ -1729,7 +1741,7 @@ defmodule Ash.Actions.Read.Calculations do
 
         query
         |> rename_and_replace_calculation(key, new_calculation)
-        |> add_calculation_dependency(calc_name, new_calculation.name)
+        |> add_calculation_dependency(dep_source, new_calculation.name)
     end
   end
 
@@ -1780,6 +1792,7 @@ defmodule Ash.Actions.Read.Calculations do
          further,
          domain,
          calc_name,
+         dep_source,
          calc_load,
          calc_path,
          relationship_path,
@@ -1809,10 +1822,16 @@ defmodule Ash.Actions.Read.Calculations do
         authorize?
       )
     else
+      renamed_calc_name =
+        {:__calc_dep__,
+         [{calc_path, {:calc, calculation.name, calculation.load}, calc_name, calc_load}]}
+
       case find_equivalent_calculation(query, calculation, authorize?) do
         {:ok, equivalent_calculation} ->
-          if equivalent_calculation.load == calculation.load and
-               equivalent_calculation.name == calculation.name do
+          # the equivalent calculation may be this same dependency, already added and renamed
+          if (equivalent_calculation.load == calculation.load and
+                equivalent_calculation.name == calculation.name) or
+               equivalent_calculation.name == renamed_calc_name do
             query =
               do_merge_load_through(
                 query,
@@ -1832,7 +1851,7 @@ defmodule Ash.Actions.Read.Calculations do
                 authorize?
               )
 
-            add_calculation_dependency(query, calc_name, equivalent_calculation.name)
+            add_calculation_dependency(query, dep_source, equivalent_calculation.name)
           else
             query =
               do_merge_load_through(
@@ -1853,15 +1872,9 @@ defmodule Ash.Actions.Read.Calculations do
                 authorize?
               )
 
-            new_calc_name =
-              {:__calc_dep__,
-               [
-                 {calc_path, {:calc, calculation.name, calculation.load}, calc_name, calc_load}
-               ]}
-
             Ash.Query.calculate(
               query,
-              new_calc_name,
+              renamed_calc_name,
               equivalent_calculation.type,
               {Ash.Resource.Calculation.FetchCalc,
                load: equivalent_calculation.load && equivalent_calculation.name,
@@ -1870,8 +1883,8 @@ defmodule Ash.Actions.Read.Calculations do
               equivalent_calculation.constraints,
               equivalent_calculation.context
             )
-            |> add_calculation_dependency(calc_name, new_calc_name)
-            |> add_calculation_dependency(new_calc_name, equivalent_calculation.name)
+            |> add_calculation_dependency(dep_source, renamed_calc_name)
+            |> add_calculation_dependency(renamed_calc_name, equivalent_calculation.name)
           end
 
         :error ->
@@ -1879,12 +1892,7 @@ defmodule Ash.Actions.Read.Calculations do
             if query.calculations[calculation.name] do
               %{
                 calculation
-                | name:
-                    {:__calc_dep__,
-                     [
-                       {calc_path, {:calc, calculation.name, calculation.load}, calc_name,
-                        calc_load}
-                     ]},
+                | name: renamed_calc_name,
                   load: nil
               }
             else
@@ -1918,7 +1926,7 @@ defmodule Ash.Actions.Read.Calculations do
                 relationship_path,
                 checked_calculations
               )
-              |> add_calculation_dependency(calc_name, new_calculation.name)
+              |> add_calculation_dependency(dep_source, new_calculation.name)
           end
       end
     end
@@ -1998,6 +2006,8 @@ defmodule Ash.Actions.Read.Calculations do
   defp loaded_and_reusable?(_initial_data, _relationship_path, _calculation, false) do
     false
   end
+
+  defp add_calculation_dependency(query, nil, _dest), do: query
 
   defp add_calculation_dependency(query, source, dest) do
     %{
@@ -2124,6 +2134,7 @@ defmodule Ash.Actions.Read.Calculations do
       domain,
       left,
       calc_name,
+      nil,
       calc_load,
       calc_path,
       strict_loads?,
