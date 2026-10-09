@@ -288,4 +288,90 @@ defmodule Ash.Test.Policy.ComplexTest do
     assert [_] = Post.erasable!(actor: me, context: %{post_id: post.id})
     assert %{text: "[deleted]"} = Post.erase!(post, actor: me, context: %{post_id: post.id})
   end
+
+  describe "count, exists and aggregate apply related policies like read" do
+    defp answers(query, actor) do
+      opts = [actor: actor, authorize?: true]
+
+      %{
+        read: query |> Ash.read!(opts) |> Enum.map(& &1.text) |> Enum.sort(),
+        count: Ash.count!(query, opts),
+        exists: Ash.exists?(query, opts),
+        aggregate_count: Ash.aggregate!(query, {:n, :count}, opts).n,
+        aggregate_list: query |> Ash.aggregate!({:t, :list, field: :text}, opts) |> Map.get(:t)
+      }
+    end
+
+    defp assert_consistent(answers, expected_texts) do
+      assert answers.read == expected_texts
+      assert answers.count == length(expected_texts)
+      assert answers.exists == (expected_texts != [])
+      assert answers.aggregate_count == length(expected_texts)
+      assert Enum.sort(answers.aggregate_list) == expected_texts
+    end
+
+    test "filter_input across a relationship", %{me: me} do
+      Post
+      |> Ash.Query.filter_input(comments: [text: "comment by a friend of a friend on my post"])
+      |> answers(me)
+      |> assert_consistent([])
+
+      Post
+      |> Ash.Query.filter_input(comments: [text: "comment by me on my own post"])
+      |> answers(me)
+      |> assert_consistent(["post by me"])
+    end
+
+    # `me` can see 2 of the 3 comments on their post.
+    test "filter_input on an aggregate", %{me: me} do
+      Post
+      |> Ash.Query.filter_input(count_of_comments: 3)
+      |> answers(me)
+      |> assert_consistent([])
+
+      Post
+      |> Ash.Query.filter_input(count_of_comments: 2)
+      |> answers(me)
+      |> assert_consistent(["post by me"])
+    end
+
+    test "filter on an aggregate", %{me: me} do
+      Post
+      |> Ash.Query.filter(count_of_comments == 3)
+      |> answers(me)
+      |> assert_consistent([])
+    end
+
+    test "filter_input on a calculation over an aggregate", %{me: me} do
+      Post
+      |> Ash.Query.filter_input(count_of_comments_calc: 3)
+      |> answers(me)
+      |> assert_consistent([])
+    end
+
+    test "sorting on an aggregate with a limit", %{
+      me: me,
+      a_friend_of_my_friend: a_friend_of_my_friend,
+      post_by_my_friend: post_by_my_friend
+    } do
+      # Comments `me` can't see, so that by hidden count my friend's post (4)
+      # outranks mine (3), while by visible count mine (2) outranks theirs (0).
+      for i <- 1..3 do
+        Comment.create!(post_by_my_friend.id, "hidden #{i}",
+          actor: a_friend_of_my_friend,
+          authorize?: false
+        )
+      end
+
+      query =
+        Post
+        |> Ash.Query.sort_input("-count_of_comments")
+        |> Ash.Query.limit(1)
+
+      opts = [actor: me, authorize?: true]
+
+      assert ["post by me"] = query |> Ash.read!(opts) |> Enum.map(& &1.text)
+      assert ["post by me"] = Ash.aggregate!(query, {:t, :list, field: :text}, opts).t
+    end
+  end
 end

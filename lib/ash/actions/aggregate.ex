@@ -82,8 +82,15 @@ defmodule Ash.Actions.Aggregate do
             Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
             with {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
+                 pre_authorization_query <- query,
                  {:ok, %{valid?: true} = query} <-
                    authorize_query(query, opts, agg_authorize?),
+                 {:ok, %{valid?: true} = query} <-
+                   Ash.Actions.Read.prepare_for_aggregate(
+                     query,
+                     pre_authorization_query,
+                     Keyword.put(opts, :authorize?, agg_authorize?)
+                   ),
                  {:ok, aggregates} <- validate_aggregates(query, aggregates, opts),
                  {:ok, aggregates} <-
                    authorize_aggregate_fields(
