@@ -8,6 +8,19 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.34.6](https://github.com/ash-project/ash/compare/v3.34.5...v3.34.6) (2026-10-09)
+
+
+
+
+### Bug Fixes:
+
+* [security] apply related resources' read policies to filters and sorts in `Ash.count/2`, `Ash.exists/2` and `Ash.aggregate/3` ([CVE-2026-101028](https://cna.erlef.org/cves/CVE-2026-101028.html), [GHSA-xj24-8f5c-pp5p](https://github.com/ash-project/ash/security/advisories/GHSA-xj24-8f5c-pp5p)) by [@zachdaniel](https://github.com/zachdaniel)
+
+* correct type casting in operators by [@zachdaniel](https://github.com/zachdaniel)
+
+* match embedded resource structs in equal? without expanding them (#3006) by Moxley Stratton [(#3006)](https://github.com/ash-project/ash/pull/3006)
+
 ## [v3.34.5](https://github.com/ash-project/ash/compare/v3.34.4...v3.34.5) (2026-10-08)
 
 
