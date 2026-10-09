@@ -228,6 +228,8 @@ def atomic(changeset, opts, context) do
 end
 ```
 
+An atomic action only runs `after_action` and `after_transaction` hooks. If `change/3` adds a `before_action`, `before_transaction`, `around_action` or `around_transaction` hook, the action is treated as not atomic, and falls back to the non-atomic path if the action allows it (`require_atomic? false`).
+
 In other cases, a change may not be necessary in a fully atomic action. For this, you can simply return `:ok`
 
 ```elixir

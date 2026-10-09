@@ -1138,15 +1138,26 @@ defmodule Ash.Changeset do
     changeset = set_phase(changeset, :atomic)
 
     Enum.reduce_while(changes, changeset, fn
-      %{change: _} = change, changeset ->
+      %{change: {module, _}} = change, changeset ->
         context = Map.put(context, :source_context, changeset.context)
 
         case run_atomic_change(changeset, change, context) do
           {:not_atomic, reason} ->
             {:halt, {:not_atomic, reason}}
 
-          changeset ->
-            {:cont, changeset}
+          %__MODULE__{} = new_changeset ->
+            case atomic_unsupported_hooks_added(changeset, new_changeset) do
+              [] ->
+                {:cont, new_changeset}
+
+              hooks ->
+                {:halt,
+                 {:not_atomic,
+                  "change `#{inspect(module)}` added #{Enum.map_join(hooks, ", ", &"`#{&1}`")} hooks, which cannot run when the action is done atomically"}}
+            end
+
+          other ->
+            {:cont, other}
         end
 
       %{validation: _} = validation, changeset ->
@@ -1164,6 +1175,21 @@ defmodule Ash.Changeset do
       {:not_atomic, reason} -> {:not_atomic, reason}
       %__MODULE__{} = changeset -> clear_phase(changeset)
     end
+  end
+
+  # An atomic action only runs `after_action` and `after_transaction` hooks, so hooks of any
+  # other kind that an `atomic/3` callback adds would silently never run.
+  @atomic_unsupported_hooks [
+    :around_transaction,
+    :before_transaction,
+    :around_action,
+    :before_action
+  ]
+
+  defp atomic_unsupported_hooks_added(changeset, new_changeset) do
+    Enum.filter(@atomic_unsupported_hooks, fn hook ->
+      Map.fetch!(new_changeset, hook) != Map.fetch!(changeset, hook)
+    end)
   end
 
   @doc false
