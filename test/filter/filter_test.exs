@@ -215,6 +215,10 @@ defmodule Ash.Test.Filter.FilterTest do
       calculate :cool_titles, {:array, :string}, expr(["yo", "dawg"]) do
         public?(true)
       end
+
+      calculate :lucky_numbers, {:array, :integer}, expr([7, 13]) do
+        public?(true)
+      end
     end
 
     relationships do
@@ -297,6 +301,37 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [_] =
                Post
                |> Ash.Query.filter(title in cool_titles)
+               |> Ash.read!()
+    end
+
+    test "a value on the left of `in` is cast to the item type of the reference on the right" do
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "foo"})
+      |> Ash.create!()
+
+      assert [_] =
+               Post
+               |> Ash.Query.filter(^"7" in lucky_numbers)
+               |> Ash.read!()
+    end
+
+    test "a value on the left of `in` that can't be cast to the item type is an invalid filter" do
+      query = Ash.Query.filter(Post, ^"not a number" in lucky_numbers)
+
+      refute query.valid?
+      assert [%Ash.Error.Query.InvalidFilterValue{}] = query.errors
+    end
+  end
+
+  describe "comparison casting" do
+    test "a value on the left of a comparison is cast to the type of the reference on the right" do
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "foo", points: 10})
+      |> Ash.create!()
+
+      assert [_] =
+               Post
+               |> Ash.Query.filter(^"5" < points)
                |> Ash.read!()
     end
   end

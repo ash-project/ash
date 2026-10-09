@@ -279,7 +279,7 @@ defmodule Ash.Query.Operator do
   end
 
   defp try_cast(left, %Ref{attribute: %{type: type, constraints: constraints}} = right, :same) do
-    if Ash.Expr.expr?(right) do
+    if Ash.Expr.expr?(left) do
       {:ok, left, right}
     else
       case Ash.Query.Type.try_cast(left, type, constraints) do
@@ -323,7 +323,7 @@ defmodule Ash.Query.Operator do
          %Ref{attribute: %{type: {:array, type}, constraints: constraints}} = right,
          [:any, {:array, :same}]
        ) do
-    if Ash.Expr.expr?(right) do
+    if Ash.Expr.expr?(left) do
       {:ok, left, right}
     else
       case Ash.Query.Type.try_cast(left, type, constraints) do
