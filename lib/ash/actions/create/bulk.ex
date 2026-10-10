@@ -2103,6 +2103,8 @@ defmodule Ash.Actions.Create.Bulk do
       {:templated, change_opts} ->
         cond do
           module.has_batch_change?() ->
+            {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
+
             Ash.Resource.Change.batch_change(
               module,
               batch,

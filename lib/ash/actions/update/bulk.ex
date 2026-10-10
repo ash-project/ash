@@ -1131,6 +1131,7 @@ defmodule Ash.Actions.Update.Bulk do
                 fn index, {records, additional_notifications} ->
                   change = Enum.at(all_changes, index)
                   {module, opts} = change.change
+                  opts = init_change_opts(module, opts)
 
                   case Ash.Resource.Change.after_batch(module, records, opts, context) do
                     :ok ->
@@ -2474,6 +2475,8 @@ defmodule Ash.Actions.Update.Bulk do
         if changes[index] == :all do
           case change_opts do
             {:templated, change_opts} ->
+              change_opts = init_change_opts(module, change_opts)
+
               if module.has_before_batch?() && module.has_batch_change?() &&
                    Ash.Resource.Change.batch_callbacks?(module, batch, change_opts, context) do
                 Ash.Resource.Change.before_batch(
@@ -2488,18 +2491,19 @@ defmodule Ash.Actions.Update.Bulk do
 
             change_opts ->
               Enum.flat_map(batch, fn changeset ->
+                change_opts =
+                  change_opts
+                  |> templated_opts(
+                    opts[:actor],
+                    changeset.to_tenant,
+                    changeset.arguments,
+                    changeset.context,
+                    changeset
+                  )
+                  |> then(&init_change_opts(module, &1))
+
                 if module.has_before_batch?() && module.has_batch_change?() &&
                      Ash.Resource.Change.batch_callbacks?(module, batch, change_opts, context) do
-                  change_opts =
-                    templated_opts(
-                      change_opts,
-                      opts[:actor],
-                      changeset.to_tenant,
-                      changeset.arguments,
-                      changeset.context,
-                      changeset
-                    )
-
                   Ash.Resource.Change.before_batch(
                     module,
                     [changeset],
@@ -2525,6 +2529,8 @@ defmodule Ash.Actions.Update.Bulk do
           before_batch_results =
             case change_opts do
               {:templated, change_opts} ->
+                change_opts = init_change_opts(module, change_opts)
+
                 if module.has_before_batch?() &&
                      module.has_batch_change?() &&
                      Ash.Resource.Change.batch_callbacks?(module, matches, change_opts, context) do
@@ -2541,14 +2547,15 @@ defmodule Ash.Actions.Update.Bulk do
               change_opts ->
                 Enum.flat_map(matches, fn changeset ->
                   change_opts =
-                    templated_opts(
-                      change_opts,
+                    change_opts
+                    |> templated_opts(
                       opts[:actor],
                       changeset.to_tenant,
                       changeset.arguments,
                       changeset.context,
                       changeset
                     )
+                    |> then(&init_change_opts(module, &1))
 
                   if module.has_before_batch?() &&
                        module.has_batch_change?() &&
@@ -2581,6 +2588,12 @@ defmodule Ash.Actions.Update.Bulk do
       changeset ->
         [put_phase(changeset, :pending)]
     end)
+  end
+
+  # batch callbacks receive the options returned by `init/1`, like `change/3` and `atomic/3`
+  defp init_change_opts(module, change_opts) do
+    {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
+    change_opts
   end
 
   defp put_phase(%Ash.Changeset{} = changeset, phase), do: %{changeset | phase: phase}
@@ -3364,6 +3377,8 @@ defmodule Ash.Actions.Update.Bulk do
 
           case change_opts do
             {:templated, change_opts} ->
+              change_opts = init_change_opts(module, change_opts)
+
               if module.has_after_batch?() &&
                    module.has_batch_change?() &&
                    Ash.Resource.Change.batch_callbacks?(module, changesets, change_opts, context) do
@@ -3398,14 +3413,15 @@ defmodule Ash.Actions.Update.Bulk do
             change_opts ->
               Enum.flat_map(results_for_callback, fn {changeset, record} ->
                 change_opts =
-                  templated_opts(
-                    change_opts,
+                  change_opts
+                  |> templated_opts(
                     opts[:actor],
                     changeset.to_tenant,
                     changeset.arguments,
                     changeset.context,
                     changeset
                   )
+                  |> then(&init_change_opts(module, &1))
 
                 if module.has_after_batch?() &&
                      module.has_batch_change?() &&
@@ -3461,6 +3477,8 @@ defmodule Ash.Actions.Update.Bulk do
           after_batch_results =
             case change_opts do
               {:templated, change_opts} ->
+                change_opts = init_change_opts(module, change_opts)
+
                 if module.has_after_batch?() &&
                      module.has_batch_change?() &&
                      Ash.Resource.Change.batch_callbacks?(
@@ -3509,6 +3527,17 @@ defmodule Ash.Actions.Update.Bulk do
 
               change_opts ->
                 Enum.flat_map(matches_for_callback, fn {changeset, record} = result ->
+                  change_opts =
+                    change_opts
+                    |> templated_opts(
+                      opts[:actor],
+                      changeset.to_tenant,
+                      changeset.arguments,
+                      changeset.context,
+                      changeset
+                    )
+                    |> then(&init_change_opts(module, &1))
+
                   if module.has_after_batch?() &&
                        module.has_batch_change?() &&
                        Ash.Resource.Change.batch_callbacks?(
@@ -3517,16 +3546,6 @@ defmodule Ash.Actions.Update.Bulk do
                          change_opts,
                          context
                        ) do
-                    change_opts =
-                      templated_opts(
-                        change_opts,
-                        opts[:actor],
-                        changeset.to_tenant,
-                        changeset.arguments,
-                        changeset.context,
-                        changeset
-                      )
-
                     Ash.Resource.Change.after_batch(
                       module,
                       [result],
