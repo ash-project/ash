@@ -4,98 +4,26 @@
 
 defmodule Ash.Signals do
   @moduledoc """
-  Typed signals that resources emit, and other resources listen to.
+  Typed signals that resources emit, and other resources listen to with their own actions.
 
-  A signal module is a contract between resources, often across domains. Emitters and
-  listeners both depend on it, and not on each other.
+  A signal module declares signals, and is the contract between the resources that emit them and
+  the resources that listen to them:
 
   ```elixir
-  defmodule MyApp.Blog.Signals do
+  defmodule MyApp.Shop.Signals do
     use Ash.Signals
 
     signals do
-      signal :post_created do
+      signal :order_placed do
         phase :after_action
-        argument :post_id, :uuid, allow_nil?: false
+        argument :order_id, :uuid, allow_nil?: false
       end
     end
   end
   ```
 
-  Each signal defines a struct for its arguments, `MyApp.Blog.Signals.PostCreated`.
-
-  Resources emit signals with the `emit_signal` change, or the `emit_signal` preparation for
-  generic actions. These emit the signal during its phase, from the record's fields (or the
-  action's arguments) with the same names, and are checked at compile time:
-
-  ```elixir
-  actions do
-    create :create do
-      change emit_signal(MyApp.Blog.Signals, :post_created, :after_action, fields: [post_id: :id])
-    end
-  end
-  ```
-
-  See `Ash.Resource.Change.Builtins.emit_signal/3` and
-  `Ash.Resource.Preparation.Builtins.emit_signal/3`. To emit from your own code, use `emit/5`
-  or `emit_many/5`, after listing the signal module in the resource's `signals_out`:
-
-  ```elixir
-  use Ash.Resource, signals_out: [MyApp.Blog.Signals]
-
-  # in a change
-  Ash.Changeset.after_action(changeset, fn changeset, post ->
-    with :ok <-
-           Ash.Signals.emit(changeset, MyApp.Blog.Signals, :post_created, %{post_id: post.id}) do
-      {:ok, post}
-    end
-  end)
-  ```
-
-  Other resources listen with their own actions:
-
-  ```elixir
-  signals_in do
-    # a generic action, which receives the signal struct as its `signal` argument
-    on MyApp.Blog.Signals, :post_created, :notify_followers
-
-    # a create action, with inputs from the signal fields of the same name
-    on MyApp.Blog.Signals, :post_created, :create_feed_item
-
-    # an update or destroy action, on the records a read action selects for each signal
-    on MyApp.Blog.Signals, :post_archived, :archive, read_action: :for_post, args: [:post_id]
-  end
-  ```
-
-  When signals are emitted together with `emit_many/5`, create, update and destroy listeners
-  handle them as bulk actions, and a generic listener with `batch?: true` receives all of them as
-  its `signals` argument. See the `on` entity of `signals_in` for every option.
-
-  Listeners run immediately, as nested action calls, in the emitter's transaction. If a listener
-  returns an error, `emit/5` returns it.
-
-  Signals are fire and forget: the emitter does not get anything back from its listeners, so it
-  does not depend on what they do, or on whether anything listens at all. If a resource needs a
-  value from another resource to finish its action, it should call that resource directly.
-
-  The `:ash_signals` compiler consolidates listeners, like protocol consolidation, so emitting a
-  signal does not search for them:
-
-      compilers: [:ash_signals] ++ Mix.compilers()
-
-  If you use the Phoenix code reloader, add `:ash_signals` to your endpoint's
-  `reloadable_compilers`. See `Mix.Tasks.Compile.AshSignals`. Without the compiler, listeners
-  are searched for each time a signal is emitted.
-
-  Each emitted signal fires a `[:ash, :signal, :emitted]` telemetry event, before its listeners
-  run. Its metadata has the `:signal_module`, the signal's `:name`, the `:signal` struct, the
-  emitting `:resource` and `:action` name, and the `:actor` and `:tenant` the listeners run with.
-
-  To assert on emitted signals in tests, see `Ash.Signals.Test`.
-
-  Listeners are found without either side depending on the other. See `Ash.Signals.Registry`.
-
-  [Signals DSL documentation](dsl-ash-signals.html)
+  See the [signals guide](/documentation/topics/resources/signals.md) for how to emit and listen
+  to signals, and the [Signals DSL documentation](dsl-ash-signals.html) for every option.
   """
 
   use Spark.Dsl, default_extensions: [extensions: [Ash.Signals.Dsl]]

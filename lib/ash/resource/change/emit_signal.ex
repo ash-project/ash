@@ -4,7 +4,7 @@
 
 defmodule Ash.Resource.Change.EmitSignal do
   @moduledoc false
-  # See `Ash.Resource.Change.Builtins.emit_signal/3`.
+  # See `Ash.Resource.Change.Builtins.emit_signal/4`.
   use Ash.Resource.Change
 
   alias Ash.Signals.Emitter

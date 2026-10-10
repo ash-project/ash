@@ -92,6 +92,7 @@ defmodule Ash.MixProject do
         "documentation/topics/resources/embedded-resources.md",
         "documentation/topics/resources/identities.md",
         "documentation/topics/resources/notifiers.md",
+        "documentation/topics/resources/signals.md",
         "documentation/topics/actions/actions.md",
         "documentation/topics/actions/read-actions.md",
         "documentation/topics/actions/create-actions.md",

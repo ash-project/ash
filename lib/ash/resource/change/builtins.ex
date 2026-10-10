@@ -345,7 +345,7 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
-  The value of a field before the action, for the `values` of `emit_signal/3` in update and
+  The value of a field before the action, for the `values` of `emit_signal/4` in update and
   destroy actions.
 
       change emit_signal(MyApp.Shop.Signals, :order_status_changed, :after_action,

@@ -4,7 +4,7 @@
 
 defmodule Ash.Resource.Preparation.EmitSignal do
   @moduledoc false
-  # See `Ash.Resource.Preparation.Builtins.emit_signal/3`.
+  # See `Ash.Resource.Preparation.Builtins.emit_signal/4`.
   use Ash.Resource.Preparation
 
   alias Ash.Signals.Emitter
