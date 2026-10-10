@@ -709,6 +709,27 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  describe "after_action hooks" do
+    test "every hook sees the after_action phase, not only the first" do
+      test_pid = self()
+
+      Category
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
+      |> Ash.Changeset.after_action(fn changeset, record ->
+        send(test_pid, {:phase, 1, changeset.phase})
+        {:ok, record}
+      end)
+      |> Ash.Changeset.after_action(fn changeset, record ->
+        send(test_pid, {:phase, 2, changeset.phase})
+        {:ok, record}
+      end)
+      |> Ash.create!()
+
+      assert_received {:phase, 1, :after_action}
+      assert_received {:phase, 2, :after_action}
+    end
+  end
+
   describe "get_attribute/2" do
     setup do
       category =

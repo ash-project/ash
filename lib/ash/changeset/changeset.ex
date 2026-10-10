@@ -5390,11 +5390,10 @@ defmodule Ash.Changeset do
                 end
               )
 
-            {:cont,
-             {:ok, new_result, clear_phase(changeset), %{acc | notifications: all_notifications}}}
+            {:cont, {:ok, new_result, changeset, %{acc | notifications: all_notifications}}}
 
           {:ok, new_result} ->
-            {:cont, {:ok, new_result, clear_phase(changeset), acc}}
+            {:cont, {:ok, new_result, changeset, acc}}
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -5416,6 +5415,8 @@ defmodule Ash.Changeset do
     )
     |> case do
       {:ok, result, changeset, acc} ->
+        changeset = clear_phase(changeset)
+
         case run_authorize_results(changeset, result) do
           {:ok, result} ->
             {:ok, result, changeset, acc}
