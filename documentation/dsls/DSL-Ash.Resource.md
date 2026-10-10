@@ -447,7 +447,7 @@ end
 |------|------|---------|------|
 | [`manual`](#relationships-has_one-manual){: #relationships-has_one-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`. |
 | [`no_attributes?`](#relationships-has_one-no_attributes?){: #relationships-has_one-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
-| [`through`](#relationships-has_one-through){: #relationships-has_one-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be the first record reachable by following the relationships in order. |
+| [`through`](#relationships-has_one-through){: #relationships-has_one-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be the first record reachable by following the relationships in order. |
 | [`allow_nil?`](#relationships-has_one-allow_nil?){: #relationships-has_one-allow_nil? } | `boolean` | `true` | Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity. |
 | [`from_many?`](#relationships-has_one-from_many?){: #relationships-has_one-from_many? } | `boolean` | `false` | Signal that this relationship is actually a `has_many` where the first record is given via the `sort`. This will allow data layers to properly deduplicate when necessary. |
 | [`offset`](#relationships-has_one-offset){: #relationships-has_one-offset } | `non_neg_integer` |  | An offset to skip entries when loading the relationship. Implies `from_many?: true`. |
@@ -460,7 +460,7 @@ end
 | [`not_found_message`](#relationships-has_one-not_found_message){: #relationships-has_one-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-has_one-writable?){: #relationships-has_one-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_one-read_action){: #relationships-has_one-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
-| [`read_action_arguments`](#relationships-has_one-read_action_arguments){: #relationships-has_one-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
+| [`read_action_arguments`](#relationships-has_one-read_action_arguments){: #relationships-has_one-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering.  Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-has_one-domain){: #relationships-has_one-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_one-filterable?){: #relationships-has_one-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-has_one-sortable?){: #relationships-has_one-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -470,7 +470,7 @@ end
 | [`violation_message`](#relationships-has_one-violation_message){: #relationships-has_one-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-has_one-authorize_read_with){: #relationships-has_one-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-has_one-allow_forbidden_field?){: #relationships-has_one-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
-| [`temporal_keys`](#relationships-has_one-temporal_keys){: #relationships-has_one-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
+| [`temporal_keys`](#relationships-has_one-temporal_keys){: #relationships-has_one-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.has_one.filter
@@ -561,7 +561,7 @@ end
 |------|------|---------|------|
 | [`manual`](#relationships-has_many-manual){: #relationships-has_many-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`. |
 | [`no_attributes?`](#relationships-has_many-no_attributes?){: #relationships-has_many-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
-| [`through`](#relationships-has_many-through){: #relationships-has_many-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be all records reachable by following the relationships in order. For example, `through: [:classrooms, :teachers]` would load all teachers from all classrooms. |
+| [`through`](#relationships-has_many-through){: #relationships-has_many-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be all records reachable by following the relationships in order. For example, `through: [:classrooms, :teachers]` would load all teachers from all classrooms. |
 | [`limit`](#relationships-has_many-limit){: #relationships-has_many-limit } | `integer` |  | An integer to limit entries from loaded relationship. |
 | [`offset`](#relationships-has_many-offset){: #relationships-has_many-offset } | `non_neg_integer` |  | An offset to skip entries when loading the relationship. |
 | [`description`](#relationships-has_many-description){: #relationships-has_many-description } | `String.t` |  | An optional description for the relationship |
@@ -573,7 +573,7 @@ end
 | [`not_found_message`](#relationships-has_many-not_found_message){: #relationships-has_many-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-has_many-writable?){: #relationships-has_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_many-read_action){: #relationships-has_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
-| [`read_action_arguments`](#relationships-has_many-read_action_arguments){: #relationships-has_many-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
+| [`read_action_arguments`](#relationships-has_many-read_action_arguments){: #relationships-has_many-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering.  Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-has_many-domain){: #relationships-has_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_many-filterable?){: #relationships-has_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-has_many-sortable?){: #relationships-has_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -583,7 +583,7 @@ end
 | [`violation_message`](#relationships-has_many-violation_message){: #relationships-has_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-has_many-authorize_read_with){: #relationships-has_many-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-has_many-allow_forbidden_field?){: #relationships-has_many-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
-| [`temporal_keys`](#relationships-has_many-temporal_keys){: #relationships-has_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
+| [`temporal_keys`](#relationships-has_many-temporal_keys){: #relationships-has_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.has_many.filter
@@ -686,7 +686,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`not_found_message`](#relationships-many_to_many-not_found_message){: #relationships-many_to_many-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-many_to_many-writable?){: #relationships-many_to_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-many_to_many-read_action){: #relationships-many_to_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
-| [`read_action_arguments`](#relationships-many_to_many-read_action_arguments){: #relationships-many_to_many-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
+| [`read_action_arguments`](#relationships-many_to_many-read_action_arguments){: #relationships-many_to_many-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering.  Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-many_to_many-domain){: #relationships-many_to_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-many_to_many-filterable?){: #relationships-many_to_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-many_to_many-sortable?){: #relationships-many_to_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -696,7 +696,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`violation_message`](#relationships-many_to_many-violation_message){: #relationships-many_to_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-many_to_many-authorize_read_with){: #relationships-many_to_many-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-many_to_many-allow_forbidden_field?){: #relationships-many_to_many-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
-| [`temporal_keys`](#relationships-many_to_many-temporal_keys){: #relationships-many_to_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
+| [`temporal_keys`](#relationships-many_to_many-temporal_keys){: #relationships-many_to_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.many_to_many.filter
@@ -795,7 +795,7 @@ end
 | [`not_found_message`](#relationships-belongs_to-not_found_message){: #relationships-belongs_to-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-belongs_to-writable?){: #relationships-belongs_to-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-belongs_to-read_action){: #relationships-belongs_to-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
-| [`read_action_arguments`](#relationships-belongs_to-read_action_arguments){: #relationships-belongs_to-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
+| [`read_action_arguments`](#relationships-belongs_to-read_action_arguments){: #relationships-belongs_to-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering.  Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-belongs_to-domain){: #relationships-belongs_to-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-belongs_to-filterable?){: #relationships-belongs_to-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-belongs_to-sortable?){: #relationships-belongs_to-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -804,7 +804,7 @@ end
 | [`violation_message`](#relationships-belongs_to-violation_message){: #relationships-belongs_to-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-belongs_to-authorize_read_with){: #relationships-belongs_to-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-belongs_to-allow_forbidden_field?){: #relationships-belongs_to-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
-| [`temporal_keys`](#relationships-belongs_to-temporal_keys){: #relationships-belongs_to-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
+| [`temporal_keys`](#relationships-belongs_to-temporal_keys){: #relationships-belongs_to-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is added to the relationship, alongside its usual attribute join. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.belongs_to.filter
@@ -935,7 +935,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`defaults`](#actions-defaults){: #actions-defaults } | `list(:create \| :read \| :update \| :destroy \| {atom, atom \| list(atom)})` |  | Creates a simple action of each specified type, with the same name as the type. These will be `primary?` unless one already exists for that type. Embedded resources, however, have a default of all resource types. |
-| [`default_accept`](#actions-default_accept){: #actions-default_accept } | `list(atom) \| :*` |  | A default value for the `accept` option for each action. Use `:*` to accept all public attributes. Ash >= 3.0 defaults to no attributes accepted. In prior versions of Ash all public, writable attributes were accepted by default. |
+| [`default_accept`](#actions-default_accept){: #actions-default_accept } | `list(atom) \| :*` |  | A default value for the `accept` option for each action. Use `:*` to accept all public attributes.  Ash >= 3.0 defaults to no attributes accepted. In prior versions of Ash all public, writable attributes were accepted by default. |
 
 
 
@@ -991,7 +991,7 @@ end
 | [`transaction?`](#actions-action-transaction?){: #actions-action-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true` when the data layer supports transactions. |
 | [`touches_resources`](#actions-action-touches_resources){: #actions-action-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-action-skip_unknown_inputs){: #actions-action-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-action-public?){: #actions-action-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-action-public?){: #actions-action-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 
 
 ### actions.action.argument
@@ -1218,13 +1218,13 @@ end
 | [`upsert_condition`](#actions-create-upsert_condition){: #actions-create-upsert_condition } | `any` |  | An expression to check if the record should be updated when there's a conflict. |
 | [`return_skipped_upsert?`](#actions-create-return_skipped_upsert?){: #actions-create-return_skipped_upsert? } | `boolean` |  | Returns the record that would have been upserted against but was skipped due to a filter or no fields being changed. How this works depends on the data layer. Keep in mind that read policies *are not applied* to the read of the record in question. |
 | [`multitenancy`](#actions-create-multitenancy){: #actions-create-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources. |
-| [`allow_post_action_authorization?`](#actions-create-allow_post_action_authorization?){: #actions-create-allow_post_action_authorization? } | `boolean` | `false` | Filter-mode policy checks on create actions are evaluated after the row is inserted, inside the action's transaction. If the check rejects, the transaction is rolled back. This is automatic — but only safe when no `before_transaction` or `around_transaction` hooks are present on the changeset, because those run *outside* the transaction and their side effects can't be rolled back. When such hooks are present, Ash refuses to defer authorization to post-action unless this option is explicitly set to `true`, acknowledging that those hooks may fire for create requests that ultimately get rejected. |
+| [`allow_post_action_authorization?`](#actions-create-allow_post_action_authorization?){: #actions-create-allow_post_action_authorization? } | `boolean` | `false` | Filter-mode policy checks on create actions are evaluated after the row is inserted, inside the action's transaction. If the check rejects, the transaction is rolled back. This is automatic — but only safe when no `before_transaction` or `around_transaction` hooks are present on the changeset, because those run *outside* the transaction and their side effects can't be rolled back. When such hooks are present, Ash refuses to defer authorization to post-action unless this option is explicitly set to `true`, acknowledging that those hooks may fire for create requests that ultimately get rejected. |
 | [`primary?`](#actions-create-primary?){: #actions-create-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-create-description){: #actions-create-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true` when the data layer supports transactions. |
 | [`touches_resources`](#actions-create-touches_resources){: #actions-create-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-create-skip_unknown_inputs){: #actions-create-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-create-public?){: #actions-create-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-create-public?){: #actions-create-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-create-accept){: #actions-create-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`action_select`](#actions-create-action_select){: #actions-create-action_select } | `list(atom)` |  | A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations. |
 | [`require_attributes`](#actions-create-require_attributes){: #actions-create-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -1518,7 +1518,7 @@ end
 | [`transaction?`](#actions-read-transaction?){: #actions-read-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true` when the data layer supports transactions. |
 | [`touches_resources`](#actions-read-touches_resources){: #actions-read-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-read-skip_unknown_inputs){: #actions-read-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-read-public?){: #actions-read-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-read-public?){: #actions-read-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 
 
 ### actions.read.argument
@@ -1860,7 +1860,7 @@ update :flag_for_review, primary?: true
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true` when the data layer supports transactions. |
 | [`touches_resources`](#actions-update-touches_resources){: #actions-update-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-update-skip_unknown_inputs){: #actions-update-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-update-public?){: #actions-update-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-update-public?){: #actions-update-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-update-accept){: #actions-update-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`action_select`](#actions-update-action_select){: #actions-update-action_select } | `list(atom)` |  | A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations. |
 | [`require_attributes`](#actions-update-require_attributes){: #actions-update-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -2153,7 +2153,7 @@ end
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true` when the data layer supports transactions. |
 | [`touches_resources`](#actions-destroy-touches_resources){: #actions-destroy-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-destroy-skip_unknown_inputs){: #actions-destroy-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-destroy-public?){: #actions-destroy-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-destroy-public?){: #actions-destroy-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-destroy-accept){: #actions-destroy-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`action_select`](#actions-destroy-action_select){: #actions-destroy-action_select } | `list(atom)` |  | A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations. |
 | [`require_attributes`](#actions-destroy-require_attributes){: #actions-destroy-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -2475,7 +2475,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 | [`get_by_identity`](#code_interface-define-get_by_identity){: #code_interface-define-get_by_identity } | `atom` |  | Takes an identity, gets its field list, and performs the same logic as `get_by` with those fields. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
 | [`default_options`](#code_interface-define-default_options){: #code_interface-define-default_options } | `keyword \| (-> any)` | `[]` | Default options to be merged with client-provided options. These can override domain or action defaults. `:load`, `:bulk_options`, and `:page` options will be deep merged. Can be a keyword list or a zero-arity function that returns a keyword list. |
 | [`namespace`](#code_interface-define-namespace){: #code_interface-define-namespace } | `atom` |  | Generate this interface function on a separate module instead of the host (domain or resource). The given module name is concatenated to the host (e.g. `namespace: Tickets` on `Helpdesk.Support` generates the functions on `Helpdesk.Support.Tickets`). Overrides any namespace set on the enclosing `code_interface`/`resource` block. |
-| [`functions`](#code_interface-define-functions){: #code_interface-define-functions } | `list(:subject \| :can \| :can? \| :action \| :action!)` | `[:subject, :can, :can?, :action, :action!]` | Controls which functions are generated for this interface. Defaults to all of `[:subject, :can, :can?, :action, :action!]`. - `:action` - the main function (e.g. `create_user`) - `:action!` - the raising variant (e.g. `create_user!`) - `:can` - the authorization check (e.g. `can_create_user`) - `:can?` - the boolean/raising authorization check (e.g. `can_create_user?`) - `:subject` - the subject builder (e.g. `changeset_to_create_user`, `query_to_read_user`, `input_to_run_X`) |
+| [`functions`](#code_interface-define-functions){: #code_interface-define-functions } | `list(:subject \| :can \| :can? \| :action \| :action!)` | `[:subject, :can, :can?, :action, :action!]` | Controls which functions are generated for this interface. Defaults to all of `[:subject, :can, :can?, :action, :action!]`.  - `:action` - the main function (e.g. `create_user`) - `:action!` - the raising variant (e.g. `create_user!`) - `:can` - the authorization check (e.g. `can_create_user`) - `:can?` - the boolean/raising authorization check (e.g. `can_create_user?`) - `:subject` - the subject builder (e.g. `changeset_to_create_user`, `query_to_read_user`, `input_to_run_X`) |
 
 
 ### code_interface.define.custom_input
@@ -3350,7 +3350,7 @@ end
 | [`sortable?`](#aggregates-count-sortable?){: #aggregates-count-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-count-sensitive?){: #aggregates-count-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-count-authorize?){: #aggregates-count-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-count-multitenancy){: #aggregates-count-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-count-multitenancy){: #aggregates-count-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.count.join_filter
@@ -3439,7 +3439,7 @@ exists :has_ticket, :assigned_tickets
 | [`sortable?`](#aggregates-exists-sortable?){: #aggregates-exists-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-exists-sensitive?){: #aggregates-exists-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-exists-authorize?){: #aggregates-exists-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-exists-multitenancy){: #aggregates-exists-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-exists-multitenancy){: #aggregates-exists-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.exists.join_filter
@@ -3535,7 +3535,7 @@ end
 | [`sortable?`](#aggregates-first-sortable?){: #aggregates-first-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-first-sensitive?){: #aggregates-first-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-first-authorize?){: #aggregates-first-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-first-multitenancy){: #aggregates-first-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-first-multitenancy){: #aggregates-first-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.first.join_filter
@@ -3627,7 +3627,7 @@ end
 | [`sortable?`](#aggregates-sum-sortable?){: #aggregates-sum-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-sum-sensitive?){: #aggregates-sum-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-sum-authorize?){: #aggregates-sum-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-sum-multitenancy){: #aggregates-sum-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-sum-multitenancy){: #aggregates-sum-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.sum.join_filter
@@ -3723,7 +3723,7 @@ end
 | [`sortable?`](#aggregates-list-sortable?){: #aggregates-list-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-list-sensitive?){: #aggregates-list-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-list-authorize?){: #aggregates-list-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-list-multitenancy){: #aggregates-list-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-list-multitenancy){: #aggregates-list-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.list.join_filter
@@ -3815,7 +3815,7 @@ end
 | [`sortable?`](#aggregates-max-sortable?){: #aggregates-max-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-max-sensitive?){: #aggregates-max-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-max-authorize?){: #aggregates-max-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-max-multitenancy){: #aggregates-max-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-max-multitenancy){: #aggregates-max-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.max.join_filter
@@ -3907,7 +3907,7 @@ end
 | [`sortable?`](#aggregates-min-sortable?){: #aggregates-min-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-min-sensitive?){: #aggregates-min-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-min-authorize?){: #aggregates-min-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-min-multitenancy){: #aggregates-min-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-min-multitenancy){: #aggregates-min-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.min.join_filter
@@ -3999,7 +3999,7 @@ end
 | [`sortable?`](#aggregates-avg-sortable?){: #aggregates-avg-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-avg-sensitive?){: #aggregates-avg-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-avg-authorize?){: #aggregates-avg-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-avg-multitenancy){: #aggregates-avg-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-avg-multitenancy){: #aggregates-avg-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.avg.join_filter
@@ -4096,7 +4096,7 @@ end
 | [`sortable?`](#aggregates-custom-sortable?){: #aggregates-custom-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-custom-sensitive?){: #aggregates-custom-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-custom-authorize?){: #aggregates-custom-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-custom-multitenancy){: #aggregates-custom-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-custom-multitenancy){: #aggregates-custom-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.custom.join_filter
@@ -4240,8 +4240,8 @@ end
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. When `false`, the calculation must never return `nil`. Ash does not validate the result, so a `nil` will not raise an error. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |
 | [`sortable?`](#calculations-calculate-sortable?){: #calculations-calculate-sortable? } | `boolean` | `true` | Whether or not the calculation can be referenced in sorts. |
-| [`field?`](#calculations-calculate-field?){: #calculations-calculate-field? } | `boolean` | `true` | Whether or not the calculation should create a field on the resource struct. When `false`, the calculation's value will always be stored in the `calculations` map on the record, and will not add a key to the resource struct. The calculation can still be loaded normally. |
-| [`multitenancy`](#calculations-calculate-multitenancy){: #calculations-calculate-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` |  | Configures multitenancy behavior for the calculation. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this calculation both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for nested resources. |
+| [`field?`](#calculations-calculate-field?){: #calculations-calculate-field? } | `boolean` | `true` | Whether or not the calculation should create a field on the resource struct.  When `false`, the calculation's value will always be stored in the `calculations` map on the record, and will not add a key to the resource struct. The calculation can still be loaded normally. |
+| [`multitenancy`](#calculations-calculate-multitenancy){: #calculations-calculate-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` |  | Configures multitenancy behavior for the calculation. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this calculation both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for nested resources. |
 
 
 ### calculations.calculate.argument
@@ -4378,9 +4378,9 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`strategy`](#temporal-strategy){: #temporal-strategy } | `:context` | `:context` | Determines how temporality is implemented. Currently only `:context`, which defers to native data layer support using a single period column. |
-| [`attribute`](#temporal-attribute){: #temporal-attribute } | `atom` | `:valid_at` | The single period attribute, e.g `valid_at`. It must be an `Ash.Type.Range` over datetimes (`inner_type: :utc_datetime_usec`, `:utc_datetime` or `:datetime`). If the resource doesn't declare it, one over `:utc_datetime_usec` is added. |
-| [`recorded_at`](#temporal-recorded_at){: #temporal-recorded_at } | `atom` |  | An attribute to stamp with the time each version was actually written, e.g `recorded_at`. Other `&DateTime.utc_now/0` defaults resolve to the write's `as_of`, so a write back-dated into the past gets past timestamps. This one is always the wall clock, so it tells you when a version was recorded, not when it took effect. A write that isn't back-dated stamps it with the same instant its period starts at. If the resource doesn't declare the attribute, a `:utc_datetime_usec` one is added that is set on every create and update. |
+| [`strategy`](#temporal-strategy){: #temporal-strategy } | `:context` | `:context` | Determines how temporality is implemented. Currently only `:context`, which defers to native data layer support using a single period column. |
+| [`attribute`](#temporal-attribute){: #temporal-attribute } | `atom` | `:valid_at` | The single period attribute, e.g `valid_at`. It must be an `Ash.Type.Range` over datetimes (`inner_type: :utc_datetime_usec`, `:utc_datetime` or `:datetime`). If the resource doesn't declare it, one over `:utc_datetime_usec` is added. |
+| [`recorded_at`](#temporal-recorded_at){: #temporal-recorded_at } | `atom` |  | An attribute to stamp with the time each version was actually written, e.g `recorded_at`. Other `&DateTime.utc_now/0` defaults resolve to the write's `as_of`, so a write back-dated into the past gets past timestamps. This one is always the wall clock, so it tells you when a version was recorded, not when it took effect. A write that isn't back-dated stamps it with the same instant its period starts at.  If the resource doesn't declare the attribute, a `:utc_datetime_usec` one is added that is set on every create and update. |
 
 
 
