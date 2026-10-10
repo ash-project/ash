@@ -1247,6 +1247,45 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @signal_listener %Spark.Dsl.Entity{
+    name: :on,
+    describe: """
+    Runs an action when a signal is emitted. Its return value is ignored.
+
+    A generic action receives the signal struct as an argument (named `signal` by default), or
+    every signal emitted together as a list with `batch?: true`. A create action creates a record
+    from each signal. An update or destroy action runs on the records selected for each signal by
+    `read_action`, `args` and `get_by`. Create, update and destroy actions handle the signals
+    emitted together in bulk.
+    """,
+    examples: [
+      "on MyApp.Blog.Signals, :post_created, :add_to_feeds",
+      "on MyApp.Blog.Signals, :post_created, :add_all_to_feeds, batch?: true",
+      "on MyApp.Blog.Signals, :post_created, :create, inputs: [:post_id, body: :title]",
+      "on MyApp.Blog.Signals, :post_archived, :archive, read_action: :for_post, args: [:post_id]",
+      "on MyApp.Blog.Signals, :post_archived, :archive, get_by: [post_id: :post_id]"
+    ],
+    target: Ash.Resource.SignalListener,
+    schema: Ash.Resource.SignalListener.schema(),
+    no_depend_modules: [:signal_module],
+    args: [:signal_module, :signal, :action]
+  }
+
+  @signals_in %Spark.Dsl.Section{
+    name: :signals_in,
+    describe: """
+    Listen to signals emitted by other resources. See `Ash.Signals`.
+    """,
+    examples: [
+      """
+      signals_in do
+        on MyApp.Blog.Signals, :post_created, :add_to_feeds
+      end
+      """
+    ],
+    entities: [@signal_listener]
+  }
+
   @join_filter %Spark.Dsl.Entity{
     name: :join_filter,
     describe: """
@@ -1805,6 +1844,7 @@ defmodule Ash.Resource.Dsl do
     @preparations,
     @validations,
     @pipelines,
+    @signals_in,
     @aggregates,
     @calculations,
     @multitenancy,
@@ -1835,6 +1875,8 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @persisters [
+    Ash.Resource.Transformers.DefineSignalListeners,
+    Ash.Resource.Transformers.SetSignalsOut,
     Ash.Resource.Transformers.CacheRelationships,
     Ash.Resource.Transformers.ResolveAutoTypes,
     Ash.Resource.Transformers.CacheCalculations,
@@ -1872,7 +1914,9 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.VerifyNotifiers,
     Ash.Resource.Verifiers.VerifyPrimaryKeyPresent,
     Ash.Resource.Verifiers.VerifyGenericActionReactorInputs,
-    Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface
+    Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface,
+    Ash.Resource.Verifiers.VerifySignalListeners,
+    Ash.Resource.Verifiers.VerifyEmitSignal
   ]
 
   @moduledoc false
