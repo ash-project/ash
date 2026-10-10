@@ -1093,6 +1093,8 @@ defmodule Ash.Actions.Update.Bulk do
         conditional_after_batch_hooks,
         context
       ) do
+    atomic_changeset = %{atomic_changeset | phase: :after_action}
+
     results =
       results
       |> Stream.with_index()
@@ -2448,6 +2450,8 @@ defmodule Ash.Actions.Update.Bulk do
         ref,
         context_key
       ) do
+    batch = Stream.map(batch, &put_phase(&1, :before_action))
+
     all_changes
     |> Enum.reduce(batch, fn
       {%{validation: _}, _index}, batch ->
@@ -2569,15 +2573,18 @@ defmodule Ash.Actions.Update.Bulk do
           Enum.concat([before_batch_results, non_matches])
         end
     end)
-    |> Enum.reject(fn
+    |> Enum.flat_map(fn
       %Ash.Notifier.Notification{} = notification ->
         Ash.Actions.Helpers.Bulk.store_notification(ref, notification, opts)
-        true
+        []
 
-      _changeset ->
-        false
+      changeset ->
+        [put_phase(changeset, :pending)]
     end)
   end
+
+  defp put_phase(%Ash.Changeset{} = changeset, phase), do: %{changeset | phase: phase}
+  defp put_phase(other, _phase), do: other
 
   defp authorize(batch, opts) do
     if opts[:authorize?] && Ash.Actions.Helpers.authorizers?(batch) do
@@ -3309,6 +3316,8 @@ defmodule Ash.Actions.Update.Bulk do
         _ -> %{}
       end
 
+    results = Enum.map(results, &put_result_phase(&1, :after_action))
+
     {results, errors} =
       results
       |> Enum.split_with(fn
@@ -3564,7 +3573,13 @@ defmodule Ash.Actions.Update.Bulk do
         |> Enum.concat(errors)
     end)
     |> Enum.concat(errors)
+    |> Enum.map(&put_result_phase(&1, :pending))
   end
+
+  defp put_result_phase({:ok, result, changeset}, phase),
+    do: {:ok, result, put_phase(changeset, phase)}
+
+  defp put_result_phase(other, _phase), do: other
 
   defp handle_after_batch_results(results, _matches, ref, resource, opts) do
     results
