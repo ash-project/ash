@@ -6,6 +6,28 @@ defmodule Ash.Resource.Preparation.Builtins do
   @moduledoc "Builtin query preparations"
 
   @doc """
+  Emits a signal from a generic action. See `Ash.Signals`.
+
+  The phase must be the one the signal declares, so that the action shows when it emits. Signal fields are taken from the action's
+  arguments of the same name, unless set with the options below.
+
+  ## Options
+
+  #{Spark.Options.docs(Keyword.drop(Ash.Signals.Emitter.schema(), [:signal_module, :signal, :phase]))}
+
+  ## Examples
+
+      prepare emit_signal(MyApp.Billing.Signals, :invoice_sent, :after_action)
+      prepare emit_signal(MyApp.Billing.Signals, :invoice_sent, :after_action, fields: [invoice_id: :id])
+  """
+  @spec emit_signal(Ash.Signals.t(), atom(), Ash.Signals.Signal.phase(), Keyword.t()) ::
+          Ash.Resource.Preparation.ref()
+  def emit_signal(signal_module, signal, phase, opts \\ []) do
+    {Ash.Resource.Preparation.EmitSignal,
+     Keyword.merge(opts, signal_module: signal_module, signal: signal, phase: phase)}
+  end
+
+  @doc """
   Merges the given query context.
 
   If an MFA is provided, it will be called with the changeset.

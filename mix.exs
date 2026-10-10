@@ -53,6 +53,8 @@ defmodule Ash.MixProject do
          search_data: Spark.Docs.search_data_for(Ash.Resource.Dsl)},
         {"documentation/dsls/DSL-Ash.Domain.md",
          search_data: Spark.Docs.search_data_for(Ash.Domain.Dsl)},
+        {"documentation/dsls/DSL-Ash.Signals.md",
+         search_data: Spark.Docs.search_data_for(Ash.Signals.Dsl)},
         {"documentation/dsls/DSL-Ash.Notifier.PubSub.md",
          search_data: Spark.Docs.search_data_for(Ash.Notifier.PubSub)},
         {"documentation/dsls/DSL-Ash.Policy.Authorizer.md",
@@ -215,7 +217,8 @@ defmodule Ash.MixProject do
           Ash.Resource.ManualUpdate,
           Ash.Resource.ManualDestroy,
           Ash.Resource.ManualRelationship,
-          Ash.Domain
+          Ash.Domain,
+          Ash.Signals
         ],
         Queries: [
           Ash.Query,
@@ -252,6 +255,7 @@ defmodule Ash.MixProject do
         Introspection: [
           Ash.Domain.Info,
           Ash.Resource.Info,
+          Ash.Signals.Info,
           Ash.Policy.Info,
           Ash.DataLayer.Ets.Info,
           Ash.DataLayer.Mnesia.Info,
@@ -266,7 +270,8 @@ defmodule Ash.MixProject do
         Testing: [
           Ash.Generator,
           Ash.Seed,
-          Ash.Test
+          Ash.Test,
+          Ash.Signals.Test
         ],
         Builtins: [
           ~r/Ash.Resource.Validation/,
@@ -444,9 +449,9 @@ defmodule Ash.MixProject do
       ],
       format: "format --migrate",
       "spark.formatter":
-        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
+        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.Signals.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
       "spark.cheat_sheets":
-        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
+        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.Signals.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
     ]
   end
 end
