@@ -224,6 +224,36 @@ defmodule Ash.Test.Resource.TemporalTest do
       end
     end
 
+    for end_name <- [:lower, :upper] do
+      test "must not limit its #{end_name} bound" do
+        assert_raise Spark.Error.DslError, ~r/bounds, since it is this resource/, fn ->
+          defmodule Module.concat(__MODULE__, "PeriodLimited#{unquote(end_name)}") do
+            @moduledoc false
+            use Ash.Resource,
+              domain: Ash.Test.Domain,
+              data_layer: Ash.Test.Temporal.StubDataLayer
+
+            temporal do
+              attribute :valid_at
+            end
+
+            attributes do
+              attribute :id, :integer, primary_key?: true, allow_nil?: false
+
+              attribute :valid_at, Ash.Type.Range,
+                allow_nil?: false,
+                constraints:
+                  [inner_type: :datetime, lower: [inclusive?: true], upper: [inclusive?: false]]
+                  |> Keyword.update!(
+                    unquote(end_name),
+                    &Keyword.put(&1, :limit, ~U[2025-07-01 00:00:00Z])
+                  )
+            end
+          end
+        end
+      end
+    end
+
     test "must constrain its bounds to inclusive-exclusive" do
       assert_raise Spark.Error.DslError, ~r/It constrains neither bound/, fn ->
         defmodule PeriodWithoutBounds do
