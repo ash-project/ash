@@ -135,6 +135,29 @@ defmodule Ash.Type.Range do
     end
   end
 
+  @doc """
+  The range holding just `value`, from it to the next value of the inner type:
+  `[value, next)`.
+
+  The value is cast by the inner type first. The next value is one unit of the inner type's
+  precision on: one for an integer, a day for a date, and for a datetime a second or a
+  microsecond by its `precision`. Takes initialised constraints.
+
+      iex> {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :date)
+      iex> Ash.Type.Range.period(~D[2026-10-07], constraints)
+      {:ok, %Ash.Range{lower: ~D[2026-10-07], upper: ~D[2026-10-08], bounds: :"[)"}}
+  """
+  @spec period(term(), Keyword.t()) :: {:ok, Range.t()} | {:error, String.t()}
+  def period(value, constraints) do
+    case cast_bound(value, :cast_input, constraints) do
+      {:ok, value} when not is_nil(value) ->
+        {:ok, %Range{lower: value, upper: successor(value, constraints), bounds: :"[)"}}
+
+      _ ->
+        {:error, "is not a value of the range's inner type"}
+    end
+  end
+
   @impl true
   def init(constraints) do
     type = Ash.Type.get_type(constraints[:inner_type])
@@ -355,7 +378,7 @@ defmodule Ash.Type.Range do
     if empty_bounds?(range) do
       Range.empty()
     else
-      shifted = discrete_bounds(range, base_type(constraints[:inner_type]))
+      shifted = discrete_bounds(range, constraints, base_type(constraints[:inner_type]))
 
       if empty_bounds?(shifted), do: Range.empty(), else: shifted
     end
@@ -372,37 +395,44 @@ defmodule Ash.Type.Range do
   # A discrete type has a successor, so every range over it has one `[)` spelling: an
   # exclusive lower and an inclusive upper each move on to the next value, and an
   # unbounded end is exclusive. A continuous type has none, so is left as written.
-  defp discrete_bounds(%Range{lower: lower, upper: upper} = range, type)
+  defp discrete_bounds(%Range{lower: lower, upper: upper} = range, constraints, type)
        when type in [Ash.Type.Integer, Ash.Type.Date] and not is_nil(lower) and
               not is_nil(upper) do
     # Shifting an inverted range would answer a cast with one it did not describe.
-    if Comp.less_than?(upper, lower), do: range, else: shift_bounds(range)
+    if Comp.less_than?(upper, lower), do: range, else: shift_bounds(range, constraints)
   end
 
-  defp discrete_bounds(%Range{} = range, type) when type in [Ash.Type.Integer, Ash.Type.Date] do
-    shift_bounds(range)
+  defp discrete_bounds(%Range{} = range, constraints, type)
+       when type in [Ash.Type.Integer, Ash.Type.Date] do
+    shift_bounds(range, constraints)
   end
 
-  defp discrete_bounds(%Range{} = range, _type), do: range
+  defp discrete_bounds(%Range{} = range, _constraints, _type), do: range
 
-  defp shift_bounds(%Range{} = range) do
+  defp shift_bounds(%Range{} = range, constraints) do
     lower =
       if is_nil(range.lower) or Range.lower_inclusive?(range.bounds),
         do: range.lower,
-        else: successor(range.lower)
+        else: successor(range.lower, constraints)
 
     upper =
       if is_nil(range.upper) or not Range.upper_inclusive?(range.bounds),
         do: range.upper,
-        else: successor(range.upper)
+        else: successor(range.upper, constraints)
 
     bounds = if is_nil(lower), do: :"()", else: :"[)"
 
     %{range | lower: lower, upper: upper, bounds: bounds}
   end
 
-  defp successor(value) when is_integer(value), do: value + 1
-  defp successor(%Date{} = value), do: Date.add(value, 1)
+  defp successor(value, _constraints) when is_integer(value), do: value + 1
+  defp successor(%Date{} = value, _constraints), do: Date.add(value, 1)
+
+  defp successor(%DateTime{} = value, constraints),
+    do: DateTime.add(value, 1, constraints[:inner_constraints][:precision] || :second)
+
+  # Ash.Type.NaiveDatetime casts through Ecto's :naive_datetime, which truncates to the second.
+  defp successor(%NaiveDateTime{} = value, _constraints), do: NaiveDateTime.add(value, 1)
 
   defp check_order(nil, _), do: :ok
   defp check_order(_, nil), do: :ok

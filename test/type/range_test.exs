@@ -629,6 +629,38 @@ defmodule Ash.Type.RangeTest do
     end
   end
 
+  describe "period/2" do
+    test "is the range from a value to the next value of its inner type" do
+      assert {:ok, %Range{lower: 5, upper: 6, bounds: :"[)"}} =
+               Ash.Type.Range.period(5, @int_constraints)
+
+      assert {:ok, %Range{lower: ~D[2026-10-07], upper: ~D[2026-10-08]}} =
+               Ash.Type.Range.period(~D[2026-10-07], @date_constraints)
+    end
+
+    test "a datetime's next value is one unit of its precision on, after the value is cast" do
+      {:ok, second} = Ash.Type.init(Ash.Type.Range, inner_type: :utc_datetime)
+      {:ok, naive} = Ash.Type.init(Ash.Type.Range, inner_type: :naive_datetime)
+
+      assert {:ok, %Range{lower: ~U[2026-10-07 10:00:00Z], upper: ~U[2026-10-07 10:00:01Z]}} =
+               Ash.Type.Range.period(~U[2026-10-07 10:00:00.5Z], second)
+
+      assert {:ok,
+              %Range{
+                lower: ~U[2026-10-07 10:00:00.500000Z],
+                upper: ~U[2026-10-07 10:00:00.500001Z]
+              }} = Ash.Type.Range.period(~U[2026-10-07 10:00:00.500000Z], @constraints)
+
+      assert {:ok, %Range{lower: ~N[2026-10-07 10:00:00], upper: ~N[2026-10-07 10:00:01]}} =
+               Ash.Type.Range.period(~N[2026-10-07 10:00:00.5], naive)
+    end
+
+    test "a value the inner type cannot cast is refused" do
+      assert {:error, _} = Ash.Type.Range.period("banana", @date_constraints)
+      assert {:error, _} = Ash.Type.Range.period(nil, @int_constraints)
+    end
+  end
+
   describe "empty ranges" do
     test "a discrete range on one point is empty unless both bounds include it" do
       {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
