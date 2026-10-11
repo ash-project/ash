@@ -74,6 +74,9 @@ defmodule Ash.Type.Range do
 
       attribute :valid_at, Ash.Type.Range, constraints: [inner_type: :datetime]
 
+  A lower bound written `:start` is the range's lower limit, and an upper bound written
+  `:end` its upper limit, each unbounded where the range has none.
+
   Casts to/from an `Ash.Range` struct. The data layer maps it to a native range
   type — `ash_postgres` renders `:datetime` as `tstzrange`, `:date` as
   `daterange`, `:naive_datetime` as `tsrange`, `:integer` as `int8range`.
@@ -216,6 +219,8 @@ defmodule Ash.Type.Range do
 
   def cast_input(value, constraints) do
     with {:ok, lower, upper, bounds, empty?} <- extract(value),
+         {:ok, lower} <- resolve_limit(:lower, lower, constraints),
+         {:ok, upper} <- resolve_limit(:upper, upper, constraints),
          {:ok, lower} <- cast_bound(lower, :cast_input, constraints),
          {:ok, upper} <- cast_bound(upper, :cast_input, constraints) do
       {:ok,
@@ -462,6 +467,15 @@ defmodule Ash.Type.Range do
   defp normalize_bounds(_), do: bounds_error()
 
   defp bounds_error, do: {:error, "bounds is not a valid bounds specifier"}
+
+  # `:start` and `:end` name the range's limits, and are unbounded where it has none.
+  defp resolve_limit(:lower, :start, constraints), do: {:ok, constraints[:lower][:limit]}
+  defp resolve_limit(:upper, :end, constraints), do: {:ok, constraints[:upper][:limit]}
+
+  defp resolve_limit(end_name, limit, _constraints) when limit in [:start, :end],
+    do: {:error, "#{inspect(limit)} cannot be the #{end_name} bound"}
+
+  defp resolve_limit(_end_name, value, _constraints), do: {:ok, value}
 
   defp cast_bound(nil, _fun, _constraints), do: {:ok, nil}
 

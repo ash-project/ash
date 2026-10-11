@@ -305,6 +305,41 @@ defmodule Ash.Type.RangeTest do
                Ash.Type.init(Ash.Type.Range, inner_type: :date, lower: [limit: "never"])
     end
 
+    test ":start and :end are the limits" do
+      constraints = init!(inner_type: :integer, lower: [limit: 1], upper: [limit: 10])
+
+      assert {:ok, %Range{lower: 1, upper: 10, bounds: :"[)"}} =
+               Ash.Type.cast_input(
+                 Ash.Type.Range,
+                 %Range{lower: :start, upper: :end},
+                 constraints
+               )
+    end
+
+    test ":start and :end are unbounded where there is no limit" do
+      lower_only = init!(inner_type: :integer, lower: [limit: 1])
+
+      assert {:ok, %Range{lower: 1, upper: nil}} =
+               Ash.Type.cast_input(Ash.Type.Range, %Range{lower: :start, upper: :end}, lower_only)
+
+      assert {:ok, %Range{lower: nil, upper: nil}} =
+               Ash.Type.cast_input(
+                 Ash.Type.Range,
+                 %Range{lower: :start, upper: :end},
+                 init!(inner_type: :integer)
+               )
+    end
+
+    test ":start and :end name one end each" do
+      constraints = init!(inner_type: :integer, lower: [limit: 1], upper: [limit: 10])
+
+      assert {:error, _} =
+               Ash.Type.cast_input(Ash.Type.Range, %Range{lower: :end, upper: 5}, constraints)
+
+      assert {:error, _} =
+               Ash.Type.cast_input(Ash.Type.Range, %Range{lower: 2, upper: :start}, constraints)
+    end
+
     test "unconstrained by default" do
       constraints = init!(inner_type: :integer)
 
