@@ -30,7 +30,8 @@ defmodule Ash.Type.Range do
         ],
         inclusive?: [
           type: :boolean,
-          doc: "The lower bound, where there is one, must include its own value."
+          doc:
+            "The lower bound, where there is one, must include its own value. A range of integers or dates, or with a resolution, is cast to `[)`, so only `true` is allowed."
         ],
         limit: [
           type: :any,
@@ -50,7 +51,8 @@ defmodule Ash.Type.Range do
         ],
         inclusive?: [
           type: :boolean,
-          doc: "The upper bound, where there is one, must include its own value."
+          doc:
+            "The upper bound, where there is one, must include its own value. A range of integers or dates, or with a resolution, is cast to `[)`, so only `false` is allowed."
         ],
         limit: [
           type: :any,
@@ -212,8 +214,29 @@ defmodule Ash.Type.Range do
            |> put_present(:lower, lower)
            |> put_present(:upper, upper),
          {:ok, constraints} <- init_grid(constraints),
-         :ok <- limits_on_grid(constraints) do
+         :ok <- limits_on_grid(constraints),
+         :ok <- inclusivity_possible(constraints) do
       {:ok, constraints}
+    end
+  end
+
+  # A discrete range is cast to `[)` before its bounds are checked, so a bounded lower is
+  # always inclusive and a bounded upper always exclusive.
+  defp inclusivity_possible(constraints) do
+    cond do
+      not discrete?(constraints) ->
+        :ok
+
+      constraints[:lower][:inclusive?] == false ->
+        {:error,
+         "`lower: [inclusive?: false]` would refuse every range with a lower bound: a range of integers or dates, or with a resolution, is cast to `[)`, so its lower bound is inclusive"}
+
+      constraints[:upper][:inclusive?] == true ->
+        {:error,
+         "`upper: [inclusive?: true]` would refuse every range with an upper bound: a range of integers or dates, or with a resolution, is cast to `[)`, so its upper bound is exclusive"}
+
+      true ->
+        :ok
     end
   end
 
