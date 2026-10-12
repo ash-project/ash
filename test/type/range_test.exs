@@ -629,6 +629,188 @@ defmodule Ash.Type.RangeTest do
     end
   end
 
+  describe "resolution" do
+    defp grid!(constraints), do: Ash.Type.init(Ash.Type.Range, constraints) |> elem(1)
+
+    test "without one, a range's resolution is its inner type's precision" do
+      {:ok, second} = Ash.Type.init(Ash.Type.Range, inner_type: :utc_datetime)
+      {:ok, naive} = Ash.Type.init(Ash.Type.Range, inner_type: :naive_datetime)
+
+      assert Ash.Type.Range.resolution(@int_constraints) == 1
+      assert Ash.Type.Range.resolution(@date_constraints) == Duration.new!(day: 1)
+      assert Ash.Type.Range.resolution(second) == Duration.new!(second: 1)
+      assert Ash.Type.Range.resolution(@constraints) == Duration.new!(microsecond: {1, 6})
+      assert Ash.Type.Range.resolution(naive) == Duration.new!(second: 1)
+    end
+
+    test "is cast through Ash.Type.Duration, into its canonical units" do
+      assert grid!(inner_type: :date, resolution: "P2W")[:resolution] ==
+               Duration.new!(week: 2)
+
+      assert {:error, _} = Ash.Type.init(Ash.Type.Range, inner_type: :date, resolution: [week: 2])
+
+      assert grid!(
+               inner_type: :date,
+               resolution: Duration.new!(month: 15),
+               anchor: ~D[2025-07-01]
+             )[
+               :resolution
+             ] == Duration.new!(year: 1, month: 3)
+
+      assert Ash.Type.Range.resolution(
+               grid!(inner_type: :utc_datetime, resolution: Duration.new!(minute: 90))
+             ) == Duration.new!(hour: 1, minute: 30)
+    end
+
+    test "a range on its grid casts to its one [) form, a resolution on" do
+      constraints = grid!(inner_type: :utc_datetime, resolution: Duration.new!(minute: 5))
+
+      assert %Range{lower: ~U[2026-10-07 10:05:00Z], upper: ~U[2026-10-07 10:15:00Z]} =
+               cast!(
+                 %Range{
+                   lower: ~U[2026-10-07 10:05:00Z],
+                   upper: ~U[2026-10-07 10:10:00Z],
+                   bounds: :"[]"
+                 },
+                 constraints
+               )
+
+      assert %Range{lower: ~U[2026-10-07 10:10:00Z], upper: ~U[2026-10-07 10:15:00Z]} =
+               cast!(
+                 %Range{
+                   lower: ~U[2026-10-07 10:05:00Z],
+                   upper: ~U[2026-10-07 10:15:00Z],
+                   bounds: :"()"
+                 },
+                 constraints
+               )
+
+      assert %Range{lower: 0, upper: 20, bounds: :"[)"} =
+               cast!(
+                 %Range{lower: 0, upper: 10, bounds: :"[]"},
+                 grid!(inner_type: :integer, resolution: 10)
+               )
+    end
+
+    test "a bound off the grid is refused" do
+      constraints = grid!(inner_type: :utc_datetime, resolution: Duration.new!(minute: 5))
+
+      assert {:ok, _} =
+               apply!(
+                 %Range{lower: ~U[2026-10-07 10:05:00Z], upper: ~U[2026-10-07 10:10:00Z]},
+                 constraints
+               )
+
+      assert {:error, error} =
+               apply!(
+                 %Range{lower: ~U[2026-10-07 10:06:00Z], upper: ~U[2026-10-07 10:10:00Z]},
+                 constraints
+               )
+
+      assert error[:message] =~ "must be on the grid of its resolution"
+      assert error[:vars][:bound] == :lower
+
+      assert {:error, _} =
+               apply!(
+                 %Range{lower: ~U[2026-10-07 10:05:00Z], upper: ~U[2026-10-07 10:10:30Z]},
+                 constraints
+               )
+    end
+
+    test "the period of a value starts at the grid point at or before it" do
+      quarters =
+        grid!(inner_type: :date, resolution: Duration.new!(month: 3), anchor: ~D[2025-07-01])
+
+      fortnights =
+        grid!(inner_type: :date, resolution: Duration.new!(week: 2), anchor: ~D[2025-06-23])
+
+      tens = grid!(inner_type: :integer, resolution: 10)
+
+      assert {:ok, %Range{lower: ~D[2026-01-01], upper: ~D[2026-04-01]}} =
+               Ash.Type.Range.period(~D[2026-02-14], quarters)
+
+      assert {:ok, %Range{lower: ~D[2025-04-01], upper: ~D[2025-07-01]}} =
+               Ash.Type.Range.period(~D[2025-06-30], quarters)
+
+      assert {:ok, %Range{lower: ~D[2019-02-25], upper: ~D[2019-03-11]}} =
+               Ash.Type.Range.period(~D[2019-03-05], fortnights)
+
+      assert {:ok, %Range{lower: -10, upper: 0}} = Ash.Type.Range.period(-3, tens)
+
+      five_quarters =
+        grid!(
+          inner_type: :date,
+          resolution: Duration.new!(year: 1, month: 3),
+          anchor: ~D[2025-07-01]
+        )
+
+      fifteen_months =
+        grid!(inner_type: :date, resolution: Duration.new!(month: 15), anchor: ~D[2025-07-01])
+
+      for grid <- [five_quarters, fifteen_months] do
+        assert {:ok, %Range{lower: ~D[2026-10-01], upper: ~D[2028-01-01]}} =
+                 Ash.Type.Range.period(~D[2026-12-01], grid)
+      end
+    end
+
+    test "a month grid counts whole months from the anchor, by its day" do
+      monthly =
+        grid!(inner_type: :date, resolution: Duration.new!(month: 1), anchor: ~D[2025-01-15])
+
+      assert {:ok, %Range{lower: ~D[2025-02-15], upper: ~D[2025-03-15]}} =
+               Ash.Type.Range.period(~D[2025-03-10], monthly)
+
+      assert {:ok, %Range{lower: ~D[2025-03-15], upper: ~D[2025-04-15]}} =
+               Ash.Type.Range.period(~D[2025-03-15], monthly)
+    end
+
+    test "without an anchor, minutes follow the UTC clock and weeks start on Monday" do
+      assert {:ok, %Range{lower: ~U[2026-10-07 10:05:00Z], upper: ~U[2026-10-07 10:10:00Z]}} =
+               Ash.Type.Range.period(
+                 ~U[2026-10-07 10:07:30Z],
+                 grid!(inner_type: :utc_datetime, resolution: Duration.new!(minute: 5))
+               )
+
+      assert {:ok, %Range{lower: ~D[2026-10-05], upper: ~D[2026-10-12]}} =
+               Ash.Type.Range.period(
+                 ~D[2026-10-07],
+                 grid!(inner_type: :date, resolution: Duration.new!(week: 1))
+               )
+    end
+
+    test "a resolution or anchor that cannot make a grid is refused" do
+      for constraints <- [
+            [inner_type: :date, resolution: Duration.new!(day: 0)],
+            [inner_type: :date, resolution: Duration.new!(day: -1)],
+            [inner_type: :date, resolution: "banana"],
+            [
+              inner_type: :date,
+              resolution: Duration.new!(month: 1, day: 3),
+              anchor: ~D[2025-01-01]
+            ],
+            [inner_type: :date, resolution: Duration.new!(hour: 36)],
+            [inner_type: :utc_datetime, resolution: Duration.new!(microsecond: {500_000, 3})],
+            [inner_type: :date, resolution: Duration.new!(month: 3)],
+            [inner_type: :date, resolution: Duration.new!(month: 1), anchor: ~D[2025-01-31]],
+            [inner_type: :date, resolution: Duration.new!(week: 2), anchor: "never"],
+            [inner_type: :date, anchor: ~D[2025-06-23]],
+            [inner_type: :integer, resolution: Duration.new!(day: 1)],
+            [inner_type: :integer, resolution: 10, lower: [limit: 5]]
+          ] do
+        assert {:error, _} = Ash.Type.init(Ash.Type.Range, constraints),
+               "expected #{inspect(constraints)} to be refused"
+      end
+    end
+
+    test "a finer precision admits a finer resolution" do
+      assert {:ok, _} =
+               Ash.Type.init(Ash.Type.Range,
+                 inner_type: :utc_datetime_usec,
+                 resolution: Duration.new!(microsecond: {500_000, 3})
+               )
+    end
+  end
+
   describe "period/2" do
     test "is the range from a value to the next value of its inner type" do
       assert {:ok, %Range{lower: 5, upper: 6, bounds: :"[)"}} =
