@@ -1220,7 +1220,7 @@ defmodule Ash.Actions.Read do
 
         with true <- opts[:authorize?],
              {:ok, aggregate} <- Map.fetch(query.aggregates, aggregate_name),
-             true <- Enum.any?(Ash.Filter.list_refs(aggregate.query.filter), & &1.input?) do
+             true <- has_input_filter_refs?(aggregate.query.filter) do
           aggregate =
             add_calc_context(
               aggregate,
@@ -1256,6 +1256,19 @@ defmodule Ash.Actions.Read do
         query
       end
     end)
+  end
+
+  defp has_input_filter_refs?(filter) do
+    # Unlike list_refs/1, input detection must include unrelated exists and
+    # their parent expressions, which the authorizer also rewrites.
+    filter
+    |> Ash.Filter.flat_map(fn
+      %Ash.Query.Ref{input?: true} -> [true]
+      %Ash.Query.Exists{expr: expr} -> [has_input_filter_refs?(expr)]
+      %Ash.Query.Parent{expr: expr} -> [has_input_filter_refs?(expr)]
+      _ -> []
+    end)
+    |> Enum.any?()
   end
 
   @doc false
