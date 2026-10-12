@@ -3259,7 +3259,8 @@ defmodule Ash.Filter do
             with {:ok, args} <- calculation_input(args),
                  {:ok, calculation} <-
                    Calculation.from_resource_calculation(context.resource, resource_calculation,
-                     args: args
+                     args: args,
+                     allow_expr?: !context[:input?]
                    ) do
               calculation = %{calculation | load: calculation.name}
 
