@@ -296,6 +296,15 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
       end
     end
 
+    for input <- ["x", [1, 2], 5] do
+      test "in sort input #{inspect(input)} is an invalid sort" do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Post
+                 |> Ash.Query.sort_input([{"in_ids_after?", {unquote(input), :asc}}])
+                 |> Ash.read()
+      end
+    end
+
     test "with keys that aren't argument names is an invalid filter" do
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.NoSuchInput{}]}} =
                Post
