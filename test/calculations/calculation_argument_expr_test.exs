@@ -42,10 +42,16 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
       attribute :title, :string, public?: true
       attribute :published_at, :utc_datetime_usec, public?: true
       attribute :cutoff, :utc_datetime_usec, public?: true
+      attribute :tags, {:array, :string}, public?: true
     end
 
     calculations do
       calculate :cutoff_calc, :utc_datetime_usec, expr(cutoff), public?: true
+
+      calculate :tags_are?, :boolean, expr(tags == ^arg(:tags)) do
+        public? true
+        argument :tags, {:array, :string}, allow_nil?: true, allow_expr?: true
+      end
 
       # array argument without allow_expr?
       calculate :in_ids_after?,
@@ -242,6 +248,30 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
         |> Map.new(&{&1.id, &1.in_ids_after?})
 
       assert results[matching_id] == true
+    end
+  end
+
+  describe "an expression for an array argument" do
+    setup do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{tags: ["a", "b"]})
+        |> Ash.create!()
+
+      %{post: post}
+    end
+
+    test "works in a filter", %{post: post} do
+      assert [%{id: id}] = Post |> Ash.Query.filter(tags_are?(tags: tags)) |> Ash.read!()
+      assert id == post.id
+    end
+
+    test "works when loading the calculation", %{post: post} do
+      assert %{tags_are?: true} =
+               Post
+               |> Ash.Query.filter(id == ^post.id)
+               |> Ash.Query.load(tags_are?: %{tags: expr(tags)})
+               |> Ash.read_one!()
     end
   end
 
