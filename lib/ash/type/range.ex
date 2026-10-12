@@ -280,16 +280,32 @@ defmodule Ash.Type.Range do
   defp cast_anchor(anchor, resolution, constraints) do
     case cast_bound(anchor, :cast_input, constraints) do
       {:ok, cast} when not is_nil(cast) ->
-        if calendar?(resolution) and cast.day > 28,
-          do:
+        cond do
+          not held_as_given?(anchor, cast) ->
             {:error,
-             "an anchor for a resolution in months or years falls on the 28th of a month or earlier, got: #{inspect(anchor)}"},
-          else: {:ok, cast}
+             "the anchor #{inspect(anchor)} is not a value of the inner type as it holds it, #{inspect(cast)}"}
+
+          calendar?(resolution) and cast.day > 28 ->
+            {:error,
+             "an anchor for a resolution in months or years falls on the 28th of a month or earlier, got: #{inspect(anchor)}"}
+
+          true ->
+            {:ok, cast}
+        end
 
       _ ->
         {:error, "the anchor #{inspect(anchor)} is not a value of the inner type"}
     end
   end
+
+  # An anchor sets where the grid's periods start, so casting it must not move it.
+  defp held_as_given?(%DateTime{} = given, %DateTime{} = cast),
+    do: given.time_zone == cast.time_zone and DateTime.compare(given, cast) == :eq
+
+  defp held_as_given?(%module{} = given, %module{} = cast), do: Comp.equal?(given, cast)
+
+  defp held_as_given?(%_{}, _cast), do: false
+  defp held_as_given?(_given, _cast), do: true
 
   defp limits_on_grid(constraints) do
     Enum.find_value([:lower, :upper], :ok, fn end_name ->

@@ -802,6 +802,44 @@ defmodule Ash.Type.RangeTest do
       end
     end
 
+    test "an anchor the inner type would change is refused" do
+      sydney = %DateTime{
+        year: 2025,
+        month: 7,
+        day: 1,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        microsecond: {0, 0},
+        time_zone: "Australia/Sydney",
+        zone_abbr: "AEST",
+        utc_offset: 36_000,
+        std_offset: 0
+      }
+
+      for anchor <- [sydney, ~U[2025-07-01 00:00:00.5Z], ~D[2025-07-01]] do
+        assert {:error, message} =
+                 Ash.Type.init(Ash.Type.Range,
+                   inner_type: :utc_datetime,
+                   resolution: Duration.new!(day: 1),
+                   anchor: anchor
+                 )
+
+        assert message =~ "is not a value of the inner type as it holds it"
+      end
+    end
+
+    test "an anchor the inner type holds as given is accepted, whatever its declared precision" do
+      assert {:ok, constraints} =
+               Ash.Type.init(Ash.Type.Range,
+                 inner_type: :utc_datetime,
+                 resolution: Duration.new!(day: 1),
+                 anchor: ~U[2025-07-01 00:00:00.000000Z]
+               )
+
+      assert constraints[:anchor] == ~U[2025-07-01 00:00:00Z]
+    end
+
     test "a finer precision admits a finer resolution" do
       assert {:ok, _} =
                Ash.Type.init(Ash.Type.Range,
