@@ -32,12 +32,12 @@ defmodule Ash.Query.Function.RangeOverlapsTest do
       assert {:known, false} = overlap?(r(1, 5, :"[)"), r(5, 10, :"[)"))
     end
 
-    test "inclusive upper meeting inclusive lower DO overlap (share the point)" do
+    test "inclusive upper meeting inclusive lower DO overlap (share the value)" do
       assert {:known, true} = overlap?(r(1, 5, :"[]"), r(5, 10, :"[)"))
       assert {:known, true} = overlap?(r(1, 5, :"(]"), r(5, 10, :"[]"))
     end
 
-    test "an exclusive bound on either side at the seam means no shared point" do
+    test "an exclusive bound on either side where they meet means no shared value" do
       assert {:known, false} = overlap?(r(1, 5, :"[]"), r(5, 10, :"()"))
       assert {:known, false} = overlap?(r(1, 5, :"[)"), r(5, 10, :"[]"))
     end
@@ -60,7 +60,7 @@ defmodule Ash.Query.Function.RangeOverlapsTest do
       assert {:known, false} = overlap?(r(1, 10), r(5, 5, :"()"))
     end
 
-    test "[5,5] is the single point 5 (not empty), so it can overlap" do
+    test "[5,5] is the single value 5 (not empty), so it can overlap" do
       assert {:known, true} = overlap?(r(5, 5, :"[]"), r(1, 10, :"[)"))
       assert {:known, false} = overlap?(r(5, 5, :"[]"), r(6, 10, :"[)"))
     end

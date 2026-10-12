@@ -214,7 +214,7 @@ defmodule Ash.Type.RangeTest do
       assert {:ok, _} = apply!(%Range{lower: nil, upper: @upper, bounds: :"()"}, constraints)
     end
 
-    test "a discrete range canonicalized to an exclusive lower still satisfies inclusive?" do
+    test "a discrete exclusive lower, cast to an inclusive one, satisfies inclusive?" do
       # `(,5]` canonicalizes to `(,6)`, so the lower is exclusive only because it is absent.
       constraints = init!(inner_type: :integer, lower: [inclusive?: true])
 
@@ -270,7 +270,7 @@ defmodule Ash.Type.RangeTest do
       assert {:error, _} = apply!(%Range{lower: 1, upper: nil, bounds: :"[)"}, upper)
     end
 
-    test "a discrete inclusive upper at the limit canonicalizes past it" do
+    test "a discrete inclusive upper at the limit is cast past it" do
       constraints = init!(inner_type: :integer, upper: [limit: 10])
 
       {:ok, at_limit} =
@@ -393,7 +393,7 @@ defmodule Ash.Type.RangeTest do
       end
     end
 
-    test "the pairs cover every relation, in canonical order" do
+    test "the pairs cover every relation, in Allen's order" do
       assert Keyword.keys(pairs()) == Range.relations()
     end
 
@@ -406,7 +406,7 @@ defmodule Ash.Type.RangeTest do
       end
     end
 
-    test "meets needs exactly one side to include the point" do
+    test "meets needs exactly one side to include the value" do
       assert Range.relation(ar(1, 5, :"[)"), ar(5, 9, :"[)")) == :meets
       assert Range.relation(ar(1, 5, :"[]"), ar(5, 9, :"[)")) == :overlaps
       assert Range.relation(ar(1, 5, :"[)"), ar(5, 9, :"()")) == :precedes
@@ -430,13 +430,13 @@ defmodule Ash.Type.RangeTest do
     # for case, canonical form included.
     defp adj(lower, upper, bounds), do: %Range{lower: lower, upper: upper, bounds: bounds}
 
-    test "one ends where the other begins, with exactly one side including the seam" do
+    test "one ends where the other begins, with exactly one side including that value" do
       assert Range.adjacent?(adj(1, 5, :"[)"), adj(5, 9, :"[)"))
       assert Range.adjacent?(adj(1, 5, :"()"), adj(5, 9, :"[)"))
       assert Range.adjacent?(adj(1, 5, :"[)"), adj(5, 9, :"[]"))
     end
 
-    test "sharing the seam is overlap, and excluding it from both leaves a gap" do
+    test "sharing the value is overlap, and excluding it from both leaves a gap" do
       refute Range.adjacent?(adj(1, 5, :"[]"), adj(5, 9, :"[)"))
       refute Range.adjacent?(adj(1, 5, :"()"), adj(5, 9, :"()"))
       refute Range.adjacent?(adj(1, 5, :"[)"), adj(6, 9, :"[)"))
@@ -458,7 +458,7 @@ defmodule Ash.Type.RangeTest do
       refute Range.adjacent?(Range.empty(), Range.empty())
     end
 
-    test "a discrete inner type answers on the canonical form" do
+    test "a discrete inner type answers on the [) form" do
       {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
       {:ok, left} = Ash.Type.cast_input(Ash.Type.Range, adj(1, 4, :"[]"), constraints)
       {:ok, right} = Ash.Type.cast_input(Ash.Type.Range, adj(5, 9, :"[)"), constraints)
@@ -468,7 +468,7 @@ defmodule Ash.Type.RangeTest do
       refute Range.adjacent?(adj(1, 4, :"[]"), adj(5, 9, :"[)"))
     end
 
-    test "adjacent ranges tile, covering everything between without overlapping" do
+    test "consecutive ranges hold every value between them once" do
       tiles = [adj(1, 5, :"[)"), adj(5, 9, :"[)"), adj(9, 13, :"[)")]
 
       assert tiles
@@ -561,12 +561,12 @@ defmodule Ash.Type.RangeTest do
                cast!(%Range{lower: 1, upper: 5, bounds: :"()"}, int)
     end
 
-    test "both bounds move where both are non-canonical", %{int: int} do
+    test "both bounds move where neither is [)", %{int: int} do
       assert %Range{lower: 2, upper: 6, bounds: :"[)"} =
                cast!(%Range{lower: 1, upper: 5, bounds: :"(]"}, int)
     end
 
-    test "a range already in canonical form is unchanged", %{int: int} do
+    test "a range already [) is unchanged", %{int: int} do
       assert %Range{lower: 1, upper: 5, bounds: :"[)"} =
                cast!(%Range{lower: 1, upper: 5, bounds: :"[)"}, int)
     end
@@ -576,7 +576,7 @@ defmodule Ash.Type.RangeTest do
                cast!(%Range{lower: 1, upper: 6, bounds: :"[)"}, int)
     end
 
-    test "a single point keeps its point", %{int: int} do
+    test "a range of a single value keeps its value", %{int: int} do
       assert %Range{lower: 5, upper: 6, bounds: :"[)"} =
                cast!(%Range{lower: 5, upper: 5, bounds: :"[]"}, int)
     end
@@ -593,7 +593,7 @@ defmodule Ash.Type.RangeTest do
                cast!(%Range{lower: 1, upper: nil, bounds: :"[]"}, int)
     end
 
-    test "dates canonicalise by day", %{date: date} do
+    test "dates are cast to [) by the day", %{date: date} do
       assert %Range{lower: ~D[2026-01-01], upper: ~D[2026-01-09], bounds: :"[)"} =
                cast!(%Range{lower: ~D[2026-01-01], upper: ~D[2026-01-08], bounds: :"[]"}, date)
     end
@@ -619,7 +619,7 @@ defmodule Ash.Type.RangeTest do
                )
     end
 
-    test "apply_constraints canonicalises a value that skipped casting", %{int: int} do
+    test "apply_constraints casts to [) a value that skipped casting", %{int: int} do
       assert {:ok, %Range{lower: 1, upper: 6, bounds: :"[)"}} =
                Ash.Type.apply_constraints(
                  Ash.Type.Range,
@@ -717,7 +717,7 @@ defmodule Ash.Type.RangeTest do
                )
     end
 
-    test "the period of a value starts at the grid point at or before it" do
+    test "the period of a value starts on the grid, at or before it" do
       quarters =
         grid!(inner_type: :date, resolution: Duration.new!(month: 3), anchor: ~D[2025-07-01])
 
@@ -935,7 +935,7 @@ defmodule Ash.Type.RangeTest do
   end
 
   describe "empty ranges" do
-    test "a discrete range on one point is empty unless both bounds include it" do
+    test "a discrete range on one value is empty unless both bounds include it" do
       {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
 
       cast = fn bounds ->
@@ -973,7 +973,7 @@ defmodule Ash.Type.RangeTest do
       assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, cast, constraints)
     end
 
-    test "a range admitting no points casts to the empty range" do
+    test "a range holding no values casts to the empty range" do
       assert {:ok, %Range{empty?: true, lower: nil, upper: nil}} =
                Ash.Type.cast_input(
                  Ash.Type.Range,
@@ -993,7 +993,7 @@ defmodule Ash.Type.RangeTest do
       assert at_lower == Range.empty()
     end
 
-    test "a range with both bounds inclusive is the single point, not empty" do
+    test "a range with both bounds inclusive is the single value, not empty" do
       assert {:ok, %Range{empty?: false, lower: @lower, upper: @lower}} =
                Ash.Type.cast_input(
                  Ash.Type.Range,
@@ -1038,7 +1038,7 @@ defmodule Ash.Type.RangeTest do
                Ash.Type.apply_constraints(Ash.Type.Range, Range.empty(), constraints)
     end
 
-    test "empty?/1 reports emptiness whether canonical or implied by the bounds" do
+    test "empty?/1 reports emptiness whether empty/0 or implied by the bounds" do
       assert Range.empty?(Range.empty())
       assert Range.empty?(%Range{lower: 5, upper: 5, bounds: :"[)"})
       assert Range.empty?(%Range{lower: 6, upper: 5, bounds: :"[]"})
@@ -1124,7 +1124,7 @@ defmodule Ash.Type.RangeTest do
   end
 
   describe "intersects?/2" do
-    test "two ranges sharing points intersect, in either order" do
+    test "two ranges sharing values intersect, in either order" do
       left = %Range{lower: 1, upper: 5, bounds: :"[)"}
       right = %Range{lower: 4, upper: 9, bounds: :"[)"}
 
@@ -1139,14 +1139,14 @@ defmodule Ash.Type.RangeTest do
              )
     end
 
-    test "adjacent ranges do not intersect, which is what lets them tile" do
+    test "adjacent ranges do not intersect" do
       refute Range.intersects?(
                %Range{lower: 1, upper: 3, bounds: :"[)"},
                %Range{lower: 3, upper: 5, bounds: :"[)"}
              )
     end
 
-    test "a shared boundary is a shared point only when both sides include it" do
+    test "bounds on the same value share it only when both include it" do
       assert Range.intersects?(
                %Range{lower: 1, upper: 3, bounds: :"[]"},
                %Range{lower: 3, upper: 5, bounds: :"[)"}

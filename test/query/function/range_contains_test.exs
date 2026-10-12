@@ -17,7 +17,7 @@ defmodule Ash.Query.Function.RangeContainsTest do
     assert {:known, nil} = contains?(r(1, 10), nil)
   end
 
-  test "holds a point between its bounds" do
+  test "holds a value between its bounds" do
     assert {:known, true} = contains?(r(1, 10), 5)
     assert {:known, false} = contains?(r(1, 10), 20)
   end

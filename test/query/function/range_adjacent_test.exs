@@ -17,13 +17,13 @@ defmodule Ash.Query.Function.RangeAdjacentTest do
     assert {:known, nil} = adjacent?(r(1, 5), nil)
   end
 
-  test "one ends where the other begins, the seam belonging to exactly one" do
+  test "one ends where the other begins, that value belonging to exactly one" do
     assert {:known, true} = adjacent?(r(1, 5), r(5, 9))
     assert {:known, true} = adjacent?(r(5, 9), r(1, 5))
     assert {:known, true} = adjacent?(r(1, 5, :"()"), r(5, 9))
   end
 
-  test "sharing the seam or leaving a gap is not adjacency" do
+  test "sharing the value or leaving a gap is not adjacency" do
     assert {:known, false} = adjacent?(r(1, 5, :"[]"), r(5, 9))
     assert {:known, false} = adjacent?(r(1, 5, :"()"), r(5, 9, :"()"))
     assert {:known, false} = adjacent?(r(1, 5), r(6, 9))
