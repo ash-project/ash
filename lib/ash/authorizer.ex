@@ -404,6 +404,8 @@ defmodule Ash.Authorizer do
     subject.resource
     |> Ash.Resource.Info.authorizers()
     |> Enum.reduce_while({:ok, initial}, fn module, {:ok, results} ->
+      Code.ensure_loaded!(module)
+
       if function_exported?(module, :evaluate_field_policies, 3) do
         case Ash.BehaviourHelpers.call_and_validate_return(
                module,
