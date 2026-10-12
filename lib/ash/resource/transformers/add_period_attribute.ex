@@ -121,6 +121,15 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
           it is this resource's period.
           """
 
+      not is_nil(attribute.constraints[:resolution]) ->
+        raise Spark.Error.DslError,
+          module: module,
+          path: [:attributes, attribute.name],
+          message: """
+          Expected the attribute #{attribute.name} not to declare a `resolution:`, since it is \
+          this resource's period.
+          """
+
       true ->
         :ok
     end

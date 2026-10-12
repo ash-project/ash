@@ -254,6 +254,32 @@ defmodule Ash.Test.Resource.TemporalTest do
       end
     end
 
+    test "must not declare a resolution" do
+      assert_raise Spark.Error.DslError, ~r/not to declare a `resolution:`/, fn ->
+        defmodule PeriodWithResolution do
+          @moduledoc false
+          use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.Test.Temporal.StubDataLayer
+
+          temporal do
+            attribute :valid_at
+          end
+
+          attributes do
+            attribute :id, :integer, primary_key?: true, allow_nil?: false
+
+            attribute :valid_at, Ash.Type.Range,
+              allow_nil?: false,
+              constraints: [
+                inner_type: :datetime,
+                lower: [inclusive?: true],
+                upper: [inclusive?: false],
+                resolution: Duration.new!(minute: 5)
+              ]
+          end
+        end
+      end
+    end
+
     test "must constrain its bounds to inclusive-exclusive" do
       assert_raise Spark.Error.DslError, ~r/It constrains neither bound/, fn ->
         defmodule PeriodWithoutBounds do
