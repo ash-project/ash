@@ -168,6 +168,28 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
     end
   end
 
+  describe "the tuple filter form" do
+    test "accepts a literal array argument alongside an expression argument", %{
+      matching_id: matching_id
+    } do
+      assert [%{id: ^matching_id}] =
+               Post
+               |> Ash.Query.do_filter(
+                 in_ids_after?: {%{ids: @ids, after: expr(cutoff_calc)}, [eq: true]}
+               )
+               |> Ash.read!()
+    end
+
+    test "accepts string-keyed arguments", %{matching_id: matching_id} do
+      assert [%{id: ^matching_id}] =
+               Post
+               |> Ash.Query.do_filter(
+                 in_ids_after?: {%{"ids" => @ids, "after" => @cutoff}, [eq: true]}
+               )
+               |> Ash.read!()
+    end
+  end
+
   describe "filter input" do
     test "accepts literal calculation arguments", %{matching_id: matching_id} do
       assert [%{id: ^matching_id}] =
