@@ -577,7 +577,9 @@ defmodule Ash.Test.Type.DurationTest do
     # before New York springs forward those land an hour apart. Folding hours
     # into days therefore changes what a stored duration means, so
     # normalization must not cross this divide, just as it does not cross the
-    # year/month to week/day one.
+    # year/month to week/day one. Elixir's `DateTime.shift/3` does treat a day
+    # as 24 hours, so in-memory `datetime + duration` won't see the difference,
+    # but a stored value still has to keep it for the data layers that do.
     test "hours are never expressed in days, because a day is not always 24 hours" do
       hours36 = Duration.new!(hour: 36)
 

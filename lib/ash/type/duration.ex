@@ -15,14 +15,14 @@ defmodule Ash.Type.Duration do
     signs: [
       type: {:wrap_list, {:one_of, @signs}},
       doc: """
-      The signs the value may have, compared against zero by `Ash.Type.Duration.compare/2`. Any combination is permitted: `:positive` or `[:positive]` requires a positive duration, `[:positive, :zero]` a non-negative one, and `[:positive, :negative]` a non-zero one. Omit the constraint to allow any sign. This is the sign of the duration as a whole, not of each unit — `%Duration{day: 1, hour: -5}` is positive, being nineteen hours. Only where the year/month and week/day sides carry opposite signs does the comparison depend on `compare/2`'s 30-day month.
+      The signs the value may have, compared against zero by `Ash.Type.Duration.compare/2`. Any combination is permitted: `:positive` or `[:positive]` requires a positive duration, `[:positive, :zero]` a non-negative one, and `[:positive, :negative]` a non-zero one. Omit the constraint to allow any sign. This is the sign of the duration as a whole, not of each unit — `%Duration{day: 1, hour: -5}` is positive, as `compare/2` counts it as nineteen hours. Only where units in different buckets carry opposite signs does the sign depend on `compare/2`'s conventions of a 30-day month and a 24-hour day.
       """
     ],
     units: [
       type:
         {:or, [{:one_of, [:year_month, :day_time]}, {:wrap_list, {:one_of, @duration_units}}]},
       doc: """
-      The units the value may be expressed in. A duration is always re-expressed in the largest of these units that will hold it, on the way in and on the way out, so `[:week, :minute]` turns `14 days 2 hours` into `2 weeks 120 minutes`. Conversion only happens within a bucket: year/month, week/day, and hour down to microsecond. A month is not a fixed number of days and a day is not a fixed number of hours (it is 23 or 25 across a daylight-saving change, which is why PostgreSQL keeps days and microseconds in separate interval buckets), so a value that no combination of the permitted units expresses exactly is rejected, including anything that would have to cross a bucket. This applies on the way out as well as in: a stored duration the permitted units cannot express is refused rather than quietly rewritten. Either a single unit, an explicit list of them, or a shorthand for one side of the year/month to week/day divide: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`). Confining an attribute to a single side keeps its values comparable (see `Ash.Type.Duration.compare/2`). With no constraint every unit is permitted, so the same normalization applies and nothing is ever lost.
+      The units the value may be expressed in. A duration is always re-expressed in the largest of these units that will hold it, on the way in and on the way out, so `[:week, :minute]` turns `14 days 2 hours` into `2 weeks 120 minutes`. Conversion only happens within a bucket: year/month, week/day, and hour down to microsecond. A month is not a fixed number of days and a day is not a fixed number of hours (it is 23 or 25 across a daylight-saving change, which is why PostgreSQL keeps days and microseconds in separate interval buckets), so a value that no combination of the permitted units expresses exactly is rejected, including anything that would have to cross a bucket. This applies on the way out as well as in: a stored duration the permitted units cannot express is refused rather than quietly rewritten. Either a single unit, an explicit list of them, or a shorthand: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`), which covers both the week/day and the hour to microsecond buckets. Confining an attribute to one of these keeps its comparisons free of the 30-day month (see `Ash.Type.Duration.compare/2`). With no constraint every unit is permitted, so the same normalization applies and nothing is ever lost.
       """
     ]
   ]
@@ -312,9 +312,12 @@ defmodule Ash.Type.Duration do
   months, Neo4j ~30.44-day months, and Elixir's `to_timeout/1` refuses `month`/
   `year` outright. This adopts PostgreSQL's convention so in-memory comparison
   stays aligned with the dominant data layer rather than raising or drifting.
-  Within the day/time units, or within the year/month units, the result is exact
-  and portable across those backends; only comparison *across* that boundary
-  depends on the 30-day convention.
+  Within a single bucket (year/month, week/day, or hour down to microsecond) the
+  result is exact and portable across those backends. Comparison across buckets
+  depends on a convention: the 30-day month, or the 24-hour day. The 24-hour day
+  matches PostgreSQL's interval comparison and Elixir's `DateTime.shift/3`, but not
+  PostgreSQL's `timestamptz` arithmetic, which adds a day on the wall clock and so
+  can differ from 24 hours across a daylight saving change.
 
   Computed from the integer fields directly, so microsecond precision is kept
   (unlike `to_timeout/1`, which truncates to milliseconds).
