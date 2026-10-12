@@ -168,23 +168,25 @@ defmodule Ash.Test.Type.DurationTest do
     test "an embedded duration is normalized, and a read agrees with the write" do
       holder =
         Holder
-        |> Ash.Changeset.for_create(:create, %{embedded: %{duration: Duration.new!(hour: 36)}})
+        |> Ash.Changeset.for_create(:create, %{embedded: %{duration: Duration.new!(day: 10)}})
         |> Ash.create!()
 
-      assert holder.embedded.duration == Duration.new!(day: 1, hour: 12)
+      assert holder.embedded.duration == Duration.new!(week: 1, day: 3)
 
       assert [%{embedded: %{duration: read_back}}] = Ash.read!(Holder)
       assert read_back == holder.embedded.duration
     end
 
     test "an embedded duration honours its units constraint" do
-      # converted, because 2 days is exactly 48 hours
+      # converted, because 120 minutes is exactly 2 hours
       holder =
         Holder
-        |> Ash.Changeset.for_create(:create, %{embedded: %{hours_only: Duration.new!(day: 2)}})
+        |> Ash.Changeset.for_create(:create, %{
+          embedded: %{hours_only: Duration.new!(minute: 120)}
+        })
         |> Ash.create!()
 
-      assert holder.embedded.hours_only == Duration.new!(hour: 48)
+      assert holder.embedded.hours_only == Duration.new!(hour: 2)
 
       assert [%{embedded: %{hours_only: read_back}}] = Ash.read!(Holder)
       assert read_back == holder.embedded.hours_only
@@ -230,11 +232,11 @@ defmodule Ash.Test.Type.DurationTest do
     end
 
     test "a single unit may be given without a list" do
-      assert {:ok, Duration.new!(day: 3)} ==
-               Ash.Type.Duration.apply_constraints(Duration.new!(hour: 72), units: :day)
+      assert {:ok, Duration.new!(week: 3)} ==
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 21), units: :week)
 
       assert {:error, _} =
-               Ash.Type.Duration.apply_constraints(Duration.new!(hour: 73), units: :day)
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 22), units: :week)
     end
 
     test "the :day_time shorthand accepts day/time units and rejects year/month" do
@@ -330,9 +332,9 @@ defmodule Ash.Test.Type.DurationTest do
     end
 
     test "fills the largest permitted unit first" do
-      assert {:ok, Duration.new!(day: 1, hour: 1)} ==
-               Ash.Type.Duration.cast_stored(Duration.new!(second: 90_000),
-                 units: [:day, :hour]
+      assert {:ok, Duration.new!(hour: 1, minute: 30)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(second: 5400),
+                 units: [:hour, :minute]
                )
     end
 
@@ -416,16 +418,16 @@ defmodule Ash.Test.Type.DurationTest do
     test "normalizes on the way in as well, so a write and a read agree" do
       # apply_constraints is the write side; cast_stored is the read side
       assert {:ok, normalized} =
-               Ash.Type.Duration.apply_constraints(Duration.new!(hour: 36), units: :day_time)
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 10), units: :day_time)
 
-      assert normalized == Duration.new!(day: 1, hour: 12)
+      assert normalized == Duration.new!(week: 1, day: 3)
       assert {:ok, ^normalized} = Ash.Type.Duration.cast_stored(normalized, units: :day_time)
     end
 
     test "accepts a unit outside the permitted set when it converts exactly" do
-      # `day` cannot be said here, but 1 day is exactly 24 hours
-      assert {:ok, Duration.new!(hour: 24)} ==
-               Ash.Type.Duration.apply_constraints(Duration.new!(day: 1), units: [:week, :hour])
+      # `day` cannot be said here, but 7 days is exactly a week
+      assert {:ok, Duration.new!(week: 1)} ==
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 7), units: [:week, :hour])
     end
 
     test "still rejects across the bucket divide, which no conversion can cross" do
@@ -459,14 +461,14 @@ defmodule Ash.Test.Type.DurationTest do
     end
 
     test "spills a unit it cannot say into the next one it can" do
-      # :day is missing, so a stored day is carried by hours
-      assert {:ok, Duration.new!(week: 1, hour: 29)} ==
-               Ash.Type.Duration.cast_stored(Duration.new!(week: 1, day: 1, hour: 5),
-                 units: [:week, :hour]
+      # :hour is missing, so a stored hour is carried by minutes
+      assert {:ok, Duration.new!(week: 1, minute: 150)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(week: 1, hour: 2, minute: 30),
+                 units: [:week, :minute]
                )
 
-      assert {:ok, Duration.new!(week: 1, hour: 72)} ==
-               Ash.Type.Duration.cast_stored(Duration.new!(day: 10), units: [:week, :hour])
+      assert {:ok, Duration.new!(day: 10)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(week: 1, day: 3), units: [:day])
     end
 
     test "fills greedily even when every unit used is already permitted" do
@@ -504,12 +506,12 @@ defmodule Ash.Test.Type.DurationTest do
       assert {:ok, post} =
                post
                |> Ash.Changeset.for_update(:update, %{
-                 duration_calendar_free: Duration.new!(hour: 36)
+                 duration_calendar_free: Duration.new!(day: 10)
                })
                |> Ash.update()
 
       # normalized on the way in
-      assert post.duration_calendar_free == Duration.new!(day: 1, hour: 12)
+      assert post.duration_calendar_free == Duration.new!(week: 1, day: 3)
 
       assert {:ok, reread} = Ash.get(Post, post.id)
       assert reread.duration_calendar_free == post.duration_calendar_free
@@ -566,6 +568,45 @@ defmodule Ash.Test.Type.DurationTest do
     end
   end
 
+  describe "the week/day to hour divide" do
+    # A day is a calendar unit, not 24 hours: across a daylight-saving change it
+    # is 23 or 25. PostgreSQL keeps days and microseconds in separate interval
+    # buckets for exactly this reason, and adds them differently: `+ interval
+    # '1 day 12 hours'` moves the wall clock a day and then adds twelve hours,
+    # while `+ interval '36 hours'` adds thirty-six elapsed hours. On the evening
+    # before New York springs forward those land an hour apart. Folding hours
+    # into days therefore changes what a stored duration means, so
+    # normalization must not cross this divide, just as it does not cross the
+    # year/month to week/day one. Elixir's `DateTime.shift/3` does treat a day
+    # as 24 hours, so in-memory `datetime + duration` won't see the difference,
+    # but a stored value still has to keep it for the data layers that do.
+    test "hours are never expressed in days, because a day is not always 24 hours" do
+      hours36 = Duration.new!(hour: 36)
+
+      assert {:ok, ^hours36} = Ash.Type.Duration.cast_stored(hours36, [])
+      assert {:ok, ^hours36} = Ash.Type.Duration.apply_constraints(hours36, [])
+
+      # the day/time shorthand permits :day, but that still does not make a day 24 hours
+      assert {:ok, ^hours36} = Ash.Type.Duration.apply_constraints(hours36, units: :day_time)
+    end
+
+    test "days are never expressed in hours, whatever units are permitted" do
+      # 2 days is not 48 hours, so [:hour] cannot say it
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 2), units: [:hour])
+
+      assert {:error, _} = Ash.Type.Duration.cast_stored(Duration.new!(day: 2), units: [:hour])
+    end
+
+    test "weeks and days still convert, because a week is always seven days" do
+      assert {:ok, Duration.new!(week: 2)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(day: 14), units: [:week])
+
+      assert {:ok, Duration.new!(day: 14)} ==
+               Ash.Type.Duration.apply_constraints(Duration.new!(week: 2), units: [:day])
+    end
+  end
+
   describe "negative durations" do
     test "a negative duration normalizes with a consistent sign" do
       assert {:ok, Duration.new!(week: -1, day: -3)} ==
@@ -576,9 +617,9 @@ defmodule Ash.Test.Type.DurationTest do
     end
 
     test "mixed signs within a side collapse to one representation" do
-      # a day less five hours is nineteen hours
-      assert {:ok, Duration.new!(hour: 19)} ==
-               Ash.Type.Duration.cast_stored(Duration.new!(day: 1, hour: -5), [])
+      # an hour less five minutes is fifty-five minutes
+      assert {:ok, Duration.new!(minute: 55)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(hour: 1, minute: -5), [])
 
       assert {:ok, Duration.new!(week: -1, day: -4)} ==
                Ash.Type.Duration.cast_stored(Duration.new!(week: -2, day: 3), [])
@@ -589,8 +630,8 @@ defmodule Ash.Test.Type.DurationTest do
       assert {:ok, Duration.new!(day: -3)} ==
                Ash.Type.Duration.cast_stored(Duration.new!(week: 1, day: -10), [])
 
-      assert {:ok, Duration.new!(hour: 6)} ==
-               Ash.Type.Duration.cast_stored(Duration.new!(day: -1, hour: 30), [])
+      assert {:ok, Duration.new!(minute: 30)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(hour: -1, minute: 90), [])
 
       assert {:ok, Duration.new!(month: -6)} ==
                Ash.Type.Duration.cast_stored(Duration.new!(year: 1, month: -18), [])
@@ -606,7 +647,7 @@ defmodule Ash.Test.Type.DurationTest do
     end
 
     test "a duration that nets to zero normalizes to zero" do
-      assert {:ok, zero} = Ash.Type.Duration.cast_stored(Duration.new!(day: 1, hour: -24), [])
+      assert {:ok, zero} = Ash.Type.Duration.cast_stored(Duration.new!(week: 1, day: -7), [])
       assert Ash.Type.Duration.compare(zero, Duration.new!([])) == :eq
     end
 
@@ -783,10 +824,10 @@ defmodule Ash.Test.Type.DurationTest do
 
       assert {:ok, updated} =
                span
-               |> Ash.Changeset.for_update(:atomically, %{free: Duration.new!(hour: 36)})
+               |> Ash.Changeset.for_update(:atomically, %{free: Duration.new!(day: 10)})
                |> Ash.update()
 
-      assert updated.free == Duration.new!(day: 1, hour: 12)
+      assert updated.free == Duration.new!(week: 1, day: 3)
 
       assert {:ok, reread} = Ash.get(AtomicSpan, span.id)
       assert reread.free == updated.free
@@ -797,10 +838,12 @@ defmodule Ash.Test.Type.DurationTest do
 
       assert {:ok, updated} =
                span
-               |> Ash.Changeset.for_update(:non_atomically, %{hours_only: Duration.new!(day: 2)})
+               |> Ash.Changeset.for_update(:non_atomically, %{
+                 hours_only: Duration.new!(minute: 120)
+               })
                |> Ash.update()
 
-      assert updated.hours_only == Duration.new!(hour: 48)
+      assert updated.hours_only == Duration.new!(hour: 2)
     end
   end
 
