@@ -189,6 +189,40 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
     end
   end
 
+  describe "string-keyed calculation arguments" do
+    test "are accepted in filter input", %{matching_id: matching_id} do
+      assert [%{id: ^matching_id}] =
+               Post
+               |> Ash.Query.filter_input(%{
+                 "in_ids_after?" => %{
+                   "input" => %{"ids" => @ids, "after" => "2026-01-01T00:00:00Z"},
+                   "eq" => true
+                 }
+               })
+               |> Ash.read!()
+    end
+
+    test "are accepted in sort input", %{matching_id: matching_id} do
+      assert [%{id: ^matching_id} | _] =
+               Post
+               |> Ash.Query.sort_input([
+                 {"in_ids_after?",
+                  {%{"ids" => @ids, "after" => "2026-01-01T00:00:00Z"}, :desc_nils_last}}
+               ])
+               |> Ash.read!()
+    end
+
+    test "are accepted when loading the calculation", %{matching_id: matching_id} do
+      results =
+        Post
+        |> Ash.Query.load(in_ids_after?: %{"ids" => @ids, "after" => "2026-01-01T00:00:00Z"})
+        |> Ash.read!()
+        |> Map.new(&{&1.id, &1.in_ids_after?})
+
+      assert results[matching_id] == true
+    end
+  end
+
   describe "a literal scalar argument alongside an expression argument" do
     test "filters through another expression calculation", %{matching_id: matching_id} do
       ids = Post |> Ash.Query.filter(matches_titled_after?) |> Ash.read!() |> Enum.map(& &1.id)
