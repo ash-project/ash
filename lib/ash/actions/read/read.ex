@@ -308,7 +308,7 @@ defmodule Ash.Actions.Read do
         load_and_select_sort(query, page_opts)
       end
 
-    query = add_relationship_count_aggregates(query)
+    query = add_relationship_count_aggregates(query, opts)
 
     pkey = Ash.Resource.Info.primary_key(query.resource)
 
@@ -1182,7 +1182,7 @@ defmodule Ash.Actions.Read do
       )
   end
 
-  defp add_relationship_count_aggregates(query) do
+  defp add_relationship_count_aggregates(query, opts) do
     Enum.reduce(query.load, query, fn {relationship_name, related_query}, query ->
       relationship = Ash.Resource.Info.relationship(query.resource, relationship_name)
 
@@ -1208,11 +1208,46 @@ defmodule Ash.Actions.Read do
 
         aggregate_name = paginated_relationship_count_aggregate_name(relationship.name)
 
-        query
-        |> Ash.Query.aggregate(aggregate_name, :count, relationship.name,
-          query: related_query,
-          default: 0
-        )
+        query =
+          Ash.Query.aggregate(query, aggregate_name, :count, relationship.name,
+            query: related_query,
+            default: 0
+          )
+
+        with true <- opts[:authorize?],
+             {:ok, aggregate} <- Map.fetch(query.aggregates, aggregate_name),
+             true <- Enum.any?(Ash.Filter.list_refs(aggregate.query.filter), & &1.input?) do
+          aggregate =
+            add_calc_context(
+              aggregate,
+              opts[:actor],
+              opts[:authorize?],
+              query.tenant,
+              opts[:tracer],
+              query.domain,
+              query.resource,
+              parent_stack: parent_stack_from_context(query.context),
+              source_context: query.context
+            )
+
+          # Page counts must use the same authorized input predicates as the
+          # relationship read. This does not apply field policies to the
+          # aggregate's target field or change ordinary aggregate semantics.
+          case authorize_query(aggregate.query, opts) do
+            {:ok, authorized_query} ->
+              aggregate = %{
+                aggregate
+                | query: %{aggregate.query | filter: authorized_query.filter}
+              }
+
+              %{query | aggregates: Map.put(query.aggregates, aggregate_name, aggregate)}
+
+            {:error, error} ->
+              Ash.Query.add_error(query, error)
+          end
+        else
+          _ -> query
+        end
       else
         query
       end
