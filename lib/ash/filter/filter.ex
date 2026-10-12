@@ -3256,11 +3256,9 @@ defmodule Ash.Filter do
           resource_calculation when tuple_size(args) == 2 ->
             {args, nested_statement} = args
 
-            with {:ok, args} <-
-                   Ash.Query.validate_calculation_arguments(resource_calculation, args || %{}),
-                 {:ok, calculation} <-
+            with {:ok, calculation} <-
                    Calculation.from_resource_calculation(context.resource, resource_calculation,
-                     args: args
+                     args: Map.new(args || %{})
                    ) do
               calculation = %{calculation | load: calculation.name}
 
@@ -3271,9 +3269,6 @@ defmodule Ash.Filter do
                 {:error, error} ->
                   {:error, error}
               end
-            else
-              {:error, error} ->
-                {:error, error}
             end
         end
 
@@ -3471,17 +3466,12 @@ defmodule Ash.Filter do
               end)
           end
 
-        with {:ok, args} <-
-               Ash.Query.validate_calculation_arguments(
-                 resource_calculation,
-                 input,
-                 !context[:input?]
-               ),
-             {:ok, calculation} <-
+        with {:ok, calculation} <-
                Calculation.from_resource_calculation(
                  context.resource,
                  resource_calculation,
-                 args: args
+                 args: Map.new(input),
+                 allow_expr?: !context[:input?]
                ) do
           calculation = %{calculation | load: calculation.name}
 
@@ -3492,9 +3482,6 @@ defmodule Ash.Filter do
             {:error, error} ->
               {:error, error}
           end
-        else
-          {:error, error} ->
-            {:error, error}
         end
 
       true ->
@@ -3894,14 +3881,9 @@ defmodule Ash.Filter do
 
     cond do
       resource_calculation ->
-        with {:ok, args} <-
-               Ash.Query.validate_calculation_arguments(
-                 resource_calculation,
-                 Map.new(Enum.at(args, 0) || [])
-               ),
-             {:ok, calculation} <-
+        with {:ok, calculation} <-
                Calculation.from_resource_calculation(context.resource, resource_calculation,
-                 args: args
+                 args: Map.new(Enum.at(args, 0) || [])
                ) do
           {:ok,
            %Ref{
@@ -3910,9 +3892,6 @@ defmodule Ash.Filter do
                Map.get(context, :relationship_path, []) ++ call.relationship_path,
              resource: resource
            }}
-        else
-          {:error, error} ->
-            {:error, error}
         end
 
       custom_expression =

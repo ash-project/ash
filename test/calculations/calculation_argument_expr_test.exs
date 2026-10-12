@@ -1,0 +1,199 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>
+#
+# SPDX-License-Identifier: MIT
+
+defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
+  @moduledoc false
+  use ExUnit.Case, async: true
+
+  require Ash.Query
+  import Ash.Expr
+
+  @ids ["7f6f4c9c-49a8-4c5e-9d43-3a8e7d6bb9f0", "0b0d0a5e-22a8-4f3e-9a9c-7d1f0f6c4e11"]
+
+  defmodule Domain do
+    @moduledoc false
+    use Ash.Domain
+
+    resources do
+      allow_unregistered? true
+    end
+  end
+
+  defmodule Post do
+    @moduledoc false
+    @ids ["7f6f4c9c-49a8-4c5e-9d43-3a8e7d6bb9f0", "0b0d0a5e-22a8-4f3e-9a9c-7d1f0f6c4e11"]
+
+    use Ash.Resource,
+      domain: Ash.Test.Calculations.CalculationArgumentExprTest.Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id, writable?: true, public?: true
+      attribute :title, :string, public?: true
+      attribute :published_at, :utc_datetime_usec, public?: true
+      attribute :cutoff, :utc_datetime_usec, public?: true
+    end
+
+    calculations do
+      calculate :cutoff_calc, :utc_datetime_usec, expr(cutoff), public?: true
+
+      # array argument without allow_expr?
+      calculate :in_ids_after?,
+                :boolean,
+                expr(id in ^arg(:ids) and published_at > ^arg(:after)) do
+        public? true
+        argument :ids, {:array, :uuid}, allow_nil?: false
+        argument :after, :utc_datetime_usec, allow_nil?: false, allow_expr?: true
+      end
+
+      # array argument with allow_expr?
+      calculate :in_expr_ids_after?,
+                :boolean,
+                expr(id in ^arg(:ids) and published_at > ^arg(:after)) do
+        public? true
+        argument :ids, {:array, :uuid}, allow_nil?: false, allow_expr?: true
+        argument :after, :utc_datetime_usec, allow_nil?: false, allow_expr?: true
+      end
+
+      # scalar argument without allow_expr?, for comparison
+      calculate :titled_after?,
+                :boolean,
+                expr(title == ^arg(:title) and published_at > ^arg(:after)) do
+        public? true
+        argument :title, :string, allow_nil?: false
+        argument :after, :utc_datetime_usec, allow_nil?: false, allow_expr?: true
+      end
+
+      calculate :matches_in_ids_after?,
+                :boolean,
+                expr(
+                  in_ids_after?(
+                    ids: ^@ids,
+                    after: cutoff_calc
+                  )
+                ),
+                public?: true
+
+      calculate :matches_in_expr_ids_after?,
+                :boolean,
+                expr(
+                  in_expr_ids_after?(
+                    ids: ^@ids,
+                    after: cutoff_calc
+                  )
+                ),
+                public?: true
+
+      calculate :matches_titled_after?,
+                :boolean,
+                expr(titled_after?(title: "match", after: cutoff_calc)),
+                public?: true
+    end
+  end
+
+  @cutoff ~U[2026-01-01 00:00:00.000000Z]
+
+  setup do
+    [matching_id, other_id] = @ids
+
+    for {id, title, published_at} <- [
+          {matching_id, "match", ~U[2026-02-01 00:00:00.000000Z]},
+          {matching_id |> String.replace_prefix("7", "8"), "match",
+           ~U[2026-02-01 00:00:00.000000Z]},
+          {other_id, "other", ~U[2025-12-01 00:00:00.000000Z]}
+        ] do
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        id: id,
+        title: title,
+        published_at: published_at,
+        cutoff: @cutoff
+      })
+      |> Ash.create!()
+    end
+
+    %{matching_id: matching_id}
+  end
+
+  describe "a literal array argument alongside an expression argument" do
+    test "loads through another expression calculation", %{matching_id: matching_id} do
+      results =
+        Post
+        |> Ash.Query.load(:matches_in_ids_after?)
+        |> Ash.read!()
+        |> Map.new(&{&1.id, &1.matches_in_ids_after?})
+
+      assert results[matching_id] == true
+      assert results |> Map.delete(matching_id) |> Map.values() |> Enum.all?(&(&1 == false))
+    end
+
+    test "filters through another expression calculation", %{matching_id: matching_id} do
+      assert [%{id: ^matching_id}] =
+               Post
+               |> Ash.Query.filter(matches_in_ids_after?)
+               |> Ash.read!()
+    end
+
+    test "works when the array argument allows expressions", %{matching_id: matching_id} do
+      assert [%{id: ^matching_id}] =
+               Post
+               |> Ash.Query.filter(matches_in_expr_ids_after?)
+               |> Ash.read!()
+    end
+
+    test "works in a query filter", %{matching_id: matching_id} do
+      assert [%{id: ^matching_id}] =
+               Post
+               |> Ash.Query.filter(in_ids_after?(ids: ^@ids, after: cutoff_calc))
+               |> Ash.read!()
+    end
+
+    test "works in a filter statement", %{matching_id: matching_id} do
+      assert [%{id: ^matching_id}] =
+               Post
+               |> Ash.Query.do_filter(%{
+                 in_ids_after?: %{input: %{ids: @ids, after: expr(cutoff_calc)}, eq: true}
+               })
+               |> Ash.read!()
+    end
+  end
+
+  describe "filter input" do
+    test "accepts literal calculation arguments", %{matching_id: matching_id} do
+      assert [%{id: ^matching_id}] =
+               Post
+               |> Ash.Query.filter_input(%{
+                 in_ids_after?: %{input: %{ids: @ids, after: @cutoff}, eq: true}
+               })
+               |> Ash.read!()
+    end
+
+    test "does not accept expressions as calculation arguments" do
+      assert_raise Ash.Error.Invalid, ~r/does not support expressions/, fn ->
+        Post
+        |> Ash.Query.filter_input(%{
+          in_ids_after?: %{input: %{ids: @ids, after: expr(cutoff_calc)}, eq: true}
+        })
+        |> Ash.read!()
+      end
+    end
+  end
+
+  describe "a literal scalar argument alongside an expression argument" do
+    test "filters through another expression calculation", %{matching_id: matching_id} do
+      ids = Post |> Ash.Query.filter(matches_titled_after?) |> Ash.read!() |> Enum.map(& &1.id)
+      assert matching_id in ids
+      assert length(ids) == 2
+    end
+  end
+end

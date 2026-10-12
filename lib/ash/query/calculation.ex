@@ -165,6 +165,11 @@ defmodule Ash.Query.Calculation do
       type: :map,
       doc: "Context from the source query or changeset.",
       default: %{}
+    ],
+    allow_expr?: [
+      type: :boolean,
+      doc: "Whether arguments that allow expressions may be given expressions.",
+      default: true
     ]
   ]
 
@@ -224,7 +229,11 @@ defmodule Ash.Query.Calculation do
 
     with {:ok, opts} <- FromResourceOpts.validate(opts),
          {:ok, args} <-
-           Ash.Query.validate_calculation_arguments(resource_calculation, opts.args),
+           Ash.Query.validate_calculation_arguments(
+             resource_calculation,
+             opts.args,
+             opts.allow_expr?
+           ),
          {:ok, calculation} <-
            new(
              name,
