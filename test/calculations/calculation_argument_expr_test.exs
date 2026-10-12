@@ -245,6 +245,28 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
     end
   end
 
+  describe "invalid calculation input" do
+    for input <- [nil, "x", [1, 2]] do
+      test "in filter input #{inspect(input)} is an invalid filter" do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Post
+                 |> Ash.Query.filter_input(%{
+                   "in_ids_after?" => %{"input" => unquote(input), "eq" => true}
+                 })
+                 |> Ash.read()
+      end
+    end
+
+    for args <- ["x", [1, 2]] do
+      test "in the tuple filter form #{inspect(args)} is an invalid filter" do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Post
+                 |> Ash.Query.filter_input(in_ids_after?: {unquote(args), [eq: true]})
+                 |> Ash.read()
+      end
+    end
+  end
+
   describe "a literal scalar argument alongside an expression argument" do
     test "filters through another expression calculation", %{matching_id: matching_id} do
       ids = Post |> Ash.Query.filter(matches_titled_after?) |> Ash.read!() |> Enum.map(& &1.id)
