@@ -5,6 +5,7 @@
 defmodule Ash.Type.Range do
   @inner_types [:date, :integer, :naive_datetime, :datetime]
   @inner_type_modules [Ash.Type.Date, Ash.Type.Integer, Ash.Type.NaiveDatetime, Ash.Type.DateTime]
+  @day 86_400_000_000
 
   @constraints [
     inner_type: [
@@ -71,7 +72,7 @@ defmodule Ash.Type.Range do
     anchor: [
       type: :any,
       doc:
-        "A value aligning the resolution's periods, within the limits or not. Required for a resolution in months or years, and then on the 28th of a month or earlier."
+        "A value aligning the resolution's periods, within the limits or not. Required for a resolution in months or years, and then on the 28th of a month or earlier. A `DateTime` in a time zone aligns periods of a day or longer to its time of day in that zone."
     ]
   ]
 
@@ -88,6 +89,9 @@ defmodule Ash.Type.Range do
   limits or not. Its bounds and limits are period boundaries, and it casts to its one `[)`
   form, so `[a, b]` is `[a, b + resolution)`. Without an anchor below months, the grid runs from
   `0001-01-01T00:00:00Z`: minutes and hours follow the UTC clock, and weeks start on Monday.
+  An anchor in a time zone aligns periods of a day or longer to its time of day in that
+  zone, so a day is 23, 24 or 25 hours long, and the anchor's time of day must fall in no
+  gap or overlap of the zone.
 
       attribute :pay_period, Ash.Type.Range,
         constraints: [
@@ -280,22 +284,65 @@ defmodule Ash.Type.Range do
   defp cast_anchor(anchor, resolution, constraints) do
     case cast_bound(anchor, :cast_input, constraints) do
       {:ok, cast} when not is_nil(cast) ->
+        kept = if zoned?(anchor, cast), do: anchor, else: cast
+
         cond do
-          not held_as_given?(anchor, cast) ->
+          not (zoned?(anchor, cast) or held_as_given?(anchor, cast)) ->
             {:error,
              "the anchor #{inspect(anchor)} is not a value of the inner type as it holds it, #{inspect(cast)}"}
 
-          calendar?(resolution) and cast.day > 28 ->
+          calendar?(resolution) and kept.day > 28 ->
             {:error,
              "an anchor for a resolution in months or years falls on the 28th of a month or earlier, got: #{inspect(anchor)}"}
 
           true ->
-            {:ok, cast}
+            on_its_wall_clock(kept, resolution)
         end
 
       _ ->
         {:error, "the anchor #{inspect(anchor)} is not a value of the inner type"}
     end
+  end
+
+  # A zoned anchor is kept with its zone, where the time zone database places it as the same instant.
+  defp zoned?(%DateTime{time_zone: zone} = given, %DateTime{} = cast) when zone != "Etc/UTC" do
+    DateTime.compare(given, cast) == :eq and
+      match?({:ok, _}, DateTime.shift_zone(cast, zone))
+  end
+
+  defp zoned?(_given, _cast), do: false
+
+  # On a zone's wall clock a day is not a fixed length, and a time of day in a gap or an
+  # overlap would skip or repeat a period.
+  defp on_its_wall_clock(%DateTime{time_zone: zone} = anchor, resolution)
+       when zone != "Etc/UTC" do
+    cond do
+      not wall?(resolution) ->
+        {:ok, anchor}
+
+      not calendar?(resolution) and rem(microseconds(resolution), @day) != 0 ->
+        {:error,
+         "a resolution of a day or longer on an anchor in #{zone} is a whole number of days, got: #{inspect(resolution)}"}
+
+      time = time_in_a_transition(anchor) ->
+        {:error, "the anchor's time of day, #{time}, falls in a gap or an overlap of #{zone}"}
+
+      true ->
+        {:ok, anchor}
+    end
+  end
+
+  defp on_its_wall_clock(anchor, _resolution), do: {:ok, anchor}
+
+  # The zone's rules for a year either side of the anchor.
+  defp time_in_a_transition(%DateTime{time_zone: zone} = anchor) do
+    time = DateTime.to_time(anchor)
+    date = DateTime.to_date(anchor)
+
+    if Enum.any?(-366..366, fn days ->
+         not match?({:ok, _}, DateTime.new(Date.add(date, days), time, zone))
+       end),
+       do: time
   end
 
   # An anchor sets where the grid's periods start, so casting it must not move it.
@@ -573,12 +620,14 @@ defmodule Ash.Type.Range do
   end
 
   defp successor(value, constraints) do
-    value
-    |> step_on(constraints[:resolution] || precision(constraints))
+    step = constraints[:resolution] || precision(constraints)
+
+    case wall_zone(constraints) do
+      nil -> step_on(value, step)
+      zone -> value |> on_wall(zone) |> step_on(step) |> from_wall(zone)
+    end
     |> normalise(constraints)
   end
-
-  @day 86_400_000_000
 
   # Ash.Type.NaiveDatetime casts through Ecto's :naive_datetime, which truncates to the second.
   defp precision(constraints) do
@@ -636,6 +685,9 @@ defmodule Ash.Type.Range do
 
     point =
       cond do
+        zone = wall_zone(constraints) ->
+          floor_on_wall(value, constraints, zone)
+
         is_integer(resolution) ->
           anchor + Integer.floor_div(value - anchor, resolution) * resolution
 
@@ -653,6 +705,59 @@ defmodule Ash.Type.Range do
       end
 
     normalise(point, constraints)
+  end
+
+  # A grid of a day or longer through a zoned anchor steps on the zone's wall clock.
+  defp wall_zone(constraints) do
+    case {constraints[:anchor], constraints[:resolution]} do
+      {%DateTime{time_zone: zone}, %Duration{} = resolution} when zone != "Etc/UTC" ->
+        if wall?(resolution), do: zone
+
+      _ ->
+        nil
+    end
+  end
+
+  defp wall?(%Duration{} = resolution),
+    do: calendar?(resolution) or microseconds(resolution) >= @day
+
+  defp wall?(_resolution), do: false
+
+  defp floor_on_wall(value, constraints, zone) do
+    resolution = constraints[:resolution]
+    anchor = DateTime.to_naive(constraints[:anchor])
+    wall = on_wall(value, zone)
+
+    point =
+      if calendar?(resolution) do
+        step = months(resolution)
+        shift_months(anchor, Integer.floor_div(months_since(anchor, wall), step) * step)
+      else
+        step = div(microseconds(resolution), @day)
+        NaiveDateTime.add(anchor, Integer.floor_div(days_since(anchor, wall), step) * step, :day)
+      end
+
+    from_wall(point, zone)
+  end
+
+  defp days_since(anchor, wall) do
+    days = Date.diff(NaiveDateTime.to_date(wall), NaiveDateTime.to_date(anchor))
+
+    if Comp.greater_than?(NaiveDateTime.add(anchor, days, :day), wall),
+      do: days - 1,
+      else: days
+  end
+
+  defp on_wall(%DateTime{} = value, zone),
+    do: value |> DateTime.shift_zone!(zone) |> DateTime.to_naive()
+
+  # Only a change to the zone's rules can put a grid point in a gap or an overlap.
+  defp from_wall(wall, zone) do
+    case DateTime.from_naive(wall, zone) do
+      {:ok, datetime} -> datetime
+      {:ambiguous, first, _second} -> first
+      {:gap, _just_before, just_after} -> just_after
+    end
   end
 
   defp on_grid?(value, constraints) do

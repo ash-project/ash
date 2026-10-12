@@ -803,21 +803,7 @@ defmodule Ash.Type.RangeTest do
     end
 
     test "an anchor the inner type would change is refused" do
-      sydney = %DateTime{
-        year: 2025,
-        month: 7,
-        day: 1,
-        hour: 0,
-        minute: 0,
-        second: 0,
-        microsecond: {0, 0},
-        time_zone: "Australia/Sydney",
-        zone_abbr: "AEST",
-        utc_offset: 36_000,
-        std_offset: 0
-      }
-
-      for anchor <- [sydney, ~U[2025-07-01 00:00:00.5Z], ~D[2025-07-01]] do
+      for anchor <- [~U[2025-07-01 00:00:00.5Z], ~D[2025-07-01]] do
         assert {:error, message} =
                  Ash.Type.init(Ash.Type.Range,
                    inner_type: :utc_datetime,
@@ -827,6 +813,73 @@ defmodule Ash.Type.RangeTest do
 
         assert message =~ "is not a value of the inner type as it holds it"
       end
+    end
+
+    test "an anchor in a time zone aligns periods of a day or longer to its time of day" do
+      sydney = DateTime.new!(~D[2025-07-01], ~T[00:00:00], "Australia/Sydney")
+
+      years = grid!(inner_type: :utc_datetime, resolution: Duration.new!(year: 1), anchor: sydney)
+
+      months =
+        grid!(inner_type: :utc_datetime, resolution: Duration.new!(month: 1), anchor: sydney)
+
+      days = grid!(inner_type: :utc_datetime, resolution: Duration.new!(day: 1), anchor: sydney)
+
+      assert {:ok, %Range{lower: ~U[2025-06-30 14:00:00Z], upper: ~U[2026-06-30 14:00:00Z]}} =
+               Ash.Type.Range.period(~U[2026-01-15 00:00:00Z], years)
+
+      assert {:ok, %Range{lower: ~U[2025-10-31 13:00:00Z], upper: ~U[2025-11-30 13:00:00Z]}} =
+               Ash.Type.Range.period(~U[2025-11-15 00:00:00Z], months)
+
+      assert {:ok, %Range{lower: ~U[2025-10-04 14:00:00Z], upper: ~U[2025-10-05 13:00:00Z]}} =
+               Ash.Type.Range.period(~U[2025-10-05 01:00:00Z], days)
+
+      nine = DateTime.new!(~D[2025-07-01], ~T[09:00:00], "Australia/Sydney")
+      mornings = grid!(inner_type: :utc_datetime, resolution: Duration.new!(day: 1), anchor: nine)
+
+      # 08:00 on 10 October in Sydney is before that day's 09:00, so in the day from the 9th.
+      assert {:ok, %Range{lower: ~U[2025-10-08 22:00:00Z], upper: ~U[2025-10-09 22:00:00Z]}} =
+               Ash.Type.Range.period(~U[2025-10-09 21:00:00Z], mornings)
+    end
+
+    test "below a day, an anchor in a time zone gives periods of fixed elapsed time" do
+      adelaide = DateTime.new!(~D[2025-07-01], ~T[00:00:00], "Australia/Adelaide")
+
+      hours =
+        grid!(inner_type: :utc_datetime, resolution: Duration.new!(hour: 1), anchor: adelaide)
+
+      assert {:ok, %Range{lower: ~U[2025-07-01 02:30:00Z], upper: ~U[2025-07-01 03:30:00Z]}} =
+               Ash.Type.Range.period(~U[2025-07-01 03:10:00Z], hours)
+    end
+
+    test "an anchor in a time zone is refused where a day of its grid would be skipped, repeated or split" do
+      two_thirty = DateTime.new!(~D[2025-07-01], ~T[02:30:00], "Australia/Sydney")
+      midnight = DateTime.new!(~D[2025-07-01], ~T[00:00:00], "Australia/Sydney")
+
+      assert {:error, message} =
+               Ash.Type.init(Ash.Type.Range,
+                 inner_type: :utc_datetime,
+                 resolution: Duration.new!(day: 1),
+                 anchor: two_thirty
+               )
+
+      assert message =~ "falls in a gap or an overlap of Australia/Sydney"
+
+      assert {:error, message} =
+               Ash.Type.init(Ash.Type.Range,
+                 inner_type: :utc_datetime,
+                 resolution: Duration.new!(day: 1, hour: 12),
+                 anchor: midnight
+               )
+
+      assert message =~ "is a whole number of days"
+
+      assert {:ok, _} =
+               Ash.Type.init(Ash.Type.Range,
+                 inner_type: :utc_datetime,
+                 resolution: Duration.new!(hour: 1),
+                 anchor: two_thirty
+               )
     end
 
     test "an anchor the inner type holds as given is accepted, whatever its declared precision" do
