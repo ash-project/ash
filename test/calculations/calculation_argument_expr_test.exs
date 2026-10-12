@@ -272,6 +272,17 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
                |> Ash.Query.filter_input(%{in_ids_after?: %{input: %{1 => 2}, eq: true}})
                |> Ash.read()
     end
+
+    test "in the tuple filter form does not accept expressions" do
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               Post
+               |> Ash.Query.filter_input(
+                 in_ids_after?: {%{ids: @ids, after: expr(cutoff_calc)}, [eq: true]}
+               )
+               |> Ash.read()
+
+      assert Exception.message(error) =~ "does not support expressions"
+    end
   end
 
   describe "a literal scalar argument alongside an expression argument" do
