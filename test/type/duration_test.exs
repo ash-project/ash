@@ -566,6 +566,43 @@ defmodule Ash.Test.Type.DurationTest do
     end
   end
 
+  describe "the week/day to hour divide" do
+    # A day is a calendar unit, not 24 hours: across a daylight-saving change it
+    # is 23 or 25. PostgreSQL keeps days and microseconds in separate interval
+    # buckets for exactly this reason, and adds them differently: `+ interval
+    # '1 day 12 hours'` moves the wall clock a day and then adds twelve hours,
+    # while `+ interval '36 hours'` adds thirty-six elapsed hours. On the evening
+    # before New York springs forward those land an hour apart. Folding hours
+    # into days therefore changes what a stored duration means, so
+    # normalization must not cross this divide, just as it does not cross the
+    # year/month to week/day one.
+    test "hours are never expressed in days, because a day is not always 24 hours" do
+      hours36 = Duration.new!(hour: 36)
+
+      assert {:ok, ^hours36} = Ash.Type.Duration.cast_stored(hours36, [])
+      assert {:ok, ^hours36} = Ash.Type.Duration.apply_constraints(hours36, [])
+
+      # the day/time shorthand permits :day, but that still does not make a day 24 hours
+      assert {:ok, ^hours36} = Ash.Type.Duration.apply_constraints(hours36, units: :day_time)
+    end
+
+    test "days are never expressed in hours, whatever units are permitted" do
+      # 2 days is not 48 hours, so [:hour] cannot say it
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 2), units: [:hour])
+
+      assert {:error, _} = Ash.Type.Duration.cast_stored(Duration.new!(day: 2), units: [:hour])
+    end
+
+    test "weeks and days still convert, because a week is always seven days" do
+      assert {:ok, Duration.new!(week: 2)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(day: 14), units: [:week])
+
+      assert {:ok, Duration.new!(day: 14)} ==
+               Ash.Type.Duration.apply_constraints(Duration.new!(week: 2), units: [:day])
+    end
+  end
+
   describe "negative durations" do
     test "a negative duration normalizes with a consistent sign" do
       assert {:ok, Duration.new!(week: -1, day: -3)} ==
