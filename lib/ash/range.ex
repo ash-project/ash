@@ -4,18 +4,27 @@
 
 defmodule Ash.Range do
   @moduledoc """
-  A continuous range of values of some inner type, with inclusive/exclusive bounds.
+  A range of values: a lower bound, an upper bound, and whether each is inclusive.
 
-  The value representation for `Ash.Type.Range`. `bounds` follows Postgres range
-  notation: the first character is the lower bound, the second the upper —
-  `[` / `]` inclusive, `(` / `)` exclusive. A `nil` `lower`/`upper` is an
-  unbounded (infinite) end. The default `:"[)"` (lower-inclusive, upper-exclusive)
-  is the convention that lets adjacent ranges tile a timeline without overlap.
+  `Ash.Type.Range` casts to and from it. In `bounds`, `[` or `]` is inclusive and `(` or
+  `)` exclusive. The default, `:"[)"`, is inclusive-exclusive. A `nil` bound is unbounded.
 
-  A range containing no points is empty, and every empty range is the same range.
-  `Ash.Type.Range` casts any such range to `empty/0`, whose bounds are dropped —
-  as Postgres does — so that empty ranges compare equal and survive storage in a
-  data layer that keeps no bounds for them.
+  A range holding no values is empty: see `empty/0`.
+
+  ### PostgreSQL
+
+  `Ash.Range` follows PostgreSQL's ranges: the same bounds, every empty range cast to
+  one, every range holding the empty range, and the same sort order (`compare/2`).
+
+  | the question | PostgreSQL | `Ash.Range` |
+  | --- | --- | --- |
+  | do they share a value? | `&&`, "overlaps" | `intersects?/2` |
+  | does one hold a value, or the other range? | `@>`, "contains" | `contains?/2` |
+  | does one meet the other, either way round? | `-\|-` | `adjacent?/2` |
+  | which of Allen's relations holds? | — | `relation/2` |
+
+  PostgreSQL's overlaps and contains are wider than Allen's: `[1, 10)` intersects and
+  contains `[3, 5)`, and their relation is `:contains`.
   """
 
   @type bounds :: :"[)" | :"[]" | :"()" | :"(]"
@@ -31,20 +40,23 @@ defmodule Ash.Range do
 
   @valid_bounds [:"[)", :"[]", :"()", :"(]"]
 
-  @doc "Whether the given atom is a valid bounds specifier."
+  @doc ~s|Whether `bounds` is one of `:"[)"`, `:"[]"`, `:"()"` or `:"(]"`.|
   @spec valid_bounds?(term()) :: boolean()
   def valid_bounds?(bounds), do: bounds in @valid_bounds
 
-  @doc "The empty range: the one range containing no points."
+  @doc """
+  The empty range, holding no values. A range such as `[1, 1)` holds none, and
+  `Ash.Type.Range` casts it to this.
+
+      iex> Ash.Range.empty()
+      %Ash.Range{lower: nil, upper: nil, bounds: :"[)", empty?: true}
+  """
   @spec empty() :: t()
   def empty, do: %__MODULE__{lower: nil, upper: nil, bounds: :"[)", empty?: true}
 
   @doc """
-  Whether the range contains no points.
-
-  True for `empty/0`, and for a bounded range whose bounds admit nothing: a lower
-  above its upper, or bounds that meet without both including the point they meet
-  at. An unbounded end is never empty.
+  Whether the range holds no values: `empty/0`, or bounds holding nothing, such as
+  `[3, 1)` or `[1, 1)`. A range unbounded at either end is never empty.
   """
   @spec empty?(t()) :: boolean()
   def empty?(%__MODULE__{empty?: true}), do: true
@@ -60,24 +72,18 @@ defmodule Ash.Range do
 
   def empty?(%__MODULE__{}), do: false
 
-  @doc "Whether the range's lower bound includes the point it names."
+  @doc "Whether `bounds` makes the lower bound inclusive."
   @spec lower_inclusive?(bounds()) :: boolean()
   def lower_inclusive?(bounds), do: bounds in [:"[)", :"[]"]
 
-  @doc "Whether the range's upper bound includes the point it names."
+  @doc "Whether `bounds` makes the upper bound inclusive."
   @spec upper_inclusive?(bounds()) :: boolean()
   def upper_inclusive?(bounds), do: bounds in [:"(]", :"[]"]
 
   @doc """
-  Whether the range holds `value`, which may be a point or another range.
+  Whether the range holds `value`, which may be a value or another range.
 
-  An unbounded end holds everything beyond it, and an empty range holds no point.
-  Each bound is compared with `Comp`, so an inner type behaves inside a range as
-  it does outside one, and a bound that excludes its own value (`(` or `)`) is
-  not held.
-
-  A range holds another when the second lies within the first, sharing an endpoint
-  or being equal included. Every range holds the empty range, as Postgres `@>` does.
+  A range holds another range lying within it, and every range holds the empty range.
   """
   @spec contains?(t(), term()) :: boolean()
   def contains?(%__MODULE__{} = range, %__MODULE__{} = value) do
@@ -111,17 +117,11 @@ defmodule Ash.Range do
   end
 
   @doc """
-  Whether two ranges share any point.
+  Whether two ranges share a value: `[1, 3)` and `[3, 5)` do not, `[1, 3]` and `[3, 5)` do.
+  An empty range intersects nothing.
 
-  An empty range intersects nothing, not even itself. Each range must start at or
-  before the other ends, and a boundary the two ranges share counts only when both
-  sides include it — so `[1,3)` and `[3,5)` do not intersect, where `[1,3]` and
-  `[3,5)` do. Bounds are compared with `Comp`, as everywhere else here.
-
-  Named for what it answers rather than for the operator it backs. Postgres calls
-  `&&` "overlap" and `range_overlaps/2` keeps that name, but Allen's *overlaps* is
-  the narrower relation where two ranges cross with neither containing the other —
-  under which `[1,10)` and `[3,5)` do **not** overlap. This returns true for them.
+  Allen's `:overlaps` is narrower: `[1, 10)` intersects `[3, 5)`, and `relation/2` gives
+  `:contains`.
   """
   @spec intersects?(t(), t()) :: boolean()
   def intersects?(%__MODULE__{} = left, %__MODULE__{} = right) do
@@ -141,12 +141,10 @@ defmodule Ash.Range do
   end
 
   @doc """
-  Compares two ranges as Postgres orders them: empty first, then by lower bound, then
-  by upper, an unbounded end as `-∞`/`+∞`, and the earlier boundary first where two
-  bounds name the same value (`[1` before `(1`, `5)` before `5]`).
+  Compares two ranges: empty first, then by lower bound, then by upper bound. Unbounded below sorts first, and unbounded above last. Of two bounds on the
+  same value, `[1` sorts before `(1`, and `5)` before `5]`.
 
-  A sort order rather than containment: `[1,10)` sorting before `[3,5)` says nothing
-  about one holding the other.
+  A sort order: `[1, 10)` sorts before `[3, 5)` though it holds it.
   """
   @spec compare(t(), t()) :: :lt | :eq | :gt
   def compare(%__MODULE__{} = left, %__MODULE__{} = right) do
@@ -204,25 +202,25 @@ defmodule Ash.Range do
   @type allen :: unquote(Enum.reduce(Enum.reverse(@allen), &{:|, [], [&1, &2]}))
 
   @doc """
-  Every relation `relation/2` can answer, in Allen's canonical order.
+  The thirteen relations `relation/2` returns, in Allen's order: from `left` furthest
+  before `right` to furthest after. Their positions can index a thirteen-bit mask.
 
-  Sorted by how far `left` begins before `right`, then by how far it ends before, with
-  `equals` at the centre and each relation the converse of its mirror. A set of
-  relations is conventionally a thirteen-bit mask, so these are the bit positions.
+      iex> Ash.Range.relations()
+      [:precedes, :meets, :overlaps, :finished_by, :contains, :starts, :equals, :started_by,
+       :during, :finishes, :overlapped_by, :met_by, :preceded_by]
   """
   @spec relations() :: [allen()]
   def relations, do: @allen
 
   @doc """
-  Which of Allen's thirteen relations `left` bears to `right`, or `nil` if either is empty.
+  Which of Allen's thirteen relations `left` has to `right`, or `nil` if either is empty.
+  Exactly one holds for two non-empty ranges.
 
-  Exactly one holds for any pair of non-empty ranges, so the answer classifies rather
-  than tests. An empty range has no relation to anything: it precedes nothing and is
-  during nothing, having no points to be positioned by.
+  `[1, 5)` meets `[5, 9)`: one ends where the other begins, and exactly one includes that
+  value. `[1, 5]` overlaps `[5, 9)`, and `[1, 5)` precedes `(5, 9)`.
 
-  Two ranges *meet* when one ends where the other begins and exactly one of them
-  includes that point — `[1,5)` meets `[5,9)`, where `[1,5]` overlaps it and `(5,9)`
-  merely follows it. Matches Postgres `-|-`.
+      iex> Ash.Range.relation(%Ash.Range{lower: 1, upper: 5}, %Ash.Range{lower: 5, upper: 9})
+      :meets
   """
   @spec relation(t(), t()) :: allen() | nil
   def relation(%__MODULE__{} = left, %__MODULE__{} = right) do
@@ -239,19 +237,15 @@ defmodule Ash.Range do
   end
 
   @doc """
-  Whether two ranges are adjacent: one ends exactly where the other begins, with no
-  point between them and none shared.
+  Whether one range meets the other, in either order: `[1, 5)` and `[5, 9)` are adjacent,
+  `[1, 5]` and `[5, 9)` share 5, and `[1, 5)` and `(5, 9)` leave it out. An empty range is
+  adjacent to nothing.
 
-  The seam counts only when exactly one side includes it, so `[1,5)` is adjacent to
-  `[5,9)`, where `[1,5]` overlaps it and `(5,9)` leaves a gap. Symmetric, unlike
-  Allen's *meets*, which is directional. An empty range is adjacent to nothing.
+  Consecutive ranges, each meeting the next, hold every value from the first lower bound
+  to the last upper bound once.
 
-  Adjacency is what lets a series of ranges tile: each meets the next, covering
-  everything between the first lower bound and the last upper without overlapping.
-
-  For a discrete inner type this is a question about the canonical form — `[1,4]` and
-  `[5,9)` are adjacent as integers but not as decimals — so compare values that have
-  been through `Ash.Type.Range`, which canonicalises them. Matches Postgres `-|-`.
+  Compare ranges cast by `Ash.Type.Range`: as integers, `[1, 4]` and `[5, 9)` are adjacent,
+  since `[1, 4]` is cast to `[1, 5)`.
   """
   @spec adjacent?(t(), t()) :: boolean()
   def adjacent?(%__MODULE__{} = left, %__MODULE__{} = right) do
@@ -274,7 +268,7 @@ defmodule Ash.Range do
   defp allen(:gt, :gt, _, _), do: :overlapped_by
 
   # Where `left` ends against where `right` begins: `:lt` a gap, `:eq` meets, `:gt` shares
-  # a point. An unbounded end reaches past every bound, so it always shares.
+  # a value. An unbounded end reaches past every bound, so it always shares.
   defp seam(%__MODULE__{upper: nil}, _right), do: :gt
   defp seam(_left, %__MODULE__{lower: nil}), do: :gt
 

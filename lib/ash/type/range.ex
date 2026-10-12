@@ -11,13 +11,14 @@ defmodule Ash.Type.Range do
     inner_type: [
       type: {:custom, __MODULE__, :validate_inner_type, []},
       required: true,
-      doc:
-        "The type of the range's bounds. One of #{inspect(@inner_types)}, or a `Ash.Type.NewType` of one of them, like `:utc_datetime_usec`."
+      doc: """
+      The type of the range's values: one of `:integer`, `:date`, `:naive_datetime` or `:datetime`, or an `Ash.Type.NewType` of one, such as `:utc_datetime_usec`. Values are ordered the same way in Elixir and in the data layer. Each has a precision: see Inner types, above.
+      """
     ],
     inner_constraints: [
       type: :keyword_list,
       default: [],
-      doc: "Constraints applied to each bound, passed through to the inner type."
+      doc: "Constraints of the inner type, applied to each bound, limit and anchor."
     ],
     lower: [
       type: :keyword_list,
@@ -26,19 +27,23 @@ defmodule Ash.Type.Range do
         required?: [
           type: :boolean,
           default: false,
-          doc: "The range must have a lower bound."
+          doc: "The range must not be unbounded below."
         ],
         inclusive?: [
           type: :boolean,
-          doc:
-            "The lower bound, where there is one, must include its own value. A range of integers or dates, or with a resolution, is cast to `[)`, so only `true` is allowed."
+          doc: """
+          `true` requires an inclusive lower bound, `false` an exclusive one. A range unbounded below passes either. An `:integer` or `:date` range, or one with a `resolution`, is cast to `[)`, so only `true` is allowed.
+          """
         ],
         limit: [
           type: :any,
-          doc: "The least value the range may start at. With a resolution, a period boundary."
+          doc: """
+          The least value the lower bound may take: `limit: ~D[2025-07-01]` keeps a range from starting before 1 July 2025. The range cannot then be unbounded below. Written as the lower bound, `:start` is this limit, or unbounded without one, so `[:start, :end)` is every value between the limits. With a `resolution`, it must be on the grid.
+          """
         ]
       ],
-      doc: "Constraints on the range's lower bound."
+      doc:
+        "Constraints on the range's lower bound, which is `nil` when the range is unbounded below."
     ],
     upper: [
       type: :keyword_list,
@@ -47,71 +52,73 @@ defmodule Ash.Type.Range do
         required?: [
           type: :boolean,
           default: false,
-          doc: "The range must have an upper bound."
+          doc: "The range must not be unbounded above."
         ],
         inclusive?: [
           type: :boolean,
-          doc:
-            "The upper bound, where there is one, must include its own value. A range of integers or dates, or with a resolution, is cast to `[)`, so only `false` is allowed."
+          doc: """
+          `true` requires an inclusive upper bound, `false` an exclusive one. A range unbounded above passes either. An `:integer` or `:date` range, or one with a `resolution`, is cast to `[)`, so only `false` is allowed.
+          """
         ],
         limit: [
           type: :any,
-          doc: "The greatest value the range may end at. With a resolution, a period boundary."
+          doc: """
+          The greatest value the upper bound may take: `limit: ~D[2026-07-01]` keeps a range from ending after 1 July 2026. An inclusive upper bound must be below it. The range cannot then be unbounded above. Written as the upper bound, `:end` is this limit, or unbounded without one. With a `resolution`, it must be on the grid.
+          """
         ]
       ],
-      doc: "Constraints on the range's upper bound."
+      doc:
+        "Constraints on the range's upper bound, which is `nil` when the range is unbounded above."
     ],
     allow_empty?: [
       type: :boolean,
       default: false,
-      doc: "If false, a range containing no points is refused."
+      doc: "Allow an empty range, one holding no values (see `Ash.Range.empty/0`)."
     ],
     resolution: [
       type: :any,
-      doc:
-        "The span of the range's periods: a positive `Duration`, or a positive integer for an integer range. It is a whole number of the inner type's precision, and is in months and years, or in weeks and finer, not both."
+      doc: """
+      The length of a period: a positive `Duration`, or a positive integer for an `:integer` range. `Duration.new!(week: 2)` divides a `:date` range into fortnights. It is a whole number of the precision, in months and years or in weeks and shorter, not both.
+
+      The periods' boundaries are the grid, and the range's bounds and limits must be on it. A range with a resolution is cast to `[)`. Without one, a period is one unit of the precision.
+      """
     ],
     anchor: [
       type: :any,
-      doc:
-        "A value aligning the resolution's periods, within the limits or not. Required for a resolution in months or years, and then on the 28th of a month or earlier. A `DateTime` in a time zone aligns periods of a day or longer to its time of day in that zone."
+      doc: """
+      A value on the grid, aligning the periods, within the limits or not: `~D[2025-06-23]` starts fortnights on that Monday. Without one, the grid starts at `0` or at `0001-01-01T00:00:00Z`, so weeks start on Monday. Required for a resolution in months or years, on the 28th of a month or earlier.
+
+      A `DateTime` in a time zone aligns periods of a day or longer to its time of day in that zone, so a day is 23, 24 or 25 hours long. Its time of day must fall in no gap or overlap of the zone.
+      """
     ]
   ]
 
   @moduledoc """
-  A continuous range of values of an inner type — the value type for temporal
-  period columns (e.g `valid_at`).
+  A range of values of an inner type, held as an `Ash.Range`.
 
-  Parametrized by its inner type via constraints (one of `:date`, `:integer`,
-  `:naive_datetime`, `:datetime`):
+      attribute :stay, Ash.Type.Range, constraints: [inner_type: :date]
 
-      attribute :valid_at, Ash.Type.Range, constraints: [inner_type: :datetime]
+  ### Inner types
 
-  A range with a `resolution` has periods of that span, aligned by its `anchor`, within its
-  limits or not. Its bounds and limits are period boundaries, and it casts to its one `[)`
-  form, so `[a, b]` is `[a, b + resolution)`. Without an anchor below months, the grid runs from
-  `0001-01-01T00:00:00Z`: minutes and hours follow the UTC clock, and weeks start on Monday.
-  An anchor in a time zone aligns periods of a day or longer to its time of day in that
-  zone, so a day is 23, 24 or 25 hours long, and the anchor's time of day must fall in no
-  gap or overlap of the zone.
+  | inner type | precision | `resolution` | without a `resolution` |
+  | --- | --- | --- | --- |
+  | `:integer` | `1` | a positive integer | cast to `[)` |
+  | `:date` | a day | a `Duration` of days or longer | cast to `[)` |
+  | `:naive_datetime` | a second | a `Duration` | kept as given |
+  | `:datetime` | a second, or a microsecond with `precision: :microsecond` | a `Duration` | kept as given |
 
-      attribute :pay_period, Ash.Type.Range,
-        constraints: [
-          inner_type: :date,
-          resolution: Duration.new!(week: 2),
-          anchor: ~D[2025-06-23]
-        ]
-
-  A lower bound written `:start` is the range's lower limit, and an upper bound written
-  `:end` its upper limit, each unbounded where the range has none.
-
-  Casts to/from an `Ash.Range` struct. The data layer maps it to a native range
-  type — `ash_postgres` renders `:datetime` as `tstzrange`, `:date` as
-  `daterange`, `:naive_datetime` as `tsrange`, `:integer` as `int8range`.
+  The precision is the smallest difference between two values. Cast to inclusive-exclusive,
+  `[)`, `[1, 3]` becomes `[1, 4)`; kept as given, `(a, b]` stays `(a, b]`. With a
+  `resolution`, every range is cast to `[)`.
 
   ### Constraints
 
   #{Spark.Options.docs(@constraints)}
+
+  ### PostgreSQL
+
+  `ash_postgres` stores a range as a native range: `:integer` as `int8range`, `:date` as
+  `daterange`, `:naive_datetime` as `tsrange` and `:datetime` as `tstzrange`.
   """
 
   use Ash.Type
@@ -122,9 +129,7 @@ defmodule Ash.Type.Range do
   def constraints, do: @constraints
 
   @impl true
-  # Generate a non-empty `[)` range by drawing two values of the inner type and
-  # ordering them. (Note: for a resource's temporal *period* attribute, generators
-  # skip this and derive the period from `as_of` instead — see `Ash.Generator`.)
+  # A temporal period is generated from `as_of` by `Ash.Generator`, not here.
   def generator(constraints) do
     inner = Ash.Type.generator(constraints[:inner_type], constraints[:inner_constraints] || [])
 
@@ -151,7 +156,7 @@ defmodule Ash.Type.Range do
     end
   end
 
-  @doc "The type a range's bounds are built from, looking through any `Ash.Type.NewType`."
+  @doc "The inner type, looking through any `Ash.Type.NewType`."
   @spec base_type(Ash.Type.t()) :: Ash.Type.t()
   def base_type(type) do
     type = Ash.Type.get_type(type)
@@ -164,16 +169,16 @@ defmodule Ash.Type.Range do
   end
 
   @doc """
-  The period of the range's resolution holding `value`: `[start, start + resolution)`.
+  Returns the period containing `value`. Takes constraints from `Ash.Type.init/2`.
 
-  The value is cast by the inner type first. With a `resolution`, the period starts at the
-  grid point at or before the value. Without one it starts at the value, and is one unit of
-  the inner type's precision long: one for an integer, a day for a date, and for a datetime
-  a second or a microsecond by its `precision`. Takes initialised constraints.
-
-      iex> {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :date)
-      iex> Ash.Type.Range.period(~D[2026-10-07], constraints)
-      {:ok, %Ash.Range{lower: ~D[2026-10-07], upper: ~D[2026-10-08], bounds: :"[)"}}
+      iex> {:ok, constraints} =
+      ...>   Ash.Type.init(Ash.Type.Range,
+      ...>     inner_type: :date,
+      ...>     resolution: Duration.new!(week: 2),
+      ...>     anchor: ~D[2025-06-23]
+      ...>   )
+      iex> Ash.Type.Range.period(~D[2025-06-25], constraints)
+      {:ok, %Ash.Range{lower: ~D[2025-06-23], upper: ~D[2025-07-07], bounds: :"[)"}}
   """
   @spec period(term(), Keyword.t()) :: {:ok, Range.t()} | {:error, String.t()}
   def period(value, constraints) do
@@ -188,8 +193,8 @@ defmodule Ash.Type.Range do
   end
 
   @doc """
-  The span of the range's periods: its `resolution`, or one unit of the inner type's
-  precision where it declares none. Takes initialised constraints.
+  Returns the length of a period: the `resolution`, or one unit of the precision without
+  one. Takes constraints from `Ash.Type.init/2`.
 
       iex> {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :utc_datetime)
       iex> Ash.Type.Range.resolution(constraints)
@@ -368,7 +373,7 @@ defmodule Ash.Type.Range do
        do: time
   end
 
-  # An anchor sets where the grid's periods start, so casting it must not move it.
+  # An anchor aligns the grid, so its cast must not move it.
   defp held_as_given?(%DateTime{} = given, %DateTime{} = cast),
     do: given.time_zone == cast.time_zone and DateTime.compare(given, cast) == :eq
 
@@ -409,9 +414,7 @@ defmodule Ash.Type.Range do
   defp put_present(constraints, key, value), do: Keyword.put(constraints, key, value)
 
   @impl true
-  # Logical storage type. The concrete native range type (e.g. Postgres
-  # `tstzrange`/`daterange`) is chosen by the data layer (see
-  # `AshPostgres.SqlImplementation`/migration generator), not core.
+  # The data layer chooses the native range type.
   def storage_type(_constraints), do: :range
 
   @impl true
@@ -530,13 +533,12 @@ defmodule Ash.Type.Range do
          range = canonicalize(%{range | lower: lower, upper: upper}, constraints),
          :ok <- check_bound(:lower, range, constraints[:lower] || [], constraints),
          :ok <- check_bound(:upper, range, constraints[:upper] || [], constraints) do
-      # Canonicalizing can empty a range, so the empty rule is applied to the result.
+      # The cast to `[)` can empty a range.
       if range.empty?, do: do_apply_constraints(range, constraints), else: {:ok, range}
     end
   end
 
-  # Each end on its own terms: there if required or limited, of the asked-for inclusivity
-  # if there, on the grid, and within its limit. An unbounded end runs past any limit.
+  # An unbounded end passes any limit, so a limit requires a bound.
   defp check_bound(end_name, range, bound_constraints, constraints) do
     value = Map.fetch!(range, end_name)
     inclusive? = inclusive?(end_name, range.bounds)
@@ -569,7 +571,7 @@ defmodule Ash.Type.Range do
     end
   end
 
-  # The limits bound a `[)` window: from the lower limit, up to the upper limit excluded.
+  # Between the limits is `[lower limit, upper limit)`.
   defp within_limit?(_end_name, _value, _inclusive?, nil), do: true
   defp within_limit?(:lower, value, _inclusive?, limit), do: Comp.compare(value, limit) != :lt
   defp within_limit?(:upper, value, false, limit), do: Comp.compare(value, limit) != :gt
@@ -584,13 +586,10 @@ defmodule Ash.Type.Range do
   defp inclusivity_name(true), do: "inclusive"
   defp inclusivity_name(false), do: "exclusive"
 
-  # Every range containing no points is the same range, so they cast to one value with
-  # no bounds, as Postgres does, letting a data layer that keeps no bounds for an empty
-  # range read one back. An inverted range is invalid rather than empty, so it is left.
+  # Every empty range casts to `empty/0`, as in PostgreSQL; an inverted range is invalid.
   defp canonicalize(%Range{empty?: true}, _constraints), do: Range.empty()
 
-  # The discrete shift can both hide and create emptiness, so both sides are tested. An
-  # inverted range is empty by neither, and falls through to check_order/2.
+  # The cast to `[)` can hide or create emptiness, so both forms are tested.
   defp canonicalize(%Range{} = range, constraints) do
     if empty_bounds?(range) do
       Range.empty()
@@ -609,9 +608,7 @@ defmodule Ash.Type.Range do
 
   defp empty_bounds?(%Range{}), do: false
 
-  # A discrete type has a successor, so every range over it has one `[)` spelling: an
-  # exclusive lower and an inclusive upper each move on to the next value, and an
-  # unbounded end is exclusive. A continuous type has none, so is left as written.
+  # A discrete range is cast to `[)`; a continuous range is kept as written.
   defp discrete_bounds(%Range{lower: lower, upper: upper} = range, constraints)
        when not is_nil(lower) and not is_nil(upper) do
     # Shifting an inverted range would answer a cast with one it did not describe.
@@ -620,7 +617,7 @@ defmodule Ash.Type.Range do
 
   defp discrete_bounds(%Range{} = range, constraints), do: shift_bounds(range, constraints)
 
-  # Integers and dates are discrete by their precision; any inner type is on a resolution.
+  # Integers and dates are discrete, and so is any range with a resolution.
   defp discrete?(constraints) do
     not is_nil(constraints[:resolution]) or
       base_type(constraints[:inner_type]) in [Ash.Type.Integer, Ash.Type.Date]
@@ -689,7 +686,7 @@ defmodule Ash.Type.Range do
       else: add_microseconds(value, microseconds(step))
   end
 
-  # Without an anchor, the grid runs from the start of the first year.
+  # Without an anchor, the grid starts at 0 or 0001-01-01.
   defp anchor(constraints) do
     constraints[:anchor] ||
       case base_type(constraints[:inner_type]) do
@@ -700,8 +697,7 @@ defmodule Ash.Type.Range do
       end
   end
 
-  # Grid points are counted from the anchor, never stepped from each other, since a month
-  # step from a month's end shortens the next.
+  # Counted from the anchor, not from each other, so a month grid keeps its day.
   defp floor_to_grid(value, constraints) do
     resolution = constraints[:resolution]
     anchor = anchor(constraints)
@@ -730,7 +726,7 @@ defmodule Ash.Type.Range do
     normalise(point, constraints)
   end
 
-  # A grid of a day or longer through a zoned anchor steps on the zone's wall clock.
+  # A zoned anchor's grid of a day or longer counts on the zone's wall clock.
   defp wall_zone(constraints) do
     case {constraints[:anchor], constraints[:resolution]} do
       {%DateTime{time_zone: zone}, %Duration{} = resolution} when zone != "Etc/UTC" ->

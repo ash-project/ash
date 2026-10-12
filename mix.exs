@@ -290,6 +290,7 @@ defmodule Ash.MixProject do
           Ash.CiString,
           Ash.Vector,
           Ash.Union,
+          Ash.Range,
           Ash.UUID,
           Ash.UUIDv7,
           Ash.NotLoaded,
