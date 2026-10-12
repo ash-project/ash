@@ -1196,7 +1196,11 @@ defmodule Ash.Actions.Read do
 
       if needs_count? do
         related_query =
-          Ash.Query.unset(related_query, [
+          related_query
+          |> Ash.Query.set_context(%{
+            accessing_from: %{source: relationship.source, name: relationship.name}
+          })
+          |> Ash.Query.unset([
             :sort,
             :distinct,
             :distinct_sort,
