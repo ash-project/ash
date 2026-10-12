@@ -16,16 +16,28 @@ defmodule Ash.Signals.Transformers.DefineStructs do
 
     dsl_state
     |> Transformer.get_entities([:signals])
-    |> Enum.reduce({:ok, dsl_state}, fn signal, {:ok, dsl_state} ->
-      struct = Module.concat(module, Macro.camelize(to_string(signal.name)))
-      signal = %{signal | struct: struct}
+    |> Enum.reduce_while({:ok, dsl_state}, fn signal, {:ok, dsl_state} ->
+      if field = Enum.find(signal.arguments, &(&1.name == :signal_id)) do
+        {:halt,
+         {:error,
+          Spark.Error.DslError.exception(
+            module: module,
+            path: [:signals, :signal, signal.name, :argument, :signal_id],
+            location: Spark.Dsl.Entity.anno(field),
+            message:
+              "`signal_id` is reserved: every signal has a `signal_id`, generated when it is emitted."
+          )}}
+      else
+        struct = Module.concat(module, Macro.camelize(to_string(signal.name)))
+        signal = %{signal | struct: struct}
 
-      dsl_state =
-        dsl_state
-        |> Transformer.replace_entity([:signals], signal, &(&1.name == signal.name))
-        |> Transformer.eval([], define_struct(struct, signal.arguments, signal))
+        dsl_state =
+          dsl_state
+          |> Transformer.replace_entity([:signals], signal, &(&1.name == signal.name))
+          |> Transformer.eval([], define_struct(struct, signal.arguments, signal))
 
-      {:ok, dsl_state}
+        {:cont, {:ok, dsl_state}}
+      end
     end)
   end
 
@@ -67,6 +79,10 @@ defmodule Ash.Signals.Transformers.DefineStructs do
         use Ash.TypedStruct
 
         typed_struct do
+          field :signal_id, :uuid_v7,
+            allow_nil?: false,
+            description: "Identifies the signal. Generated when the signal is emitted."
+
           (unquote_splicing(fields))
         end
       end

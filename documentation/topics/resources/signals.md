@@ -26,9 +26,11 @@ listens at all. Needing a value back from a listener is a sign that a signal is 
 ## Signals vs. notifiers
 
 [Notifiers](/documentation/topics/resources/notifiers.md) run after the transaction commits, and
-are for "at most once" side effects like publishing to PubSub. Listeners of a signal run as
-nested actions, during the phase the signal declares, usually inside the emitter's transaction.
-If a listener fails, the emitting action fails, and its changes are rolled back.
+are for "at most once" side effects like publishing to PubSub. With the default delivery,
+listeners of a signal run as nested actions, during the phase the signal declares, usually inside
+the emitter's transaction. If a listener fails, the emitting action fails, and its changes are
+rolled back. Signals can also use other deliveries, for example to run listeners in jobs. See
+[Delivery](#delivery).
 
 ## Declaring signals
 
@@ -51,12 +53,13 @@ end
 ```
 
 Each signal defines a struct for its arguments, `MyApp.Shop.Signals.OrderPlaced`, which is what
-listeners receive.
+listeners receive. Every signal struct also has a `signal_id`, a UUIDv7 generated when the signal
+is emitted, so `signal_id` can't be used as an argument name.
 
 A signal's `phase` is when it is emitted: `:before_action`, `:after_action`, or
-`:after_transaction`. It tells listeners whether they run inside the emitter's transaction, before
-or after its data layer action. See the [Signals DSL documentation](/documentation/dsls/DSL-Ash.Signals.md)
-for every option.
+`:after_transaction`. Its `delivery` is how it reaches its listeners, which by default is by
+running them immediately, during that phase. See [Delivery](#delivery), and the
+[Signals DSL documentation](/documentation/dsls/DSL-Ash.Signals.md) for every option.
 
 ## Emitting signals
 
@@ -153,15 +156,35 @@ end)
 ```
 
 Listeners run as the emitting action's actor, with its tenant and `authorize?`. Pass `:actor`,
-`:tenant`, `:authorize?`, `:context`, or a `:scope` to `emit/5` to change them.
+`:tenant`, `:authorize?`, `:context`, or a `:scope` to `emit/5` to change them. Include a
+`signal_id` in the payload to set it yourself, for example to emit the same signal again.
 
 ## Listening to signals
 
-Resources listen to signals in their `signals_in` section, with one of their own actions:
+Resources listen to signals in their `signals_in` section. Each listener has a name, and runs the
+action with that name, unless it sets `action`:
 
 ```elixir
 signals_in do
-  on MyApp.Shop.Signals, :order_placed, :award_points
+  from MyApp.Shop.Signals do
+    on :award_points, :order_placed
+    on :notify_sales, :order_placed, action: :notify
+  end
+end
+```
+
+Listener names are unique within a resource, so the same action can listen to a signal more than
+once, for example with different `inputs`:
+
+```elixir
+from MyApp.Shop.Signals do
+  on :record_buyer_entry, :order_placed,
+    action: :record_entry,
+    inputs: [account_id: :customer_id]
+
+  on :record_seller_entry, :order_placed,
+    action: :record_entry,
+    inputs: [account_id: :seller_id]
 end
 ```
 
@@ -173,7 +196,9 @@ A generic action receives the signal struct as its `signal` argument:
 
 ```elixir
 signals_in do
-  on MyApp.Shop.Signals, :order_placed, :notify_warehouse
+  from MyApp.Shop.Signals do
+    on :notify_warehouse, :order_placed
+  end
 end
 
 actions do
@@ -188,7 +213,7 @@ With `batch?: true`, it is called once with every signal emitted together, as it
 argument:
 
 ```elixir
-on MyApp.Shop.Signals, :order_placed, :notify_warehouse, batch?: true
+on :notify_warehouse, :order_placed, batch?: true
 
 action :notify_warehouse do
   argument :signals, {:array, MyApp.Shop.Signals.OrderPlaced}, allow_nil?: false
@@ -199,15 +224,18 @@ end
 ### Create actions
 
 A create action creates a record for each signal, with its inputs taken from the signal fields of
-the same name. Use `inputs` to map them, as `input: :signal_field`:
+the same name, except `signal_id`. Use `inputs` to map them, as `input: :signal_field`:
 
 ```elixir
-signals_in do
+from MyApp.Shop.Signals do
   # sets `order_id` and `customer_id` from the signal
-  on MyApp.Shop.Signals, :order_placed, :create
+  on :record_order, :order_placed, action: :create
 
   # sets `reference` from the signal's `order_id`
-  on MyApp.Shop.Signals, :order_placed, :open_task, inputs: [reference: :order_id]
+  on :open_task, :order_placed, inputs: [reference: :order_id]
+
+  # records which signal created the record
+  on :log, :order_placed, inputs: [:order_id, source_signal_id: :signal_id]
 end
 ```
 
@@ -219,12 +247,9 @@ and `get_by` to select records whose fields equal fields of the signal. They can
 together:
 
 ```elixir
-signals_in do
-  on MyApp.Shop.Signals, :order_placed, :mark_ordered,
-    read_action: :active,
-    get_by: [id: :customer_id]
-
-  on MyApp.Shop.Signals, :order_placed, :clear, read_action: :for_customer, args: [:customer_id]
+from MyApp.Shop.Signals do
+  on :mark_ordered, :order_placed, read_action: :active, get_by: [id: :customer_id]
+  on :clear, :order_placed, read_action: :for_customer, args: [:customer_id]
 end
 ```
 
@@ -236,16 +261,36 @@ Filter in the read action to only react to some signals.
 Create, update and destroy listeners always handle the signals emitted together as bulk actions.
 Update and destroy listeners run one bulk action for each distinct set of `args` and `inputs`.
 
-## Transactions and errors
+## Delivery
 
-Listeners run immediately, as nested actions, with each listener handling every signal before
-the next listener runs. During `:before_action` and `:after_action`, they run inside the
-emitter's transaction: if a listener fails, the emitting action fails and is rolled back.
+A signal's `delivery` decides how it reaches its listeners. Because it's part of the signal, the
+module that owns the signal decides, not the listeners: whether a listener can fail or slow down
+the emitting action is the emitter's concern.
+
+The default, `Ash.Signals.Delivery.Inline`, runs listeners immediately, as nested actions, with
+each listener handling every signal before the next listener runs. During `:before_action` and
+`:after_action`, they run inside the emitter's transaction: if a listener fails, the emitting
+action fails and is rolled back.
 
 Signals emitted `:after_transaction` run after the emitter's transaction has committed. If a
 listener fails, the emitting action returns its error, but its changes are not rolled back. If
 the emitting action is itself running inside another transaction, its `after_transaction` hooks
 run while that transaction is still open, and so do the listeners.
+
+Other deliveries are provided by extensions, and implement `Ash.Signals.Delivery`. For example, a
+delivery could enqueue a job for each listener during `:after_action`, so that the jobs are
+committed with the emitter's changes, and the listeners run after the transaction commits, and are
+retried when they fail:
+
+```elixir
+signal :order_status_changed do
+  phase :after_action
+  delivery MyApp.JobDelivery
+  argument :order_id, :uuid, allow_nil?: false
+end
+```
+
+Listeners don't change: they declare the same `on` whatever the delivery.
 
 ## Setup
 
@@ -307,6 +352,6 @@ calling `capture_signals/1`, for example with `setup :capture_signals`.
 
 ## Telemetry
 
-Each emitted signal fires an `[:ash, :signal, :emitted]` telemetry event, before its listeners
-run. Its metadata has the `:signal_module`, the signal's `:name`, the `:signal` struct, the
+Each emitted signal fires an `[:ash, :signal, :emitted]` telemetry event, before it is
+delivered. Its metadata has the `:signal_module`, the signal's `:name`, the `:signal` struct, the
 emitting `:resource` and `:action`, and the `:actor` and `:tenant` the listeners run with.

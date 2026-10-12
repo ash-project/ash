@@ -219,7 +219,9 @@ defmodule Ash.MixProject do
           Ash.Resource.ManualDestroy,
           Ash.Resource.ManualRelationship,
           Ash.Domain,
-          Ash.Signals
+          Ash.Signals,
+          Ash.Signals.Delivery,
+          Ash.Signals.Delivery.Inline
         ],
         Queries: [
           Ash.Query,

@@ -593,7 +593,16 @@ defmodule Ash.Resource.Info do
   @doc "Returns the signal listeners of a resource"
   @spec signal_listeners(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.SignalListener.t()]
   def signal_listeners(resource) do
-    Extension.get_entities(resource, [:signals_in])
+    Extension.get_persisted(resource, :signal_listeners, [])
+  end
+
+  @doc "Returns the signal listener of a resource with the given name, or `nil`."
+  @spec signal_listener(Spark.Dsl.t() | Ash.Resource.t(), atom()) ::
+          Ash.Resource.SignalListener.t() | nil
+  def signal_listener(resource, name) do
+    resource
+    |> signal_listeners()
+    |> Enum.find(&(&1.name == name))
   end
 
   @doc "Returns all pipelines of a resource"

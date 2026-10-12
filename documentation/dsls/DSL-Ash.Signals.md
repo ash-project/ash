@@ -63,6 +63,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`phase`](#signals-signal-phase){: #signals-signal-phase .spark-required} | `:before_action \| :after_action \| :after_transaction` |  | The phase of the emitting action during which the signal may be emitted. |
+| [`delivery`](#signals-signal-delivery){: #signals-signal-delivery } | `module` | `{Ash.Signals.Delivery.Inline, []}` | How the signal is delivered to its listeners. Defaults to `Ash.Signals.Delivery.Inline`, which runs them immediately, during the signal's phase. See `Ash.Signals.Delivery`. |
 | [`description`](#signals-signal-description){: #signals-signal-description } | `String.t` |  | A description of the signal. |
 
 

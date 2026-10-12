@@ -16,9 +16,23 @@ defmodule Ash.Resource.Verifiers.VerifySignalListeners do
   def verify(dsl_state) do
     module = Verifier.get_persisted(dsl_state, :module)
 
-    dsl_state
-    |> Verifier.get_entities([:signals_in])
-    |> Enum.each(&verify_listener(&1, module, dsl_state))
+    listeners = Verifier.get_persisted(dsl_state, :signal_listeners, [])
+
+    listeners
+    |> Enum.group_by(& &1.name)
+    |> Enum.each(fn
+      {_, [_]} ->
+        :ok
+
+      {name, [_ | duplicates]} ->
+        raise_error(
+          List.last(duplicates),
+          module,
+          "There is already a listener named `#{inspect(name)}`. Listener names must be unique within a resource."
+        )
+    end)
+
+    Enum.each(listeners, &verify_listener(&1, module, dsl_state))
 
     :ok
   end
@@ -44,14 +58,29 @@ defmodule Ash.Resource.Verifiers.VerifySignalListeners do
 
     action =
       Ash.Resource.Info.action(dsl_state, listener.action) ||
-        raise_error(listener, module, "No action named `#{inspect(listener.action)}`.")
+        raise_error(
+          listener,
+          module,
+          "No action named `#{inspect(listener.action)}`.#{if listener.action == listener.name, do: " The action defaults to the listener's name: set `action` to run a different one."}"
+        )
 
-    signal_fields = Enum.map(signal.arguments, & &1.name)
+    signal_fields = [:signal_id | Enum.map(signal.arguments, & &1.name)]
 
     case action.type do
       :action -> verify_generic(listener, module, action, signal)
       :read -> raise_error(listener, module, "Signal listeners cannot be read actions.")
       _ -> verify_bulk(listener, module, action, signal_fields, dsl_state)
+    end
+
+    verify_delivery(listener, module, signal, dsl_state)
+  end
+
+  defp verify_delivery(listener, module, %{delivery: {delivery, opts}} = signal, dsl_state) do
+    if Code.ensure_loaded?(delivery) && function_exported?(delivery, :verify_listener, 4) do
+      case delivery.verify_listener(listener, signal, opts, dsl_state) do
+        :ok -> :ok
+        {:error, message} -> raise_error(listener, module, message)
+      end
     end
   end
 
@@ -199,7 +228,7 @@ defmodule Ash.Resource.Verifiers.VerifySignalListeners do
   defp raise_error(listener, module, message) do
     raise DslError,
       module: module,
-      path: [:signals_in, :on, listener.signal],
+      path: [:signals_in, :from, listener.signal_module, :on, listener.name],
       location: Entity.anno(listener),
       message: message
   end

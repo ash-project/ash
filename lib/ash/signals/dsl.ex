@@ -32,6 +32,7 @@ defmodule Ash.Signals.Dsl do
     ],
     target: Ash.Signals.Signal,
     schema: Ash.Signals.Signal.schema(),
+    no_depend_modules: [:delivery],
     entities: [
       arguments: [@argument]
     ],
@@ -56,5 +57,6 @@ defmodule Ash.Signals.Dsl do
 
   use Spark.Dsl.Extension,
     sections: [@signals],
-    transformers: [Ash.Signals.Transformers.DefineStructs]
+    transformers: [Ash.Signals.Transformers.DefineStructs],
+    verifiers: [Ash.Signals.Verifiers.VerifyDelivery]
 end

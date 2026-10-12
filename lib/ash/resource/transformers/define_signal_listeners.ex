@@ -4,7 +4,8 @@
 
 defmodule Ash.Resource.Transformers.DefineSignalListeners do
   @moduledoc false
-  # Resolves each listener's resource, action type and defaults, and defines an
+  # Flattens the listeners in each `from`, resolves their resource, signal module, action and
+  # defaults, persists them as `:signal_listeners`, and defines an
   # `Ash.Signals.Listeners.<Resource>` module returning them, which is how `Ash.Signals.Registry`
   # finds listeners.
   use Spark.Dsl.Transformer
@@ -12,33 +13,29 @@ defmodule Ash.Resource.Transformers.DefineSignalListeners do
   alias Spark.Dsl.Transformer
 
   def transform(dsl_state) do
-    case Transformer.get_entities(dsl_state, [:signals_in]) do
+    resource = Transformer.get_persisted(dsl_state, :module)
+
+    listeners =
+      for source <- Transformer.get_entities(dsl_state, [:signals_in]),
+          listener <- source.listeners do
+        resolve(%{listener | signal_module: source.signal_module}, resource, dsl_state)
+      end
+
+    dsl_state = Transformer.persist(dsl_state, :signal_listeners, listeners)
+
+    case listeners do
       [] ->
         {:ok, dsl_state}
 
       listeners ->
-        resource = Transformer.get_persisted(dsl_state, :module)
-
-        dsl_state =
-          Enum.reduce(listeners, dsl_state, fn listener, dsl_state ->
-            Transformer.replace_entity(
-              dsl_state,
-              [:signals_in],
-              resolve(listener, resource, dsl_state),
-              &(&1 == listener)
-            )
-          end)
-
-        listeners =
-          dsl_state
-          |> Transformer.get_entities([:signals_in])
-          |> Enum.map(&%{&1 | __spark_metadata__: nil})
-
+        listeners = Enum.map(listeners, &%{&1 | __spark_metadata__: nil})
         {:ok, Transformer.eval(dsl_state, [], define_listener_module(resource, listeners))}
     end
   end
 
   defp resolve(listener, resource, dsl_state) do
+    listener = %{listener | action: listener.action || listener.name}
+
     action_type =
       case Ash.Resource.Info.action(dsl_state, listener.action) do
         %{type: type} -> type

@@ -61,7 +61,8 @@ defmodule Ash.Signals.Registry do
   end
 
   # Loaded modules and `.beam` files on the code path whose names start with `namespace.`,
-  # sorted.
+  # sorted. The atoms are names of modules compiled onto the code path, never user input.
+  # sobelow_skip ["DOS.StringToAtom"]
   defp modules_in_namespace(namespace) do
     prefix = Atom.to_string(namespace) <> "."
 

@@ -9,6 +9,7 @@ defmodule Ash.Signals.Signal do
     :phase,
     :description,
     :struct,
+    delivery: {Ash.Signals.Delivery.Inline, []},
     arguments: [],
     __spark_metadata__: nil
   ]
@@ -18,6 +19,7 @@ defmodule Ash.Signals.Signal do
   @type t :: %__MODULE__{
           name: atom(),
           phase: phase(),
+          delivery: {module(), Keyword.t()},
           description: String.t() | nil,
           struct: module(),
           arguments: [Ash.Signals.Field.t()],
@@ -34,6 +36,14 @@ defmodule Ash.Signals.Signal do
       type: {:one_of, [:before_action, :after_action, :after_transaction]},
       required: true,
       doc: "The phase of the emitting action during which the signal may be emitted."
+    ],
+    delivery: [
+      type: {:spark_behaviour, Ash.Signals.Delivery},
+      default: {Ash.Signals.Delivery.Inline, []},
+      doc: """
+      How the signal is delivered to its listeners. Defaults to `Ash.Signals.Delivery.Inline`,
+      which runs them immediately, during the signal's phase. See `Ash.Signals.Delivery`.
+      """
     ],
     description: [
       type: :string,

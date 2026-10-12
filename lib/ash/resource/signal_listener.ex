@@ -5,6 +5,7 @@
 defmodule Ash.Resource.SignalListener do
   @moduledoc "Represents an `on` declaration in the `signals_in` section of a resource."
   defstruct [
+    :name,
     :signal_module,
     :signal,
     :action,
@@ -23,6 +24,7 @@ defmodule Ash.Resource.SignalListener do
   @type mapping :: [{atom(), atom()}]
 
   @type t :: %__MODULE__{
+          name: atom(),
           signal_module: Ash.Signals.t(),
           signal: atom(),
           action: atom(),
@@ -44,10 +46,13 @@ defmodule Ash.Resource.SignalListener do
   """
 
   @schema [
-    signal_module: [
+    name: [
       type: :atom,
       required: true,
-      doc: "The `Ash.Signals` module that declares the signal."
+      doc: """
+      The name of the listener, unique within the resource. Also the action it runs, unless
+      `action` is set.
+      """
     ],
     signal: [
       type: :atom,
@@ -56,11 +61,11 @@ defmodule Ash.Resource.SignalListener do
     ],
     action: [
       type: :atom,
-      required: true,
       doc: """
-      The action to run when the signal is emitted. A generic action receives the signal struct as
-      an argument. A create action creates a record from each signal. An update or destroy action
-      runs on the records that `read_action`, `args` and `get_by` select for each signal.
+      The action to run when the signal is emitted. Defaults to the listener's name. A generic
+      action receives the signal struct as an argument. A create action creates a record from each
+      signal. An update or destroy action runs on the records that `read_action`, `args` and
+      `get_by` select for each signal.
       """
     ],
     batch?: [

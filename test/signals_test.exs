@@ -56,6 +56,156 @@ defmodule Ash.Test.SignalsTest do
     end
   end
 
+  # records what it is asked to deliver, instead of running the listeners
+  defmodule RecordingDelivery do
+    @moduledoc false
+    @behaviour Ash.Signals.Delivery
+
+    @impl true
+    def deliver(signals, listeners, opts, context) do
+      send(self(), {:delivered, signals, listeners, opts, context})
+      if opts[:fail?], do: {:error, "delivery failed"}, else: :ok
+    end
+
+    @impl true
+    def verify_signal(%{name: :rejected}, _opts, _dsl_state),
+      do: {:error, "the delivery rejects this signal"}
+
+    def verify_signal(_signal, _opts, _dsl_state), do: :ok
+
+    @impl true
+    def verify_listener(%{action: :rejected}, _signal, _opts, _dsl_state),
+      do: {:error, "the delivery rejects this listener"}
+
+    def verify_listener(_listener, _signal, _opts, _dsl_state), do: :ok
+  end
+
+  defmodule DeliverySignals do
+    @moduledoc false
+    use Ash.Signals
+
+    signals do
+      signal :queued do
+        phase(:after_action)
+        delivery({Ash.Test.SignalsTest.RecordingDelivery, queue: :orders})
+        argument :order_id, :uuid, allow_nil?: false
+      end
+
+      signal :failing do
+        phase(:after_action)
+        delivery({Ash.Test.SignalsTest.RecordingDelivery, fail?: true})
+      end
+
+      # only for listeners that fail verification
+      signal :verified do
+        phase(:after_action)
+        delivery(Ash.Test.SignalsTest.RecordingDelivery)
+        argument :order_id, :uuid
+      end
+    end
+  end
+
+  defmodule QueuedReceipt do
+    @moduledoc false
+    use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :order_id, :uuid, public?: true
+    end
+
+    signals_in do
+      from Ash.Test.SignalsTest.DeliverySignals do
+        on(:record, :queued)
+      end
+    end
+
+    actions do
+      defaults [:read]
+
+      create :record do
+        accept [:order_id]
+      end
+    end
+  end
+
+  # listens to the same signal twice with the same action, told apart by `key`
+  defmodule LedgerEntry do
+    @moduledoc false
+    use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :account_id, :uuid, public?: true
+    end
+
+    signals_in do
+      from Ash.Test.SignalsTest.OrderSignals do
+        on(:record_for_order, :order_placed,
+          action: :record,
+          inputs: [account_id: :order_id]
+        )
+
+        on(:record_for_customer, :order_placed,
+          action: :record,
+          inputs: [account_id: :customer_id]
+        )
+      end
+    end
+
+    actions do
+      defaults [:read]
+
+      create :record do
+        accept [:account_id]
+      end
+    end
+  end
+
+  # `signal_id` is only set from the signal when it's mapped explicitly
+  defmodule SignalLog do
+    @moduledoc false
+    use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :order_id, :uuid, public?: true
+      attribute :signal_id, :uuid, public?: true
+      attribute :source_signal_id, :uuid, public?: true
+    end
+
+    signals_in do
+      from Ash.Test.SignalsTest.OrderSignals do
+        on(:log_unmapped, :order_placed)
+        on(:log_mapped, :order_placed, inputs: [:order_id, source_signal_id: :signal_id])
+      end
+    end
+
+    actions do
+      defaults [:read]
+
+      create :log_unmapped do
+        accept [:order_id, :signal_id]
+      end
+
+      create :log_mapped do
+        accept [:order_id, :source_signal_id]
+      end
+    end
+  end
+
   defmodule Receipt do
     @moduledoc false
     use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
@@ -72,7 +222,9 @@ defmodule Ash.Test.SignalsTest do
 
     # creates a receipt per signal, from the signal fields named like its inputs
     signals_in do
-      on(Ash.Test.SignalsTest.OrderSignals, :order_placed, :record)
+      from Ash.Test.SignalsTest.OrderSignals do
+        on(:record, :order_placed)
+      end
     end
 
     validations do
@@ -102,9 +254,9 @@ defmodule Ash.Test.SignalsTest do
     end
 
     signals_in do
-      on(Ash.Test.SignalsTest.OrderSignals, :order_placed, :record,
-        inputs: [reference: :order_id]
-      )
+      from Ash.Test.SignalsTest.OrderSignals do
+        on(:record, :order_placed, inputs: [reference: :order_id])
+      end
     end
 
     actions do
@@ -131,10 +283,9 @@ defmodule Ash.Test.SignalsTest do
 
     # banned customers are not marked, because the read action filters them out
     signals_in do
-      on(Ash.Test.SignalsTest.OrderSignals, :order_placed, :mark_ordered,
-        read_action: :active,
-        get_by: [id: :customer_id]
-      )
+      from Ash.Test.SignalsTest.OrderSignals do
+        on(:mark_ordered, :order_placed, read_action: :active, get_by: [id: :customer_id])
+      end
     end
 
     actions do
@@ -164,10 +315,9 @@ defmodule Ash.Test.SignalsTest do
     end
 
     signals_in do
-      on(Ash.Test.SignalsTest.OrderSignals, :order_placed, :clear,
-        read_action: :for_customer,
-        args: [:customer_id]
-      )
+      from Ash.Test.SignalsTest.OrderSignals do
+        on(:clear, :order_placed, read_action: :for_customer, args: [:customer_id])
+      end
     end
 
     actions do
@@ -187,7 +337,9 @@ defmodule Ash.Test.SignalsTest do
     use Ash.Resource, domain: Ash.Test.Domain
 
     signals_in do
-      on(Ash.Test.SignalsTest.OrderSignals, :order_placed, :log, batch?: true)
+      from Ash.Test.SignalsTest.OrderSignals do
+        on(:log, :order_placed, batch?: true)
+      end
     end
 
     actions do
@@ -349,7 +501,11 @@ defmodule Ash.Test.SignalsTest do
     use Ash.Resource,
       domain: Ash.Test.Domain,
       data_layer: Ash.DataLayer.Ets,
-      signals_out: [Ash.Test.SignalsTest.Signals, Ash.Test.SignalsTest.OrderSignals]
+      signals_out: [
+        Ash.Test.SignalsTest.Signals,
+        Ash.Test.SignalsTest.OrderSignals,
+        Ash.Test.SignalsTest.DeliverySignals
+      ]
 
     ets do
       private? true
@@ -470,7 +626,9 @@ defmodule Ash.Test.SignalsTest do
     end
 
     signals_in do
-      on(Ash.Test.SignalsTest.Signals, :post_created, :welcome)
+      from Ash.Test.SignalsTest.Signals do
+        on(:welcome, :post_created)
+      end
     end
 
     actions do
@@ -510,8 +668,10 @@ defmodule Ash.Test.SignalsTest do
     end
 
     signals_in do
-      on(Ash.Test.SignalsTest.Signals, :post_created, :add)
-      on(Ash.Test.SignalsTest.Signals, :post_archiving, :remove)
+      from Ash.Test.SignalsTest.Signals do
+        on(:add, :post_created)
+        on(:remove, :post_archiving)
+      end
     end
 
     actions do
@@ -561,11 +721,18 @@ defmodule Ash.Test.SignalsTest do
   defp comment_bodies, do: Comment |> Ash.read!() |> Enum.map(& &1.body)
 
   describe "signal modules" do
-    test "define a struct for their arguments" do
-      assert {:ok, %Signals.PostCreated{title: "hi"}} =
-               Signals.PostCreated.new(%{post_id: Ash.UUID.generate(), title: "hi"})
+    test "define a struct for their arguments, and a signal_id" do
+      signal_id = Ash.UUIDv7.generate()
 
-      assert {:error, _} = Signals.PostCreated.new(%{title: "no id"})
+      assert {:ok, %Signals.PostCreated{title: "hi", signal_id: ^signal_id}} =
+               Signals.PostCreated.new(%{
+                 signal_id: signal_id,
+                 post_id: Ash.UUID.generate(),
+                 title: "hi"
+               })
+
+      assert {:error, _} = Signals.PostCreated.new(%{signal_id: signal_id, title: "no id"})
+      assert {:error, _} = Signals.PostCreated.new(%{post_id: Ash.UUID.generate()})
     end
 
     test "listeners are found without either side depending on the other" do
@@ -1056,7 +1223,9 @@ defmodule Ash.Test.SignalsTest do
           end
 
           signals_in do
-            on Ash.Test.SignalsTest.ConsolidatedSignals, :happened, :heard
+            from Ash.Test.SignalsTest.ConsolidatedSignals do
+              on :heard, :happened
+            end
           end
 
           actions do
@@ -1098,7 +1267,9 @@ defmodule Ash.Test.SignalsTest do
         end
 
         signals_in do
-          on Ash.Test.SignalsTest.ConsolidatedSignals, :happened, :heard
+          from Ash.Test.SignalsTest.ConsolidatedSignals do
+            on :heard, :happened
+          end
         end
 
         actions do
@@ -1227,14 +1398,14 @@ defmodule Ash.Test.SignalsTest do
 
     test "batch? is only for generic actions" do
       assert compile_listener(
-               "on Ash.Test.SignalsTest.VerifySignals, :order_placed, :record, batch?: true",
+               "from Ash.Test.SignalsTest.VerifySignals do on :record, :order_placed, batch?: true end",
                "create :record, accept: [:order_id]"
              ) =~ "`batch?` is only for generic actions"
     end
 
     test "a batch listener's argument must be an array" do
       assert compile_listener(
-               "on Ash.Test.SignalsTest.VerifySignals, :order_placed, :log, batch?: true",
+               "from Ash.Test.SignalsTest.VerifySignals do on :log, :order_placed, batch?: true end",
                """
                action :log do
                  argument :signals, Ash.Test.SignalsTest.VerifySignals.OrderPlaced
@@ -1246,41 +1417,99 @@ defmodule Ash.Test.SignalsTest do
 
     test "inputs must be inputs of the action, and fields of the signal" do
       assert compile_listener(
-               "on Ash.Test.SignalsTest.VerifySignals, :order_placed, :record, inputs: [nope: :order_id]",
+               "from Ash.Test.SignalsTest.VerifySignals do on :record, :order_placed, inputs: [nope: :order_id] end",
                "create :record, accept: [:order_id]"
              ) =~ "`:nope` is not an input of `:record`"
 
       assert compile_listener(
-               "on Ash.Test.SignalsTest.VerifySignals, :order_placed, :record, inputs: [order_id: :nope]",
+               "from Ash.Test.SignalsTest.VerifySignals do on :record, :order_placed, inputs: [order_id: :nope] end",
                "create :record, accept: [:order_id]"
              ) =~ "`inputs` uses `:nope`, but signal `:order_placed` has no field with that name"
     end
 
     test "update and destroy options are checked" do
       assert compile_listener(
-               "on Ash.Test.SignalsTest.VerifySignals, :order_placed, :touch, get_by: [nope: :order_id]",
+               "from Ash.Test.SignalsTest.VerifySignals do on :touch, :order_placed, get_by: [nope: :order_id] end",
                "update :touch"
              ) =~ "`get_by` field `:nope` is not an attribute"
 
       assert compile_listener(
-               "on Ash.Test.SignalsTest.VerifySignals, :order_placed, :touch, read_action: :touch",
+               "from Ash.Test.SignalsTest.VerifySignals do on :touch, :order_placed, read_action: :touch end",
                "update :touch"
              ) =~ "`:touch` is not a read action"
 
       assert compile_listener(
-               "on Ash.Test.SignalsTest.VerifySignals, :order_placed, :touch, args: [:nope]",
+               "from Ash.Test.SignalsTest.VerifySignals do on :touch, :order_placed, args: [:nope] end",
                "update :touch"
              ) =~ "`:nope` is not an argument of the `:read` read action"
     end
 
+    test "a signal's delivery must implement Ash.Signals.Delivery, and can verify it" do
+      assert compile_warnings("""
+             defmodule Ash.Test.SignalsTest.BadDelivery#{System.unique_integer([:positive])} do
+               use Ash.Signals
+
+               signals do
+                 signal :happened do
+                   phase :after_action
+                   delivery Ash.Test.SignalsTest.Nope
+                 end
+               end
+             end
+             """) =~ "`Ash.Test.SignalsTest.Nope` does not implement `Ash.Signals.Delivery`"
+
+      assert compile_warnings("""
+             defmodule Ash.Test.SignalsTest.BadDelivery#{System.unique_integer([:positive])} do
+               use Ash.Signals
+
+               signals do
+                 signal :rejected do
+                   phase :after_action
+                   delivery Ash.Test.SignalsTest.RecordingDelivery
+                 end
+               end
+             end
+             """) =~ "the delivery rejects this signal"
+    end
+
+    test "a signal's delivery can verify its listeners" do
+      assert compile_listener(
+               "from Ash.Test.SignalsTest.DeliverySignals do on :rejected, :verified end",
+               "create :rejected, accept: [:order_id]"
+             ) =~ "the delivery rejects this listener"
+    end
+
+    test "listener names are unique within a resource" do
+      assert compile_listener(
+               """
+               from Ash.Test.SignalsTest.VerifySignals do
+                 on :record, :order_placed
+               end
+
+               from Ash.Test.SignalsTest.DeliverySignals do
+                 on :record, :verified
+               end
+               """,
+               "create :record, accept: [:order_id]"
+             ) =~ "There is already a listener named `:record`"
+    end
+
+    test "the action defaults to the listener's name" do
+      assert compile_listener(
+               "from Ash.Test.SignalsTest.VerifySignals do on :nope, :order_placed end",
+               "create :record, accept: [:order_id]"
+             ) =~
+               "No action named `:nope`. The action defaults to the listener's name: set `action` to run a different one."
+    end
+
     test "options for other action types are rejected" do
       assert compile_listener(
-               "on Ash.Test.SignalsTest.VerifySignals, :order_placed, :record, get_by: [:order_id]",
+               "from Ash.Test.SignalsTest.VerifySignals do on :record, :order_placed, get_by: [:order_id] end",
                "create :record, accept: [:order_id]"
              ) =~ "`get_by` is only for update and destroy actions"
 
       assert compile_listener(
-               "on Ash.Test.SignalsTest.VerifySignals, :order_placed, :log, inputs: [:order_id]",
+               "from Ash.Test.SignalsTest.VerifySignals do on :log, :order_placed, inputs: [:order_id] end",
                """
                action :log do
                  argument :signal, Ash.Test.SignalsTest.VerifySignals.OrderPlaced
@@ -1345,6 +1574,12 @@ defmodule Ash.Test.SignalsTest do
       assert [%{customer_id: untouched_id}] = Ash.read!(CartItem)
       assert untouched_id == customers.untouched.id
 
+      # the same action, run by two listeners with different inputs
+      customer_ids = Enum.map(orders, & &1.customer_id)
+
+      assert LedgerEntry |> Ash.read!() |> Enum.map(& &1.account_id) |> Enum.sort() ==
+               Enum.sort(order_ids ++ customer_ids)
+
       # a batched generic action, called once with every signal
       assert_received {:audited, ^order_ids}
       refute_received {:audited, _}
@@ -1366,6 +1601,164 @@ defmodule Ash.Test.SignalsTest do
                ])
 
       assert Exception.message(error) =~ "must not equal"
+    end
+  end
+
+  defp announce(signal_module, name, payloads, opts \\ []) do
+    Post
+    |> Ash.ActionInput.for_action(:announce, %{}, opts)
+    |> Ash.ActionInput.after_action(fn input, result ->
+      with :ok <- Ash.Signals.emit_many(input, signal_module, name, payloads) do
+        {:ok, result}
+      end
+    end)
+    |> Ash.run_action()
+  end
+
+  describe "signal_id" do
+    test "is generated for each signal when it is emitted" do
+      orders =
+        for _ <- 1..2 do
+          %{order_id: Ash.UUID.generate(), customer_id: Ash.UUID.generate()}
+        end
+
+      {:ok, _} = announce(OrderSignals, :order_placed, orders)
+
+      ids =
+        SignalLog
+        |> Ash.read!()
+        |> Enum.map(& &1.source_signal_id)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
+
+      assert length(ids) == 2
+      assert Enum.all?(ids, &match?(<<_::binary-size(14), "7", _::binary>>, &1))
+    end
+
+    test "can be given in the payload" do
+      signal_id = Ash.UUIDv7.generate()
+
+      assert_emits_signal(OrderSignals, :order_placed, %{signal_id: ^signal_id}, fn ->
+        {:ok, _} =
+          announce(OrderSignals, :order_placed, [
+            %{
+              signal_id: signal_id,
+              order_id: Ash.UUID.generate(),
+              customer_id: Ash.UUID.generate()
+            }
+          ])
+      end)
+    end
+
+    test "is only passed to listeners when mapped explicitly" do
+      order_id = Ash.UUID.generate()
+
+      {:ok, _} =
+        announce(OrderSignals, :order_placed, [
+          %{order_id: order_id, customer_id: Ash.UUID.generate()}
+        ])
+
+      assert [unmapped] = Enum.filter(Ash.read!(SignalLog), &is_nil(&1.source_signal_id))
+      assert [mapped] = Enum.reject(Ash.read!(SignalLog), &is_nil(&1.source_signal_id))
+      assert unmapped.order_id == order_id
+      assert unmapped.signal_id == nil
+      assert mapped.order_id == order_id
+    end
+
+    test "is reserved" do
+      assert_raise Spark.Error.DslError, ~r/`signal_id` is reserved/, fn ->
+        Code.compile_string("""
+        defmodule Ash.Test.SignalsTest.ReservedSignals do
+          use Ash.Signals
+
+          signals do
+            signal :happened do
+              phase :after_action
+              argument :signal_id, :uuid
+            end
+          end
+        end
+        """)
+      end
+    end
+  end
+
+  describe "delivery" do
+    test "receives the signals, their listeners and the emitting context" do
+      order_id = Ash.UUID.generate()
+
+      assert {:ok, "announced"} =
+               announce(DeliverySignals, :queued, [%{order_id: order_id}],
+                 actor: %{name: "zach"},
+                 context: %{shared: %{source: "test"}}
+               )
+
+      assert_received {:delivered, [%DeliverySignals.Queued{order_id: ^order_id}], listeners,
+                       [queue: :orders], context}
+
+      assert [%{resource: QueuedReceipt, action: :record}] = listeners
+
+      assert %Ash.Signals.Delivery.Context{
+               signal_module: DeliverySignals,
+               signal: %{name: :queued},
+               resource: Post,
+               action: :announce,
+               actor: %{name: "zach"},
+               source_context: %{shared: %{source: "test"}}
+             } = context
+
+      # the listener did not run
+      assert Ash.read!(QueuedReceipt) == []
+    end
+
+    test "can run listeners later, the way the inline delivery does" do
+      order_id = Ash.UUID.generate()
+      {:ok, _} = announce(DeliverySignals, :queued, [%{order_id: order_id}])
+      assert_received {:delivered, signals, [listener], _opts, context}
+
+      {:ok, dumped} = Ash.Signals.dump(DeliverySignals, :queued, signals)
+      assert [%{"order_id" => ^order_id, "signal_id" => _}] = Jason.decode!(Jason.encode!(dumped))
+      assert {:ok, ^signals} = Ash.Signals.load(DeliverySignals, :queued, dumped)
+
+      assert %{resource: QueuedReceipt, action: :record, action_type: :create} =
+               Ash.Resource.Info.signal_listener(QueuedReceipt, :record)
+
+      assert :ok = Ash.Signals.run_listener(listener, signals, Ash.Scope.to_opts(context))
+      assert [%{order_id: ^order_id}] = Ash.read!(QueuedReceipt)
+    end
+
+    test "is called even when the signal has no listeners, and can fail the emit" do
+      assert {:error, error} = announce(DeliverySignals, :failing, [%{}])
+      assert Exception.message(error) =~ "delivery failed"
+      assert_received {:delivered, [%DeliverySignals.Failing{}], [], [fail?: true], _}
+    end
+
+    test "listeners are found by name" do
+      assert %{action: :record, inputs: [account_id: :customer_id]} =
+               Ash.Resource.Info.signal_listener(LedgerEntry, :record_for_customer)
+
+      assert Ash.Resource.Info.signal_listener(LedgerEntry, :record) == nil
+    end
+
+    test "update and destroy listeners expose the queries they run" do
+      [customer, banned] =
+        for status <- ["new", "banned"], do: Ash.create!(Customer, %{status: status})
+
+      listener =
+        Ash.Resource.Info.signal_listener(Customer, :mark_ordered)
+
+      signals =
+        for customer <- [customer, banned] do
+          OrderSignals.OrderPlaced.new!(%{
+            signal_id: Ash.UUIDv7.generate(),
+            order_id: Ash.UUID.generate(),
+            customer_id: customer.id
+          })
+        end
+
+      assert [{query, %{}, ^signals}] = Ash.Signals.listener_queries(listener, signals, [])
+      assert [%{id: id}] = Ash.read!(query)
+      assert id == customer.id
     end
   end
 end
