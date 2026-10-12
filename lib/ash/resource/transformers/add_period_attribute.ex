@@ -112,10 +112,22 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
           read at any point in time.
           """
 
+      limited?(attribute.constraints) ->
+        raise Spark.Error.DslError,
+          module: module,
+          path: [:attributes, attribute.name],
+          message: """
+          Expected the attribute #{attribute.name} not to declare a `limit:` on its bounds, since \
+          it is this resource's period.
+          """
+
       true ->
         :ok
     end
   end
+
+  defp limited?(constraints),
+    do: not is_nil(constraints[:lower][:limit]) or not is_nil(constraints[:upper][:limit])
 
   @datetime_types [Ash.Type.DateTime, Ash.Type.UtcDatetime, Ash.Type.UtcDatetimeUsec]
 
