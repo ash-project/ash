@@ -2575,7 +2575,7 @@ defmodule Ash.Query do
         end
 
       value =
-        if argument do
+        if argument && !Ash.Expr.expr?(value) do
           Ash.Type.Helpers.handle_indexed_maps(argument.type, value)
         else
           value
