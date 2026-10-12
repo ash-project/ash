@@ -265,6 +265,13 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
                  |> Ash.read()
       end
     end
+
+    test "with keys that aren't argument names is an invalid filter" do
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.NoSuchInput{}]}} =
+               Post
+               |> Ash.Query.filter_input(%{in_ids_after?: %{input: %{1 => 2}, eq: true}})
+               |> Ash.read()
+    end
   end
 
   describe "a literal scalar argument alongside an expression argument" do
