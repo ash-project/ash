@@ -157,7 +157,9 @@ defmodule Ash.Query.Calculation do
 
   @from_resource_schema [
     args: [
-      type: {:map, {:or, [:atom, :string]}, :any},
+      # any key type, so that keys that aren't argument names get a `NoSuchInput` error
+      # from argument validation
+      type: {:map, :any, :any},
       doc: "Arguments to pass to the calculation, keyed by argument name as an atom or a string",
       default: %{}
     ],
