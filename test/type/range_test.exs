@@ -228,6 +228,35 @@ defmodule Ash.Type.RangeTest do
       assert {:ok, _} = apply!(range, constraints)
     end
 
+    test "a discrete range refuses inclusivity its `[)` form can never have" do
+      for constraints <- [
+            [inner_type: :integer],
+            [inner_type: :date],
+            [inner_type: :datetime, resolution: Duration.new!(hour: 1)]
+          ] do
+        assert {:error, _} =
+                 Ash.Type.init(Ash.Type.Range, constraints ++ [lower: [inclusive?: false]])
+
+        assert {:error, _} =
+                 Ash.Type.init(Ash.Type.Range, constraints ++ [upper: [inclusive?: true]])
+
+        assert {:ok, _} =
+                 Ash.Type.init(
+                   Ash.Type.Range,
+                   constraints ++ [lower: [inclusive?: true], upper: [inclusive?: false]]
+                 )
+      end
+    end
+
+    test "a continuous range accepts either inclusivity" do
+      assert {:ok, _} =
+               Ash.Type.init(Ash.Type.Range,
+                 inner_type: :datetime,
+                 lower: [inclusive?: false],
+                 upper: [inclusive?: true]
+               )
+    end
+
     test "a lower bound must be at or above its limit, whatever its inclusivity" do
       constraints = init!(inner_type: :datetime, lower: [limit: @lower])
 

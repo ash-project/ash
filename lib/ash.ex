@@ -135,8 +135,14 @@ defmodule Ash do
                         reuse_values?: [
                           type: :boolean,
                           default: false,
-                          doc:
-                            "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
+                          doc: """
+                          If `true`, allow **calculations** to use attributes and other dependencies
+                          already on the struct instead of refetching from the data layer. Default
+                          `false` (prefer persisted data; avoids stale structs acting as an implicit
+                          cache).
+
+                              Ash.load!(user, :full_name, reuse_values?: true)
+                          """
                         ],
                         strict?: [
                           type: :boolean,
@@ -213,15 +219,26 @@ defmodule Ash do
                       [
                         lazy?: [
                           type: :boolean,
-                          doc:
-                            "If set to true, values will only be loaded if the related value isn't currently loaded.",
+                          doc: """
+                          If `true`, skip re-fetching a **relationship** that is already loaded on the
+                          record. Does not skip loading calculations, aggregates, or relationships that
+                          are `%Ash.NotLoaded{}`. Default `false`.
+
+                              Ash.load!(author, posts: :author, lazy?: true)
+                          """,
                           default: false
                         ],
                         reuse_values?: [
                           type: :boolean,
                           default: false,
-                          doc:
-                            "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
+                          doc: """
+                          If `true`, allow **calculations** to use attributes and other dependencies
+                          already on the struct instead of refetching from the data layer. Default
+                          `false` (prefer persisted data; avoids stale structs acting as an implicit
+                          cache).
+
+                              Ash.load!(user, :full_name, reuse_values?: true)
+                          """
                         ],
                         strict?: [
                           type: :boolean,
@@ -281,8 +298,14 @@ defmodule Ash do
                      reuse_values?: [
                        type: :boolean,
                        default: false,
-                       doc:
-                         "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
+                       doc: """
+                       If `true`, allow **calculations** to use attributes and other dependencies
+                       already on the struct instead of refetching from the data layer. Default
+                       `false` (prefer persisted data; avoids stale structs acting as an implicit
+                       cache).
+
+                           Ash.load!(user, :full_name, reuse_values?: true)
+                       """
                      ],
                      strict?: [
                        type: :boolean,
@@ -886,7 +909,12 @@ defmodule Ash do
       type: :boolean,
       default: false,
       doc: """
-      Set to `true` to reuse existing values on any provided record. Only necessary if providing a record as the basis for calculation.
+      If `true`, allow **calculations** to use attributes and other dependencies
+      already on the struct instead of refetching from the data layer. Default
+      `false` (prefer persisted data; avoids stale structs acting as an implicit
+      cache).
+
+          Ash.load!(user, :full_name, reuse_values?: true)
       """
     ],
     domain: [
@@ -976,8 +1004,14 @@ defmodule Ash do
     reuse_values?: [
       type: :boolean,
       default: false,
-      doc:
-        "Whether or not loaded data like aggregates, calculations and relationships should be checked in memory if possible, instead of querying. No effect if `pre_flight?` is `false`."
+      doc: """
+      If `true`, allow **calculations** to use attributes and other dependencies
+      already on the struct instead of refetching from the data layer. Default
+      `false` (prefer persisted data; avoids stale structs acting as an implicit
+      cache).
+
+          Ash.load!(user, :full_name, reuse_values?: true)
+      """
     ],
     pre_flight?: [
       type: :boolean,
