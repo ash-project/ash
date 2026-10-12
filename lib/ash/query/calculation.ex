@@ -157,8 +157,8 @@ defmodule Ash.Query.Calculation do
 
   @from_resource_schema [
     args: [
-      type: :map,
-      doc: "Arguments to pass to the calculation",
+      type: {:map, {:or, [:atom, :string]}, :any},
+      doc: "Arguments to pass to the calculation, keyed by argument name as an atom or a string",
       default: %{}
     ],
     source_context: [
