@@ -136,14 +136,13 @@ defmodule Ash do
                           type: :boolean,
                           default: false,
                           doc: """
-                              If `true`, allow **calculations** to use attributes and other dependencies
-                              already on the struct instead of refetching from the data layer. Default
-                              `false` (prefer persisted data; avoids stale structs acting as an implicit
-                              cache).
+                          If `true`, allow **calculations** to use attributes and other dependencies
+                          already on the struct instead of refetching from the data layer. Default
+                          `false` (prefer persisted data; avoids stale structs acting as an implicit
+                          cache).
 
-                                  Ash.load!(user, :full_name, reuse_values?: true)
-                              """
-
+                              Ash.load!(user, :full_name, reuse_values?: true)
+                          """
                         ],
                         strict?: [
                           type: :boolean,
@@ -221,26 +220,25 @@ defmodule Ash do
                         lazy?: [
                           type: :boolean,
                           doc: """
-                            If `true`, skip re-fetching a **relationship** that is already loaded on the
-                            record. Does not skip loading calculations, aggregates, or relationships that
-                            are `%Ash.NotLoaded{}`. Default `false`.
+                          If `true`, skip re-fetching a **relationship** that is already loaded on the
+                          record. Does not skip loading calculations, aggregates, or relationships that
+                          are `%Ash.NotLoaded{}`. Default `false`.
 
-                                Ash.load!(author, posts: :author, lazy?: true)
-                            """,
+                              Ash.load!(author, posts: :author, lazy?: true)
+                          """,
                           default: false
                         ],
                         reuse_values?: [
                           type: :boolean,
                           default: false,
                           doc: """
-                              If `true`, allow **calculations** to use attributes and other dependencies
-                              already on the struct instead of refetching from the data layer. Default
-                              `false` (prefer persisted data; avoids stale structs acting as an implicit
-                              cache).
+                          If `true`, allow **calculations** to use attributes and other dependencies
+                          already on the struct instead of refetching from the data layer. Default
+                          `false` (prefer persisted data; avoids stale structs acting as an implicit
+                          cache).
 
-                                  Ash.load!(user, :full_name, reuse_values?: true)
-                              """
-
+                              Ash.load!(user, :full_name, reuse_values?: true)
+                          """
                         ],
                         strict?: [
                           type: :boolean,
@@ -301,14 +299,13 @@ defmodule Ash do
                        type: :boolean,
                        default: false,
                        doc: """
-                            If `true`, allow **calculations** to use attributes and other dependencies
-                            already on the struct instead of refetching from the data layer. Default
-                            `false` (prefer persisted data; avoids stale structs acting as an implicit
-                            cache).
+                       If `true`, allow **calculations** to use attributes and other dependencies
+                       already on the struct instead of refetching from the data layer. Default
+                       `false` (prefer persisted data; avoids stale structs acting as an implicit
+                       cache).
 
-                                Ash.load!(user, :full_name, reuse_values?: true)
-                            """
-
+                           Ash.load!(user, :full_name, reuse_values?: true)
+                       """
                      ],
                      strict?: [
                        type: :boolean,
@@ -919,7 +916,6 @@ defmodule Ash do
 
           Ash.load!(user, :full_name, reuse_values?: true)
       """
-
     ],
     domain: [
       type: {:spark, Ash.Domain},
@@ -1016,7 +1012,6 @@ defmodule Ash do
 
           Ash.load!(user, :full_name, reuse_values?: true)
       """
-
     ],
     pre_flight?: [
       type: :boolean,
