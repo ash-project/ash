@@ -1727,6 +1727,21 @@ defmodule Ash.Test.SignalsTest do
       assert [%{order_id: ^order_id}] = Ash.read!(QueuedReceipt)
     end
 
+    test "loading ignores unknown fields and refuses missing required ones" do
+      signal_id = Ash.UUIDv7.generate()
+      order_id = Ash.UUID.generate()
+
+      assert {:ok, [%DeliverySignals.Queued{order_id: ^order_id}]} =
+               Ash.Signals.load(DeliverySignals, :queued, [
+                 %{"signal_id" => signal_id, "order_id" => order_id, "removed" => "value"}
+               ])
+
+      assert {:error, _} =
+               Ash.Signals.load(DeliverySignals, :queued, [
+                 %{"signal_id" => signal_id, "renamed_order_id" => order_id}
+               ])
+    end
+
     test "is called even when the signal has no listeners, and can fail the emit" do
       assert {:error, error} = announce(DeliverySignals, :failing, [%{}])
       assert Exception.message(error) =~ "delivery failed"

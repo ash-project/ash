@@ -215,13 +215,19 @@ defmodule Ash.Signals do
     end
   end
 
-  @doc "Loads signal structs from maps produced by `dump/3`."
+  @doc """
+  Loads signal structs from maps produced by `dump/3`.
+
+  Fields the signal no longer has are ignored, and a required field that is missing is an error,
+  so maps dumped by an older version of the signal load if they are still valid.
+  """
   @spec load(t(), atom(), [map()]) :: {:ok, [struct()]} | {:error, term()}
   def load(signal_module, name, dumped) do
     type = {:array, fetch_signal!(signal_module, name).struct}
 
-    with {:ok, constraints} <- Ash.Type.init(type, []) do
-      Ash.Type.cast_stored(type, dumped, constraints)
+    with {:ok, constraints} <- Ash.Type.init(type, []),
+         {:ok, signal_structs} <- Ash.Type.cast_stored(type, dumped, constraints) do
+      Ash.Type.apply_constraints(type, signal_structs, constraints)
     end
   end
 
