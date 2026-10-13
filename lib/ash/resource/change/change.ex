@@ -383,6 +383,14 @@ defmodule Ash.Resource.Change do
     to set values for both the INSERT and UPDATE phases (useful for upserts).
 
   - `{:ok, changeset}` - Return a modified changeset (the change was applied in-memory).
+    Any `before_transaction`, `before_action`, `after_action` or `after_transaction` hooks
+    on that changeset run on the atomic path. Before hooks run once for the whole query
+    or batch; `after_action` runs for each returned record, and `after_transaction` runs
+    for each processed success or error result. A failure of the whole query or batch
+    is one error result. `changeset.data` is `%Ash.Changeset.OriginalDataNotAvailable{}`
+    unless a single record is being atomically upgraded. Defining `atomic/3` is how the change opts in to its hooks running
+    without the original data. `around_action`/`around_transaction` hooks cannot wrap an
+    atomic query, so adding them here makes the action not atomic.
 
   - `{:not_atomic, reason}` - Indicates the change cannot run atomically.
 

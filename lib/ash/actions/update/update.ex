@@ -156,6 +156,8 @@ defmodule Ash.Actions.Update do
 
       case fully_atomic_changeset do
         %Ash.Changeset{} = atomic_changeset ->
+          # `before_*`/`after_*` hooks that changes added in `atomic/3` ride along on this
+          # changeset and are run by `Ash.Actions.Update.Bulk`, with the real record as data.
           atomic_changeset =
             %{atomic_changeset | data: changeset.data}
             |> Ash.Changeset.set_context(%{data_layer: %{use_atomic_update_data?: true}})

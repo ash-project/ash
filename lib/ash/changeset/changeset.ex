@@ -403,7 +403,7 @@ defmodule Ash.Changeset do
 
     Used in atomic operations where the original record data cannot be loaded.
     """
-    @type t :: %__MODULE__{reason: :atomic_query_update}
+    @type t :: %__MODULE__{reason: :atomic_query_update | :atomic_query_destroy}
   end
 
   defmacrop maybe_already_validated_error!(changeset, alternative \\ nil) do
@@ -828,7 +828,12 @@ defmodule Ash.Changeset do
           if data = opts[:data] do
             Map.put(changeset, :data, data)
           else
-            Map.put(changeset, :data, %OriginalDataNotAvailable{})
+            reason =
+              if action.type == :destroy and not action.soft?,
+                do: :atomic_query_destroy,
+                else: :atomic_query_update
+
+            Map.put(changeset, :data, %OriginalDataNotAvailable{reason: reason})
           end
         end)
         |> Map.put(:context, opts[:context] || %{})
@@ -861,6 +866,7 @@ defmodule Ash.Changeset do
            %Ash.Changeset{} = changeset <- set_argument_defaults(changeset, action),
            %Ash.Changeset{} = changeset <- require_arguments(changeset, action),
            %Ash.Changeset{} = changeset <- atomic_changes(changeset, action),
+           :ok <- verify_no_around_hooks(changeset),
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
            %Ash.Changeset{} = changeset <-
              Ash.Changeset.set_context(changeset, %{
@@ -954,68 +960,56 @@ defmodule Ash.Changeset do
     |> Enum.reject(fn attribute ->
       Ash.Changeset.changing_attribute?(changeset, attribute.name)
     end)
-    |> Enum.reduce_while(changeset, fn attribute, changeset ->
-      cond do
-        # `now()` would resolve to the write's `as_of`, but `recorded_at` is the wall clock.
-        recorded_at_attribute?(changeset, attribute) and
-            Ash.Helpers.now_default?(attribute.update_default) ->
-          recorded_at = temporal_recorded_at(changeset)
+    |> Enum.reduce(changeset, fn attribute, changeset ->
+      value =
+        cond do
+          # `now()` resolves to the write's `as_of`; recorded_at uses the wall clock.
+          recorded_at_attribute?(changeset, attribute) and
+              Ash.Helpers.now_default?(attribute.update_default) ->
+            recorded_at = temporal_recorded_at(changeset)
+            Ash.Expr.expr(^recorded_at)
 
-          {:cont,
-           atomic_update(
-             changeset,
-             attribute.name,
-             {:atomic,
-              atomic_default_condition(
-                initial_changeset,
-                attribute.name,
-                Ash.Expr.expr(^recorded_at),
-                opts
-              )}
-           )}
+          attribute.update_default == (&DateTime.utc_now/0) ->
+            Ash.Expr.expr(now())
 
-        attribute.update_default == (&DateTime.utc_now/0) ->
-          {:cont,
-           atomic_update(
-             changeset,
-             attribute.name,
-             {:atomic,
-              atomic_default_condition(
-                initial_changeset,
-                attribute.name,
-                Ash.Expr.expr(now()),
-                opts
-              )}
-           )}
+          attribute.update_default == (&Ash.UUID.generate/0) ->
+            Ash.Expr.expr(^Ash.UUID.generate())
 
-        attribute.update_default == (&Ash.UUID.generate/0) ->
-          {:cont,
-           atomic_update(
-             changeset,
-             attribute.name,
-             {:atomic,
-              atomic_default_condition(
-                initial_changeset,
-                attribute.name,
-                Ash.Expr.expr(^Ash.UUID.generate()),
-                opts
-              )}
-           )}
+          true ->
+            attribute.update_default.()
+        end
 
-        true ->
-          {:cont,
-           atomic_update(
-             changeset,
-             attribute.name,
-             {:atomic,
-              atomic_default_condition(
-                initial_changeset,
-                attribute.name,
-                attribute.update_default.(),
-                opts
-              )}
-           )}
-      end
+      put_atomic_update_default(changeset, initial_changeset, attribute.name, value, opts)
+    end)
+  end
+
+  defp put_atomic_update_default(changeset, initial_changeset, key, value, opts) do
+    default_opts = Keyword.take(opts, [:reference_changes_via_conflict?])
+    defaults = changeset.context[:private][:atomic_update_defaults] || %{}
+
+    changeset
+    |> atomic_update(
+      key,
+      {:atomic, atomic_default_condition(initial_changeset, key, value, opts)}
+    )
+    |> set_context(%{
+      private: %{atomic_update_defaults: Map.put(defaults, key, {value, default_opts})}
+    })
+  end
+
+  defp rebuild_atomic_update_defaults(changeset, pre_hook_atomics) do
+    defaults =
+      (changeset.context[:private][:atomic_update_defaults] || %{})
+      |> Enum.filter(fn {key, _default} ->
+        Keyword.fetch(changeset.atomics, key) == Keyword.fetch(pre_hook_atomics, key)
+      end)
+
+    changeset = %{changeset | atomics: Keyword.drop(changeset.atomics, Keyword.keys(defaults))}
+
+    defaults
+    |> Enum.reject(fn {key, _default} -> Map.has_key?(changeset.attributes, key) end)
+    |> Enum.reduce(changeset, fn {key, {value, opts}}, updated ->
+      put_atomic_update_default(updated, changeset, key, value, opts)
     end)
   end
 
@@ -1113,6 +1107,24 @@ defmodule Ash.Changeset do
     end
   end
 
+  # `before_*` and `after_*` hooks added by a change's `atomic/3` callback are run by the
+  # atomic executors, but `around_*` hooks have to wrap the data layer call itself, which
+  # an atomic update/destroy query cannot do. Refuse rather than silently dropping them.
+  @doc false
+  def verify_no_around_hooks(%{around_action: [], around_transaction: []}),
+    do: :ok
+
+  def verify_no_around_hooks(changeset) do
+    phases =
+      [:around_action, :around_transaction]
+      |> Enum.reject(&(Map.get(changeset, &1) == []))
+      |> Enum.map_join(" and ", &"`#{&1}`")
+
+    {:not_atomic,
+     "cannot atomically run `#{inspect(changeset.resource)}.#{changeset.action.name}`: " <>
+       "the changeset has #{phases} hooks, which cannot wrap an atomic query."}
+  end
+
   defp atomic_changes(changeset, action) do
     changes =
       action.changes
@@ -1177,14 +1189,9 @@ defmodule Ash.Changeset do
     end
   end
 
-  # An atomic action only runs `after_action` and `after_transaction` hooks, so hooks of any
-  # other kind that an `atomic/3` callback adds would silently never run.
-  @atomic_unsupported_hooks [
-    :around_transaction,
-    :before_transaction,
-    :around_action,
-    :before_action
-  ]
+  # Before and after hooks added in `atomic/3` run in the atomic executors.
+  # Around hooks cannot wrap an atomic data layer query.
+  @atomic_unsupported_hooks [:around_transaction, :around_action]
 
   defp atomic_unsupported_hooks_added(changeset, new_changeset) do
     Enum.filter(@atomic_unsupported_hooks, fn hook ->
@@ -2563,7 +2570,12 @@ defmodule Ash.Changeset do
             set_error_field(value, attribute.name)
           end
 
-        %{changeset | atomics: Keyword.put(changeset.atomics, attribute.name, value)}
+        %{
+          changeset
+          | atomics: Keyword.put(changeset.atomics, attribute.name, value),
+            no_atomic_constraints:
+              Enum.reject(changeset.no_atomic_constraints, &(&1 == attribute.name))
+        }
         |> record_atomic_update_for_atomic_upgrade(attribute.name, value)
 
       {:ok, value} ->
@@ -2580,7 +2592,9 @@ defmodule Ash.Changeset do
           %{
             changeset
             | attributes: Map.put(changeset.attributes, attribute.name, value),
-              atomics: Keyword.delete(changeset.atomics, attribute.name)
+              atomics: Keyword.delete(changeset.atomics, attribute.name),
+              no_atomic_constraints:
+                Enum.reject(changeset.no_atomic_constraints, &(&1 == attribute.name))
           }
           |> store_casted_attribute(attribute.name, value, true)
         end
@@ -3918,6 +3932,55 @@ defmodule Ash.Changeset do
     |> extract_atomic_eager_errors(actor, opts)
   end
 
+  @doc false
+  # Re-prepares a fully atomic changeset after `before_*` hooks may have changed it.
+  #
+  # `pre_hook_atomics` is the changeset's `atomics` list from before the hooks ran. Those
+  # atomics were already hydrated and constrained by `fully_atomic_changeset/4`, and
+  # `apply_atomic_constraints/3` is not idempotent (it wraps the expression again), so only
+  # atomics the hooks added or replaced are constrained here. Hook-added attributes make
+  # the changeset `changed?`, which lets `atomic_defaults/2` add update defaults that were
+  # skipped when nothing was changing.
+  @spec reprepare_after_atomic_hooks(t(), Keyword.t(), term()) :: t()
+  def reprepare_after_atomic_hooks(changeset, pre_hook_atomics, actor) do
+    if changeset.atomics == pre_hook_atomics and changeset.attributes == %{} and
+         changeset.atomic_validations == [] do
+      changeset
+    else
+      changed? =
+        (changeset.context[:changed?] ||
+           changing_attributes?(changeset)) or changeset.atomics != []
+
+      changeset =
+        changeset
+        |> put_context(:changed?, changed?)
+        |> rebuild_atomic_update_defaults(pre_hook_atomics)
+
+      with %__MODULE__{} = changeset <- atomic_defaults(changeset),
+           unchanged_keys =
+             changeset.atomics
+             |> Enum.filter(fn {key, value} ->
+               Keyword.fetch(pre_hook_atomics, key) == {:ok, value}
+             end)
+             |> Keyword.keys(),
+           %__MODULE__{} = changeset <- hydrate_atomic_refs(changeset, actor),
+           no_atomic_constraints = changeset.no_atomic_constraints,
+           %__MODULE__{} = changeset <-
+             apply_atomic_constraints(
+               %{
+                 changeset
+                 | no_atomic_constraints: Enum.uniq(unchanged_keys ++ no_atomic_constraints)
+               },
+               actor
+             ) do
+        %{changeset | no_atomic_constraints: no_atomic_constraints}
+      else
+        {:not_atomic, reason} ->
+          add_error(changeset, reason)
+      end
+    end
+  end
+
   defp do_apply_atomic_constraints(%Ash.Changeset{} = changeset) do
     Enum.reduce(changeset.atomics, %{changeset | atomics: []}, fn {key, value}, changeset ->
       attribute = Ash.Resource.Info.attribute(changeset.resource, key)
@@ -5147,6 +5210,57 @@ defmodule Ash.Changeset do
   def run_before_actions(changeset) do
     can_do_atomic? = data_layer_can_do_atomic_for_changest?(changeset)
 
+    changeset
+    |> do_run_before_actions()
+    |> case do
+      {:error, error} ->
+        {:error, error}
+
+      {%{atomics: atomics} = changeset, _} when atomics != [] and not can_do_atomic? ->
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Invalid.AtomicsNotSupported.exception(
+            resource: changeset.resource,
+            action_type: changeset.action_type
+          )
+        )
+
+      {%{valid?: true} = changeset, instructions} ->
+        {Ash.Changeset.hydrate_atomic_refs(changeset, changeset.context[:private][:actor]),
+         instructions}
+
+      {changeset, instructions} ->
+        {changeset, instructions}
+    end
+  end
+
+  @doc false
+  # Runs the `before_action` hooks of a fully atomic changeset (see
+  # `fully_atomic_changeset/4`). Unlike `run_before_actions/1` this always returns
+  # `{changeset, notifications}`, folds `{:error, _}` into changeset errors, sets the
+  # `:before_action` phase and does not re-hydrate atomics: the caller does that
+  # selectively with `reprepare_after_atomic_hooks/4`, because the atomics present before
+  # the hooks ran are already hydrated and constrained.
+  #
+  # The phase is left at `:before_action` on purpose so that hooks added *by* these hooks
+  # are not recorded as dirty (`maybe_dirty_hook/2` only acts in the `:pending` phase).
+  @spec run_atomic_before_actions(t()) :: {t(), [Ash.Notifier.Notification.t()]}
+  def run_atomic_before_actions(%{before_action: []} = changeset), do: {changeset, []}
+
+  def run_atomic_before_actions(changeset) do
+    changeset
+    |> set_phase(:before_action)
+    |> do_run_before_actions()
+    |> case do
+      {:error, error} ->
+        {add_error(changeset, error), []}
+
+      {changeset, %{notifications: notifications}} ->
+        {changeset, List.wrap(notifications)}
+    end
+  end
+
+  defp do_run_before_actions(changeset) do
     Enum.reduce_while(
       changeset.before_action,
       {changeset, %{notifications: []}},
@@ -5209,26 +5323,6 @@ defmodule Ash.Changeset do
         end
       end
     )
-    |> case do
-      {:error, error} ->
-        {:error, error}
-
-      {%{atomics: atomics} = changeset, _} when atomics != [] and not can_do_atomic? ->
-        Ash.Changeset.add_error(
-          changeset,
-          Ash.Error.Invalid.AtomicsNotSupported.exception(
-            resource: changeset.resource,
-            action_type: changeset.action_type
-          )
-        )
-
-      {%{valid?: true} = changeset, instructions} ->
-        {Ash.Changeset.hydrate_atomic_refs(changeset, changeset.context[:private][:actor]),
-         instructions}
-
-      {changeset, instructions} ->
-        {changeset, instructions}
-    end
   end
 
   @doc false
@@ -7359,6 +7453,18 @@ defmodule Ash.Changeset do
 
     Returning `changeset` without a tuple is equivalent to returning no notifications.
 
+  ## Atomic Operations
+
+  This hook works with atomic updates and destroys when it is added by a change's
+  `c:Ash.Resource.Change.atomic/3` callback, for example by returning
+  `{:ok, change(changeset, opts, context)}`. It then runs once for the whole query (or
+  batch), not once per record, and `changeset.data` is
+  `%Ash.Changeset.OriginalDataNotAvailable{}` unless a single record is being atomically
+  upgraded. Attribute changes made by the hook are applied alongside the atomic changes.
+  Implementing `atomic/3` is how a change opts in to its hooks running without the
+  original data. Adding this hook directly to a changeset (outside of `atomic/3`) prevents
+  the action from being run atomically.
+
   ## See also
 
   - `after_action/3` for hooks that run after the action succeeds
@@ -7423,6 +7529,17 @@ defmodule Ash.Changeset do
       ...>       changeset  # Continue without external data
       ...>   end
       ...> end)
+
+  ## Atomic Operations
+
+  This hook works with atomic updates and destroys when it is added by a change's
+  `c:Ash.Resource.Change.atomic/3` callback, for example by returning
+  `{:ok, change(changeset, opts, context)}`. It then runs once for the whole query (or
+  batch), not once per record, and `changeset.data` is
+  `%Ash.Changeset.OriginalDataNotAvailable{}` unless a single record is being atomically
+  upgraded. Implementing `atomic/3` is how a change opts in to its hooks running without
+  the original data. Adding this hook directly to a changeset (outside of `atomic/3`)
+  prevents the action from being run atomically.
 
   ## See also
 

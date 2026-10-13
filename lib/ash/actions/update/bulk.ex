@@ -354,42 +354,51 @@ defmodule Ash.Actions.Update.Bulk do
                     {:bulk_destroy, :bulk_destroy_index}
                 end
 
-              prefer_transaction? =
-                has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
-                  Ash.DataLayer.prefer_transaction_for_atomic_updates?(atomic_changeset.resource)
-
-              result =
-                if prefer_transaction? &&
-                     Keyword.get(opts, :transaction, true) do
-                  Ash.DataLayer.in_transaction?(atomic_changeset.resource)
-
-                  Ash.DataLayer.transaction(
-                    atomic_changeset.resource,
-                    fn ->
-                      do_atomic_update(
+              # The order matches the non-atomic path: authorization, then
+              # `before_transaction` hooks outside of the transaction, then the
+              # transaction with `before_action` hooks and the data layer call inside.
+              # Hooks added by a change's `atomic/3` see `data` as the
+              # `OriginalDataNotAvailable` sentinel (or the record, for a single record
+              # atomic upgrade). The changeset is rebound so that the error path below
+              # carries any `after_transaction` hooks the before hooks added.
+              {result, atomic_changeset} =
+                case prepare_atomic_update(query, atomic_changeset, opts) do
+                  {:error, %Ash.Error.Forbidden.InitialDataRequired{} = e} ->
+                    {{:ok,
+                      stream_fallback_for_initial_data(
                         query,
                         atomic_changeset,
                         has_after_batch_hooks?,
                         input,
-                        opts
-                      )
-                    end,
-                    opts[:timeout],
-                    %{
-                      type: context_key,
-                      metadata: %{
-                        resource: query.resource,
-                        action: atomic_changeset.action.name,
-                        actor: opts[:actor]
-                      },
-                      tenant: opts[:tenant],
-                      data_layer_context: opts[:data_layer_context] || %{}
-                    },
-                    rollback_on_error?: false
-                  )
-                else
-                  {:ok,
-                   do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)}
+                        opts,
+                        e
+                      )}, atomic_changeset}
+
+                  {:error, error} ->
+                    {{:ok,
+                      {:error,
+                       Ash.Error.to_error_class(error,
+                         bread_crumbs: [
+                           "Returned from bulk query update: #{inspect(atomic_changeset.resource)}.#{atomic_changeset.action.name}"
+                         ]
+                       )}}, atomic_changeset}
+
+                  {:ok, query, atomic_changeset} ->
+                    pre_hook_atomics = atomic_changeset.atomics
+
+                    Ash.Actions.Helpers.Bulk.run_atomic_with_before_transaction_hooks(
+                      atomic_changeset,
+                      fn atomic_changeset ->
+                        run_atomic_update_in_transaction(
+                          query,
+                          atomic_changeset,
+                          pre_hook_atomics,
+                          has_after_batch_hooks?,
+                          opts,
+                          context_key
+                        )
+                      end
+                    )
                 end
 
               # Normalize result - either BulkResult (from fallback) or tagged tuples
@@ -711,7 +720,133 @@ defmodule Ash.Actions.Update.Bulk do
               __STACKTRACE__
   end
 
-  defp do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts) do
+  # Validates multitenancy, authorizes the query and changeset, and applies changeset
+  # filters before the before hooks run and the transaction is opened.
+  defp prepare_atomic_update(query, atomic_changeset, opts) do
+    with :ok <-
+           Ash.Actions.Helpers.Bulk.validate_multitenancy(
+             atomic_changeset.resource,
+             atomic_changeset.action,
+             opts
+           ),
+         {:ok, query} <- authorize_bulk_query(query, atomic_changeset, opts),
+         {:ok, atomic_changeset, query} <-
+           authorize_atomic_changeset(query, atomic_changeset, opts) do
+      {query, atomic_changeset} = add_changeset_filters(query, atomic_changeset)
+      {:ok, query, atomic_changeset}
+    end
+  end
+
+  defp run_atomic_update_in_transaction(
+         query,
+         atomic_changeset,
+         pre_hook_atomics,
+         has_after_batch_hooks?,
+         opts,
+         context_key
+       ) do
+    prefer_transaction? =
+      has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
+        !Enum.empty?(atomic_changeset.before_action) ||
+        Ash.DataLayer.prefer_transaction_for_atomic_updates?(atomic_changeset.resource)
+
+    if prefer_transaction? && Keyword.get(opts, :transaction, true) do
+      Ash.DataLayer.transaction(
+        List.wrap(atomic_changeset.resource) ++ atomic_changeset.action.touches_resources,
+        fn ->
+          do_atomic_update(
+            query,
+            atomic_changeset,
+            pre_hook_atomics,
+            has_after_batch_hooks?,
+            opts
+          )
+        end,
+        opts[:timeout],
+        %{
+          type: context_key,
+          metadata: %{
+            resource: query.resource,
+            action: atomic_changeset.action.name,
+            actor: opts[:actor]
+          },
+          tenant: opts[:tenant],
+          data_layer_context: opts[:data_layer_context] || %{}
+        },
+        rollback_on_error?: false
+      )
+    else
+      {:ok,
+       do_atomic_update(query, atomic_changeset, pre_hook_atomics, has_after_batch_hooks?, opts)}
+    end
+  end
+
+  # Authorization needs the records (e.g. a strict check that could not be decided
+  # up front), so the whole operation is re-run with the stream strategy.
+  defp stream_fallback_for_initial_data(
+         query,
+         atomic_changeset,
+         has_after_batch_hooks?,
+         input,
+         opts,
+         %Ash.Error.Forbidden.InitialDataRequired{} = e
+       ) do
+    case Ash.Actions.Read.Stream.stream_strategy(
+           query,
+           nil,
+           opts[:allow_stream_with] || :keyset
+         ) do
+      {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
+        {:error,
+         Ash.Error.to_error_class(
+           Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+             resource: atomic_changeset.resource,
+             action: atomic_changeset.action.name,
+             requested_strategies: opts[:strategy],
+             not_stream_reason: "could not stream the query, see message below for more",
+             not_atomic_batches_reason: "authorization requires initial data",
+             not_atomic_reason: "authorization requires initial data",
+             footer: "Non stream reason:\n\n" <> Exception.message(exception)
+           )
+         )}
+
+      _strategy ->
+        input_stream =
+          if atomic_changeset.context[:data_layer][:use_atomic_update_data?] do
+            [atomic_changeset.data]
+          else
+            Ash.Query.ensure_selected(
+              query,
+              MapSet.to_list(
+                Ash.Resource.Info.selected_by_default_attribute_names(query.resource)
+              )
+            )
+          end
+
+        run(
+          atomic_changeset.domain,
+          input_stream,
+          atomic_changeset.action,
+          input,
+          Keyword.merge(opts,
+            strategy: [:stream],
+            authorize_query?: false,
+            input_was_stream?: false,
+            return_records?:
+              atomic_return_records?(atomic_changeset, has_after_batch_hooks?, opts)
+          ),
+          e.source
+        )
+    end
+  end
+
+  defp atomic_return_records?(atomic_changeset, has_after_batch_hooks?, opts) do
+    has_after_batch_hooks? || opts[:notify?] || opts[:return_records?] ||
+      !Enum.empty?(atomic_changeset.after_action) ||
+      !Enum.empty?(atomic_changeset.after_transaction)
+  end
+
+  defp do_atomic_update(query, atomic_changeset, pre_hook_atomics, has_after_batch_hooks?, opts) do
     context =
       struct(
         Ash.Resource.Change.Context,
@@ -755,10 +890,7 @@ defmodule Ash.Actions.Update.Bulk do
         MapSet.to_list(Ash.Resource.Info.attribute_names(atomic_changeset.resource))
       end
 
-    return_records? =
-      has_after_batch_hooks? || opts[:notify?] || opts[:return_records?] ||
-        !Enum.empty?(atomic_changeset.after_action) ||
-        !Enum.empty?(atomic_changeset.after_transaction)
+    return_records? = atomic_return_records?(atomic_changeset, has_after_batch_hooks?, opts)
 
     # Update opts with calculated return_records? so handle_bulk_result uses it
     opts = Keyword.put(opts, :return_records?, return_records?)
@@ -774,18 +906,26 @@ defmodule Ash.Actions.Update.Bulk do
         action_select
       )
 
-    with :ok <-
-           Ash.Actions.Helpers.Bulk.validate_multitenancy(
-             atomic_changeset.resource,
-             atomic_changeset.action,
-             opts
+    # Authorization already happened in `prepare_atomic_update/3`. `before_action` hooks
+    # added by a change's `atomic/3` run here, inside the transaction and after
+    # authorization, as on the non-atomic path. They may add attributes, atomics, filters,
+    # or `after_*` hooks, so everything derived from the changeset is recomputed below.
+    # The baseline predates both before phases, so transaction-hook atomics also
+    # receive constraints and update defaults during preparation.
+    with {%Ash.Changeset{valid?: true} = atomic_changeset, before_action_notifications} <-
+           Ash.Changeset.run_atomic_before_actions(atomic_changeset),
+         %Ash.Changeset{valid?: true} = atomic_changeset <-
+           Ash.Changeset.reprepare_after_atomic_hooks(
+             atomic_changeset,
+             pre_hook_atomics,
+             opts[:actor]
            ),
-         {:ok, query} <-
-           authorize_bulk_query(query, atomic_changeset, opts),
-         {:ok, atomic_changeset, query} <-
-           authorize_atomic_changeset(query, atomic_changeset, opts),
          {query, atomic_changeset} <-
            add_changeset_filters(query, atomic_changeset),
+         return_records? =
+           return_records? || !Enum.empty?(atomic_changeset.after_action) ||
+             !Enum.empty?(atomic_changeset.after_transaction),
+         update_query_opts = Map.put(update_query_opts, :return_records?, return_records?),
          query =
            Ash.Actions.Read.add_calc_context_to_query(
              query,
@@ -864,15 +1004,18 @@ defmodule Ash.Actions.Update.Bulk do
 
           {results, notifications} =
             if has_after_batch_hooks? do
-              run_atomic_after_batch_hooks(
-                results,
-                atomic_changeset,
-                all_changes,
-                conditional_after_batch_hooks,
-                context
-              )
+              {results, after_batch_notifications} =
+                run_atomic_after_batch_hooks(
+                  results,
+                  atomic_changeset,
+                  all_changes,
+                  conditional_after_batch_hooks,
+                  context
+                )
+
+              {results, before_action_notifications ++ after_batch_notifications}
             else
-              {results, []}
+              {results, before_action_notifications}
             end
 
           {results, errors, notifications} =
@@ -985,7 +1128,12 @@ defmodule Ash.Actions.Update.Bulk do
           end
       end
     else
-      %Ash.Changeset{valid?: false, errors: error} = _changeset ->
+      # A `before_action` hook failed or made the changeset invalid. The data layer has
+      # not written anything yet, but the hook itself may have, so roll back when in a
+      # transaction. Note that the error flows to `process_results` with the changeset
+      # from before the hooks ran, so `after_transaction` hooks added *inside* the failing
+      # `before_action` hook are not run on this error path.
+      {%Ash.Changeset{valid?: false, errors: error}, _before_action_notifications} ->
         if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
           Ash.DataLayer.rollback(atomic_changeset.resource, Ash.Error.to_error_class(error))
         else
@@ -997,45 +1145,16 @@ defmodule Ash.Actions.Update.Bulk do
            )}
         end
 
-      {:error, %Ash.Error.Forbidden.InitialDataRequired{} = e} ->
-        case Ash.Actions.Read.Stream.stream_strategy(
-               query,
-               nil,
-               opts[:allow_stream_with] || :keyset
-             ) do
-          {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
-            {:error,
-             Ash.Error.to_error_class(
-               Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
-                 resource: atomic_changeset.resource,
-                 action: atomic_changeset.action.name,
-                 requested_strategies: opts[:strategy],
-                 not_stream_reason: "could not stream the query, see message below for more",
-                 not_atomic_batches_reason: "authorization requires initial data",
-                 not_atomic_reason: "authorization requires initial data",
-                 footer: "Non stream reason:\n\n" <> Exception.message(exception)
-               )
-             )}
-
-          _strategy ->
-            input_stream =
-              if atomic_changeset.context[:data_layer][:use_atomic_update_data?] do
-                [atomic_changeset.data]
-              else
-                query
-              end
-
-            run(
-              atomic_changeset.domain,
-              input_stream,
-              atomic_changeset.action,
-              input,
-              Keyword.merge(opts,
-                authorize_query?: false,
-                input_was_stream?: false
-              ),
-              e.source
-            )
+      %Ash.Changeset{valid?: false, errors: error} = _changeset ->
+        if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+          Ash.DataLayer.rollback(atomic_changeset.resource, Ash.Error.to_error_class(error))
+        else
+          {:error,
+           Ash.Error.to_error_class(error,
+             bread_crumbs: [
+               "Returned from bulk query update: #{inspect(atomic_changeset.resource)}.#{atomic_changeset.action.name}"
+             ]
+           )}
         end
 
       {:error, error} ->

@@ -512,6 +512,11 @@ defmodule Ash.Resource.Change.Builtins do
 
   Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
 
+  This change does not implement `c:Ash.Resource.Change.atomic/3`, because the function you
+  provide may rely on `changeset.data`, so an action using it cannot be run atomically
+  (set `require_atomic? false`). To run a before hook atomically, write a change module whose
+  `atomic/3` returns `{:ok, change(changeset, opts, context)}`.
+
   ## Example
 
       change before_action(fn changeset, _context ->
@@ -538,6 +543,11 @@ defmodule Ash.Resource.Change.Builtins do
   See `Ash.Changeset.before_transaction/3` for more information.
 
   Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
+
+  This change does not implement `c:Ash.Resource.Change.atomic/3`, because the function you
+  provide may rely on `changeset.data`, so an action using it cannot be run atomically
+  (set `require_atomic? false`). To run a before hook atomically, write a change module whose
+  `atomic/3` returns `{:ok, change(changeset, opts, context)}`.
 
   ## Example
 

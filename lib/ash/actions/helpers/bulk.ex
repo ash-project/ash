@@ -27,6 +27,108 @@ defmodule Ash.Actions.Helpers.Bulk do
           | {:ok_hooks_done, Ash.Resource.Record.t(), Ash.Changeset.t()}
           | {:error_hooks_done, term(), Ash.Changeset.t()}
 
+  @doc false
+  # Runs the `before_transaction` hooks of a fully atomic changeset before the bulk
+  # transaction is opened. Returns the updated changeset and normalizes returned
+  # errors or invalid changesets for the bulk executor's result processing.
+  @spec run_atomic_before_transaction_hooks(Ash.Changeset.t()) ::
+          {Ash.Changeset.t(), :ok | {:error, Ash.Error.t()}}
+  def run_atomic_before_transaction_hooks(%{before_transaction: []} = changeset),
+    do: {changeset, :ok}
+
+  def run_atomic_before_transaction_hooks(changeset) do
+    case Ash.Changeset.run_before_transaction_hooks(changeset) do
+      {:error, error} ->
+        {changeset, {:error, Ash.Error.to_error_class(error, changeset: changeset)}}
+
+      %Ash.Changeset{valid?: false} = changeset ->
+        {changeset, {:error, Ash.Error.to_error_class(changeset.errors, changeset: changeset)}}
+
+      %Ash.Changeset{} = changeset ->
+        case Ash.Changeset.verify_no_around_hooks(changeset) do
+          :ok ->
+            {changeset, :ok}
+
+          {:not_atomic, reason} ->
+            error =
+              Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+                resource: changeset.resource,
+                action: changeset.action.name,
+                requested_strategies: [:atomic],
+                not_atomic_reason: reason,
+                not_stream_reason: "before_transaction hooks have already run",
+                not_atomic_batches_reason: "before_transaction hooks have already run"
+              )
+
+            {changeset, {:error, Ash.Error.to_error_class(error, changeset: changeset)}}
+        end
+    end
+  end
+
+  @doc false
+  # Catch exceptions outside the data layer transaction, so cleanup runs after any
+  # rollback. Normal results still go through the bulk executor's result processing.
+  def run_atomic_with_before_transaction_hooks(changeset, run_transaction) do
+    prepared =
+      try do
+        run_atomic_before_transaction_hooks(changeset)
+      rescue
+        error -> {:raise, error, __STACKTRACE__}
+      catch
+        :exit, reason -> {:exit, reason}
+      end
+
+    case prepared do
+      {:raise, error, stacktrace} ->
+        {run_atomic_exception_hooks(changeset, error, stacktrace), changeset}
+
+      {:exit, reason} ->
+        {run_atomic_exit_hooks(changeset, reason), changeset}
+
+      {changeset, {:error, error}} ->
+        {{:ok, {:error, error}}, changeset}
+
+      {changeset, :ok} ->
+        result =
+          try do
+            run_transaction.(changeset)
+          rescue
+            error -> run_atomic_exception_hooks(changeset, error, __STACKTRACE__)
+          catch
+            :exit, reason -> run_atomic_exit_hooks(changeset, reason)
+          end
+
+        {result, changeset}
+    end
+  end
+
+  defp run_atomic_exception_hooks(changeset, error, stacktrace) do
+    case Ash.Changeset.run_after_transactions({:error, error}, changeset) do
+      {:ok, record} ->
+        # Cleanup already ran, including any recovery callback. Avoid running it
+        # again when the recovered record is processed by the bulk executor.
+        {:ok, {:ok, [{:ok_hooks_done, record, changeset}], []}}
+
+      {:error, error} ->
+        reraise error, stacktrace
+    end
+  end
+
+  defp run_atomic_exit_hooks(changeset, reason) do
+    error = Ash.Error.to_ash_error(reason)
+
+    case Ash.Changeset.run_after_transactions({:error, error}, changeset) do
+      {:ok, record} ->
+        {:ok, {:ok, [{:ok_hooks_done, record, changeset}], []}}
+
+      {:error, new_error} when new_error == error ->
+        exit(reason)
+
+      {:error, new_error} ->
+        exit(new_error)
+    end
+  end
+
   @doc """
   Conditionally rolls back transaction for bulk operations.
 
