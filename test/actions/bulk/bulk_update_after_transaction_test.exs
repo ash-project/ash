@@ -521,6 +521,33 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       update :update_with_invalid_atomic_changeset do
         change InvalidAtomicChangesetWithAfterTransaction
       end
+
+      for phase <- [:before_action, :before_transaction] do
+        update phase do
+          accept [:title]
+          change {Ash.Test.BulkTestChanges.FailBeforeHook, phase: phase, failure: :raise}
+        end
+
+        for failure <- [:error_tuple, :invalid_changeset] do
+          update :"#{failure}_#{phase}" do
+            accept [:title]
+            change {Ash.Test.BulkTestChanges.FailBeforeHook, phase: phase, failure: failure}
+          end
+        end
+
+        update :"exit_#{phase}" do
+          accept [:title]
+          change {Ash.Test.BulkTestChanges.FailBeforeHook, phase: phase, failure: :exit}
+        end
+
+        update :"recover_#{phase}" do
+          accept [:title]
+          argument :recover_id, :uuid, allow_nil?: false
+
+          change {Ash.Test.BulkTestChanges.FailBeforeHook,
+                  phase: phase, failure: :raise, recover?: true}
+        end
+      end
     end
 
     attributes do
@@ -2764,6 +2791,123 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
       remaining = Post |> Ash.Query.filter(id in ^post_ids) |> Ash.read!()
       assert Enum.all?(remaining, &(&1.title == "original"))
+    end
+  end
+
+  describe "after_transaction handling before-hook failures" do
+    setup do
+      {:ok, post: Ash.create!(Post, %{title: "original"})}
+    end
+
+    for phase <- [:before_action, :before_transaction],
+        strategy <- [:atomic, :atomic_batches],
+        failure <- [:error_tuple, :invalid_changeset] do
+      @phase phase
+      @strategy strategy
+      @failure failure
+
+      test "after_transaction runs once when update #{phase} returns #{failure} with #{strategy}",
+           %{post: record} do
+        input = if @strategy == :atomic, do: Post, else: [record]
+
+        result =
+          Ash.bulk_update(input, :"#{@failure}_#{@phase}", %{title: "changed"},
+            strategy: [@strategy],
+            return_errors?: true
+          )
+
+        assert result.status == :error
+        assert result.error_count == 1
+        assert_received {:cleanup, @phase, {:error, error}}
+
+        message =
+          if @failure == :error_tuple, do: "before hook error tuple", else: "before hook invalid"
+
+        assert Exception.message(error) =~ message
+        refute_received {:cleanup, _, _}
+        assert Ash.get!(Post, record.id).title == "original"
+      end
+    end
+
+    for phase <- [:before_action, :before_transaction],
+        strategy <- [:atomic, :atomic_batches] do
+      @phase phase
+      @strategy strategy
+
+      test "update #{phase} exception runs after_transaction once with #{strategy}", %{
+        post: record
+      } do
+        input = if @strategy == :atomic, do: Post, else: [record]
+
+        assert_raise Ash.Error.Unknown, ~r/before hook boom/, fn ->
+          Ash.bulk_update(input, @phase, %{title: "changed"}, strategy: [@strategy])
+        end
+
+        assert_received {:cleanup, @phase, {:error, %RuntimeError{message: "before hook boom"}}}
+        refute_received {:cleanup, _, _}
+        assert Ash.get!(Post, record.id).title == "original"
+      end
+    end
+
+    for phase <- [:before_action, :before_transaction],
+        strategy <- [:atomic, :atomic_batches] do
+      @phase phase
+      @strategy strategy
+
+      test "update #{phase} exit runs after_transaction and preserves the exit reason with #{strategy}",
+           %{post: record} do
+        input = if @strategy == :atomic, do: Post, else: [record]
+
+        assert catch_exit(
+                 Ash.bulk_update(input, :"exit_#{@phase}", %{title: "changed"},
+                   strategy: [@strategy]
+                 )
+               ) == :before_hook_exit
+
+        assert_received {:cleanup, @phase, {:error, error}}
+        assert Exception.message(error) =~ "before_hook_exit"
+        refute_received {:cleanup, _, _}
+        assert Ash.get!(Post, record.id).title == "original"
+      end
+    end
+
+    for phase <- [:before_action, :before_transaction] do
+      @phase phase
+
+      test "#{phase} exception runs after_transaction on a single record atomic upgrade", %{
+        post: record
+      } do
+        assert_raise Ash.Error.Unknown, ~r/before hook boom/, fn ->
+          record |> Ash.Changeset.for_update(@phase, %{title: "changed"}) |> Ash.update!()
+        end
+
+        assert_received {:cleanup, @phase, {:error, %RuntimeError{message: "before hook boom"}}}
+        refute_received {:cleanup, _, _}
+        assert Ash.get!(Post, record.id).title == "original"
+      end
+    end
+
+    for phase <- [:before_action, :before_transaction] do
+      @phase phase
+
+      test "update #{phase} exception can be recovered by after_transaction", %{post: record} do
+        result =
+          Ash.bulk_update!(
+            Post,
+            :"recover_#{@phase}",
+            %{title: "changed", recover_id: record.id},
+            strategy: [:atomic],
+            return_records?: true
+          )
+
+        assert result.status == :success
+        assert [recovered] = result.records
+        assert recovered.id == record.id
+        assert recovered.title == "original"
+        assert_received {:cleanup, @phase, {:error, %RuntimeError{message: "before hook boom"}}}
+        refute_received {:cleanup, _, _}
+        assert Ash.get!(Post, record.id).title == "original"
+      end
     end
   end
 end

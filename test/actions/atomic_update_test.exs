@@ -36,6 +36,28 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     end
   end
 
+  defmodule AroundActionBeforeTransaction do
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_transaction(changeset, fn changeset ->
+        send(self(), :before_transaction_added_around_action)
+
+        changeset
+        |> Ash.Changeset.after_transaction(fn _changeset, result ->
+          send(self(), {:after_transaction_added_around_action, result})
+          result
+        end)
+        |> Ash.Changeset.around_action(fn changeset, callback ->
+          send(self(), :added_around_action_called)
+          callback.(changeset)
+        end)
+      end)
+    end
+
+    def atomic(changeset, opts, context), do: {:ok, change(changeset, opts, context)}
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -103,6 +125,43 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       update :update_if_no_bio do
         accept [:name]
         change filter(expr(is_nil(bio)))
+      end
+
+      # Before hooks added by changes that implement `atomic/3` run atomically,
+      # with the real record as `data` on a single record atomic upgrade.
+      update :with_atomic_before_action do
+        accept []
+        require_atomic? true
+
+        change {Ash.Test.BulkTestChanges.BeforeActionChange,
+                attribute: :bio, value: "set in before_action"}
+      end
+
+      update :with_atomic_before_action_error do
+        accept []
+        require_atomic? true
+        change Ash.Test.BulkTestChanges.BeforeActionErrorChange
+      end
+
+      update :with_atomic_before_transaction do
+        accept []
+        require_atomic? true
+
+        change {Ash.Test.BulkTestChanges.BeforeTransactionChange,
+                attribute: :bio, value: "set in before_transaction"}
+      end
+
+      update :with_around_action_before_transaction do
+        accept [:name]
+        require_atomic? false
+        atomic_upgrade? true
+        change AroundActionBeforeTransaction
+      end
+
+      update :with_atomic_around_action do
+        accept []
+        require_atomic? true
+        change Ash.Test.BulkTestChanges.AroundActionAtomicChange
       end
     end
 
@@ -458,6 +517,115 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       assert Author.increment_score!(author).score == 4
       assert Author.increment_score!(author).score == 5
       assert Author.increment_score!(author).score == 1
+    end
+  end
+
+  describe "before hooks added in atomic/3" do
+    setup do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
+        |> Ash.create!()
+
+      {:ok, author: author}
+    end
+
+    test "before_action runs with the real record on a single record atomic upgrade", %{
+      author: %{id: id} = author
+    } do
+      assert %{bio: "set in before_action"} =
+               author
+               |> Ash.Changeset.for_update(:with_atomic_before_action, %{})
+               |> Ash.update!()
+
+      assert_received {:before_action_called, %Author{id: ^id}}
+      refute_received {:before_action_called, _}
+      assert Ash.get!(Author, id).bio == "set in before_action"
+    end
+
+    test "before_transaction runs with the real record on a single record atomic upgrade",
+         %{author: %{id: id} = author} do
+      assert %{bio: "set in before_transaction"} =
+               author
+               |> Ash.Changeset.for_update(:with_atomic_before_transaction, %{})
+               |> Ash.update!()
+
+      assert_received {:before_transaction_called, %Author{id: ^id}}
+      refute_received {:before_transaction_called, _}
+      assert Ash.get!(Author, id).bio == "set in before_transaction"
+    end
+
+    test "an error in a before_action hook fails the update and leaves the record unchanged",
+         %{author: %{id: id} = author} do
+      assert {:error, error} =
+               author
+               |> Ash.Changeset.for_update(:with_atomic_before_action_error, %{})
+               |> Ash.update()
+
+      assert Exception.message(error) =~ "before_action failed"
+      assert Ash.get!(Author, id).bio == nil
+    end
+
+    test "around_action hooks added in atomic/3 make the action not atomic", %{author: author} do
+      assert {:not_atomic, reason} =
+               Ash.Changeset.fully_atomic_changeset(Author, :with_atomic_around_action, %{})
+
+      assert reason =~ "around_action"
+
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.MustBeAtomic{} = error]}} =
+               author
+               |> Ash.Changeset.for_update(:with_atomic_around_action, %{})
+               |> Ash.update()
+
+      assert error.reason =~ "around_action"
+      refute_received :around_action_called
+    end
+
+    test "single-record atomic upgrades reject around_action added by before_transaction",
+         %{author: %{id: id} = author} do
+      assert {:error,
+              %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.NoMatchingBulkStrategy{} = error]}} =
+               author
+               |> Ash.Changeset.for_update(:with_around_action_before_transaction, %{
+                 name: "changed"
+               })
+               |> Ash.update()
+
+      assert error.not_atomic_reason =~ "around_action"
+      assert Ash.get!(Author, id).name == author.name
+      assert_received :before_transaction_added_around_action
+      refute_received :before_transaction_added_around_action
+      assert_received {:after_transaction_added_around_action, {:error, _}}
+      refute_received {:after_transaction_added_around_action, _}
+      refute_received :added_around_action_called
+    end
+
+    test "a normal update runs around_action added by before_transaction", %{author: author} do
+      assert %{name: "changed"} =
+               author
+               |> Ash.Changeset.for_update(:with_around_action_before_transaction, %{
+                 name: "changed"
+               })
+               |> Ash.update!(atomic_upgrade?: false)
+
+      assert_received :before_transaction_added_around_action
+      refute_received :before_transaction_added_around_action
+      assert_received :added_around_action_called
+      refute_received :added_around_action_called
+      assert_received {:after_transaction_added_around_action, {:ok, _}}
+      refute_received {:after_transaction_added_around_action, _}
+    end
+
+    test "hooks added directly to the changeset still prevent the atomic upgrade", %{
+      author: author
+    } do
+      assert {:error, %Ash.Error.Framework{errors: [%Ash.Error.Framework.MustBeAtomic{} = error]}} =
+               author
+               |> Ash.Changeset.for_update(:with_atomic_before_action, %{})
+               |> Ash.Changeset.before_action(& &1)
+               |> Ash.update()
+
+      assert error.reason =~ "hooks in phases [:before_action]"
     end
   end
 end

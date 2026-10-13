@@ -438,4 +438,325 @@ defmodule Ash.Test.BulkTestChanges do
       end)
     end
   end
+
+  # ============================================================================
+  # Before-Hook Change Modules (atomic)
+  #
+  # Each of these opts in to atomic execution by defining `atomic/3` as
+  # `{:ok, change(...)}`, so the before hooks they add run on the atomic path
+  # with `changeset.data` set to `%Ash.Changeset.OriginalDataNotAvailable{}`.
+  # ============================================================================
+
+  defmodule BeforeActionChange do
+    @moduledoc """
+    before_action hook that reports the data it saw and optionally forces an attribute.
+    """
+    use Ash.Resource.Change
+
+    def change(changeset, opts, _context) do
+      Ash.Changeset.before_action(changeset, fn changeset ->
+        send(self(), {:before_action_called, changeset.data})
+
+        if opts[:attribute] do
+          Ash.Changeset.force_change_attribute(changeset, opts[:attribute], opts[:value])
+        else
+          changeset
+        end
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule BeforeActionErrorChange do
+    @moduledoc "before_action hook that always makes the changeset invalid."
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn changeset ->
+        send(self(), {:before_action_called, changeset.data})
+        Ash.Changeset.add_error(changeset, field: :title, message: "before_action failed")
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule BeforeActionWithNotificationChange do
+    @moduledoc "before_action hook that returns a notification alongside the changeset."
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn changeset ->
+        {changeset,
+         %Ash.Notifier.Notification{
+           resource: changeset.resource,
+           action: changeset.action,
+           changeset: changeset,
+           metadata: %{source: :before_action}
+         }}
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule BeforeActionAddsAfterActionChange do
+    @moduledoc "before_action hook that registers an after_action hook."
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn changeset ->
+        Ash.Changeset.after_action(changeset, fn _changeset, record ->
+          send(self(), {:after_action_from_before_action, record.id})
+          {:ok, record}
+        end)
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule BeforeTransactionChange do
+    @moduledoc """
+    before_transaction hook that reports the data it saw and optionally forces an attribute.
+    """
+    use Ash.Resource.Change
+
+    def change(changeset, opts, _context) do
+      Ash.Changeset.before_transaction(changeset, fn changeset ->
+        send(self(), {:before_transaction_called, changeset.data})
+
+        if opts[:attribute] do
+          Ash.Changeset.force_change_attribute(changeset, opts[:attribute], opts[:value])
+        else
+          changeset
+        end
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule BeforeTransactionErrorChange do
+    @moduledoc "before_transaction hook that always makes the changeset invalid."
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_transaction(changeset, fn changeset ->
+        send(self(), {:before_transaction_called, changeset.data})
+        Ash.Changeset.add_error(changeset, field: :title, message: "before_transaction failed")
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule BeforeTransactionAddsAfterTransactionChange do
+    @moduledoc "before_transaction hook that registers an after_transaction hook."
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_transaction(changeset, fn changeset ->
+        Ash.Changeset.after_transaction(changeset, fn _changeset, result ->
+          send(self(), {:after_transaction_from_before_transaction, result})
+          result
+        end)
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule AroundActionAtomicChange do
+    @moduledoc """
+    Adds an around_action hook and claims to be atomic. The atomic path must refuse it
+    (around hooks cannot wrap an atomic query) rather than drop the hook.
+    """
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.around_action(changeset, fn changeset, callback ->
+        send(self(), :around_action_called)
+        callback.(changeset)
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule HookOrderChange do
+    @moduledoc "Adds one hook of every kind; each reports when it ran."
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      changeset
+      |> Ash.Changeset.before_transaction(fn changeset ->
+        send(self(), {:hook, :before_transaction})
+        changeset
+      end)
+      |> Ash.Changeset.before_action(fn changeset ->
+        send(self(), {:hook, :before_action})
+        changeset
+      end)
+      |> Ash.Changeset.after_action(fn _changeset, record ->
+        send(self(), {:hook, :after_action})
+        {:ok, record}
+      end)
+      |> Ash.Changeset.after_transaction(fn _changeset, result ->
+        send(self(), {:hook, :after_transaction})
+        result
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule MultipleBeforeActionHooks do
+    @moduledoc "Registers several before_action hooks, one of them prepended."
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      changeset
+      |> Ash.Changeset.before_action(fn changeset ->
+        send(self(), {:before_action_hook, 1})
+        changeset
+      end)
+      |> Ash.Changeset.before_action(fn changeset ->
+        send(self(), {:before_action_hook, 2})
+        changeset
+      end)
+      |> Ash.Changeset.before_action(
+        fn changeset ->
+          send(self(), {:before_action_hook, 0})
+          changeset
+        end,
+        prepend?: true
+      )
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule BeforeActionReturnsErrorTuple do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn _changeset ->
+        {:error, "before_action error tuple"}
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule BeforeActionRaises do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn _changeset ->
+        raise "before_action boom"
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule BeforeActionAddsAfterTransactionChange do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn changeset ->
+        Ash.Changeset.after_transaction(changeset, fn _changeset, result ->
+          send(self(), {:after_transaction_from_before_action, result})
+          result
+        end)
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
+  defmodule OriginalTitlePolicyCheck do
+    @moduledoc false
+    use Ash.Policy.Check
+
+    def describe(_opts), do: "original title starts with allowed"
+    def requires_original_data?(_authorizer, _opts), do: true
+
+    def strict_check(_actor, %{changeset: %{data: %{title: title}}}, _opts) do
+      {:ok, String.starts_with?(title, "allowed")}
+    end
+  end
+
+  defmodule FailBeforeHook do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    def change(changeset, opts, _context) do
+      changeset =
+        Ash.Changeset.after_transaction(changeset, fn changeset, result ->
+          send(self(), {:cleanup, opts[:phase], result})
+
+          if opts[:recover?] do
+            {:ok,
+             Ash.get!(changeset.resource, Ash.Changeset.get_argument(changeset, :recover_id))}
+          else
+            result
+          end
+        end)
+
+      hook = fn changeset ->
+        case opts[:failure] do
+          :error_tuple ->
+            {:error, "before hook error tuple"}
+
+          :invalid_changeset ->
+            Ash.Changeset.add_error(changeset, field: :title, message: "before hook invalid")
+
+          :raise ->
+            raise "before hook boom"
+
+          :exit ->
+            exit(:before_hook_exit)
+        end
+      end
+
+      case opts[:phase] do
+        :before_action -> Ash.Changeset.before_action(changeset, hook)
+        :before_transaction -> Ash.Changeset.before_transaction(changeset, hook)
+      end
+    end
+
+    def atomic(changeset, opts, context), do: {:ok, change(changeset, opts, context)}
+  end
 end

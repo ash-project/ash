@@ -86,19 +86,16 @@ defmodule Ash.Test.Actions.AtomicHooksTest do
     end
   end
 
-  test "a change that adds a before_action hook in atomic/3 can't be done atomically" do
-    assert {:not_atomic, reason} = Ash.Changeset.fully_atomic_changeset(Post, :bump, %{})
-    assert reason =~ inspect(BeforeActionInAtomic)
-    assert reason =~ "before_action"
+  test "a change that adds a before_action hook in atomic/3 can be done atomically" do
+    assert %Ash.Changeset{valid?: true} = Ash.Changeset.fully_atomic_changeset(Post, :bump, %{})
   end
 
-  test "an action requiring atomicity refuses it rather than skipping the hook" do
+  test "an action requiring atomicity runs its before_action hook" do
     post = Ash.create!(Post, %{})
 
-    assert_raise Ash.Error.Framework, ~r/must be performed atomically/, fn ->
-      post |> Ash.Changeset.for_update(:bump) |> Ash.update!()
-    end
+    assert %{count: 1} = post |> Ash.Changeset.for_update(:bump) |> Ash.update!()
 
+    assert_received {:before_action, :bump}
     refute_received {:before_action, _}
   end
 
@@ -111,20 +108,20 @@ defmodule Ash.Test.Actions.AtomicHooksTest do
     assert_received {:before_action, :bump_non_atomic}
   end
 
-  test "a bulk update falls back from the atomic strategy and runs the hook" do
+  test "a bulk update runs the hook with the atomic strategy" do
     Ash.create!(Post, %{})
 
     assert %Ash.BulkResult{status: :success} =
-             Ash.bulk_update!(Post, :bump_non_atomic, %{}, strategy: [:atomic, :stream])
+             Ash.bulk_update!(Post, :bump_non_atomic, %{}, strategy: [:atomic])
 
     assert_received {:before_action, :bump_non_atomic}
   end
 
-  test "a bulk destroy falls back from the atomic strategy and runs the hook" do
+  test "a bulk destroy runs the hook with the atomic strategy" do
     Ash.create!(Post, %{})
 
     assert %Ash.BulkResult{status: :success} =
-             Ash.bulk_destroy!(Post, :destroy_non_atomic, %{}, strategy: [:atomic, :stream])
+             Ash.bulk_destroy!(Post, :destroy_non_atomic, %{}, strategy: [:atomic])
 
     assert_received {:before_action, :destroy_non_atomic}
     assert [] = Ash.read!(Post)

@@ -47,6 +47,17 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  defmodule CaptureAtomicData do
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context), do: changeset
+
+    def atomic(changeset, _opts, _context) do
+      send(self(), {:atomic_data, changeset.data})
+      {:ok, changeset}
+    end
+  end
+
   defmodule Category do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -61,6 +72,20 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      update :update_with_atomic_data do
+        accept []
+        change CaptureAtomicData
+      end
+
+      destroy :destroy_with_atomic_data do
+        change CaptureAtomicData
+      end
+
+      destroy :soft_destroy_with_atomic_data do
+        soft? true
+        change CaptureAtomicData
+      end
 
       create :create_with_confirmation do
         argument :confirm_name, :string do
@@ -1460,6 +1485,43 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                Ash.Changeset.for_create(Category, :create_with_keyword_attribute_validation, %{
                  name: "bad"
                }).errors
+    end
+  end
+
+  describe "original data in atomic changes" do
+    test "update changes receive the atomic query update sentinel" do
+      assert %Ash.Changeset{valid?: true} =
+               Ash.Changeset.fully_atomic_changeset(Category, :update_with_atomic_data, %{})
+
+      assert_received {:atomic_data,
+                       %Ash.Changeset.OriginalDataNotAvailable{reason: :atomic_query_update}}
+    end
+
+    test "destroy changes receive the atomic query destroy sentinel" do
+      assert %Ash.Changeset{valid?: true} =
+               Ash.Changeset.fully_atomic_changeset(Category, :destroy_with_atomic_data, %{})
+
+      assert_received {:atomic_data,
+                       %Ash.Changeset.OriginalDataNotAvailable{reason: :atomic_query_destroy}}
+    end
+
+    test "soft destroy changes receive the atomic query update sentinel" do
+      assert %Ash.Changeset{valid?: true} =
+               Ash.Changeset.fully_atomic_changeset(Category, :soft_destroy_with_atomic_data, %{})
+
+      assert_received {:atomic_data,
+                       %Ash.Changeset.OriginalDataNotAvailable{reason: :atomic_query_update}}
+    end
+
+    test "atomic changes receive supplied original data unchanged" do
+      record = Ash.create!(Category, %{name: "original"})
+
+      assert %Ash.Changeset{valid?: true, data: ^record} =
+               Ash.Changeset.fully_atomic_changeset(Category, :destroy_with_atomic_data, %{},
+                 data: record
+               )
+
+      assert_received {:atomic_data, ^record}
     end
   end
 
