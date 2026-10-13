@@ -14,8 +14,8 @@ defmodule Ash.Resource.Change.Builtins do
 
   This ensures that only things matching the provided filter are updated or destroyed.
   """
-  @spec filter(expr :: Ash.Expr.t()) :: Ash.Resource.Change.ref()
-  def filter(filter) do
+  @spec filter_where(expr :: Ash.Expr.t()) :: Ash.Resource.Change.ref()
+  def filter_where(filter) do
     {Ash.Resource.Change.Filter, filter: filter}
   end
 

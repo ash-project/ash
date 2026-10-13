@@ -12,6 +12,7 @@ defmodule Ash.Resource.Actions.Destroy do
     :description,
     :error_handler,
     :multitenancy,
+    :filter,
     manual: nil,
     require_atomic?: Application.compile_env(:ash, :require_atomic_by_default?, true),
     skip_unknown_inputs: [],
@@ -27,6 +28,7 @@ defmodule Ash.Resource.Actions.Destroy do
     require_attributes: [],
     allow_nil_input: [],
     changes: [],
+    filters: [],
     reject: [],
     transaction?: true,
     public?: true,
@@ -40,6 +42,8 @@ defmodule Ash.Resource.Actions.Destroy do
           name: atom,
           manual: module | nil,
           multitenancy: atom,
+          filter: any,
+          filters: [any],
           action_select: list(atom) | nil,
           notifiers: list(module),
           arguments: list(Ash.Resource.Actions.Argument.t()),
@@ -118,8 +122,23 @@ defmodule Ash.Resource.Actions.Destroy do
   def opt_schema, do: @opt_schema
 
   def transform(%{manual: manual} = action) when not is_nil(manual) do
-    {:ok, %{action | require_atomic?: false}}
+    {:ok, %{action | require_atomic?: false} |> concat_filters()}
   end
 
-  def transform(action), do: {:ok, action}
+  def transform(action), do: {:ok, concat_filters(action)}
+
+  defp concat_filters(%{filters: [filter]} = action) do
+    %{action | filter: filter.filter}
+  end
+
+  defp concat_filters(%{filters: [first | rest]} = action) do
+    filter =
+      Enum.reduce(rest, first.filter, fn filter, acc ->
+        Ash.Query.BooleanExpression.new(:and, filter.filter, acc)
+      end)
+
+    %{action | filter: filter}
+  end
+
+  defp concat_filters(action), do: action
 end
