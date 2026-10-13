@@ -29,6 +29,7 @@ defmodule Ash.ActionInput do
     valid?: true,
     errors: [],
     handle_errors: nil,
+    phase: :pending,
     before_action: [],
     after_action: [],
     before_transaction: [],
@@ -104,6 +105,7 @@ defmodule Ash.ActionInput do
           domain: Ash.Domain.t() | nil,
           valid?: boolean(),
           errors: [Ash.Error.t()],
+          phase: :pending | :before_action | :after_action | :after_transaction,
           handle_errors:
             nil
             | (t(), error :: term ->
@@ -1607,6 +1609,8 @@ defmodule Ash.ActionInput do
   def run_before_actions(%{valid?: false} = input), do: {input, %{notifications: []}}
 
   def run_before_actions(input) do
+    input = %{input | phase: :before_action}
+
     Enum.reduce_while(
       input.before_action,
       {input, %{notifications: []}},
@@ -1699,6 +1703,8 @@ defmodule Ash.ActionInput do
 
   @doc false
   def run_after_actions(result, input, before_action_notifications) do
+    input = %{input | phase: :after_action}
+
     Enum.reduce_while(
       input.after_action,
       {:ok, result, input, %{notifications: before_action_notifications}},
@@ -1888,6 +1894,8 @@ defmodule Ash.ActionInput do
   end
 
   def run_after_transaction_hooks(result, input) do
+    input = %{input | phase: :after_transaction}
+
     input.after_transaction
     |> Enum.reduce(
       result,

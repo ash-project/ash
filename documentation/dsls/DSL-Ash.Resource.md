@@ -3250,6 +3250,136 @@ Target: `Ash.Resource.Pipeline`
 
 
 
+## signals_in
+Listen to signals emitted by other resources. See `Ash.Signals`.
+
+
+### Nested DSLs
+ * [from](#signals_in-from)
+   * on
+
+
+### Examples
+```
+signals_in do
+  from MyApp.Blog.Signals do
+    on :add_to_feeds, :post_created
+  end
+end
+
+```
+
+
+
+
+### signals_in.from
+```elixir
+from signal_module
+```
+
+
+Listens to signals from an `Ash.Signals` module.
+
+
+### Nested DSLs
+ * [on](#signals_in-from-on)
+
+
+### Examples
+```
+from MyApp.Blog.Signals do
+  on :add_to_feeds, :post_created
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#signals_in-from-signal_module){: #signals_in-from-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signals. |
+
+
+
+### signals_in.from.on
+```elixir
+on name, signal
+```
+
+
+Runs an action when a signal is emitted. Its return value is ignored.
+
+The action defaults to the listener's name. A generic action receives the signal struct as an
+argument (named `signal` by default), or every signal emitted together as a list with
+`batch?: true`. A create action creates a record from each signal. An update or destroy action
+runs on the records selected for each signal by `read_action`, `args` and `get_by`. Create,
+update and destroy actions handle the signals emitted together in bulk.
+
+
+
+
+### Examples
+```
+on :add_to_feeds, :post_created
+```
+
+```
+on :add_all_to_feeds, :post_created, batch?: true
+```
+
+```
+on :record_post, :post_created, action: :create, inputs: [:post_id, body: :title]
+```
+
+```
+on :archive, :post_archived, read_action: :for_post, args: [:post_id]
+```
+
+```
+on :archive, :post_archived, get_by: [post_id: :post_id]
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#signals_in-from-on-name){: #signals_in-from-on-name .spark-required} | `atom` |  | The name of the listener, unique within the resource. Also the action it runs, unless `action` is set. |
+| [`signal`](#signals_in-from-on-signal){: #signals_in-from-on-signal .spark-required} | `atom` |  | The name of the signal. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`action`](#signals_in-from-on-action){: #signals_in-from-on-action } | `atom` |  | The action to run when the signal is emitted. Defaults to the listener's name. A generic action receives the signal struct as an argument. A create action creates a record from each signal. An update or destroy action runs on the records that `read_action`, `args` and `get_by` select for each signal. |
+| [`batch?`](#signals_in-from-on-batch?){: #signals_in-from-on-batch? } | `boolean` | `false` | For a generic action, run it once with every signal emitted together (by `Ash.Signals.emit_many/5`), as a list, instead of once per signal. Create, update and destroy actions always handle signals in bulk. |
+| [`argument`](#signals_in-from-on-argument){: #signals_in-from-on-argument } | `atom` |  | For a generic action, the argument that receives the signal struct. Defaults to `:signal`, or to `:signals` with `batch?: true`, in which case it receives a list of signal structs. |
+| [`inputs`](#signals_in-from-on-inputs){: #signals_in-from-on-inputs } | `list(atom \| {atom, atom})` |  | For a create, update or destroy action, the inputs of the action to set from the signal. Defaults to every signal field with the same name as an input of the action. A keyword list mapping each name to the signal field it takes its value from. A bare name takes its value from the signal field with the same name, e.g. `[:customer_id, order: :order_id]`. |
+| [`read_action`](#signals_in-from-on-read_action){: #signals_in-from-on-read_action } | `atom` |  | For an update or destroy action, the read action that selects the records to change. Defaults to the primary read action. Signals for which it returns no records are handled. |
+| [`args`](#signals_in-from-on-args){: #signals_in-from-on-args } | `list(atom \| {atom, atom})` | `[]` | For an update or destroy action, the arguments of the read action to set from the signal. A keyword list mapping each name to the signal field it takes its value from. A bare name takes its value from the signal field with the same name, e.g. `[:customer_id, order: :order_id]`. |
+| [`get_by`](#signals_in-from-on-get_by){: #signals_in-from-on-get_by } | `list(atom \| {atom, atom})` | `[]` | For an update or destroy action, fields of the resource that must equal the given signal fields. A keyword list mapping each name to the signal field it takes its value from. A bare name takes its value from the signal field with the same name, e.g. `[:customer_id, order: :order_id]`. |
+| [`description`](#signals_in-from-on-description){: #signals_in-from-on-description } | `String.t` |  | A description of the listener. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.SignalListener`
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.SignalSource`
+
+
+
+
 ## aggregates
 Declare named aggregates on the resource.
 

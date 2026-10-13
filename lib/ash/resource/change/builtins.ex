@@ -310,6 +310,52 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
+  Emits a signal from the action. See `Ash.Signals`.
+
+  The phase must be the one the signal declares, so that the action shows when it emits. The
+  signal is emitted during it, once for each record. Bulk actions emit
+  their signals together, with `Ash.Signals.emit_many/5`, except for signals emitted after the
+  transaction. Using this adds the signal module to the resource's `signals_out`.
+
+  Signal fields are taken from the record's fields of the same name, unless set with the
+  options below. Before the action, they are read from the changeset.
+
+  ## Options
+
+  #{Spark.Options.docs(Keyword.drop(Ash.Signals.Emitter.schema(), [:signal_module, :signal, :phase]))}
+
+  Using `previous/1` makes the change non-atomic, since atomic actions don't read the record
+  before changing it.
+
+  ## Examples
+
+      change emit_signal(MyApp.Blog.Signals, :post_created, :after_action)
+
+      change emit_signal(MyApp.Shop.Signals, :order_status_changed, :after_action,
+               fields: [order_id: :id],
+               values: [previous_status: previous(:status), changed_by: actor(:id)]
+             ),
+             where: [changing(:status)]
+  """
+  @spec emit_signal(Ash.Signals.t(), atom(), Ash.Signals.Signal.phase(), Keyword.t()) ::
+          Ash.Resource.Change.ref()
+  def emit_signal(signal_module, signal, phase, opts \\ []) do
+    {Ash.Resource.Change.EmitSignal,
+     Keyword.merge(opts, signal_module: signal_module, signal: signal, phase: phase)}
+  end
+
+  @doc """
+  The value of a field before the action, for the `values` of `emit_signal/4` in update and
+  destroy actions.
+
+      change emit_signal(MyApp.Shop.Signals, :order_status_changed, :after_action,
+               values: [previous_status: previous(:status)]
+             )
+  """
+  @spec previous(atom()) :: {:_previous, atom()}
+  def previous(field) when is_atom(field), do: {:_previous, field}
+
+  @doc """
   Merges the given query context.
 
   If an MFA is provided, it will be called with the changeset.

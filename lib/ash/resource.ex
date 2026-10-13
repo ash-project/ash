@@ -35,6 +35,11 @@ defmodule Ash.Resource do
         type: {:list, {:behaviour, Ash.Notifier}},
         doc: "Notifiers with no DSL."
       ],
+      signals_out: [
+        type: {:wrap_list, :atom},
+        default: [],
+        doc: "`Ash.Signals` modules that this resource may emit events to"
+      ],
       validate_domain_inclusion?: [
         type: :boolean,
         doc: "Whether or not to validate that this resource is included in a domain.",
@@ -130,6 +135,7 @@ defmodule Ash.Resource do
             embed_nil_values?: opts[:embed_nil_values?]
           ] do
       @persist {:simple_notifiers, List.wrap(opts[:simple_notifiers])}
+      @persist {:signals_out, List.wrap(opts[:signals_out])}
       @persist {:primary_read_warning?, Keyword.get(opts, :primary_read_warning?, true)}
 
       import Ash.Resource, only: [timestamps: 0, timestamps: 1]
