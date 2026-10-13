@@ -600,5 +600,20 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
       assert project.tickets.results == []
       assert project.tickets.count == 0
     end
+
+    test "count project tickets in an aggregate using only hours the actor can filter",
+         context do
+      project =
+        Project
+        |> Ash.Query.filter(id == 1)
+        |> Ash.Query.aggregate(:long_ticket_count, :count, :tickets,
+          query: Ash.Query.filter_input(ProjectTicket, %{hours: %{greater_than: 10}}),
+          default: 0
+        )
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+        |> Ash.read_one!()
+
+      assert project.aggregates.long_ticket_count == 1
+    end
   end
 end
