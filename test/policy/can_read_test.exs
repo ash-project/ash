@@ -5,6 +5,7 @@
 defmodule Ash.Test.Policy.CanReadTest do
   @doc false
   use ExUnit.Case, async: true
+  require Ash.Query
 
   alias Ash.Test.Domain, as: Domain
 
@@ -372,6 +373,60 @@ defmodule Ash.Test.Policy.CanReadTest do
     end
   end
 
+  defmodule RelationshipProject do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      integer_primary_key :id, writable?: true
+    end
+
+    relationships do
+      has_many :tickets, Ash.Test.Policy.CanReadTest.RelationshipProjectTicket, public?: true
+    end
+
+    actions do
+      defaults [:read, create: [:id]]
+    end
+  end
+
+  defmodule RelationshipProjectTicket do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      integer_primary_key :id, writable?: true
+      attribute :hours, :integer, public?: true
+      attribute :relationship_project_id, :integer, public?: true
+    end
+
+    actions do
+      defaults create: [:id, :hours, :relationship_project_id]
+
+      read :read do
+        primary? true
+        pagination offset?: true, countable: true, required?: false
+      end
+    end
+
+    policies do
+      policy action_type(:read) do
+        authorize_if accessing_from(Ash.Test.Policy.CanReadTest.RelationshipProject, :tickets)
+      end
+    end
+  end
+
   setup do
     actor = Ash.create!(User, %{}, authorize?: false)
     other = Ash.create!(User, %{}, authorize?: false)
@@ -565,6 +620,42 @@ defmodule Ash.Test.Policy.CanReadTest do
                |> Map.get(:short_circuit_comments)
 
       assert comment_id == comment.id
+    end
+  end
+
+  describe "counting tickets readable through their project" do
+    test "load and count filtered tickets allowed by the project relationship" do
+      RelationshipProject
+      |> Ash.Changeset.for_create(:create, %{id: 1})
+      |> Ash.create!()
+
+      RelationshipProjectTicket
+      |> Ash.Changeset.for_create(:create, %{id: 1, hours: 20, relationship_project_id: 1})
+      |> Ash.create!(authorize?: false)
+
+      actor = %{id: 1}
+
+      for mode <- [:input, :trusted] do
+        query =
+          case mode do
+            :trusted ->
+              Ash.Query.filter(RelationshipProjectTicket, hours > 10)
+
+            :input ->
+              Ash.Query.filter_input(RelationshipProjectTicket, %{hours: %{greater_than: 10}})
+          end
+          |> Ash.Query.page(limit: 10, count: true)
+          |> Ash.Query.for_read(:read, %{}, actor: actor)
+
+        project =
+          RelationshipProject
+          |> Ash.Query.load(tickets: query)
+          |> Ash.Query.for_read(:read, %{}, actor: actor)
+          |> Ash.read_one!()
+
+        assert Enum.map(project.tickets.results, & &1.id) == [1]
+        assert project.tickets.count == 1
+      end
     end
   end
 
