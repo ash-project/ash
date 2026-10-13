@@ -8,6 +8,53 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.35.0](https://github.com/ash-project/ash/compare/v3.34.6...v3.35.0) (2026-10-13)
+
+
+
+
+### Features:
+
+* constrain a range with a resolution and an anchor (#3017) by [@matt-beanland](https://github.com/matt-beanland) [(#3017)](https://github.com/ash-project/ash/pull/3017)
+
+* limit a range's bounds with a lower and an upper limit (#3015) by [@matt-beanland](https://github.com/matt-beanland) [(#3015)](https://github.com/ash-project/ash/pull/3015)
+
+### Improvements:
+
+* allow a zoned anchor on a datetime range (#3019) by [@matt-beanland](https://github.com/matt-beanland) [(#3019)](https://github.com/ash-project/ash/pull/3019)
+
+### Bug Fixes:
+
+* describe simple equality filters in resource manifests (#3025) by [@barnabasJ](https://github.com/barnabasJ) [(#3025)](https://github.com/ash-project/ash/pull/3025)
+
+* authorize caller input filters in relationship page counts (#3023) by [@barnabasJ](https://github.com/barnabasJ) [(#3023)](https://github.com/ash-project/ash/pull/3023)
+
+* preserve relationship access context in page count queries by [@barnabasJ](https://github.com/barnabasJ) [(#3023)](https://github.com/ash-project/ash/pull/3023)
+
+* authorize page count input refs inside unrelated exists by [@barnabasJ](https://github.com/barnabasJ) [(#3023)](https://github.com/ash-project/ash/pull/3023)
+
+* Load configured authorizers before checking field visibility (#3024) by [@barnabasJ](https://github.com/barnabasJ) [(#3024)](https://github.com/ash-project/ash/pull/3024)
+
+* fix inclusive/exclusive across discrete ranges by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't normalize a duration's hours into days (#3020) by sevenseacat [(#3020)](https://github.com/ash-project/ash/pull/3020)
+
+* add more docs for lazy? and reuse_valus? (#3013) by g3nke11 [(#3013)](https://github.com/ash-project/ash/pull/3013)
+
+* fill templates and initialize options for every batch callback by [@zachdaniel](https://github.com/zachdaniel)
+
+* pass initialized options to batch callbacks in bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
+* set the changeset phase for before_batch and after_batch callbacks by [@zachdaniel](https://github.com/zachdaniel)
+
+* keep the after_action phase set for every after_action hook by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly deduplicate nested calculation loads by [@zachdaniel](https://github.com/zachdaniel)
+
+* always reject non-atomic hooks on atomic changes by [@zachdaniel](https://github.com/zachdaniel)
+
+* align GetAndLockForUpdate with GetAndLock atomic semantics by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.34.6](https://github.com/ash-project/ash/compare/v3.34.5...v3.34.6) (2026-10-09)
 
 
