@@ -477,6 +477,9 @@ defmodule Ash.Actions.Destroy.Bulk do
         end
       end
     end
+  rescue
+    error ->
+      reraise_bulk_error(error, __STACKTRACE__, query.resource, action)
   end
 
   def run(domain, stream, action, input, opts, not_atomic_reason) do
@@ -634,6 +637,25 @@ defmodule Ash.Actions.Destroy.Bulk do
         end
       end
     end
+  rescue
+    error ->
+      reraise_bulk_error(error, __STACKTRACE__, opts[:resource], action)
+  end
+
+  defp reraise_bulk_error(error, stacktrace, resource, action) do
+    action_name =
+      case action do
+        %{name: name} -> name
+        name -> name
+      end
+
+    reraise Ash.Error.to_error_class(error,
+              stacktrace: stacktrace,
+              bread_crumbs: [
+                "Exception raised in bulk destroy: #{inspect(resource)}.#{action_name}"
+              ]
+            ),
+            stacktrace
   end
 
   defp select(opts, resource) do

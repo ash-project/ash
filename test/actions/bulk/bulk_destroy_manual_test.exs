@@ -538,7 +538,7 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
   test "bulk_destroy with :destroy_manual_tupled_notifications works" do
     authors = create_authors()
 
-    assert_raise RuntimeError, fn ->
+    assert_raise Ash.Error.Unknown, fn ->
       authors
       |> Ash.bulk_destroy(:destroy_manual_tupled_notifications, %{},
         return_notifications?: true,

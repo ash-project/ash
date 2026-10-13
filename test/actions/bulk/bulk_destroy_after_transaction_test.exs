@@ -2515,7 +2515,7 @@ defmodule Ash.Test.Actions.BulkDestroyAfterTransactionTest do
       } do
         input = if @strategy == :atomic, do: Post, else: [record]
 
-        assert_raise RuntimeError, ~r/before hook boom/, fn ->
+        assert_raise Ash.Error.Unknown, ~r/before hook boom/, fn ->
           Ash.bulk_destroy(input, :"destroy_#{@phase}", %{}, strategy: [@strategy])
         end
 
