@@ -308,7 +308,7 @@ defmodule Ash.Actions.Read do
         load_and_select_sort(query, page_opts)
       end
 
-    query = add_relationship_count_aggregates(query)
+    query = add_relationship_count_aggregates(query, opts)
 
     pkey = Ash.Resource.Info.primary_key(query.resource)
 
@@ -1182,7 +1182,7 @@ defmodule Ash.Actions.Read do
       )
   end
 
-  defp add_relationship_count_aggregates(query) do
+  defp add_relationship_count_aggregates(query, opts) do
     Enum.reduce(query.load, query, fn {relationship_name, related_query}, query ->
       relationship = Ash.Resource.Info.relationship(query.resource, relationship_name)
 
@@ -1196,7 +1196,11 @@ defmodule Ash.Actions.Read do
 
       if needs_count? do
         related_query =
-          Ash.Query.unset(related_query, [
+          related_query
+          |> Ash.Query.set_context(%{
+            accessing_from: %{source: relationship.source, name: relationship.name}
+          })
+          |> Ash.Query.unset([
             :sort,
             :distinct,
             :distinct_sort,
@@ -1208,15 +1212,63 @@ defmodule Ash.Actions.Read do
 
         aggregate_name = paginated_relationship_count_aggregate_name(relationship.name)
 
-        query
-        |> Ash.Query.aggregate(aggregate_name, :count, relationship.name,
-          query: related_query,
-          default: 0
-        )
+        query =
+          Ash.Query.aggregate(query, aggregate_name, :count, relationship.name,
+            query: related_query,
+            default: 0
+          )
+
+        with true <- opts[:authorize?],
+             {:ok, aggregate} <- Map.fetch(query.aggregates, aggregate_name),
+             true <- has_input_filter_refs?(aggregate.query.filter) do
+          aggregate =
+            add_calc_context(
+              aggregate,
+              opts[:actor],
+              opts[:authorize?],
+              query.tenant,
+              opts[:tracer],
+              query.domain,
+              query.resource,
+              parent_stack: parent_stack_from_context(query.context),
+              source_context: query.context
+            )
+
+          # Page counts must use the same authorized input predicates as the
+          # relationship read. This does not apply field policies to the
+          # aggregate's target field or change ordinary aggregate semantics.
+          case authorize_query(aggregate.query, opts) do
+            {:ok, authorized_query} ->
+              aggregate = %{
+                aggregate
+                | query: %{aggregate.query | filter: authorized_query.filter}
+              }
+
+              %{query | aggregates: Map.put(query.aggregates, aggregate_name, aggregate)}
+
+            {:error, error} ->
+              Ash.Query.add_error(query, error)
+          end
+        else
+          _ -> query
+        end
       else
         query
       end
     end)
+  end
+
+  defp has_input_filter_refs?(filter) do
+    # Unlike list_refs/1, input detection must include unrelated exists and
+    # their parent expressions, which the authorizer also rewrites.
+    filter
+    |> Ash.Filter.flat_map(fn
+      %Ash.Query.Ref{input?: true} -> [true]
+      %Ash.Query.Exists{expr: expr} -> [has_input_filter_refs?(expr)]
+      %Ash.Query.Parent{expr: expr} -> [has_input_filter_refs?(expr)]
+      _ -> []
+    end)
+    |> Enum.any?()
   end
 
   @doc false

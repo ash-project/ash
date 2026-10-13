@@ -7,6 +7,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
   use ExUnit.Case
 
   require Ash.Query
+  require Ash.Expr
 
   alias Ash.Test.Support.PolicyField.{Post, Ticket, User}
 
@@ -474,6 +475,130 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.sort(points: :asc_nils_first)
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
                |> Ash.read!()
+    end
+  end
+
+  describe "counting project tickets filtered by visible hours" do
+    alias Ash.Test.Support.PolicyField.{HoursBenchmark, Project, ProjectTicket}
+
+    setup do
+      for id <- [1, 2] do
+        Project
+        |> Ash.Changeset.for_create(:create, %{id: id})
+        |> Ash.create!()
+      end
+
+      for {id, hours, owner_id, project_id} <- [
+            {1, 5, 1, 1},
+            {2, 20, 1, 1},
+            {3, 30, 2, 1},
+            {4, 40, 2, 1},
+            {5, 50, 2, 1},
+            {6, 60, 1, 2}
+          ] do
+        ProjectTicket
+        |> Ash.Changeset.for_create(:create, %{
+          id: id,
+          hours: hours,
+          owner_id: owner_id,
+          project_id: project_id
+        })
+        |> Ash.create!(authorize?: false)
+      end
+
+      %{actor: %{id: 1}}
+    end
+
+    test "count project tickets using only hours the actor can filter", context do
+      query =
+        ProjectTicket
+        |> Ash.Query.filter_input(%{hours: %{greater_than: 10}})
+        |> Ash.Query.page(limit: 10, count: true)
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+
+      direct =
+        query
+        |> Ash.Query.filter_input(%{project_id: 1})
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+        |> Ash.read!(page: [limit: 10, count: true])
+
+      assert Enum.map(direct.results, & &1.id) == [2]
+      assert direct.count == 1
+
+      project =
+        Project
+        |> Ash.Query.filter(id == 1)
+        |> Ash.Query.load(tickets: query)
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+        |> Ash.read_one!()
+
+      assert Enum.map(project.tickets.results, & &1.id) == [2]
+      assert project.tickets.count == direct.count
+    end
+
+    test "count project tickets matched by public benchmarks using only visible hours" do
+      for {id, hours} <- [{1, 30}, {2, 60}] do
+        HoursBenchmark
+        |> Ash.Changeset.for_create(:create, %{id: id, hours: hours})
+        |> Ash.create!()
+      end
+
+      for {mode, actor, expected_ids} <- [
+            {:input, %{id: 1}, []},
+            {:input, %{id: 2}, [3]},
+            {:trusted, %{id: 1}, [3]}
+          ] do
+        query =
+          case mode do
+            :input ->
+              Ash.Query.filter_input(
+                ProjectTicket,
+                Ash.Expr.expr(exists(HoursBenchmark, hours == parent(hours)))
+              )
+
+            :trusted ->
+              Ash.Query.filter(ProjectTicket, exists(HoursBenchmark, hours == parent(hours)))
+          end
+          |> Ash.Query.page(limit: 10, count: true)
+          |> Ash.Query.for_read(:read, %{}, actor: actor)
+
+        direct =
+          query
+          |> Ash.Query.filter(project_id == 1)
+          |> Ash.Query.for_read(:read, %{}, actor: actor)
+          |> Ash.read!()
+
+        assert Enum.map(direct.results, & &1.id) == expected_ids
+        assert direct.count == length(expected_ids)
+
+        project =
+          Project
+          |> Ash.Query.filter(id == 1)
+          |> Ash.Query.load(tickets: query)
+          |> Ash.Query.for_read(:read, %{}, actor: actor)
+          |> Ash.read_one!()
+
+        assert Enum.map(project.tickets.results, & &1.id) == expected_ids
+        assert project.tickets.count == direct.count
+      end
+    end
+
+    test "count zero project tickets when only hidden hours match the filter", context do
+      query =
+        ProjectTicket
+        |> Ash.Query.filter_input(%{hours: %{greater_than: 35}})
+        |> Ash.Query.page(limit: 10, count: true)
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+
+      project =
+        Project
+        |> Ash.Query.filter(id == 1)
+        |> Ash.Query.load(tickets: query)
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+        |> Ash.read_one!()
+
+      assert project.tickets.results == []
+      assert project.tickets.count == 0
     end
   end
 end
