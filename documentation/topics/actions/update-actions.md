@@ -157,6 +157,10 @@ def atomic(_changeset, opts, _context) do
 end
 ```
 
+### Hooks
+
+Hooks added to the changeset by the caller, i.e `Ash.Changeset.before_action/3` or `Ash.Changeset.before_transaction/3` called after `Ash.Changeset.for_update/4`, prevent the action from being run atomically, because they may depend on the original record (`after_action` and `after_transaction` hooks added by the caller are carried over). Hooks added by a change's `c:Ash.Resource.Change.atomic/3` callback, on the other hand, do run atomically; see [Hooks in atomic changes](/documentation/topics/resources/changes.md#hooks-in-atomic-changes). The exception is `around_action` and `around_transaction` hooks, which cannot wrap an atomic query and therefore make the action not atomic however they are added.
+
 ### Validations without an `atomic` callback
 
 Validations can be enhanced to support atomics by defining `c:Ash.Resource.Validation.atomic/3`. This callback can return an atomic validation (or a list of atomic validations), which is represented by a list of affected attributes (not currently used), an expression that should trigger an error, and the expression producing the error. Here is an example from the built in `Ash.Resource.Validations.Builtins.attribute_equals/2` validation:
@@ -263,6 +267,21 @@ All actions are run in a transaction if the data layer supports it. You can opt 
 - Non-belongs-to relationships are managed, creating/updating/destroying related records.
 - The transaction is closed, if one was opened
 - `after_transaction` hooks are invoked with the result of the transaction (even if it was an error)
+
+## Running an atomic update action
+
+When an action runs atomically (a fully atomic `Ash.update`, a bulk update with the `:atomic` or `:atomic_batches` strategy, or an atomic upgrade), the data layer applies the changes atomically for each query or batch. The steps are:
+
+- The atomic changeset is built: changes and validations run through their `atomic/3` callbacks, and `changeset.data` is `%Ash.Changeset.OriginalDataNotAvailable{}` (or the record, for a single record atomic upgrade). Validation expressions are prepared here; failures that can be determined at this point stop execution before the before hooks run
+- Authorization is applied to the query and the atomic changeset
+- `before_transaction` hooks added by changes are called, once for the whole query or batch
+- A transaction is opened, if enabled and supported by the data layer, when there are `before_action`, `after_action` or `after_batch` hooks, or if the data layer prefers one
+- `before_action` hooks added by changes are called, once for the whole query or batch
+- Atomic updates and validation expressions added by the before hooks are prepared, and attribute constraints are applied to new or replaced atomic updates
+- The update query is sent to the data layer, where validation expressions that depend on record data are evaluated as part of the update
+- `after_batch` callbacks receive the batch of returned records; `after_action` hooks run for each returned record
+- The transaction is closed, if one was opened
+- `after_transaction` hooks run for each processed success or error result; a failure of the whole query or batch is one error result
 
 ## Atomic Upgrade
 

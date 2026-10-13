@@ -228,8 +228,6 @@ def atomic(changeset, opts, context) do
 end
 ```
 
-An atomic action only runs `after_action` and `after_transaction` hooks. If `change/3` adds a `before_action`, `before_transaction`, `around_action` or `around_transaction` hook, the action is treated as not atomic, and falls back to the non-atomic path if the action allows it (`require_atomic? false`).
-
 In other cases, a change may not be necessary in a fully atomic action. For this, you can simply return `:ok`
 
 ```elixir
@@ -238,6 +236,19 @@ def atomic(_changeset, _opts, _context) do
   :ok
 end
 ```
+
+### Hooks in atomic changes
+
+Hooks that a change adds in its `atomic/3` callback run on the atomic path too. This includes `before_transaction`, `before_action`, `after_action` and `after_transaction` hooks, so the `{:ok, change(changeset, opts, context)}` pattern above works for changes whose `change/3` adds hooks. Keep the following in mind:
+
+- `before_transaction` and `before_action` run once for the whole query or batch, not once per record.
+- `after_action` runs for each returned record. `after_transaction` runs for each processed success or error result; a failure of the whole query or batch is one error result.
+- Inside the hooks, `changeset.data` is `%Ash.Changeset.OriginalDataNotAvailable{}`, because the records are not loaded. The exception is a single record update that was [atomically upgraded](/documentation/topics/actions/update-actions.md#atomic-upgrade), where `changeset.data` is the record. Defining `atomic/3` is how a change declares that its hooks don't need the original data.
+- Attribute changes and atomic updates made by a `before_transaction` or `before_action` hook are applied by the data layer alongside the other atomic changes.
+- `around_action` and `around_transaction` hooks cannot wrap an atomic query. A change whose `atomic/3` adds them makes the action not atomic. If a `before_transaction` hook adds an around hook during execution, the operation fails without rerunning the before hooks.
+- The `before_action/2`, `before_transaction/2`, `after_action/2` and `after_transaction/2` builtin changes do not implement `atomic/3`, because the function you give them may rely on `changeset.data`. Write a change module if you need the hook to run atomically.
+
+Hooks added directly to a changeset by the caller (for example `Ash.Changeset.before_action/3` after `Ash.Changeset.for_update/4`) are not covered by this: they prevent the action from being run atomically.
 
 ## Batches
 
