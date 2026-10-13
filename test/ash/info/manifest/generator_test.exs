@@ -435,4 +435,34 @@ defmodule Ash.Test.Info.Manifest.GeneratorTest do
       end
     end
   end
+
+  defmodule EqualityFilteredTicket do
+    use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :reference_code, :string, public?: true, filterable?: :simple_equality
+    end
+
+    actions do
+      defaults [:read]
+    end
+  end
+
+  test "describe a ticket reference code that clients can filter by equality" do
+    assert {:ok, manifest} =
+             Ash.Info.Manifest.generate(
+               otp_app: :ash_manifest_test,
+               action_entrypoints: [{EqualityFilteredTicket, :read}]
+             )
+
+    ticket = Enum.find(manifest.resources, &(&1.module == EqualityFilteredTicket))
+    reference_code = ticket.fields.reference_code
+    assert reference_code.filterable?
+    assert Enum.map(reference_code.filter_operators, & &1.name) == [:==]
+  end
 end
