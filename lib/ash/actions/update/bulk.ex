@@ -3452,18 +3452,7 @@ defmodule Ash.Actions.Update.Bulk do
                     results
 
                   callback_results ->
-                    callback_results
-                    |> Enum.zip(results)
-                    |> Enum.map(fn
-                      {{:ok, result}, {:ok, _old_result, changeset}} ->
-                        {:ok, result, changeset}
-
-                      {{:error, error}, {:ok, _old_result, changeset}} ->
-                        {:error, error, changeset}
-
-                      {notification, _} ->
-                        notification
-                    end)
+                    pair_after_batch_results(callback_results, results)
                 end
               else
                 results
@@ -3500,19 +3489,8 @@ defmodule Ash.Actions.Update.Bulk do
                     :ok ->
                       [{:ok, record, changeset}]
 
-                    results ->
-                      results
-                      |> Enum.zip(changesets)
-                      |> Enum.map(fn
-                        {{:ok, result}, changeset} ->
-                          {:ok, result, changeset}
-
-                        {{:error, error}, changeset} ->
-                          {:error, error, changeset}
-
-                        {notification, _changeset} ->
-                          notification
-                      end)
+                    callback_results ->
+                      pair_after_batch_results(callback_results, [{:ok, record, changeset}])
                   end
                 else
                   [{:ok, record, changeset}]
@@ -3567,18 +3545,7 @@ defmodule Ash.Actions.Update.Bulk do
                       matches
 
                     callback_results ->
-                      callback_results
-                      |> Enum.zip(matches)
-                      |> Enum.map(fn
-                        {{:ok, result}, {:ok, _old_result, changeset}} ->
-                          {:ok, result, changeset}
-
-                        {{:error, error}, {:ok, _old_result, changeset}} ->
-                          {:error, error, changeset}
-
-                        {notification, _} ->
-                          notification
-                      end)
+                      pair_after_batch_results(callback_results, matches)
                   end
                 else
                   matches
@@ -3625,19 +3592,8 @@ defmodule Ash.Actions.Update.Bulk do
                       :ok ->
                         [{:ok, record, changeset}]
 
-                      results ->
-                        results
-                        |> Enum.zip(changesets)
-                        |> Enum.map(fn
-                          {{:ok, result}, changeset} ->
-                            {:ok, result, changeset}
-
-                          {{:error, error}, changeset} ->
-                            {:error, error, changeset}
-
-                          {notification, _changeset} ->
-                            notification
-                        end)
+                      callback_results ->
+                        pair_after_batch_results(callback_results, [{:ok, record, changeset}])
                     end
                   else
                     [{:ok, record, changeset}]
@@ -3659,11 +3615,31 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp put_result_phase(other, _phase), do: other
 
+  # Pairs `after_batch/3`'s output with the results it was given. Notifications
+  # are taken out first, so they neither shift the pairing nor fall off its end.
+  defp pair_after_batch_results(callback_results, results) do
+    {notifications, callback_results} =
+      Enum.split_with(callback_results, &match?(%Ash.Notifier.Notification{}, &1))
+
+    callback_results
+    |> Enum.zip(results)
+    |> Enum.map(fn
+      {{:ok, result}, {:ok, _old_result, changeset}} ->
+        {:ok, result, changeset}
+
+      {{:error, error}, {:ok, _old_result, changeset}} ->
+        {:error, error, changeset}
+    end)
+    |> Enum.concat(notifications)
+  end
+
   defp handle_after_batch_results(results, _matches, ref, resource, opts) do
     results
     |> Enum.flat_map(fn
-      {%Ash.Notifier.Notification{} = notification, _} ->
+      %Ash.Notifier.Notification{} = notification ->
         Ash.Actions.Helpers.Bulk.store_notification(ref, notification, opts)
+
+        []
 
       {:ok, result, changeset} ->
         [{:ok, result, changeset}]
