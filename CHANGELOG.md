@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.36.0](https://github.com/ash-project/ash/compare/v3.35.0...v3.36.0) (2026-10-14)
+
+
+
+
+### Features:
+
+* introduce signals (#3012) by [@zachdaniel](https://github.com/zachdaniel) [(#3012)](https://github.com/ash-project/ash/pull/3012)
+
 ## [v3.35.0](https://github.com/ash-project/ash/compare/v3.34.6...v3.35.0) (2026-10-13)
 
 
