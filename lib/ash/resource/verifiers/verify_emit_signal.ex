@@ -26,19 +26,23 @@ defmodule Ash.Resource.Verifiers.VerifyEmitSignal do
   end
 
   defp verify_emit(emit, action, module, dsl_state) do
-    error = &raise_error(module, action, emit, &1)
+    context = {module, action, emit}
     signal_module = emit.signal_module
 
     signal =
       if Code.ensure_loaded?(signal_module) && Spark.Dsl.is?(signal_module, Ash.Signals) do
         Ash.Signals.Info.signal(signal_module, emit.signal) ||
-          error.("`#{inspect(signal_module)}` has no signal named `#{inspect(emit.signal)}`.")
+          raise_error(
+            context,
+            "`#{inspect(signal_module)}` has no signal named `#{inspect(emit.signal)}`."
+          )
       else
-        error.("`#{inspect(signal_module)}` is not an `Ash.Signals` module.")
+        raise_error(context, "`#{inspect(signal_module)}` is not an `Ash.Signals` module.")
       end
 
     if emit.phase != signal.phase do
-      error.(
+      raise_error(
+        context,
         "Signal `#{inspect(signal.name)}` is emitted during `#{inspect(signal.phase)}`, so `emit` must be given `phase: #{inspect(signal.phase)}`, got: #{inspect(emit.phase)}"
       )
     end
@@ -46,45 +50,48 @@ defmodule Ash.Resource.Verifiers.VerifyEmitSignal do
     if emit.dynamic? do
       for {option, value} <- [fields: emit.fields, values: emit.values, where: emit.where],
           value != [] do
-        error.(
+        raise_error(
+          context,
           "`#{option}` can't be used with `dynamic?: true`, because the signal is built by your own code."
         )
       end
     else
-      verify_payload(emit, action, signal, error, dsl_state)
+      verify_payload(emit, action, signal, context, dsl_state)
     end
   end
 
-  defp verify_payload(emit, action, signal, error, dsl_state) do
+  defp verify_payload(emit, action, signal, context, dsl_state) do
     previous = Ash.Signals.Emitter.previous_fields(values: emit.values)
     signal_fields = Enum.map(signal.arguments, & &1.name)
 
     for {option, mapping} <- [fields: emit.fields, values: emit.values],
         {name, _} <- mapping,
         name not in signal_fields do
-      error.(
+      raise_error(
+        context,
         "`#{option}` sets `#{inspect(name)}`, but signal `#{inspect(signal.name)}` has no field with that name."
       )
     end
 
     if action.type == :action do
       if previous != [] do
-        error.("`previous/1` is only for update and destroy actions.")
+        raise_error(context, "`previous/1` is only for update and destroy actions.")
       end
     else
       for {_name, field} <- emit.fields,
           !Ash.Resource.Info.attribute(dsl_state, field) do
-        error.(
+        raise_error(
+          context,
           "`#{inspect(field)}` is not an attribute of the resource. To build the signal from anything else, emit it from your own code, with `dynamic?: true`."
         )
       end
 
       for field <- previous, !Ash.Resource.Info.attribute(dsl_state, field) do
-        error.("`previous(#{inspect(field)})` is not an attribute of the resource.")
+        raise_error(context, "`previous(#{inspect(field)})` is not an attribute of the resource.")
       end
 
       if previous != [] and action.type == :create do
-        error.("`previous/1` is only for update and destroy actions.")
+        raise_error(context, "`previous/1` is only for update and destroy actions.")
       end
     end
 
@@ -98,7 +105,8 @@ defmodule Ash.Resource.Verifiers.VerifyEmitSignal do
           do: "an argument of the action",
           else: "an attribute of the resource"
 
-      error.(
+      raise_error(
+        context,
         "Signal `#{inspect(signal.name)}` requires `#{inspect(name)}`, which is not #{source}. Set it with `fields` or `values`."
       )
     end
@@ -110,7 +118,7 @@ defmodule Ash.Resource.Verifiers.VerifyEmitSignal do
   defp default_source?(_action, name, dsl_state),
     do: !!Ash.Resource.Info.attribute(dsl_state, name)
 
-  defp raise_error(module, action, emit, message) do
+  defp raise_error({module, action, emit}, message) do
     raise DslError,
       module: module,
       path: [:actions, action.type, action.name, :emit, emit.signal],

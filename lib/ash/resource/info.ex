@@ -826,7 +826,7 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns the list of possible accepted keys by an action"
-  @spec action_inputs(Ash.Resource.t(), action :: atom()) ::
+  @spec action_inputs(Spark.Dsl.t() | Ash.Resource.t(), action :: atom()) ::
           MapSet.t()
   def action_inputs(resource, action) do
     Extension.get_persisted(resource, {:action_inputs, action}) || MapSet.new()
