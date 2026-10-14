@@ -361,6 +361,21 @@ def project do
 end
 ```
 
+## Mapping signals
+
+`mix ash.signals` prints each signal, the actions that emit it, and the listeners that react to
+it. Pass signal modules to only print their signals, and `--format mermaid` for a Mermaid
+flowchart instead:
+
+```sh
+mix ash.signals
+mix ash.signals MyApp.Shop.Signals --format mermaid --output signals.mmd
+```
+
+Listeners are found wherever they are defined. Emitters are found in the resources of the domains
+in your `:ash_domains` config, and in resources that listen to signals. See `Mix.Tasks.Ash.Signals`
+for every option.
+
 ## Testing
 
 `Ash.Signals.Test` has helpers for asserting on emitted signals. `assert_emits_signal/4` and

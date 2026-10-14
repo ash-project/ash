@@ -270,7 +270,8 @@ defmodule Ash.MixProject do
         Visualizations: [
           Ash.Domain.Info.Diagram,
           Ash.Domain.Info.Livebook,
-          Ash.Policy.Chart.Mermaid
+          Ash.Policy.Chart.Mermaid,
+          Ash.Signals.Graph
         ],
         Testing: [
           Ash.Generator,

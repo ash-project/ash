@@ -89,6 +89,7 @@ end
 - Add the `:ash_signals` compiler to the project: `compilers: [:ash_signals] ++ Mix.compilers()`. Without it, listeners are searched for every time a signal is emitted, which is much slower.
 - With the Phoenix code reloader, add `:ash_signals` to the endpoint's `reloadable_compilers` too.
 - Listeners defined after compilation, like resources defined inside tests, aren't found when signals are consolidated. If tests define listeners, set `ash: [consolidate_signals: Mix.env() != :test]` in the project config.
+- To see what emits and listens to each signal, run `mix ash.signals`, optionally with signal modules to limit it to, or `--format mermaid` for a flowchart.
 
 ## Testing
 
