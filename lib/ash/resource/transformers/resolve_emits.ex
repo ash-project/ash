@@ -60,6 +60,7 @@ defmodule Ash.Resource.Transformers.ResolveEmits do
     %Ash.Resource.Change{
       change: {Ash.Resource.Change.EmitSignal, Emit.emitter_opts(emit)},
       where: emit.where,
+      description: emit.description,
       only_when_valid?: false,
       always_atomic?: false,
       __spark_metadata__: emit.__spark_metadata__

@@ -53,6 +53,7 @@ end
 - `emit` runs in its place among the action's changes, and is checked at compile time.
 - An update or destroy that emits a `:before_action` or `:after_transaction` signal, or uses `previous/1`, can't be atomic and needs `require_atomic? false`. `:after_action` signals don't need it.
 - `fields` only reads attributes. When the signal needs a calculation, an aggregate, related data or any other transformation, emit it from your own code: declare it with `emit MyApp.Shop.Signals, :order_placed, dynamic?: true`, and call `Ash.Signals.emit/5` from a change during the signal's phase, or `Ash.Signals.emit_many/5` from `after_batch/3`. Emitting a signal the action doesn't declare raises an error.
+- Give dynamic emits a `description` saying when they're emitted, since the action can't show it: `emit MyApp.Shop.Signals, :order_paid, dynamic?: true, description: "When the payment covers the rest of the order's total."`
 
 ## Listening to Signals
 

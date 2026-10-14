@@ -182,6 +182,20 @@ end
 
 Emitting a signal the action doesn't declare raises an error.
 
+Descriptions can help document dynamic signals.
+
+```elixir
+update :record_payment do
+  argument :amount, :money, allow_nil?: false
+
+  emit MyApp.Shop.Signals, :order_paid,
+    dynamic?: true,
+    description: "When the payment covers the rest of the order's total."
+
+  change MyApp.Shop.Changes.RecordPayment
+end
+```
+
 Listeners run as the emitting action's actor, with its tenant and `authorize?`. Pass `:actor`,
 `:tenant`, `:authorize?`, `:context`, or a `:scope` to `emit/5` to change them. Include a
 `signal_id` in the payload to set it yourself, for example to emit the same signal again.
@@ -364,7 +378,7 @@ end
 ## Mapping signals
 
 `mix ash.signals` prints each signal, the actions that emit it, and the listeners that react to
-it. Pass signal modules to only print their signals, and `--format mermaid` for a Mermaid
+it, with their descriptions. Pass signal modules to only print their signals, and `--format mermaid` for a Mermaid
 flowchart instead:
 
 ```sh

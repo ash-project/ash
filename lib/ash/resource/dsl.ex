@@ -565,7 +565,11 @@ defmodule Ash.Resource.Dsl do
         where: [changing(:status)]
       """,
       "emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction",
-      "emit MyApp.Shop.Signals, :order_placed, dynamic?: true"
+      """
+      emit MyApp.Shop.Signals, :order_placed,
+        dynamic?: true,
+        description: "When the order is paid in full."
+      """
     ],
     target: Ash.Resource.Actions.Emit,
     schema: Ash.Resource.Actions.Emit.schema(),

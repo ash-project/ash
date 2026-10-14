@@ -79,7 +79,8 @@ defmodule Ash.Signals.Graph do
 
   @doc """
   Renders entries from `build/1` as text, grouped by signal module, with the emitters and
-  listeners of each signal grouped by resource.
+  listeners of each signal grouped by resource, and the descriptions of signals, emits and
+  listeners under them.
   """
   @spec text([entry()]) :: String.t()
   def text(entries) do
@@ -91,7 +92,8 @@ defmodule Ash.Signals.Graph do
         |> Enum.flat_map(fn entry ->
           Enum.map(entry.emitters, &emitter_row/1) ++ Enum.map(entry.listeners, &listener_row/1)
         end)
-        |> Enum.reduce([0, 0], fn {_resource, [name, type, _details]}, [name_width, type_width] ->
+        |> Enum.reduce([0, 0], fn {_resource, [name, type, _details], _description},
+                                  [name_width, type_width] ->
           [max(name_width, String.length(name)), max(type_width, String.length(type))]
         end)
 
@@ -99,7 +101,7 @@ defmodule Ash.Signals.Graph do
         Enum.map_join(entries, "\n", fn entry ->
           """
 
-            #{inspect(entry.signal.name)} (#{entry.signal.phase})
+            #{inspect(entry.signal.name)} (#{entry.signal.phase})#{description(entry.signal.description, 4)}
               emitted by:
           #{rows(Enum.map(entry.emitters, &emitter_row/1), widths)}
               listened to by:
@@ -116,17 +118,27 @@ defmodule Ash.Signals.Graph do
   defp rows(rows, [name_width, type_width]) do
     rows
     |> Enum.chunk_by(&elem(&1, 0))
-    |> Enum.map_join("\n", fn [{resource, _} | _] = rows ->
+    |> Enum.map_join("\n", fn [{resource, _, _} | _] = rows ->
       lines =
-        Enum.map_join(rows, "\n", fn {_resource, [name, type, details]} ->
+        Enum.map_join(rows, "\n", fn {_resource, [name, type, details], description} ->
           [String.pad_trailing(name, name_width), String.pad_trailing(type, type_width), details]
           |> Enum.join("  ")
           |> String.trim_trailing()
-          |> then(&("        " <> &1))
+          |> then(&("        " <> &1 <> description(description, 10)))
         end)
 
       "      #{resource}\n#{lines}"
     end)
+  end
+
+  # Each line of the description, on lines of its own with the given indentation.
+  defp description(nil, _indent), do: ""
+
+  defp description(description, indent) do
+    description
+    |> String.trim()
+    |> String.split("\n")
+    |> Enum.map_join(&("\n" <> String.duplicate(" ", indent) <> String.trim_trailing(&1)))
   end
 
   defp emitter_row(emitter) do
@@ -135,7 +147,7 @@ defmodule Ash.Signals.Graph do
        inspect(emitter.action),
        to_string(emitter.action_type),
        Enum.join(emitter_details(emitter), ", ")
-     ]}
+     ], emitter.emit.description}
   end
 
   defp listener_row(listener) do
@@ -149,7 +161,7 @@ defmodule Ash.Signals.Graph do
       |> Enum.join(", ")
 
     {inspect(listener.resource),
-     [inspect(listener.name), to_string(listener.action_type), details]}
+     [inspect(listener.name), to_string(listener.action_type), details], listener.description}
   end
 
   defp emitter_details(emitter) do

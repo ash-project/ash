@@ -14,6 +14,7 @@ defmodule Ash.Test.SignalsGraphTest do
 
     signals do
       signal :order_placed do
+        description "An order was placed."
         argument :order_id, :uuid, allow_nil?: false
         argument :customer_id, :uuid
       end
@@ -63,7 +64,13 @@ defmodule Ash.Test.SignalsGraphTest do
 
       create :import do
         accept [:customer_id]
-        emit Ash.Test.SignalsGraphTest.Signals, :order_placed, dynamic?: true
+
+        emit Ash.Test.SignalsGraphTest.Signals, :order_placed,
+          dynamic?: true,
+          description: """
+          When the imported order is already paid.
+          Unpaid orders are placed when they are paid.
+          """
       end
 
       update :ship do
@@ -147,7 +154,7 @@ defmodule Ash.Test.SignalsGraphTest do
 
     signals_in do
       from Ash.Test.SignalsGraphTest.Signals do
-        on :order_shipped, :track, batch?: true
+        on :order_shipped, :track, batch?: true, description: "Tracks shipments in bulk."
         on :points_awarded, :notify_customer, action: :track
       end
     end
@@ -207,10 +214,13 @@ defmodule Ash.Test.SignalsGraphTest do
              Ash.Test.SignalsGraphTest.Signals
 
                :order_placed (after_action)
+                 An order was placed.
                  emitted by:
                    Ash.Test.SignalsGraphTest.Order
                      :place            create
                      :import           create  dynamic
+                       When the imported order is already paid.
+                       Unpaid orders are placed when they are paid.
                  listened to by:
                    Ash.Test.SignalsGraphTest.Account
                      :award_points     update
@@ -224,6 +234,7 @@ defmodule Ash.Test.SignalsGraphTest do
                  listened to by:
                    Ash.Test.SignalsGraphTest.Shipment
                      :track            action  batch
+                       Tracks shipments in bulk.
 
                :points_awarded (after_action)
                  emitted by:

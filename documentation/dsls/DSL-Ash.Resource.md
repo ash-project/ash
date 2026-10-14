@@ -1210,7 +1210,10 @@ emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
 ```
 
 ```
-emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+emit MyApp.Shop.Signals, :order_placed,
+  dynamic?: true,
+  description: "When the order is paid in full."
+
 ```
 
 
@@ -1230,6 +1233,7 @@ emit MyApp.Shop.Signals, :order_placed, dynamic?: true
 | [`values`](#actions-action-emit-values){: #actions-action-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
 | [`where`](#actions-action-emit-where){: #actions-action-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
 | [`dynamic?`](#actions-action-emit-dynamic?){: #actions-action-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+| [`description`](#actions-action-emit-description){: #actions-action-emit-description } | `String.t` |  | A description of when and why the action emits the signal. Especially useful with `dynamic?: true`, where the code that emits the signal decides when it is emitted. |
 
 
 
@@ -1479,7 +1483,10 @@ emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
 ```
 
 ```
-emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+emit MyApp.Shop.Signals, :order_placed,
+  dynamic?: true,
+  description: "When the order is paid in full."
+
 ```
 
 
@@ -1499,6 +1506,7 @@ emit MyApp.Shop.Signals, :order_placed, dynamic?: true
 | [`values`](#actions-create-emit-values){: #actions-create-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
 | [`where`](#actions-create-emit-where){: #actions-create-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
 | [`dynamic?`](#actions-create-emit-dynamic?){: #actions-create-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+| [`description`](#actions-create-emit-description){: #actions-create-emit-description } | `String.t` |  | A description of when and why the action emits the signal. Especially useful with `dynamic?: true`, where the code that emits the signal decides when it is emitted. |
 
 
 
@@ -2182,7 +2190,10 @@ emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
 ```
 
 ```
-emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+emit MyApp.Shop.Signals, :order_placed,
+  dynamic?: true,
+  description: "When the order is paid in full."
+
 ```
 
 
@@ -2202,6 +2213,7 @@ emit MyApp.Shop.Signals, :order_placed, dynamic?: true
 | [`values`](#actions-update-emit-values){: #actions-update-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
 | [`where`](#actions-update-emit-where){: #actions-update-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
 | [`dynamic?`](#actions-update-emit-dynamic?){: #actions-update-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+| [`description`](#actions-update-emit-description){: #actions-update-emit-description } | `String.t` |  | A description of when and why the action emits the signal. Especially useful with `dynamic?: true`, where the code that emits the signal decides when it is emitted. |
 
 
 
@@ -2542,7 +2554,10 @@ emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
 ```
 
 ```
-emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+emit MyApp.Shop.Signals, :order_placed,
+  dynamic?: true,
+  description: "When the order is paid in full."
+
 ```
 
 
@@ -2562,6 +2577,7 @@ emit MyApp.Shop.Signals, :order_placed, dynamic?: true
 | [`values`](#actions-destroy-emit-values){: #actions-destroy-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
 | [`where`](#actions-destroy-emit-where){: #actions-destroy-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
 | [`dynamic?`](#actions-destroy-emit-dynamic?){: #actions-destroy-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+| [`description`](#actions-destroy-emit-description){: #actions-destroy-emit-description } | `String.t` |  | A description of when and why the action emits the signal. Especially useful with `dynamic?: true`, where the code that emits the signal decides when it is emitted. |
 
 
 

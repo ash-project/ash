@@ -7,6 +7,7 @@ defmodule Ash.Resource.Actions.Emit do
   defstruct [
     :signal_module,
     :signal,
+    :description,
     phase: :after_action,
     fields: [],
     values: [],
@@ -18,6 +19,7 @@ defmodule Ash.Resource.Actions.Emit do
   @type t :: %__MODULE__{
           signal_module: Ash.Signals.t(),
           signal: atom(),
+          description: String.t() | nil,
           phase: Ash.Signals.Signal.phase(),
           fields: [{atom(), atom()}],
           values: Keyword.t(),
@@ -75,6 +77,13 @@ defmodule Ash.Resource.Actions.Emit do
       Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or
       `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs
       more than `fields` and `values` can express.
+      """
+    ],
+    description: [
+      type: :string,
+      doc: """
+      A description of when and why the action emits the signal. Especially useful with
+      `dynamic?: true`, where the code that emits the signal decides when it is emitted.
       """
     ]
   ]

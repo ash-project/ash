@@ -404,7 +404,8 @@ defmodule Ash.Test.SignalsTest do
 
         emit Ash.Test.SignalsTest.ArticleSignals, :article_published,
           fields: [article_id: :id],
-          values: [by: actor(:name)]
+          values: [by: actor(:name)],
+          description: "Whenever an article is published."
       end
 
       update :rename do
@@ -1130,6 +1131,15 @@ defmodule Ash.Test.SignalsTest do
   describe "emit in actions" do
     test "adds the signal module to signals_out" do
       assert ArticleSignals in Ash.Resource.Info.signals_out(Article)
+    end
+
+    test "keeps the description, on the emit and on the change that emits the signal" do
+      action = Ash.Resource.Info.action(Article, :publish)
+
+      assert [%{description: "Whenever an article is published."}] = action.emits
+
+      assert %{description: "Whenever an article is published."} =
+               Enum.find(action.changes, &match?({Ash.Resource.Change.EmitSignal, _}, &1.change))
     end
 
     test "fills signal fields from the record, fields and values" do
