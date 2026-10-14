@@ -5145,6 +5145,7 @@ defmodule Ash.Changeset do
   def run_before_actions(%{valid?: false} = changeset), do: changeset
 
   def run_before_actions(changeset) do
+    changeset = set_phase(changeset, :before_action)
     can_do_atomic? = data_layer_can_do_atomic_for_changest?(changeset)
 
     Enum.reduce_while(

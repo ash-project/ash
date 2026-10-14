@@ -80,6 +80,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule ChangeTitleInBeforeActionPhase do
+    use Ash.Resource.Change
+
+    @impl Ash.Resource.Change
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn changeset ->
+        Ash.Changeset.force_change_attribute(changeset, :title, "#{changeset.phase}")
+      end)
+    end
+  end
+
   defmodule ChangeMessage do
     use Ash.Resource.Change
 
@@ -361,6 +372,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       create :create_with_before_action do
         accept [:title]
         change ChangeTitleBeforeAction
+      end
+
+      create :create_with_before_action_phase do
+        accept [:title]
+        change ChangeTitleInBeforeActionPhase
       end
 
       create :create_with_actor_referencing_upsert_condition do
@@ -789,6 +805,25 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_before_action,
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false,
+               sorted?: true,
+               tenant: org.id
+             )
+  end
+
+  test "runs before action hooks in the before_action phase" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+    assert %Ash.BulkResult{records: [%{title: "before_action"}, %{title: "before_action"}]} =
+             Ash.bulk_create!(
+               [%{title: "title1"}, %{title: "title2"}],
+               Post,
+               :create_with_before_action_phase,
                return_records?: true,
                return_errors?: true,
                authorize?: false,
