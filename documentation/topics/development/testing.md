@@ -58,3 +58,22 @@ If you are using Ecto's transactional features to ensure that your tests all run
 # config/test.exs
 config :ash, :missed_notifications, :ignore
 ```
+
+## Signals
+
+`Ash.Signals.Test` has helpers for asserting on the signals your actions emit, like
+`assert_emits_signal/4`. See [the signals guide](/documentation/topics/resources/signals.md#testing).
+
+Listeners defined after compilation, like resources defined inside your tests, aren't part of the
+signal listeners consolidated by the `:ash_signals` compiler. If your tests define listeners,
+disable consolidation in the test environment:
+
+```elixir
+# mix.exs
+def project do
+  [
+    ash: [consolidate_signals: Mix.env() != :test],
+    ...
+  ]
+end
+```

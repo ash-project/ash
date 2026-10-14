@@ -27,6 +27,7 @@ defmodule Ash.Resource.Actions.Update do
     skip_global_validations?: false,
     arguments: [],
     changes: [],
+    emits: [],
     reject: [],
     metadata: [],
     transaction?: true,

@@ -15,7 +15,6 @@ defmodule Ash.Signals do
 
     signals do
       signal :order_placed do
-        phase :after_action
         argument :order_id, :uuid, allow_nil?: false
       end
     end
@@ -34,9 +33,18 @@ defmodule Ash.Signals do
   Emits a signal, delivering it to its listeners.
 
   Takes the changeset of a create, update or destroy action, or the input of a generic action.
-  Must be called during the phase declared by the signal, by a resource that lists the signal
-  module in `signals_out`. How listeners receive the signal depends on its `delivery`. By default,
-  they run immediately. See `Ash.Signals.Delivery`.
+  Must be called during the phase declared by the signal, by an action that declares that it
+  emits the signal dynamically:
+
+  ```elixir
+  create :place do
+    emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+    change MyApp.Shop.Changes.EmitOrderPlaced
+  end
+  ```
+
+  How each listener receives the signal depends on its `delivery`. By default, listeners run
+  immediately. See `Ash.Signals.Delivery`.
 
   Every signal has a `signal_id`, a UUIDv7 generated when it is emitted. Include `signal_id` in
   the payload to set it yourself, for example to emit the same signal again.
@@ -102,13 +110,16 @@ defmodule Ash.Signals do
       when struct in [Ash.Changeset, Ash.ActionInput] do
     signal = fetch_signal!(signal_module, name)
 
-    if signal_module not in Ash.Resource.Info.signals_out(subject.resource) do
+    if !Enum.any?(
+         (subject.action && Map.get(subject.action, :emits)) || [],
+         &(&1.signal_module == signal_module and &1.signal == name)
+       ) do
       raise ArgumentError, """
-      #{inspect(subject.resource)} cannot emit signals from #{inspect(signal_module)}.
+      Action `#{inspect(subject.action && subject.action.name)}` of #{inspect(subject.resource)} does not emit `#{inspect(name)}` from #{inspect(signal_module)}.
 
-      Add it to the resource:
+      Declare it on the action:
 
-          use Ash.Resource, signals_out: [#{inspect(signal_module)}]
+          emit #{inspect(signal_module)}, #{inspect(name)}, dynamic?: true
       """
     end
 
@@ -119,14 +130,28 @@ defmodule Ash.Signals do
 
     with {:ok, signal_structs} <- cast_payloads(signal, payloads) do
       context = context(subject, signal_module, signal, opts)
-      {delivery, delivery_opts} = signal.delivery
 
       Enum.each(signal_structs, &emit_telemetry(signal_module, name, &1, context))
 
       signal_module
       |> Ash.Signals.Registry.listeners(name)
-      |> then(&delivery.deliver(signal_structs, &1, delivery_opts, context))
+      |> deliver(signal_structs, context)
     end
+  end
+
+  # Each delivery is called once, with the listeners that use it with the same options.
+  defp deliver(listeners, signal_structs, context) do
+    listeners
+    |> Enum.map(& &1.delivery)
+    |> Enum.uniq()
+    |> Enum.reduce_while(:ok, fn {delivery, opts} = key, :ok ->
+      listeners = Enum.filter(listeners, &(&1.delivery == key))
+
+      case delivery.deliver(signal_structs, listeners, opts, context) do
+        :ok -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   @doc """

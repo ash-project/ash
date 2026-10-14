@@ -68,12 +68,6 @@ defmodule Ash.Test.SignalsTest do
     end
 
     @impl true
-    def verify_signal(%{name: :rejected}, _opts, _dsl_state),
-      do: {:error, "the delivery rejects this signal"}
-
-    def verify_signal(_signal, _opts, _dsl_state), do: :ok
-
-    @impl true
     def verify_listener(%{action: :rejected}, _signal, _opts, _dsl_state),
       do: {:error, "the delivery rejects this listener"}
 
@@ -87,19 +81,16 @@ defmodule Ash.Test.SignalsTest do
     signals do
       signal :queued do
         phase(:after_action)
-        delivery({Ash.Test.SignalsTest.RecordingDelivery, queue: :orders})
         argument :order_id, :uuid, allow_nil?: false
       end
 
       signal :failing do
         phase(:after_action)
-        delivery({Ash.Test.SignalsTest.RecordingDelivery, fail?: true})
       end
 
       # only for listeners that fail verification
       signal :verified do
         phase(:after_action)
-        delivery(Ash.Test.SignalsTest.RecordingDelivery)
         argument :order_id, :uuid
       end
     end
@@ -120,7 +111,13 @@ defmodule Ash.Test.SignalsTest do
 
     signals_in do
       from Ash.Test.SignalsTest.DeliverySignals do
-        on(:record, :queued)
+        on(:queued, :record, delivery: {Ash.Test.SignalsTest.RecordingDelivery, queue: :orders})
+        on(:queued, :record_now, action: :record)
+
+        on(:failing, :record_failing,
+          action: :record,
+          delivery: {Ash.Test.SignalsTest.RecordingDelivery, fail?: true}
+        )
       end
     end
 
@@ -149,12 +146,12 @@ defmodule Ash.Test.SignalsTest do
 
     signals_in do
       from Ash.Test.SignalsTest.OrderSignals do
-        on(:record_for_order, :order_placed,
+        on(:order_placed, :record_for_order,
           action: :record,
           inputs: [account_id: :order_id]
         )
 
-        on(:record_for_customer, :order_placed,
+        on(:order_placed, :record_for_customer,
           action: :record,
           inputs: [account_id: :customer_id]
         )
@@ -188,8 +185,8 @@ defmodule Ash.Test.SignalsTest do
 
     signals_in do
       from Ash.Test.SignalsTest.OrderSignals do
-        on(:log_unmapped, :order_placed)
-        on(:log_mapped, :order_placed, inputs: [:order_id, source_signal_id: :signal_id])
+        on(:order_placed, :log_unmapped)
+        on(:order_placed, :log_mapped, inputs: [:order_id, source_signal_id: :signal_id])
       end
     end
 
@@ -223,7 +220,7 @@ defmodule Ash.Test.SignalsTest do
     # creates a receipt per signal, from the signal fields named like its inputs
     signals_in do
       from Ash.Test.SignalsTest.OrderSignals do
-        on(:record, :order_placed)
+        on(:order_placed, :record)
       end
     end
 
@@ -255,7 +252,7 @@ defmodule Ash.Test.SignalsTest do
 
     signals_in do
       from Ash.Test.SignalsTest.OrderSignals do
-        on(:record, :order_placed, inputs: [reference: :order_id])
+        on(:order_placed, :record, inputs: [reference: :order_id])
       end
     end
 
@@ -284,7 +281,7 @@ defmodule Ash.Test.SignalsTest do
     # banned customers are not marked, because the read action filters them out
     signals_in do
       from Ash.Test.SignalsTest.OrderSignals do
-        on(:mark_ordered, :order_placed, read_action: :active, get_by: [id: :customer_id])
+        on(:order_placed, :mark_ordered, read_action: :active, get_by: [id: :customer_id])
       end
     end
 
@@ -316,7 +313,7 @@ defmodule Ash.Test.SignalsTest do
 
     signals_in do
       from Ash.Test.SignalsTest.OrderSignals do
-        on(:clear, :order_placed, read_action: :for_customer, args: [:customer_id])
+        on(:order_placed, :clear, read_action: :for_customer, args: [:customer_id])
       end
     end
 
@@ -338,7 +335,7 @@ defmodule Ash.Test.SignalsTest do
 
     signals_in do
       from Ash.Test.SignalsTest.OrderSignals do
-        on(:log, :order_placed, batch?: true)
+        on(:order_placed, :log, batch?: true)
       end
     end
 
@@ -360,8 +357,8 @@ defmodule Ash.Test.SignalsTest do
     use Ash.Signals
 
     signals do
+      # emitted `:after_action`, the default
       signal :article_published do
-        phase(:after_action)
         argument :article_id, :uuid, allow_nil?: false
         argument :title, :string
         argument :previous_title, :string
@@ -385,7 +382,6 @@ defmodule Ash.Test.SignalsTest do
     end
   end
 
-  # emits only with `emit_signal`, so it doesn't list `signals_out`
   defmodule Article do
     @moduledoc false
     use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
@@ -406,72 +402,61 @@ defmodule Ash.Test.SignalsTest do
         primary? true
         accept [:title]
 
-        change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :article_published, :after_action,
-                 fields: [article_id: :id],
-                 values: [by: actor(:name)]
-               )
+        emit Ash.Test.SignalsTest.ArticleSignals, :article_published,
+          fields: [article_id: :id],
+          values: [by: actor(:name)]
       end
 
       update :rename do
         accept [:title]
 
-        change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :article_published, :after_action,
-                 fields: [:title, article_id: :id]
-               )
+        emit Ash.Test.SignalsTest.ArticleSignals, :article_published,
+          fields: [:title, article_id: :id]
       end
 
       update :retitle do
         accept [:title]
         require_atomic? false
 
-        change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :article_published, :after_action,
-                 fields: [:title, article_id: :id],
-                 values: [previous_title: previous(:title)]
-               )
+        emit Ash.Test.SignalsTest.ArticleSignals, :article_published,
+          fields: [:title, article_id: :id],
+          values: [previous_title: previous(:title)]
       end
 
       create :draft do
         accept [:title]
-        change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :article_drafting, :before_action)
+
+        emit Ash.Test.SignalsTest.ArticleSignals, :article_drafting, phase: :before_action
       end
 
       create :commit do
         accept [:title]
 
-        change emit_signal(
-                 Ash.Test.SignalsTest.ArticleSignals,
-                 :article_committed,
-                 :after_transaction,
-                 fields: [article_id: :id]
-               )
+        emit Ash.Test.SignalsTest.ArticleSignals, :article_committed,
+          phase: :after_transaction,
+          fields: [article_id: :id]
       end
 
       update :commit_update do
         accept [:title]
         require_atomic? false
 
-        change emit_signal(
-                 Ash.Test.SignalsTest.ArticleSignals,
-                 :article_committed,
-                 :after_transaction,
-                 fields: [article_id: :id]
-               )
+        emit Ash.Test.SignalsTest.ArticleSignals, :article_committed,
+          phase: :after_transaction,
+          fields: [article_id: :id]
       end
 
       destroy :retract do
         require_atomic? false
 
-        change emit_signal(
-                 Ash.Test.SignalsTest.ArticleSignals,
-                 :article_committed,
-                 :after_transaction,
-                 fields: [article_id: :id]
-               )
+        emit Ash.Test.SignalsTest.ArticleSignals, :article_committed,
+          phase: :after_transaction,
+          fields: [article_id: :id]
       end
 
       action :request_digest do
         argument :topic, :string, allow_nil?: false
-        prepare emit_signal(Ash.Test.SignalsTest.ArticleSignals, :digest_requested, :after_action)
+        emit Ash.Test.SignalsTest.ArticleSignals, :digest_requested
         run fn _, _ -> :ok end
       end
     end
@@ -500,12 +485,7 @@ defmodule Ash.Test.SignalsTest do
     @moduledoc false
     use Ash.Resource,
       domain: Ash.Test.Domain,
-      data_layer: Ash.DataLayer.Ets,
-      signals_out: [
-        Ash.Test.SignalsTest.Signals,
-        Ash.Test.SignalsTest.OrderSignals,
-        Ash.Test.SignalsTest.DeliverySignals
-      ]
+      data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -522,6 +502,7 @@ defmodule Ash.Test.SignalsTest do
       create :create do
         accept [:title]
         argument :emit_opts, :term, default: []
+        emit Ash.Test.SignalsTest.Signals, :post_created, dynamic?: true
 
         # emitting from a hook that isn't the first one
         change after_action(fn _changeset, post, _context -> {:ok, post} end)
@@ -546,11 +527,13 @@ defmodule Ash.Test.SignalsTest do
 
       create :create_in_batches do
         accept [:title]
+        emit Ash.Test.SignalsTest.Signals, :post_created, dynamic?: true
         change EmitPostsCreated
       end
 
       create :emit_in_wrong_phase do
         accept [:title]
+        emit Ash.Test.SignalsTest.Signals, :post_created, dynamic?: true
 
         change fn changeset, _ ->
           Ash.Changeset.before_action(changeset, fn changeset ->
@@ -564,11 +547,16 @@ defmodule Ash.Test.SignalsTest do
       end
 
       action :announce, :string do
+        emit Ash.Test.SignalsTest.Signals, :post_created, dynamic?: true
+        emit Ash.Test.SignalsTest.OrderSignals, :order_placed, dynamic?: true
+        emit Ash.Test.SignalsTest.DeliverySignals, :queued, dynamic?: true
+        emit Ash.Test.SignalsTest.DeliverySignals, :failing, dynamic?: true
         run fn _input, _ -> {:ok, "announced"} end
       end
 
       update :archive do
         require_atomic? false
+        emit Ash.Test.SignalsTest.Signals, :post_archiving, phase: :before_action, dynamic?: true
 
         change fn changeset, _ ->
           Ash.Changeset.before_action(changeset, fn changeset ->
@@ -627,7 +615,7 @@ defmodule Ash.Test.SignalsTest do
 
     signals_in do
       from Ash.Test.SignalsTest.Signals do
-        on(:welcome, :post_created)
+        on(:post_created, :welcome)
       end
     end
 
@@ -669,8 +657,8 @@ defmodule Ash.Test.SignalsTest do
 
     signals_in do
       from Ash.Test.SignalsTest.Signals do
-        on(:add, :post_created)
-        on(:remove, :post_archiving)
+        on(:post_created, :add)
+        on(:post_archiving, :remove)
       end
     end
 
@@ -746,7 +734,7 @@ defmodule Ash.Test.SignalsTest do
     end
   end
 
-  describe "emit" do
+  describe "Ash.Signals.emit" do
     test "runs every listener" do
       assert {:ok, post} = create_post("Signals")
 
@@ -855,10 +843,12 @@ defmodule Ash.Test.SignalsTest do
       end
     end
 
-    test "raises when the resource does not list the signal module in signals_out" do
-      assert_raise Ash.Error.Unknown, ~r/cannot emit signals from/, fn ->
-        NotEmitter |> Ash.Changeset.for_create(:create, %{}) |> Ash.create()
-      end
+    test "raises when the action does not declare the signal" do
+      assert_raise Ash.Error.Unknown,
+                   ~r/Action `:create` of .*NotEmitter does not emit `:post_created`/,
+                   fn ->
+                     NotEmitter |> Ash.Changeset.for_create(:create, %{}) |> Ash.create()
+                   end
     end
   end
 
@@ -1073,7 +1063,7 @@ defmodule Ash.Test.SignalsTest do
     end
   end
 
-  describe "emit_signal" do
+  describe "emit in actions" do
     test "adds the signal module to signals_out" do
       assert ArticleSignals in Ash.Resource.Info.signals_out(Article)
     end
@@ -1224,7 +1214,7 @@ defmodule Ash.Test.SignalsTest do
 
           signals_in do
             from Ash.Test.SignalsTest.ConsolidatedSignals do
-              on :heard, :happened
+              on :happened, :heard
             end
           end
 
@@ -1268,7 +1258,7 @@ defmodule Ash.Test.SignalsTest do
 
         signals_in do
           from Ash.Test.SignalsTest.ConsolidatedSignals do
-            on :heard, :happened
+            on :happened, :heard
           end
         end
 
@@ -1332,56 +1322,80 @@ defmodule Ash.Test.SignalsTest do
       """)
     end
 
-    test "emit_signal checks the signal" do
+    test "emit checks the signal" do
       assert compile_emitter("""
              create :publish do
-               change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :nope, :after_action)
+               emit Ash.Test.SignalsTest.ArticleSignals, :nope
              end
              """) =~ "has no signal named `:nope`"
 
       assert compile_emitter("""
              create :publish do
-               change emit_signal(Ash.Test.SignalsTest.Nope, :article_published, :after_action)
+               emit Ash.Test.SignalsTest.Nope, :article_published
              end
              """) =~ "is not an `Ash.Signals` module"
     end
 
-    test "emit_signal requires the signal's phase" do
-      assert compile_emitter("""
-             create :publish do
-               change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :article_published,
-                        :before_action, fields: [article_id: :id])
-             end
-             """) =~
-               "the phase given to `emit_signal` must be `:after_action`, got: :before_action"
+    test "signals are emitted after the action by default" do
+      assert Ash.Signals.Info.signal(ArticleSignals, :article_published).phase == :after_action
     end
 
-    test "emit_signal checks fields" do
+    test "emit requires the signal's phase" do
       assert compile_emitter("""
              create :publish do
-               change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :article_published, :after_action,
-                        fields: [article_id: :id, nope: :title])
+               emit Ash.Test.SignalsTest.ArticleSignals, :article_published, phase: :before_action, fields: [article_id: :id]
+             end
+             """) =~
+               "so `emit` must be given `phase: :after_action`, got: :before_action"
+
+      assert compile_emitter("""
+             create :publish do
+               emit Ash.Test.SignalsTest.ArticleSignals, :article_drafting
+             end
+             """) =~
+               "so `emit` must be given `phase: :before_action`, got: :after_action"
+    end
+
+    test "emit checks fields" do
+      assert compile_emitter("""
+             create :publish do
+               emit Ash.Test.SignalsTest.ArticleSignals, :article_published, fields: [article_id: :id, nope: :title]
              end
              """) =~ "`fields` sets `:nope`, but signal `:article_published` has no field"
 
       assert compile_emitter("""
              create :publish do
-               change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :article_published, :after_action,
-                        fields: [article_id: :nope])
+               emit Ash.Test.SignalsTest.ArticleSignals, :article_published, fields: [article_id: :nope]
              end
-             """) =~ "`:nope` is not an attribute, calculation or aggregate"
+             """) =~ "`:nope` is not an attribute of the resource"
     end
 
-    test "emit_signal requires every required signal field" do
+    test "a dynamic emit is built by your own code, so it can't set fields" do
       assert compile_emitter("""
              create :publish do
-               change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :article_published, :after_action)
+               emit Ash.Test.SignalsTest.ArticleSignals, :article_published, dynamic?: true
+             end
+             """) == ""
+
+      assert compile_emitter("""
+             create :publish do
+               emit Ash.Test.SignalsTest.ArticleSignals, :article_published,
+                 dynamic?: true,
+                 fields: [article_id: :id]
+             end
+             """) =~ "`fields` can't be used with `dynamic?: true`"
+    end
+
+    test "emit requires every required signal field" do
+      assert compile_emitter("""
+             create :publish do
+               emit Ash.Test.SignalsTest.ArticleSignals, :article_published
              end
              """) =~ "requires `:article_id`, which is not an attribute"
 
       assert compile_emitter("""
              action :request do
-               prepare emit_signal(Ash.Test.SignalsTest.ArticleSignals, :digest_requested, :after_action)
+               emit Ash.Test.SignalsTest.ArticleSignals, :digest_requested
                run fn _, _ -> :ok end
              end
              """) =~ "requires `:topic`, which is not an argument of the action"
@@ -1390,22 +1404,21 @@ defmodule Ash.Test.SignalsTest do
     test "previous is only for update and destroy" do
       assert compile_emitter("""
              create :publish do
-               change emit_signal(Ash.Test.SignalsTest.ArticleSignals, :article_published, :after_action,
-                        fields: [article_id: :id], values: [previous_title: previous(:title)])
+               emit Ash.Test.SignalsTest.ArticleSignals, :article_published, fields: [article_id: :id], values: [previous_title: previous(:title)]
              end
              """) =~ "`previous/1` is only for update and destroy actions"
     end
 
     test "batch? is only for generic actions" do
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :record, :order_placed, batch?: true end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :record, batch?: true end",
                "create :record, accept: [:order_id]"
              ) =~ "`batch?` is only for generic actions"
     end
 
     test "a batch listener's argument must be an array" do
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :log, :order_placed, batch?: true end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :log, batch?: true end",
                """
                action :log do
                  argument :signals, Ash.Test.SignalsTest.VerifySignals.OrderPlaced
@@ -1417,64 +1430,43 @@ defmodule Ash.Test.SignalsTest do
 
     test "inputs must be inputs of the action, and fields of the signal" do
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :record, :order_placed, inputs: [nope: :order_id] end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :record, inputs: [nope: :order_id] end",
                "create :record, accept: [:order_id]"
              ) =~ "`:nope` is not an input of `:record`"
 
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :record, :order_placed, inputs: [order_id: :nope] end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :record, inputs: [order_id: :nope] end",
                "create :record, accept: [:order_id]"
              ) =~ "`inputs` uses `:nope`, but signal `:order_placed` has no field with that name"
     end
 
     test "update and destroy options are checked" do
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :touch, :order_placed, get_by: [nope: :order_id] end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :touch, get_by: [nope: :order_id] end",
                "update :touch"
              ) =~ "`get_by` field `:nope` is not an attribute"
 
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :touch, :order_placed, read_action: :touch end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :touch, read_action: :touch end",
                "update :touch"
              ) =~ "`:touch` is not a read action"
 
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :touch, :order_placed, args: [:nope] end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :touch, args: [:nope] end",
                "update :touch"
              ) =~ "`:nope` is not an argument of the `:read` read action"
     end
 
-    test "a signal's delivery must implement Ash.Signals.Delivery, and can verify it" do
-      assert compile_warnings("""
-             defmodule Ash.Test.SignalsTest.BadDelivery#{System.unique_integer([:positive])} do
-               use Ash.Signals
-
-               signals do
-                 signal :happened do
-                   phase :after_action
-                   delivery Ash.Test.SignalsTest.Nope
-                 end
-               end
-             end
-             """) =~ "`Ash.Test.SignalsTest.Nope` does not implement `Ash.Signals.Delivery`"
-
-      assert compile_warnings("""
-             defmodule Ash.Test.SignalsTest.BadDelivery#{System.unique_integer([:positive])} do
-               use Ash.Signals
-
-               signals do
-                 signal :rejected do
-                   phase :after_action
-                   delivery Ash.Test.SignalsTest.RecordingDelivery
-                 end
-               end
-             end
-             """) =~ "the delivery rejects this signal"
+    test "a listener's delivery must implement Ash.Signals.Delivery" do
+      assert compile_listener(
+               "from Ash.Test.SignalsTest.DeliverySignals do on :verified, :record, delivery: Ash.Test.SignalsTest.Nope end",
+               "create :record, accept: [:order_id]"
+             ) =~ "`Ash.Test.SignalsTest.Nope` does not implement `Ash.Signals.Delivery`"
     end
 
-    test "a signal's delivery can verify its listeners" do
+    test "a listener's delivery can verify it" do
       assert compile_listener(
-               "from Ash.Test.SignalsTest.DeliverySignals do on :rejected, :verified end",
+               "from Ash.Test.SignalsTest.DeliverySignals do on :verified, :rejected, delivery: Ash.Test.SignalsTest.RecordingDelivery end",
                "create :rejected, accept: [:order_id]"
              ) =~ "the delivery rejects this listener"
     end
@@ -1483,11 +1475,11 @@ defmodule Ash.Test.SignalsTest do
       assert compile_listener(
                """
                from Ash.Test.SignalsTest.VerifySignals do
-                 on :record, :order_placed
+                 on :order_placed, :record
                end
 
                from Ash.Test.SignalsTest.DeliverySignals do
-                 on :record, :verified
+                 on :verified, :record
                end
                """,
                "create :record, accept: [:order_id]"
@@ -1496,7 +1488,7 @@ defmodule Ash.Test.SignalsTest do
 
     test "the action defaults to the listener's name" do
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :nope, :order_placed end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :nope end",
                "create :record, accept: [:order_id]"
              ) =~
                "No action named `:nope`. The action defaults to the listener's name: set `action` to run a different one."
@@ -1504,12 +1496,12 @@ defmodule Ash.Test.SignalsTest do
 
     test "options for other action types are rejected" do
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :record, :order_placed, get_by: [:order_id] end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :record, get_by: [:order_id] end",
                "create :record, accept: [:order_id]"
              ) =~ "`get_by` is only for update and destroy actions"
 
       assert compile_listener(
-               "from Ash.Test.SignalsTest.VerifySignals do on :log, :order_placed, inputs: [:order_id] end",
+               "from Ash.Test.SignalsTest.VerifySignals do on :order_placed, :log, inputs: [:order_id] end",
                """
                action :log do
                  argument :signal, Ash.Test.SignalsTest.VerifySignals.OrderPlaced
@@ -1684,7 +1676,7 @@ defmodule Ash.Test.SignalsTest do
   end
 
   describe "delivery" do
-    test "receives the signals, their listeners and the emitting context" do
+    test "receives the signals, the listeners that use it and the emitting context" do
       order_id = Ash.UUID.generate()
 
       assert {:ok, "announced"} =
@@ -1696,7 +1688,7 @@ defmodule Ash.Test.SignalsTest do
       assert_received {:delivered, [%DeliverySignals.Queued{order_id: ^order_id}], listeners,
                        [queue: :orders], context}
 
-      assert [%{resource: QueuedReceipt, action: :record}] = listeners
+      assert [%{resource: QueuedReceipt, name: :record}] = listeners
 
       assert %Ash.Signals.Delivery.Context{
                signal_module: DeliverySignals,
@@ -1707,8 +1699,8 @@ defmodule Ash.Test.SignalsTest do
                source_context: %{shared: %{source: "test"}}
              } = context
 
-      # the listener did not run
-      assert Ash.read!(QueuedReceipt) == []
+      # only the inline listener ran
+      assert [%{order_id: ^order_id}] = Ash.read!(QueuedReceipt)
     end
 
     test "can run listeners later, the way the inline delivery does" do
@@ -1724,7 +1716,7 @@ defmodule Ash.Test.SignalsTest do
                Ash.Resource.Info.signal_listener(QueuedReceipt, :record)
 
       assert :ok = Ash.Signals.run_listener(listener, signals, Ash.Scope.to_opts(context))
-      assert [%{order_id: ^order_id}] = Ash.read!(QueuedReceipt)
+      assert [%{order_id: ^order_id}, %{order_id: ^order_id}] = Ash.read!(QueuedReceipt)
     end
 
     test "loading ignores unknown fields and refuses missing required ones" do
@@ -1742,10 +1734,12 @@ defmodule Ash.Test.SignalsTest do
                ])
     end
 
-    test "is called even when the signal has no listeners, and can fail the emit" do
+    test "can fail the emit" do
       assert {:error, error} = announce(DeliverySignals, :failing, [%{}])
       assert Exception.message(error) =~ "delivery failed"
-      assert_received {:delivered, [%DeliverySignals.Failing{}], [], [fail?: true], _}
+
+      assert_received {:delivered, [%DeliverySignals.Failing{}], [%{name: :record_failing}],
+                       [fail?: true], _}
     end
 
     test "listeners are found by name" do

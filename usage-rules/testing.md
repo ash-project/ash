@@ -12,6 +12,7 @@ When testing resources:
 - Test authorization policies work as expected using `Ash.can?`
 - Use `authorize?: false` in tests where authorization is not the focus
 - Write generators using `Ash.Generator`
+- Assert on emitted signals with `Ash.Signals.Test`
 - Prefer to use raising versions of functions whenever possible, as opposed to pattern matching
 
 ## Preventing Deadlocks in Concurrent Tests

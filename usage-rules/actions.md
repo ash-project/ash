@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
   inside the same transaction.
 - Use hooks like `Ash.Changeset.after_transaction/2`, `Ash.Changeset.before_transaction/2` to add additional logic
   outside the transaction.
+- When other resources should react to an action, and your action doesn't depend on the return value, emit a signal with `emit` in the action (with `dynamic?: true` when you emit it yourself with `Ash.Signals.emit/4`) and listen to it in those resources, instead of calling them from a hook. See the signals rules.
 - Use action arguments for inputs that need validation
 - Use preparations to modify queries before execution
 - Preparations support `where` clauses for conditional execution

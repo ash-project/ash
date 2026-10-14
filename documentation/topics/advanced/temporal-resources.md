@@ -25,6 +25,10 @@ record that was valid at that instant, and nothing else.
 You might see this called an *application-time period table*. The period is your time, set by
 your application, as opposed to system time, set by the database's clock.
 
+For an interactive introduction, see
+[Introducing Temporal Resources](https://ash-hq.org/blog/introducing-temporal-resources) on
+ash-hq.org.
+
 ## Defining a temporal resource
 
 Give your resource a `temporal` section naming its **period attribute**, which is an

@@ -25,14 +25,12 @@ defmodule Ash.Signals.Dsl do
     examples: [
       """
       signal :post_created do
-        phase :after_action
         argument :post_id, :uuid, allow_nil?: false
       end
       """
     ],
     target: Ash.Signals.Signal,
     schema: Ash.Signals.Signal.schema(),
-    no_depend_modules: [:delivery],
     entities: [
       arguments: [@argument]
     ],
@@ -46,7 +44,6 @@ defmodule Ash.Signals.Dsl do
       """
       signals do
         signal :post_created do
-          phase :after_action
           argument :post_id, :uuid, allow_nil?: false
         end
       end
@@ -57,6 +54,5 @@ defmodule Ash.Signals.Dsl do
 
   use Spark.Dsl.Extension,
     sections: [@signals],
-    transformers: [Ash.Signals.Transformers.DefineStructs],
-    verifiers: [Ash.Signals.Verifiers.VerifyDelivery]
+    transformers: [Ash.Signals.Transformers.DefineStructs]
 end

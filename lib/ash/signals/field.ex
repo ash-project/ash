@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Signals.Field do
-  @moduledoc "Represents an `argument` or `result` of a signal."
+  @moduledoc "Represents an `argument` of a signal."
   defstruct [
     :name,
     :type,

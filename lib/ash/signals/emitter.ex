@@ -4,7 +4,7 @@
 
 defmodule Ash.Signals.Emitter do
   @moduledoc false
-  # Options and payload building shared by the `emit_signal` change and preparation.
+  # Options and payload building shared by the change and preparation that `emit` adds.
 
   @mapping_type {:list, {:or, [:atom, {:tuple, [:atom, :atom]}]}}
 
@@ -21,8 +21,11 @@ defmodule Ash.Signals.Emitter do
     ],
     phase: [
       type: {:one_of, [:before_action, :after_action, :after_transaction]},
-      required: true,
-      doc: "When the signal is emitted, which must be the phase the signal declares."
+      default: :after_action,
+      doc: """
+      When the signal is emitted, which must be the phase the signal declares. Signals are emitted
+      `:after_action` by default.
+      """
     ],
     fields: [
       type: @mapping_type,
@@ -97,39 +100,5 @@ defmodule Ash.Signals.Emitter do
   @doc "Returns the fields that `previous/1` values refer to."
   def previous_fields(opts) do
     for {_name, {:_previous, field}} <- opts[:values] || [], do: field
-  end
-
-  @doc """
-  Returns the `emit_signal` changes and preparations of a resource, as
-  `{:change | :prepare, action | nil, entity, opts}`, where `action` is nil for global ones.
-  """
-  def usages(dsl_state) do
-    global_changes =
-      for %Ash.Resource.Change{change: {Ash.Resource.Change.EmitSignal, opts}} = change <-
-            Spark.Dsl.Extension.get_entities(dsl_state, [:changes]),
-          do: {:change, nil, change, opts}
-
-    global_preparations =
-      for %Ash.Resource.Preparation{preparation: {Ash.Resource.Preparation.EmitSignal, opts}} =
-            preparation <- Spark.Dsl.Extension.get_entities(dsl_state, [:preparations]),
-          do: {:prepare, nil, preparation, opts}
-
-    action_usages =
-      Enum.flat_map(Spark.Dsl.Extension.get_entities(dsl_state, [:actions]), fn action ->
-        changes =
-          for %Ash.Resource.Change{change: {Ash.Resource.Change.EmitSignal, opts}} = change <-
-                Map.get(action, :changes, []),
-              do: {:change, action, change, opts}
-
-        preparations =
-          for %Ash.Resource.Preparation{
-                preparation: {Ash.Resource.Preparation.EmitSignal, opts}
-              } = preparation <- Map.get(action, :preparations, []),
-              do: {:prepare, action, preparation, opts}
-
-        changes ++ preparations
-      end)
-
-    global_changes ++ global_preparations ++ action_usages
   end
 end

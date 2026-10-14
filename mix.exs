@@ -221,6 +221,7 @@ defmodule Ash.MixProject do
           Ash.Domain,
           Ash.Signals,
           Ash.Signals.Delivery,
+          Ash.Signals.Delivery.Context,
           Ash.Signals.Delivery.Inline
         ],
         Queries: [
@@ -259,6 +260,7 @@ defmodule Ash.MixProject do
           Ash.Domain.Info,
           Ash.Resource.Info,
           Ash.Signals.Info,
+          Ash.Signals.Registry,
           Ash.Policy.Info,
           Ash.DataLayer.Ets.Info,
           Ash.DataLayer.Mnesia.Info,
@@ -349,6 +351,10 @@ defmodule Ash.MixProject do
           ~r/Ash.Resource.Attribute/,
           ~r/Ash.Resource.Aggregate/,
           ~r/Ash.Resource.Actions/,
+          Ash.Resource.SignalSource,
+          Ash.Resource.SignalListener,
+          Ash.Signals.Signal,
+          Ash.Signals.Field,
           Ash.Mix.Tasks.Helpers,
           Ash.Policy.FieldPolicy,
           Ash.Policy.Policy,

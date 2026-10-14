@@ -79,6 +79,7 @@ bar to find relevant reference information. Place the text `dsl` before your sea
 - [Preparations](documentation/topics/resources/preparations.md)
 - [Embedded Resources](documentation/topics/resources/embedded-resources.md)
 - [Notifiers](documentation/topics/resources/notifiers.md)
+- [Signals](documentation/topics/resources/signals.md)
 
 ### Actions
 
@@ -125,6 +126,7 @@ bar to find relevant reference information. Place the text `dsl` before your sea
 
 - [Ash.Resource DSL](documentation/dsls/DSL-Ash.Resource.md)
 - [Ash.Domain DSL](documentation/dsls/DSL-Ash.Domain.md)
+- [Ash.Signals DSL](documentation/dsls/DSL-Ash.Signals.md)
 - [Ash.Reactor DSL](documentation/dsls/DSL-Ash.Reactor.md)
 - [Ash.Notifier.PubSub DSL](documentation/dsls/DSL-Ash.Notifier.PubSub.md)
 - [Ash.Policy.Authorizer DSL](documentation/dsls/DSL-Ash.Policy.Authorizer.md)

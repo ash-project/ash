@@ -29,7 +29,7 @@ listens at all. Needing a value back from a listener is a sign that a signal is 
 are for "at most once" side effects like publishing to PubSub. With the default delivery,
 listeners of a signal run as nested actions, during the phase the signal declares, usually inside
 the emitter's transaction. If a listener fails, the emitting action fails, and its changes are
-rolled back. Signals can also use other deliveries, for example to run listeners in jobs. See
+rolled back. A listener can also use another delivery, for example to run in a job. See
 [Delivery](#delivery).
 
 ## Declaring signals
@@ -43,7 +43,6 @@ defmodule MyApp.Shop.Signals do
 
   signals do
     signal :order_placed do
-      phase :after_action
       argument :order_id, :uuid, allow_nil?: false
       argument :customer_id, :uuid, allow_nil?: false
       argument :total, :money
@@ -56,68 +55,77 @@ Each signal defines a struct for its arguments, `MyApp.Shop.Signals.OrderPlaced`
 listeners receive. Every signal struct also has a `signal_id`, a UUIDv7 generated when the signal
 is emitted, so `signal_id` can't be used as an argument name.
 
-A signal's `phase` is when it is emitted: `:before_action`, `:after_action`, or
-`:after_transaction`. Its `delivery` is how it reaches its listeners, which by default is by
-running them immediately, during that phase. See [Delivery](#delivery), and the
-[Signals DSL documentation](/documentation/dsls/DSL-Ash.Signals.md) for every option.
+A signal's `phase` is when it is emitted: `:before_action`, `:after_action` (the default), or
+`:after_transaction`. See the [Signals DSL documentation](/documentation/dsls/DSL-Ash.Signals.md)
+for every option.
+
+```elixir
+signal :order_shipped do
+  phase :after_transaction
+  argument :order_id, :uuid, allow_nil?: false
+end
+```
 
 ## Emitting signals
 
-Emit signals with the `emit_signal` change, giving the signal module, the signal, and its phase:
+Actions emit signals with `emit`, giving the signal module and the signal:
 
 ```elixir
 actions do
   create :place do
     accept [:customer_id, :total]
 
-    change emit_signal(MyApp.Shop.Signals, :order_placed, :after_action,
-             fields: [order_id: :id]
-           )
+    emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]
   end
 end
 ```
 
-The phase must be the one the signal declares. It's repeated so that the action shows when it
-emits, and it is checked at compile time.
+An action can only emit the signals it declares with `emit`, so you can always see what an action
+emits by reading it.
 
-Signal fields are taken from the record's fields with the same name, so `customer_id` and `total`
-above come from the order. Use these options for the others:
+A signal emitted in a phase other than `:after_action` must be given its phase, so that the action
+shows when it emits. It must be the phase the signal declares, which is checked at compile time:
 
-- `fields` - signal fields to take from other fields of the record, like `order_id: :id`.
+```elixir
+emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
+```
+
+Signal fields are taken from the record's attributes with the same name, so `customer_id` and
+`total` above come from the order. Use these options for the others:
+
+- `fields` - signal fields to take from other attributes of the record, like `order_id: :id`.
 - `values` - signal fields to set to a value, which may be a template like `actor(:id)` or
   `arg(:reason)`. In update and destroy actions, `previous(:field)` is the value of a field before
   the action.
+- `where` - validations that must pass for the signal to be emitted, like `changing(:status)`.
 
 ```elixir
 update :change_status do
   accept [:status]
   require_atomic? false
 
-  change emit_signal(MyApp.Shop.Signals, :order_status_changed, :after_action,
-           fields: [order_id: :id],
-           values: [previous_status: previous(:status), changed_by: actor(:id)]
-         ),
-         where: [changing(:status)]
+  emit MyApp.Shop.Signals, :order_status_changed,
+    fields: [order_id: :id],
+    values: [previous_status: previous(:status), changed_by: actor(:id)],
+    where: [changing(:status)]
 end
 ```
 
-Use `where` to emit only in some cases, like any other change.
-
-`emit_signal` is checked at compile time: the signal must exist, every field it sets must be a
-field of the signal, every field it reads must be a field of the resource, and every required
-field of the signal must be set. Using it also adds the signal module to the resource's
-`signals_out`.
+`emit` is checked at compile time: the signal must exist, every field it sets must be a field of
+the signal, every field it reads must be an attribute of the resource, and every required field of
+the signal must be set. It runs in its place among the action's changes, so changes before it have
+already run when it is emitted.
 
 ### Generic actions
 
-Generic actions emit signals with the `emit_signal` preparation. Signal fields are taken from the
-action's arguments with the same name, and `fields` takes them from the action's result:
+In generic actions, signal fields are taken from the action's arguments with the same name, and
+`fields` takes them from the action's result:
 
 ```elixir
 action :send_invoice do
   argument :invoice_id, :uuid, allow_nil?: false
 
-  prepare emit_signal(MyApp.Billing.Signals, :invoice_sent, :after_action)
+  emit MyApp.Billing.Signals, :invoice_sent
 
   run MyApp.Billing.SendInvoice
 end
@@ -136,24 +144,43 @@ them can't be atomic. Set `require_atomic? false` on update and destroy actions 
 
 ### Emitting from your own code
 
-To emit from your own changes, list the signal module in the resource's `signals_out`, and call
-`Ash.Signals.emit/5` during the signal's phase. `Ash.Signals.emit_many/5` emits a signal for each
-of a list of payloads, for example from a change's `after_batch/3` callback.
+When building the signal needs more than `fields` and `values` can express, like a calculation,
+related data, or anything else that needs loading, emit it from your own code. Declare it on the
+action with `dynamic?: true`, and call `Ash.Signals.emit/5` during the signal's phase.
+`Ash.Signals.emit_many/5` emits a signal for each of a list of payloads, for example from a
+change's `after_batch/3` callback.
 
 ```elixir
-use Ash.Resource, signals_out: [MyApp.Shop.Signals]
+create :place do
+  accept [:customer_id, :total]
 
-# in a change
-Ash.Changeset.after_action(changeset, fn changeset, order ->
-  with :ok <-
-         Ash.Signals.emit(changeset, MyApp.Shop.Signals, :order_placed, %{
-           order_id: order.id,
-           customer_id: order.customer_id
-         }) do
-    {:ok, order}
-  end
-end)
+  emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+  change MyApp.Shop.Changes.EmitOrderPlaced
+end
 ```
+
+```elixir
+defmodule MyApp.Shop.Changes.EmitOrderPlaced do
+  use Ash.Resource.Change
+
+  @impl true
+  def change(changeset, _opts, _context) do
+    Ash.Changeset.after_action(changeset, fn changeset, order ->
+      order = Ash.load!(order, :customer_email)
+
+      with :ok <-
+             Ash.Signals.emit(changeset, MyApp.Shop.Signals, :order_placed, %{
+               order_id: order.id,
+               customer_email: order.customer_email
+             }) do
+        {:ok, order}
+      end
+    end)
+  end
+end
+```
+
+Emitting a signal the action doesn't declare raises an error.
 
 Listeners run as the emitting action's actor, with its tenant and `authorize?`. Pass `:actor`,
 `:tenant`, `:authorize?`, `:context`, or a `:scope` to `emit/5` to change them. Include a
@@ -167,8 +194,8 @@ action with that name, unless it sets `action`:
 ```elixir
 signals_in do
   from MyApp.Shop.Signals do
-    on :award_points, :order_placed
-    on :notify_sales, :order_placed, action: :notify
+    on :order_placed, :award_points
+    on :order_placed, :notify_sales, action: :notify
   end
 end
 ```
@@ -178,11 +205,11 @@ once, for example with different `inputs`:
 
 ```elixir
 from MyApp.Shop.Signals do
-  on :record_buyer_entry, :order_placed,
+  on :order_placed, :record_buyer_entry,
     action: :record_entry,
     inputs: [account_id: :customer_id]
 
-  on :record_seller_entry, :order_placed,
+  on :order_placed, :record_seller_entry,
     action: :record_entry,
     inputs: [account_id: :seller_id]
 end
@@ -197,7 +224,7 @@ A generic action receives the signal struct as its `signal` argument:
 ```elixir
 signals_in do
   from MyApp.Shop.Signals do
-    on :notify_warehouse, :order_placed
+    on :order_placed, :notify_warehouse
   end
 end
 
@@ -213,7 +240,7 @@ With `batch?: true`, it is called once with every signal emitted together, as it
 argument:
 
 ```elixir
-on :notify_warehouse, :order_placed, batch?: true
+on :order_placed, :notify_warehouse, batch?: true
 
 action :notify_warehouse do
   argument :signals, {:array, MyApp.Shop.Signals.OrderPlaced}, allow_nil?: false
@@ -229,13 +256,13 @@ the same name, except `signal_id`. Use `inputs` to map them, as `input: :signal_
 ```elixir
 from MyApp.Shop.Signals do
   # sets `order_id` and `customer_id` from the signal
-  on :record_order, :order_placed, action: :create
+  on :order_placed, :record_order, action: :create
 
   # sets `reference` from the signal's `order_id`
-  on :open_task, :order_placed, inputs: [reference: :order_id]
+  on :order_placed, :open_task, inputs: [reference: :order_id]
 
   # records which signal created the record
-  on :log, :order_placed, inputs: [:order_id, source_signal_id: :signal_id]
+  on :order_placed, :log, inputs: [:order_id, source_signal_id: :signal_id]
 end
 ```
 
@@ -248,8 +275,8 @@ together:
 
 ```elixir
 from MyApp.Shop.Signals do
-  on :mark_ordered, :order_placed, read_action: :active, get_by: [id: :customer_id]
-  on :clear, :order_placed, read_action: :for_customer, args: [:customer_id]
+  on :order_placed, :mark_ordered, read_action: :active, get_by: [id: :customer_id]
+  on :order_placed, :clear, read_action: :for_customer, args: [:customer_id]
 end
 ```
 
@@ -263,9 +290,10 @@ Update and destroy listeners run one bulk action for each distinct set of `args`
 
 ## Delivery
 
-A signal's `delivery` decides how it reaches its listeners. Because it's part of the signal, the
-module that owns the signal decides, not the listeners: whether a listener can fail or slow down
-the emitting action is the emitter's concern.
+A listener's `delivery` decides how signals reach it. Because it's part of the listener, each
+listener decides for itself, and the emitter doesn't need to know: a listener that does slow work,
+or calls an external service, can run in a job, while another listener of the same signal runs in
+the emitter's transaction.
 
 The default, `Ash.Signals.Delivery.Inline`, runs listeners immediately, as nested actions, with
 each listener handling every signal before the next listener runs. During `:before_action` and
@@ -278,19 +306,23 @@ the emitting action is itself running inside another transaction, its `after_tra
 run while that transaction is still open, and so do the listeners.
 
 Other deliveries are provided by extensions, and implement `Ash.Signals.Delivery`. For example, a
-delivery could enqueue a job for each listener during `:after_action`, so that the jobs are
-committed with the emitter's changes, and the listeners run after the transaction commits, and are
-retried when they fail:
+delivery could enqueue a job for the listener, so that it runs after the emitter's transaction
+commits, and is retried when it fails:
 
 ```elixir
-signal :order_status_changed do
-  phase :after_action
-  delivery MyApp.JobDelivery
-  argument :order_id, :uuid, allow_nil?: false
+signals_in do
+  from MyApp.Shop.Signals do
+    # runs in the emitter's transaction
+    on :order_placed, :record_sale
+
+    # runs in a job, after the emitter's transaction commits
+    on :order_placed, :send_receipt, delivery: {MyApp.JobDelivery, queue: :mailers}
+  end
 end
 ```
 
-Listeners don't change: they declare the same `on` whatever the delivery.
+The emitter doesn't change: it emits the same signal whatever its listeners' deliveries are. If a
+delivery fails, for example because it can't enqueue a job, the emit fails.
 
 ## Setup
 

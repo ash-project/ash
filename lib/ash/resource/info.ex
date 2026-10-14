@@ -584,7 +584,7 @@ defmodule Ash.Resource.Info do
     end
   end
 
-  @doc "Returns the `Ash.Signals` modules whose signals a resource may emit"
+  @doc "Returns the `Ash.Signals` modules for a resource"
   @spec signals_out(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Signals.t()]
   def signals_out(resource) do
     Extension.get_persisted(resource, :signals_out, [])

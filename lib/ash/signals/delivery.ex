@@ -6,25 +6,25 @@ defmodule Ash.Signals.Delivery do
   @moduledoc """
   A behaviour for delivering signals to their listeners.
 
-  Each signal declares how it is delivered, with its `delivery` option. The default,
-  `Ash.Signals.Delivery.Inline`, runs the listeners immediately, during the phase in which the
-  signal is emitted. Other deliveries can, for example, enqueue a job for each listener, so that
-  listeners run after the emitting action's transaction commits.
+  Each listener declares how signals reach it, with its `delivery` option. The default,
+  `Ash.Signals.Delivery.Inline`, runs the listener immediately, during the phase in which the
+  signal is emitted. Other deliveries can, for example, enqueue a job, so that the listener runs
+  after the emitting action's transaction commits.
 
   ```elixir
-  signal :order_placed do
-    phase :after_action
-    delivery {MyApp.JobDelivery, queue: :orders}
-    argument :order_id, :uuid, allow_nil?: false
+  signals_in do
+    from MyApp.Shop.Signals do
+      on :order_placed, :send_receipt, delivery: {MyApp.JobDelivery, queue: :mailers}
+    end
   end
   ```
 
-  `c:deliver/4` is called each time the signal is emitted, during the signal's phase, after every
-  payload has been cast. It is called even when the signal has no listeners. To run a listener,
-  immediately or later, use `Ash.Signals.run_listener/3`, which does exactly what the inline
-  delivery does. A delivery that runs listeners later can store signals with `Ash.Signals.dump/3`,
-  load them with `Ash.Signals.load/3`, and find the listener again with
-  `Ash.Resource.Info.signal_listener/2`.
+  When a signal is emitted, during the signal's phase and after every payload has been cast,
+  `c:deliver/4` is called once for each delivery and options its listeners use, with those
+  listeners. To run a listener, immediately or later, use `Ash.Signals.run_listener/3`, which does
+  exactly what the inline delivery does. A delivery that runs listeners later can store signals
+  with `Ash.Signals.dump/3`, load them with `Ash.Signals.load/3`, and find the listener again
+  with `Ash.Resource.Info.signal_listener/2`.
   """
 
   defmodule Context do
@@ -70,8 +70,9 @@ defmodule Ash.Signals.Delivery do
   @doc """
   Delivers signals to the given listeners.
 
-  `signals` are the signal structs emitted together, and `opts` are the options given to the
-  delivery in the signal's `delivery` option. Returning an error fails the emit.
+  `signals` are the signal structs emitted together, `listeners` are the listeners of the signal
+  that use this delivery with these options, and `opts` are the options given to the delivery in
+  their `delivery` option. Returning an error fails the emit.
   """
   @callback deliver(
               signals :: [struct()],
@@ -81,17 +82,8 @@ defmodule Ash.Signals.Delivery do
             ) :: :ok | {:error, term()}
 
   @doc """
-  Verifies a signal that uses this delivery, when its signal module is compiled.
-  """
-  @callback verify_signal(
-              signal :: Ash.Signals.Signal.t(),
-              opts :: Keyword.t(),
-              dsl_state :: Spark.Dsl.t()
-            ) :: :ok | {:error, String.t()}
-
-  @doc """
-  Verifies a listener of a signal that uses this delivery, when the listening resource is
-  compiled.
+  Verifies a listener that uses this delivery, when the listening resource is compiled. Receives
+  the signal it listens to, and the options given to the delivery.
   """
   @callback verify_listener(
               listener :: Ash.Resource.SignalListener.t(),
@@ -100,5 +92,5 @@ defmodule Ash.Signals.Delivery do
               dsl_state :: Spark.Dsl.t()
             ) :: :ok | {:error, String.t()}
 
-  @optional_callbacks verify_signal: 3, verify_listener: 4
+  @optional_callbacks verify_listener: 4
 end

@@ -543,6 +543,37 @@ defmodule Ash.Resource.Dsl do
     args: [:names]
   }
 
+  @emit %Spark.Dsl.Entity{
+    name: :emit,
+    describe: """
+    Emits a signal from the action. See `Ash.Signals`.
+
+    The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+    the signal declares. Signal fields are taken from the record's attributes of the same name (in
+    a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+    their signals together, except for signals emitted after the transaction.
+
+    An action can only emit signals it declares. To build a signal in your own code, declare it
+    with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+    """,
+    examples: [
+      "emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]",
+      """
+      emit MyApp.Shop.Signals, :order_status_changed,
+        fields: [order_id: :id],
+        values: [previous_status: previous(:status), changed_by: actor(:id)],
+        where: [changing(:status)]
+      """,
+      "emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction",
+      "emit MyApp.Shop.Signals, :order_placed, dynamic?: true"
+    ],
+    target: Ash.Resource.Actions.Emit,
+    schema: Ash.Resource.Actions.Emit.schema(),
+    no_depend_modules: [:signal_module],
+    transform: {Ash.Resource.Actions.Emit, :transform, []},
+    args: [:signal_module, :signal]
+  }
+
   @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
@@ -570,7 +601,8 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @action_change,
         @action_validate,
-        @pipe_through
+        @pipe_through,
+        @emit
       ],
       arguments: [
         @action_argument
@@ -646,7 +678,8 @@ defmodule Ash.Resource.Dsl do
               |> Keyword.delete(:always_atomic?)
               |> Keyword.delete(:on)
         },
-        @pipe_through
+        @pipe_through,
+        @emit
       ]
     ],
     args: [:name, {:optional, :returns}]
@@ -728,7 +761,8 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @action_change,
         @action_validate,
-        @pipe_through
+        @pipe_through,
+        @emit
       ],
       metadata: [
         @metadata
@@ -774,7 +808,8 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @action_change,
         @action_validate,
-        @pipe_through
+        @pipe_through,
+        @emit
       ],
       metadata: [
         @metadata
@@ -1257,17 +1292,22 @@ defmodule Ash.Resource.Dsl do
     `batch?: true`. A create action creates a record from each signal. An update or destroy action
     runs on the records selected for each signal by `read_action`, `args` and `get_by`. Create,
     update and destroy actions handle the signals emitted together in bulk.
+
+    By default, the listener runs immediately, during the signal's phase. Set `delivery` to have
+    signals reach it another way, for example in a job. See `Ash.Signals.Delivery`.
     """,
     examples: [
-      "on :add_to_feeds, :post_created",
-      "on :add_all_to_feeds, :post_created, batch?: true",
-      "on :record_post, :post_created, action: :create, inputs: [:post_id, body: :title]",
-      "on :archive, :post_archived, read_action: :for_post, args: [:post_id]",
-      "on :archive, :post_archived, get_by: [post_id: :post_id]"
+      "on :post_created, :add_to_feeds",
+      "on :post_created, :add_all_to_feeds, batch?: true",
+      "on :post_created, :record_post, action: :create, inputs: [:post_id, body: :title]",
+      "on :post_archived, :archive, read_action: :for_post, args: [:post_id]",
+      "on :post_archived, :archive, get_by: [post_id: :post_id]",
+      "on :order_placed, :send_receipt, delivery: {MyApp.JobDelivery, queue: :mailers}"
     ],
     target: Ash.Resource.SignalListener,
     schema: Ash.Resource.SignalListener.schema(),
-    args: [:name, :signal]
+    no_depend_modules: [:delivery],
+    args: [:signal, :name]
   }
 
   @signal_source %Spark.Dsl.Entity{
@@ -1278,7 +1318,7 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       from MyApp.Blog.Signals do
-        on :add_to_feeds, :post_created
+        on :post_created, :add_to_feeds
       end
       """
     ],
@@ -1298,7 +1338,7 @@ defmodule Ash.Resource.Dsl do
       """
       signals_in do
         from MyApp.Blog.Signals do
-          on :add_to_feeds, :post_created
+          on :post_created, :add_to_feeds
         end
       end
       """
@@ -1874,6 +1914,7 @@ defmodule Ash.Resource.Dsl do
   @transformers [
     Ash.Resource.Transformers.RequireStringLengthCountConfig,
     Ash.Resource.Transformers.ResolvePipelines,
+    Ash.Resource.Transformers.ResolveEmits,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.AddPeriodAttribute,

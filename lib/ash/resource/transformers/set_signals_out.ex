@@ -4,24 +4,18 @@
 
 defmodule Ash.Resource.Transformers.SetSignalsOut do
   @moduledoc false
-  # Adds the signal modules of `emit_signal` changes and preparations to `signals_out`.
+  # Persists the signal modules that the resource's actions emit to, as `signals_out`.
   use Spark.Dsl.Transformer
 
   alias Spark.Dsl.Transformer
 
   def transform(dsl_state) do
-    case Ash.Signals.Emitter.usages(dsl_state) do
-      [] ->
-        {:ok, dsl_state}
+    signals_out =
+      for action <- Transformer.get_entities(dsl_state, [:actions]),
+          %{signal_module: signal_module} <- Map.get(action, :emits, []),
+          uniq: true,
+          do: signal_module
 
-      usages ->
-        signals_out =
-          dsl_state
-          |> Transformer.get_persisted(:signals_out, [])
-          |> Enum.concat(Enum.map(usages, fn {_, _, _, opts} -> opts[:signal_module] end))
-          |> Enum.uniq()
-
-        {:ok, Transformer.persist(dsl_state, :signals_out, signals_out)}
-    end
+    {:ok, Transformer.persist(dsl_state, :signals_out, signals_out)}
   end
 end

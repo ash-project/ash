@@ -868,10 +868,12 @@ multiple actions of each type in a large application.
    * prepare
    * validate
    * pipe_through
+   * emit
  * [create](#actions-create)
    * change
    * validate
    * pipe_through
+   * emit
    * argument
    * metadata
  * [read](#actions-read)
@@ -886,12 +888,14 @@ multiple actions of each type in a large application.
    * change
    * validate
    * pipe_through
+   * emit
    * metadata
    * argument
  * [destroy](#actions-destroy)
    * change
    * validate
    * pipe_through
+   * emit
    * metadata
    * argument
 
@@ -955,6 +959,7 @@ For calling this action, see the `Ash.Domain` documentation.
  * [prepare](#actions-action-prepare)
  * [validate](#actions-action-validate)
  * [pipe_through](#actions-action-pipe_through)
+ * [emit](#actions-action-emit)
 
 
 ### Examples
@@ -1168,6 +1173,72 @@ pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 
 Target: `Ash.Resource.Actions.PipeThrough`
 
+### actions.action.emit
+```elixir
+emit signal_module, signal
+```
+
+
+Emits a signal from the action. See `Ash.Signals`.
+
+The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+the signal declares. Signal fields are taken from the record's attributes of the same name (in
+a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+their signals together, except for signals emitted after the transaction.
+
+An action can only emit signals it declares. To build a signal in your own code, declare it
+with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+
+
+
+
+### Examples
+```
+emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]
+```
+
+```
+emit MyApp.Shop.Signals, :order_status_changed,
+  fields: [order_id: :id],
+  values: [previous_status: previous(:status), changed_by: actor(:id)],
+  where: [changing(:status)]
+
+```
+
+```
+emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
+```
+
+```
+emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#actions-action-emit-signal_module){: #actions-action-emit-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signal. |
+| [`signal`](#actions-action-emit-signal){: #actions-action-emit-signal .spark-required} | `atom` |  | The name of the signal. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`phase`](#actions-action-emit-phase){: #actions-action-emit-phase } | `:before_action \| :after_action \| :after_transaction` | `:after_action` | When the signal is emitted, which must be the phase the signal declares. |
+| [`fields`](#actions-action-emit-fields){: #actions-action-emit-fields } | `list(atom \| {atom, atom})` | `[]` | Signal fields to take from attributes of the record (or, in a generic action, from fields of its result), as a keyword list of `signal_field: field`. A bare name takes the field with the same name. |
+| [`values`](#actions-action-emit-values){: #actions-action-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
+| [`where`](#actions-action-emit-where){: #actions-action-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
+| [`dynamic?`](#actions-action-emit-dynamic?){: #actions-action-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.Emit`
+
 
 
 
@@ -1188,6 +1259,7 @@ Declares a `create` action. For calling this action, see the `Ash.Domain` docume
  * [change](#actions-create-change)
  * [validate](#actions-create-validate)
  * [pipe_through](#actions-create-pipe_through)
+ * [emit](#actions-create-emit)
  * [argument](#actions-create-argument)
  * [metadata](#actions-create-metadata)
 
@@ -1369,6 +1441,72 @@ pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 ### Introspection
 
 Target: `Ash.Resource.Actions.PipeThrough`
+
+### actions.create.emit
+```elixir
+emit signal_module, signal
+```
+
+
+Emits a signal from the action. See `Ash.Signals`.
+
+The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+the signal declares. Signal fields are taken from the record's attributes of the same name (in
+a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+their signals together, except for signals emitted after the transaction.
+
+An action can only emit signals it declares. To build a signal in your own code, declare it
+with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+
+
+
+
+### Examples
+```
+emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]
+```
+
+```
+emit MyApp.Shop.Signals, :order_status_changed,
+  fields: [order_id: :id],
+  values: [previous_status: previous(:status), changed_by: actor(:id)],
+  where: [changing(:status)]
+
+```
+
+```
+emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
+```
+
+```
+emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#actions-create-emit-signal_module){: #actions-create-emit-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signal. |
+| [`signal`](#actions-create-emit-signal){: #actions-create-emit-signal .spark-required} | `atom` |  | The name of the signal. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`phase`](#actions-create-emit-phase){: #actions-create-emit-phase } | `:before_action \| :after_action \| :after_transaction` | `:after_action` | When the signal is emitted, which must be the phase the signal declares. |
+| [`fields`](#actions-create-emit-fields){: #actions-create-emit-fields } | `list(atom \| {atom, atom})` | `[]` | Signal fields to take from attributes of the record (or, in a generic action, from fields of its result), as a keyword list of `signal_field: field`. A bare name takes the field with the same name. |
+| [`values`](#actions-create-emit-values){: #actions-create-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
+| [`where`](#actions-create-emit-where){: #actions-create-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
+| [`dynamic?`](#actions-create-emit-dynamic?){: #actions-create-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.Emit`
 
 ### actions.create.argument
 ```elixir
@@ -1830,6 +1968,7 @@ Declares a `update` action. For calling this action, see the `Ash.Domain` docume
  * [change](#actions-update-change)
  * [validate](#actions-update-validate)
  * [pipe_through](#actions-update-pipe_through)
+ * [emit](#actions-update-emit)
  * [metadata](#actions-update-metadata)
  * [argument](#actions-update-argument)
 
@@ -2006,6 +2145,72 @@ pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 
 Target: `Ash.Resource.Actions.PipeThrough`
 
+### actions.update.emit
+```elixir
+emit signal_module, signal
+```
+
+
+Emits a signal from the action. See `Ash.Signals`.
+
+The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+the signal declares. Signal fields are taken from the record's attributes of the same name (in
+a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+their signals together, except for signals emitted after the transaction.
+
+An action can only emit signals it declares. To build a signal in your own code, declare it
+with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+
+
+
+
+### Examples
+```
+emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]
+```
+
+```
+emit MyApp.Shop.Signals, :order_status_changed,
+  fields: [order_id: :id],
+  values: [previous_status: previous(:status), changed_by: actor(:id)],
+  where: [changing(:status)]
+
+```
+
+```
+emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
+```
+
+```
+emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#actions-update-emit-signal_module){: #actions-update-emit-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signal. |
+| [`signal`](#actions-update-emit-signal){: #actions-update-emit-signal .spark-required} | `atom` |  | The name of the signal. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`phase`](#actions-update-emit-phase){: #actions-update-emit-phase } | `:before_action \| :after_action \| :after_transaction` | `:after_action` | When the signal is emitted, which must be the phase the signal declares. |
+| [`fields`](#actions-update-emit-fields){: #actions-update-emit-fields } | `list(atom \| {atom, atom})` | `[]` | Signal fields to take from attributes of the record (or, in a generic action, from fields of its result), as a keyword list of `signal_field: field`. A bare name takes the field with the same name. |
+| [`values`](#actions-update-emit-values){: #actions-update-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
+| [`where`](#actions-update-emit-where){: #actions-update-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
+| [`dynamic?`](#actions-update-emit-dynamic?){: #actions-update-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.Emit`
+
 ### actions.update.metadata
 ```elixir
 metadata name, type
@@ -2119,6 +2324,7 @@ See `Ash.Resource.Change.Builtins.cascade_destroy/2` for cascading destroy opera
  * [change](#actions-destroy-change)
  * [validate](#actions-destroy-validate)
  * [pipe_through](#actions-destroy-pipe_through)
+ * [emit](#actions-destroy-emit)
  * [metadata](#actions-destroy-metadata)
  * [argument](#actions-destroy-argument)
 
@@ -2298,6 +2504,72 @@ pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 ### Introspection
 
 Target: `Ash.Resource.Actions.PipeThrough`
+
+### actions.destroy.emit
+```elixir
+emit signal_module, signal
+```
+
+
+Emits a signal from the action. See `Ash.Signals`.
+
+The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+the signal declares. Signal fields are taken from the record's attributes of the same name (in
+a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+their signals together, except for signals emitted after the transaction.
+
+An action can only emit signals it declares. To build a signal in your own code, declare it
+with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+
+
+
+
+### Examples
+```
+emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]
+```
+
+```
+emit MyApp.Shop.Signals, :order_status_changed,
+  fields: [order_id: :id],
+  values: [previous_status: previous(:status), changed_by: actor(:id)],
+  where: [changing(:status)]
+
+```
+
+```
+emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
+```
+
+```
+emit MyApp.Shop.Signals, :order_placed, dynamic?: true
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#actions-destroy-emit-signal_module){: #actions-destroy-emit-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signal. |
+| [`signal`](#actions-destroy-emit-signal){: #actions-destroy-emit-signal .spark-required} | `atom` |  | The name of the signal. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`phase`](#actions-destroy-emit-phase){: #actions-destroy-emit-phase } | `:before_action \| :after_action \| :after_transaction` | `:after_action` | When the signal is emitted, which must be the phase the signal declares. |
+| [`fields`](#actions-destroy-emit-fields){: #actions-destroy-emit-fields } | `list(atom \| {atom, atom})` | `[]` | Signal fields to take from attributes of the record (or, in a generic action, from fields of its result), as a keyword list of `signal_field: field`. A bare name takes the field with the same name. |
+| [`values`](#actions-destroy-emit-values){: #actions-destroy-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
+| [`where`](#actions-destroy-emit-where){: #actions-destroy-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
+| [`dynamic?`](#actions-destroy-emit-dynamic?){: #actions-destroy-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.Emit`
 
 ### actions.destroy.metadata
 ```elixir
@@ -3263,7 +3535,7 @@ Listen to signals emitted by other resources. See `Ash.Signals`.
 ```
 signals_in do
   from MyApp.Blog.Signals do
-    on :add_to_feeds, :post_created
+    on :post_created, :add_to_feeds
   end
 end
 
@@ -3288,7 +3560,7 @@ Listens to signals from an `Ash.Signals` module.
 ### Examples
 ```
 from MyApp.Blog.Signals do
-  on :add_to_feeds, :post_created
+  on :post_created, :add_to_feeds
 end
 
 ```
@@ -3305,7 +3577,7 @@ end
 
 ### signals_in.from.on
 ```elixir
-on name, signal
+on signal, name
 ```
 
 
@@ -3317,28 +3589,35 @@ argument (named `signal` by default), or every signal emitted together as a list
 runs on the records selected for each signal by `read_action`, `args` and `get_by`. Create,
 update and destroy actions handle the signals emitted together in bulk.
 
+By default, the listener runs immediately, during the signal's phase. Set `delivery` to have
+signals reach it another way, for example in a job. See `Ash.Signals.Delivery`.
+
 
 
 
 ### Examples
 ```
-on :add_to_feeds, :post_created
+on :post_created, :add_to_feeds
 ```
 
 ```
-on :add_all_to_feeds, :post_created, batch?: true
+on :post_created, :add_all_to_feeds, batch?: true
 ```
 
 ```
-on :record_post, :post_created, action: :create, inputs: [:post_id, body: :title]
+on :post_created, :record_post, action: :create, inputs: [:post_id, body: :title]
 ```
 
 ```
-on :archive, :post_archived, read_action: :for_post, args: [:post_id]
+on :post_archived, :archive, read_action: :for_post, args: [:post_id]
 ```
 
 ```
-on :archive, :post_archived, get_by: [post_id: :post_id]
+on :post_archived, :archive, get_by: [post_id: :post_id]
+```
+
+```
+on :order_placed, :send_receipt, delivery: {MyApp.JobDelivery, queue: :mailers}
 ```
 
 
@@ -3347,8 +3626,8 @@ on :archive, :post_archived, get_by: [post_id: :post_id]
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#signals_in-from-on-name){: #signals_in-from-on-name .spark-required} | `atom` |  | The name of the listener, unique within the resource. Also the action it runs, unless `action` is set. |
 | [`signal`](#signals_in-from-on-signal){: #signals_in-from-on-signal .spark-required} | `atom` |  | The name of the signal. |
+| [`name`](#signals_in-from-on-name){: #signals_in-from-on-name .spark-required} | `atom` |  | The name of the listener, unique within the resource. Also the action it runs, unless `action` is set. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -3360,6 +3639,7 @@ on :archive, :post_archived, get_by: [post_id: :post_id]
 | [`read_action`](#signals_in-from-on-read_action){: #signals_in-from-on-read_action } | `atom` |  | For an update or destroy action, the read action that selects the records to change. Defaults to the primary read action. Signals for which it returns no records are handled. |
 | [`args`](#signals_in-from-on-args){: #signals_in-from-on-args } | `list(atom \| {atom, atom})` | `[]` | For an update or destroy action, the arguments of the read action to set from the signal. A keyword list mapping each name to the signal field it takes its value from. A bare name takes its value from the signal field with the same name, e.g. `[:customer_id, order: :order_id]`. |
 | [`get_by`](#signals_in-from-on-get_by){: #signals_in-from-on-get_by } | `list(atom \| {atom, atom})` | `[]` | For an update or destroy action, fields of the resource that must equal the given signal fields. A keyword list mapping each name to the signal field it takes its value from. A bare name takes its value from the signal field with the same name, e.g. `[:customer_id, order: :order_id]`. |
+| [`delivery`](#signals_in-from-on-delivery){: #signals_in-from-on-delivery } | `module` | `{Ash.Signals.Delivery.Inline, []}` | How signals reach the listener. Defaults to `Ash.Signals.Delivery.Inline`, which runs it immediately, during the signal's phase. Other deliveries can, for example, run it in a job. See `Ash.Signals.Delivery`. |
 | [`description`](#signals_in-from-on-description){: #signals_in-from-on-description } | `String.t` |  | A description of the listener. |
 
 

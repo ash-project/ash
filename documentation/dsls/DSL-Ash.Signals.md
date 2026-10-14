@@ -17,7 +17,6 @@ Declare signals that resources can emit and listen to.
 ```
 signals do
   signal :post_created do
-    phase :after_action
     argument :post_id, :uuid, allow_nil?: false
   end
 end
@@ -45,7 +44,6 @@ For a signal named `:post_created` in `MyApp.Signals`, this is `MyApp.Signals.Po
 ### Examples
 ```
 signal :post_created do
-  phase :after_action
   argument :post_id, :uuid, allow_nil?: false
 end
 
@@ -62,8 +60,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`phase`](#signals-signal-phase){: #signals-signal-phase .spark-required} | `:before_action \| :after_action \| :after_transaction` |  | The phase of the emitting action during which the signal may be emitted. |
-| [`delivery`](#signals-signal-delivery){: #signals-signal-delivery } | `module` | `{Ash.Signals.Delivery.Inline, []}` | How the signal is delivered to its listeners. Defaults to `Ash.Signals.Delivery.Inline`, which runs them immediately, during the signal's phase. See `Ash.Signals.Delivery`. |
+| [`phase`](#signals-signal-phase){: #signals-signal-phase } | `:before_action \| :after_action \| :after_transaction` | `:after_action` | The phase of the emitting action during which the signal may be emitted. |
 | [`description`](#signals-signal-description){: #signals-signal-description } | `String.t` |  | A description of the signal. |
 
 

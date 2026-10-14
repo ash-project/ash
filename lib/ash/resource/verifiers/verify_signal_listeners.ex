@@ -4,8 +4,8 @@
 
 defmodule Ash.Resource.Verifiers.VerifySignalListeners do
   @moduledoc """
-  Verifies the `signals_in` section: that each signal and action exists, and that the listener's
-  options fit the type of its action.
+  Verifies the `signals_in` section: that each signal and action exists, that the listener's
+  options fit the type of its action, and that its delivery accepts it.
   """
   use Spark.Dsl.Verifier
 
@@ -75,8 +75,16 @@ defmodule Ash.Resource.Verifiers.VerifySignalListeners do
     verify_delivery(listener, module, signal, dsl_state)
   end
 
-  defp verify_delivery(listener, module, %{delivery: {delivery, opts}} = signal, dsl_state) do
-    if Code.ensure_loaded?(delivery) && function_exported?(delivery, :verify_listener, 4) do
+  defp verify_delivery(%{delivery: {delivery, opts}} = listener, module, signal, dsl_state) do
+    if !(Code.ensure_loaded?(delivery) && function_exported?(delivery, :deliver, 4)) do
+      raise_error(
+        listener,
+        module,
+        "`#{inspect(delivery)}` does not implement `Ash.Signals.Delivery`."
+      )
+    end
+
+    if function_exported?(delivery, :verify_listener, 4) do
       case delivery.verify_listener(listener, signal, opts, dsl_state) do
         :ok -> :ok
         {:error, message} -> raise_error(listener, module, message)

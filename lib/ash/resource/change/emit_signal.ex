@@ -4,7 +4,7 @@
 
 defmodule Ash.Resource.Change.EmitSignal do
   @moduledoc false
-  # See `Ash.Resource.Change.Builtins.emit_signal/4`.
+  # Added by `emit` in create, update and destroy actions.
   use Ash.Resource.Change
 
   alias Ash.Signals.Emitter
@@ -116,7 +116,7 @@ defmodule Ash.Resource.Change.EmitSignal do
           Emitter.payload(opts, get, get, changeset.data)
 
         {changeset, record} ->
-          get = &Map.fetch(record, &1)
+          get = &fetch_attribute(record, changeset.resource, &1)
           Emitter.payload(opts, get, get, changeset.data)
       end)
 
@@ -126,6 +126,14 @@ defmodule Ash.Resource.Change.EmitSignal do
   defp fetch_attribute(changeset, name) do
     if Ash.Resource.Info.attribute(changeset.resource, name) do
       {:ok, Ash.Changeset.get_attribute(changeset, name)}
+    else
+      :error
+    end
+  end
+
+  defp fetch_attribute(record, resource, name) do
+    if Ash.Resource.Info.attribute(resource, name) do
+      Map.fetch(record, name)
     else
       :error
     end

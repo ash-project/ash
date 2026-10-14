@@ -15,6 +15,7 @@ defmodule Ash.Resource.SignalListener do
     :argument,
     :inputs,
     :read_action,
+    delivery: {Ash.Signals.Delivery.Inline, []},
     args: [],
     get_by: [],
     batch?: false,
@@ -36,6 +37,7 @@ defmodule Ash.Resource.SignalListener do
           args: mapping(),
           get_by: mapping(),
           batch?: boolean(),
+          delivery: {module(), Keyword.t()},
           description: String.t() | nil,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
@@ -46,6 +48,11 @@ defmodule Ash.Resource.SignalListener do
   """
 
   @schema [
+    signal: [
+      type: :atom,
+      required: true,
+      doc: "The name of the signal."
+    ],
     name: [
       type: :atom,
       required: true,
@@ -53,11 +60,6 @@ defmodule Ash.Resource.SignalListener do
       The name of the listener, unique within the resource. Also the action it runs, unless
       `action` is set.
       """
-    ],
-    signal: [
-      type: :atom,
-      required: true,
-      doc: "The name of the signal."
     ],
     action: [
       type: :atom,
@@ -113,6 +115,15 @@ defmodule Ash.Resource.SignalListener do
       doc: """
       For an update or destroy action, fields of the resource that must equal the given signal
       fields. #{@mapping_doc}
+      """
+    ],
+    delivery: [
+      type: {:spark_behaviour, Ash.Signals.Delivery},
+      default: {Ash.Signals.Delivery.Inline, []},
+      doc: """
+      How signals reach the listener. Defaults to `Ash.Signals.Delivery.Inline`, which runs it
+      immediately, during the signal's phase. Other deliveries can, for example, run it in a job.
+      See `Ash.Signals.Delivery`.
       """
     ],
     description: [

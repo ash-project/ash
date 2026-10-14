@@ -27,6 +27,7 @@ defmodule Ash.Resource.Actions.Destroy do
     require_attributes: [],
     allow_nil_input: [],
     changes: [],
+    emits: [],
     reject: [],
     transaction?: true,
     public?: true,
