@@ -2693,6 +2693,16 @@ defmodule Ash.Query do
                 {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
             end
           else
+            :error ->
+              {:halt,
+               {:error,
+                InvalidCalculationArgument.exception(
+                  field: argument.name,
+                  calculation: calculation.name,
+                  message: "is invalid",
+                  value: value
+                )}}
+
             {:error, error} when is_binary(error) ->
               {:halt,
                {:error,
