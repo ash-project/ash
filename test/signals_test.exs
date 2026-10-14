@@ -852,6 +852,70 @@ defmodule Ash.Test.SignalsTest do
     end
   end
 
+  describe "react_to_signal" do
+    test "delivers a signal to its listeners as if it had been emitted, without emitting it" do
+      order_id = Ash.UUID.generate()
+      customer_id = Ash.UUID.generate()
+
+      assert :ok =
+               refute_emits_signal(OrderSignals, :order_placed, fn ->
+                 react_to_signal(
+                   OrderSignals,
+                   :order_placed,
+                   %{order_id: order_id, customer_id: customer_id},
+                   only: LedgerEntry
+                 )
+               end)
+
+      assert LedgerEntry |> Ash.read!() |> Enum.map(& &1.account_id) |> Enum.sort() ==
+               Enum.sort([order_id, customer_id])
+    end
+
+    test "delivers only to the given listeners, and several signals together" do
+      orders =
+        for _ <- 1..2, do: %{order_id: Ash.UUID.generate(), customer_id: Ash.UUID.generate()}
+
+      assert :ok =
+               react_to_signal(OrderSignals, :order_placed, orders,
+                 only: {LedgerEntry, :record_for_customer}
+               )
+
+      assert LedgerEntry |> Ash.read!() |> Enum.map(& &1.account_id) |> Enum.sort() ==
+               orders |> Enum.map(& &1.customer_id) |> Enum.sort()
+    end
+
+    test "raises when no listener matches only" do
+      assert_raise ArgumentError, ~r/No listener of `:order_placed`/, fn ->
+        react_to_signal(
+          OrderSignals,
+          :order_placed,
+          %{order_id: Ash.UUID.generate(), customer_id: Ash.UUID.generate()},
+          only: Post
+        )
+      end
+    end
+
+    test "delivers through each listener's delivery, unless inline?" do
+      order_id = Ash.UUID.generate()
+
+      assert :ok =
+               react_to_signal(DeliverySignals, :queued, %{order_id: order_id},
+                 actor: %{name: "zach"}
+               )
+
+      assert_received {:delivered, [%DeliverySignals.Queued{order_id: ^order_id}],
+                       [%{name: :record}], [queue: :orders], %{actor: %{name: "zach"}}}
+
+      # only the inline listener ran
+      assert [%{order_id: ^order_id}] = Ash.read!(QueuedReceipt)
+
+      assert :ok = react_to_signal(DeliverySignals, :queued, %{order_id: order_id}, inline?: true)
+
+      refute_received {:delivered, _, _, _, _}
+      assert [_, _, _] = Ash.read!(QueuedReceipt)
+    end
+  end
+
   describe "assert_emits_signal and refute_emits_signal" do
     test "assert the signals emitted by a function, and return its result" do
       assert {:ok, %Post{title: "Signals"}} =

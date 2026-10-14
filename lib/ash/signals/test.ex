@@ -4,7 +4,7 @@
 
 defmodule Ash.Signals.Test do
   @moduledoc """
-  Test helpers for asserting on emitted signals.
+  Test helpers for asserting on emitted signals, and for testing listeners.
 
   `assert_emits_signal/4` and `refute_emits_signal/4` check the signals emitted while running a
   function, and need no setup:
@@ -40,6 +40,23 @@ defmodule Ash.Signals.Test do
   and listeners still run as usual.
 
   Patterns match against the signal struct, and may use pins or bind variables.
+
+  To test listeners on their own, `react_to_signal/4` delivers a signal to them as if it had been
+  emitted:
+
+  ```elixir
+  test "placing an order awards points" do
+    :ok =
+      react_to_signal(
+        MyApp.Shop.Signals,
+        :order_placed,
+        %{order_id: order.id, customer_id: customer.id},
+        only: MyApp.Loyalty.Account
+      )
+
+    assert MyApp.Loyalty.points!(customer) == 100
+  end
+  ```
 
   To also match on who emitted a signal, receive the messages sent after `capture_signals/1`
   directly. They have the shape `{:ash_signal_emitted, signal_module, signal_name, signal,
@@ -88,6 +105,46 @@ defmodule Ash.Signals.Test do
 
   defp from_test?(test_pid) do
     self() == test_pid or test_pid in Process.get(:"$callers", [])
+  end
+
+  @doc """
+  Delivers a signal to its listeners as if it had been emitted with the given payload, so
+  listeners can be tested without the action that emits it. Pass a list of payloads to deliver
+  signals emitted together, like a bulk action does.
+
+  Each listener receives the signal through its own delivery, as it would if the signal had been
+  emitted, so a listener that runs in a job only enqueues it. Nothing is emitted, so the signal
+  isn't seen by the assertions above.
+
+  Returns `:ok`, or the error of the first delivery that fails.
+
+  ## Options
+
+  * `:only` - Only delivers to the listeners on these resources, or to these `{resource,
+    listener_name}` pairs. Raises if no listener matches.
+  * `:inline?` - Runs every listener immediately, whatever its delivery. Defaults to `false`.
+  * `:actor`, `:tenant`, `:authorize?`, `:tracer`, `:context` and `:scope` - What listeners run
+    with, as for `Ash.Signals.emit/5`.
+
+  ```elixir
+  react_to_signal(
+    MyApp.Shop.Signals,
+    :order_placed,
+    %{order_id: order_id, customer_id: customer_id},
+    only: {MyApp.Loyalty.Account, :award_points},
+    actor: customer
+  )
+  ```
+  """
+  @spec react_to_signal(Ash.Signals.t(), atom(), map() | Keyword.t() | [map()], Keyword.t()) ::
+          :ok | {:error, term()}
+  def react_to_signal(signal_module, signal_name, payload_or_payloads, opts \\ []) do
+    payloads =
+      if is_list(payload_or_payloads) and not Keyword.keyword?(payload_or_payloads),
+        do: payload_or_payloads,
+        else: [payload_or_payloads]
+
+    Ash.Signals.react(signal_module, signal_name, payloads, opts)
   end
 
   @doc """

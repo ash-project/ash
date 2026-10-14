@@ -139,6 +139,54 @@ defmodule Ash.Signals do
     end
   end
 
+  @doc false
+  # Delivers signals to their listeners with no emitting action, for
+  # `Ash.Signals.Test.react_to_signal/4`.
+  def react(signal_module, name, payloads, opts) do
+    signal = fetch_signal!(signal_module, name)
+    opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
+
+    listeners =
+      signal_module
+      |> Ash.Signals.Registry.listeners(name)
+      |> only_listeners(opts[:only], signal_module, name)
+
+    with {:ok, signal_structs} <- cast_payloads(signal, payloads) do
+      context =
+        struct!(
+          Ash.Signals.Delivery.Context,
+          opts
+          |> Keyword.take([:actor, :tenant, :authorize?, :tracer])
+          |> Keyword.merge(
+            signal_module: signal_module,
+            signal: signal,
+            source_context: opts[:context] || %{}
+          )
+        )
+
+      if opts[:inline?] do
+        Ash.Signals.Delivery.Inline.deliver(signal_structs, listeners, [], context)
+      else
+        deliver(listeners, signal_structs, context)
+      end
+    end
+  end
+
+  defp only_listeners(listeners, nil, _signal_module, _name), do: listeners
+
+  defp only_listeners(listeners, only, signal_module, name) do
+    only = List.wrap(only)
+
+    case Enum.filter(listeners, &(&1.resource in only or {&1.resource, &1.name} in only)) do
+      [] ->
+        raise ArgumentError,
+              "No listener of `#{inspect(name)}` from #{inspect(signal_module)} matches `only: #{inspect(only)}`."
+
+      listeners ->
+        listeners
+    end
+  end
+
   # Each delivery is called once, with the listeners that use it with the same options.
   defp deliver(listeners, signal_structs, context) do
     listeners

@@ -94,6 +94,7 @@ end
 
 - Use `Ash.Signals.Test`. `assert_emits_signal/4` and `refute_emits_signal/4` run a function, check the signals it emitted, and return its result.
 - `assert_signal_emitted/4` and `refute_signal_emitted/4` check the signals emitted so far, after `setup :capture_signals`.
+- Test a listener without the action that emits its signal with `react_to_signal/4`, which delivers a signal to the listeners as if it had been emitted: `react_to_signal(MyApp.Shop.Signals, :order_placed, %{order_id: id, customer_id: customer_id}, only: MyApp.Loyalty.Account)`. Listeners receive it through their own delivery, so one that runs in a job only enqueues it; pass `inline?: true` to run them all immediately.
 
 ```elixir
 import Ash.Signals.Test

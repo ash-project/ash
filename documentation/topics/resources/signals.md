@@ -382,6 +382,28 @@ end
 `assert_signal_emitted/4` and `refute_signal_emitted/4` check the signals emitted so far, after
 calling `capture_signals/1`, for example with `setup :capture_signals`.
 
+To test listeners without the action that emits the signal, `react_to_signal/4` delivers a signal
+to them as if it had been emitted:
+
+```elixir
+test "placing an order awards points" do
+  :ok =
+    react_to_signal(
+      MyApp.Shop.Signals,
+      :order_placed,
+      %{order_id: order.id, customer_id: customer.id},
+      only: MyApp.Loyalty.Account
+    )
+
+  assert MyApp.Loyalty.points!(customer) == 100
+end
+```
+
+Each listener receives the signal through its own delivery, so a listener that runs in a job only
+enqueues it. Pass `inline?: true` to run every listener immediately. `only` limits the listeners to
+some resources, or to `{resource, listener}` pairs, and `react_to_signal/4` takes the same
+`:actor`, `:tenant` and `:authorize?` options as `Ash.Signals.emit/5`.
+
 ## Telemetry
 
 Each emitted signal fires an `[:ash, :signal, :emitted]` telemetry event, before it is
