@@ -20,6 +20,21 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
     end
   end
 
+  defmodule Label do
+    @moduledoc false
+    use Ash.Type
+
+    def storage_type(_), do: :map
+    def cast_input(value, _) when is_binary(value), do: {:ok, %{value: value}}
+    def cast_input(_, _), do: :error
+    def cast_stored(value, _), do: {:ok, value}
+    def dump_to_native(value, _), do: {:ok, value}
+
+    def apply_constraints(value, _) do
+      {:ok, %{value | value: String.trim(value.value)}}
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     @ids ["7f6f4c9c-49a8-4c5e-9d43-3a8e7d6bb9f0", "0b0d0a5e-22a8-4f3e-9a9c-7d1f0f6c4e11"]
@@ -77,6 +92,29 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
                 expr(title == ^arg(:title) and published_at > ^arg(:after)) do
         public? true
         argument :title, :string, allow_nil?: false
+        argument :after, :utc_datetime_usec, allow_nil?: false, allow_expr?: true
+      end
+
+      calculate :optional_title_after?,
+                :boolean,
+                expr(is_nil(^arg(:title)) and published_at > ^arg(:after)) do
+        argument :title, :string
+        argument :after, :utc_datetime_usec, allow_nil?: false, allow_expr?: true
+      end
+
+      calculate :default_title_after?,
+                :boolean,
+                expr(title == ^arg(:title) and published_at > ^arg(:after)) do
+        argument :title, :string, allow_nil?: false, default: fn -> "match" end
+        argument :after, :utc_datetime_usec, allow_nil?: false, allow_expr?: true
+      end
+
+      calculate :label_after?,
+                :boolean,
+                expr(get_path(^arg(:label), [:value]) == title and published_at > ^arg(:after)) do
+        argument :label, Ash.Test.Calculations.CalculationArgumentExprTest.Label,
+          allow_nil?: false
+
         argument :after, :utc_datetime_usec, allow_nil?: false, allow_expr?: true
       end
 
@@ -321,6 +359,93 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
                |> Ash.read()
 
       assert Exception.message(error) =~ "does not support expressions"
+    end
+  end
+
+  describe "normalized literal calculation arguments" do
+    test "filter alongside an expression argument", %{matching_id: matching_id} do
+      records =
+        Post
+        |> Ash.Query.filter(titled_after?(title: " match ", after: cutoff_calc))
+        |> Ash.read!()
+
+      assert matching_id in Enum.map(records, & &1.id)
+      assert length(records) == 2
+    end
+
+    test "load alongside an expression argument", %{matching_id: matching_id} do
+      assert %{titled_after?: true} =
+               Post
+               |> Ash.Query.filter(id == ^matching_id)
+               |> Ash.Query.load(titled_after?: %{title: " match ", after: expr(cutoff_calc)})
+               |> Ash.read_one!()
+    end
+
+    test "normalize with literal siblings", %{matching_id: matching_id} do
+      assert %{titled_after?: true} =
+               Post
+               |> Ash.Query.filter(id == ^matching_id)
+               |> Ash.Query.load(titled_after?: %{title: " match ", after: @cutoff})
+               |> Ash.read_one!()
+
+      assert length(
+               Post
+               |> Ash.Query.filter(titled_after?(title: " match ", after: ^@cutoff))
+               |> Ash.read!()
+             ) == 2
+    end
+
+    for after_value <- [@cutoff, expr(cutoff_calc)] do
+      test "reject a required string normalized to nil with #{inspect(after_value)}" do
+        query =
+          Ash.Query.load(Post,
+            titled_after?: %{title: "  ", after: unquote(Macro.escape(after_value))}
+          )
+
+        assert {:error, error} = Ash.read(query)
+        assert Exception.message(error) =~ "is required"
+      end
+
+      test "allow an optional string normalized to nil with #{inspect(after_value)}", %{
+        matching_id: matching_id
+      } do
+        assert %{optional_title_after?: true} =
+                 Post
+                 |> Ash.Query.filter(id == ^matching_id)
+                 |> Ash.Query.load(
+                   optional_title_after?: %{
+                     title: "  ",
+                     after: unquote(Macro.escape(after_value))
+                   }
+                 )
+                 |> Ash.read_one!()
+      end
+    end
+
+    test "preserve default callbacks with expression siblings", %{matching_id: matching_id} do
+      assert %{default_title_after?: true} =
+               Post
+               |> Ash.Query.filter(id == ^matching_id)
+               |> Ash.Query.load(default_title_after?: %{after: expr(cutoff_calc)})
+               |> Ash.read_one!()
+    end
+
+    test "preserve constrained custom values without recasting them", %{matching_id: matching_id} do
+      assert %{label_after?: true} =
+               Post
+               |> Ash.Query.filter(id == ^matching_id)
+               |> Ash.Query.load(label_after?: %{label: " match ", after: expr(cutoff_calc)})
+               |> Ash.read_one!()
+
+      assert length(
+               Post
+               |> Ash.Query.filter(label_after?(label: " match ", after: cutoff_calc))
+               |> Ash.read!()
+             ) == 2
+    end
+
+    test "keep expression string coercion distinct from literal normalization" do
+      assert {:ok, " match "} = Ash.Expr.eval(expr(type(" match ", :string)))
     end
   end
 
