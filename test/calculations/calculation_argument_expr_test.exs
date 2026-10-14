@@ -406,6 +406,16 @@ defmodule Ash.Test.Calculations.CalculationArgumentExprTest do
         assert Exception.message(error) =~ "is required"
       end
 
+      test "reject a provided string normalized to nil instead of using its default with #{inspect(after_value)}" do
+        query =
+          Ash.Query.load(Post,
+            default_title_after?: %{title: "  ", after: unquote(Macro.escape(after_value))}
+          )
+
+        assert {:error, error} = Ash.read(query)
+        assert Exception.message(error) =~ "is required"
+      end
+
       test "allow an optional string normalized to nil with #{inspect(after_value)}", %{
         matching_id: matching_id
       } do
