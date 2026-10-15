@@ -157,14 +157,21 @@ defmodule Ash.Query.Calculation do
 
   @from_resource_schema [
     args: [
-      type: :map,
-      doc: "Arguments to pass to the calculation",
+      # any key type, so that keys that aren't argument names get a `NoSuchInput` error
+      # from argument validation
+      type: {:map, :any, :any},
+      doc: "Arguments to pass to the calculation, keyed by argument name as an atom or a string",
       default: %{}
     ],
     source_context: [
       type: :map,
       doc: "Context from the source query or changeset.",
       default: %{}
+    ],
+    allow_expr?: [
+      type: :boolean,
+      doc: "Whether arguments that allow expressions may be given expressions.",
+      default: true
     ]
   ]
 
@@ -224,7 +231,11 @@ defmodule Ash.Query.Calculation do
 
     with {:ok, opts} <- FromResourceOpts.validate(opts),
          {:ok, args} <-
-           Ash.Query.validate_calculation_arguments(resource_calculation, opts.args),
+           Ash.Query.validate_calculation_arguments(
+             resource_calculation,
+             opts.args,
+             opts.allow_expr?
+           ),
          {:ok, calculation} <-
            new(
              name,

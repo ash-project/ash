@@ -323,10 +323,7 @@ defmodule Ash.Sort do
   defp do_get_field(resource, field, true, input) do
     case Ash.Resource.Info.public_field(resource, field) do
       %Ash.Resource.Calculation{} = calc ->
-        with {:ok, calc} <-
-               Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
-          {:ok, %{calc | name: :__calc__}}
-        end
+        input_calculation(resource, calc, input)
 
       nil ->
         {:error, NoSuchField.exception(field: field, resource: resource)}
@@ -347,10 +344,7 @@ defmodule Ash.Sort do
   defp do_get_field(resource, field, _, input) do
     case Ash.Resource.Info.field(resource, field) do
       %Ash.Resource.Calculation{} = calc ->
-        with {:ok, calc} <-
-               Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
-          {:ok, %{calc | name: :__calc__}}
-        end
+        input_calculation(resource, calc, input)
 
       nil ->
         {:error, NoSuchField.exception(field: field, resource: resource)}
@@ -359,6 +353,31 @@ defmodule Ash.Sort do
         {:ok, other}
     end
   end
+
+  defp input_calculation(resource, calc, input) do
+    with {:ok, args} <- calculation_input(calc, input),
+         {:ok, calc} <-
+           Ash.Query.Calculation.from_resource_calculation(resource, calc, args: args) do
+      {:ok, %{calc | name: :__calc__}}
+    end
+  end
+
+  # The input of a calculation in a sort, as a map.
+  defp calculation_input(_calc, nil), do: {:ok, %{}}
+
+  defp calculation_input(_calc, input) when is_map(input) and not is_struct(input),
+    do: {:ok, input}
+
+  defp calculation_input(calc, input) when is_list(input) do
+    if Keyword.keyword?(input) do
+      {:ok, Map.new(input)}
+    else
+      {:error, InvalidSort.exception(sort: {calc.name, input})}
+    end
+  end
+
+  defp calculation_input(calc, input),
+    do: {:error, InvalidSort.exception(sort: {calc.name, input})}
 
   defp do_get_relationship(resource, relationship, true) do
     Ash.Resource.Info.public_relationship(resource, relationship)
