@@ -225,13 +225,13 @@ if Code.ensure_loaded?(Igniter) do
             "dev.exs",
             :ash,
             [:keyset_signing_secret],
-            generate_secret()
+            generate_secret(igniter)
           )
           |> Igniter.Project.Config.configure(
             "test.exs",
             :ash,
             [:keyset_signing_secret],
-            generate_secret()
+            generate_secret(igniter)
           )
           |> Igniter.Project.Config.configure_runtime_env(
             :prod,
@@ -264,7 +264,10 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    defp generate_secret do
+    # When writing the manual installation guide, show a placeholder instead of a real secret
+    defp generate_secret(%{assigns: %{scribe?: true}}), do: "<a long random string>"
+
+    defp generate_secret(_igniter) do
       32
       |> :crypto.strong_rand_bytes()
       |> Base.encode64(padding: false)

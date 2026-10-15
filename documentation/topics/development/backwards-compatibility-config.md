@@ -350,3 +350,39 @@ depend on the Reactor at compile time, Ash also doesn't verify at compile time
 that the action has an argument for each of the Reactor's inputs.
 `reactor/2` works with either setting, so you can migrate
 before enabling it.
+
+## keyset_signing_secret
+
+```elixir
+# config/dev.exs and config/test.exs
+config :ash, keyset_signing_secret: "a-long-random-string"
+
+# config/runtime.exs
+if config_env() == :prod do
+  config :ash,
+    keyset_signing_secret:
+      System.get_env("ASH_KEYSET_SIGNING_SECRET") ||
+        raise("environment variable ASH_KEYSET_SIGNING_SECRET is missing")
+end
+```
+
+Unlike the other settings, the installer generates a separate random secret for
+each environment rather than a fixed value. Use a different secret in each
+environment, and keep the production secret out of source control.
+
+### Old Behavior
+
+Keysets returned by Ash were plain encoded values. Ash accepted any keyset passed
+to `after`/`before` that decoded to the right shape, including ones constructed
+by a client.
+
+### New Behavior
+
+Ash signs each keyset it returns with an HMAC using the configured secret, and only
+accepts keysets with a valid signature. Keysets that were not signed, were signed with
+a different secret, or were modified are rejected with an `Ash.Error.Page.InvalidKeyset`
+error.
+
+Keysets returned before enabling this, or before rotating the secret, are no longer
+accepted, so clients paginating at that moment will need to start again from the
+first page.
