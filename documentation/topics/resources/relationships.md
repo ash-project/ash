@@ -444,6 +444,10 @@ followers = Ash.Query.sort(User, follower_count: :asc)
 
 Ash.load(users, followers: followers)
 ```
+When loading the same relationship multiple times with different queries, the
+queries do not stack. The later query takes precedence over earlier queries for
+options such as filters, sorts, and limits. Nested load statements are the
+exception and are combined across the queries.
 
 Nested loads will be included in the parent load.
 
