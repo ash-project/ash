@@ -155,13 +155,49 @@ defmodule Ash.Page.Keyset do
     end)
   end
 
+  defp signing_secret do
+    Application.get_env(:ash, :keyset_signing_secret)
+  end
+
+  defp sign(bytes) do
+    if secret = signing_secret() do
+      signature = :crypto.mac(:hmac, :sha256, secret, bytes)
+      bytes <> signature
+    else
+      bytes
+    end
+  end
+
+  defp verify(bytes) do
+    if secret = signing_secret() do
+      if byte_size(bytes) >= 32 do
+        size = byte_size(bytes) - 32
+        message = binary_part(bytes, 0, size)
+        signature = binary_part(bytes, size, 32)
+
+        expected = :crypto.mac(:hmac, :sha256, secret, message)
+
+        if :crypto.hash_equals(expected, signature) do
+          {:ok, message}
+        else
+          :error
+        end
+      else
+        :error
+      end
+    else
+      {:ok, bytes}
+    end
+  end
+
   defp decode_values(values, key) do
     max_byte_size =
       Application.get_env(:ash, :max_keyset_byte_size, @default_max_keyset_byte_size)
 
     with {:ok, decoded} <- Base.decode64(values),
          :ok <- check_keyset_size(decoded, max_byte_size),
-         term <- non_executable_binary_to_term(decoded, [:safe]),
+         {:ok, message} <- verify(decoded),
+         term <- non_executable_binary_to_term(message, [:safe]),
          :ok <- check_no_expression(term) do
       {:ok, term}
     else
@@ -396,6 +432,7 @@ defmodule Ash.Page.Keyset do
     record
     |> field_values(fields)
     |> :erlang.term_to_binary()
+    |> sign()
     |> Base.encode64()
   end
 

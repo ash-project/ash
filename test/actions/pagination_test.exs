@@ -595,6 +595,58 @@ defmodule Ash.Actions.PaginationTest do
       assert Exception.message(error) =~ keyset
     end
 
+    test "a signed keyset can be used to fetch the next page" do
+      put_keyset_signing_secret("secret")
+
+      %{results: [%{id: id, __metadata__: %{keyset: keyset}}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 1])
+
+      %{results: [%{id: next_id}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 1, after: keyset])
+
+      refute id == next_id
+    end
+
+    test "a tampered signed keyset is rejected" do
+      put_keyset_signing_secret("secret")
+
+      %{results: [%{__metadata__: %{keyset: keyset}}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 1])
+
+      decoded = Base.decode64!(keyset)
+      size = byte_size(decoded) - 1
+      <<rest::binary-size(^size), last>> = decoded
+      tampered = Base.encode64(rest <> <<Bitwise.bxor(last, 1)>>)
+
+      assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
+        Ash.read!(User, action: :keyset, page: [limit: 1, after: tampered])
+      end)
+    end
+
+    test "an unsigned keyset is rejected when a signing secret is configured" do
+      %{results: [%{__metadata__: %{keyset: keyset}}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 1])
+
+      put_keyset_signing_secret("secret")
+
+      assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
+        Ash.read!(User, action: :keyset, page: [limit: 1, after: keyset])
+      end)
+    end
+
+    test "a keyset signed with a different secret is rejected" do
+      put_keyset_signing_secret("secret")
+
+      %{results: [%{__metadata__: %{keyset: keyset}}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 1])
+
+      put_keyset_signing_secret("other secret")
+
+      assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
+        Ash.read!(User, action: :keyset, page: [limit: 1, after: keyset])
+      end)
+    end
+
     test "can ask for records before a specific keyset" do
       %{results: [%{id: id, __metadata__: %{keyset: keyset}}]} =
         Ash.read!(User, action: :keyset, page: [limit: 1])
@@ -1139,5 +1191,11 @@ defmodule Ash.Actions.PaginationTest do
       assert Ash.read!(User, action: :optional_offset, page: [limit: 1, count: true]).count ==
                0
     end
+  end
+
+  defp put_keyset_signing_secret(secret) do
+    previous = Application.get_env(:ash, :keyset_signing_secret)
+    Application.put_env(:ash, :keyset_signing_secret, secret)
+    on_exit(fn -> Application.put_env(:ash, :keyset_signing_secret, previous) end)
   end
 end
