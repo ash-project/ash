@@ -1434,10 +1434,10 @@ defmodule Ash.Changeset do
         new_changeset
 
       {{:error, error}, _condition} ->
-        {:error, error}
+        add_error(changeset, error)
 
       {:error, error} ->
-        {:error, error}
+        add_error(changeset, error)
 
       {{:not_atomic, reason}, _} ->
         {:not_atomic, reason}
@@ -1521,7 +1521,7 @@ defmodule Ash.Changeset do
         end
 
       {:error, error} ->
-        {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+        add_invalid_errors(value, :attribute, changeset, attribute, error)
     end
   end
 
