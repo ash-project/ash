@@ -251,6 +251,11 @@ defmodule Ash.Actions.Create do
     {:ok, %{data | __metadata__: metadata}}
   end
 
+  defp add_tenant({:ok, data, instructions}, changeset) do
+    {:ok, data} = add_tenant({:ok, data}, changeset)
+    {:ok, data, instructions}
+  end
+
   defp add_tenant(other, _), do: other
 
   defp add_notifications(

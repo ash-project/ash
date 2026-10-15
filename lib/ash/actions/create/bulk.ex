@@ -1486,7 +1486,14 @@ defmodule Ash.Actions.Create.Bulk do
                 Process.put({:any_success?, ref}, true)
               end
 
-              tagged_results
+              Enum.map(tagged_results, fn
+                {:ok, result, changeset} ->
+                  [result] = Ash.Actions.Helpers.stamp_record_metadata([result], resource, opts)
+                  {:ok, result, changeset}
+
+                other ->
+                  other
+              end)
 
             {:ok, result} ->
               result = Ash.Actions.Helpers.stamp_record_metadata(result, resource, opts)

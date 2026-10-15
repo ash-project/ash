@@ -423,6 +423,11 @@ defmodule Ash.Actions.Update do
     {:ok, %{data | __metadata__: metadata}}
   end
 
+  defp add_tenant({:ok, data, instructions}, changeset) do
+    {:ok, data} = add_tenant({:ok, data}, changeset)
+    {:ok, data, instructions}
+  end
+
   defp add_tenant(other, _changeset) do
     other
   end
@@ -534,7 +539,7 @@ defmodule Ash.Actions.Update do
                     {mod, action_opts} = changeset.action.manual
 
                     if result = changeset.context[:private][:action_result] do
-                      result
+                      add_tenant(result, changeset)
                     else
                       changeset
                       |> Ash.Changeset.set_defaults(:update, true)
@@ -557,6 +562,7 @@ defmodule Ash.Actions.Update do
                           changeset.action
                         )
                       end)
+                      |> add_tenant(changeset)
                       |> manage_relationships(domain, changeset,
                         actor: opts[:actor],
                         authorize?: opts[:authorize?]

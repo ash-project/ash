@@ -402,6 +402,108 @@ defmodule Ash.Actions.MultitenancyTest do
     def parse_tenant(id), do: "tenant_#{id}"
   end
 
+  defmodule ManualBulkCreate do
+    use Ash.Resource.ManualCreate
+
+    def create(changeset, _opts, _context) do
+      Ash.DataLayer.create(changeset.resource, changeset)
+    end
+
+    def bulk_create(changesets, _opts, _context) do
+      Enum.map(changesets, fn changeset ->
+        {:ok, record} = Ash.DataLayer.create(changeset.resource, changeset)
+
+        {:ok,
+         Ash.Resource.put_metadata(
+           record,
+           :bulk_create_index,
+           changeset.context.bulk_create.index
+         )}
+      end)
+    end
+  end
+
+  defmodule ManualPost do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    multitenancy do
+      strategy(:attribute)
+      attribute(:org_id)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+
+      create :manual_create do
+        manual fn changeset, _ ->
+          Ash.DataLayer.create(changeset.resource, changeset)
+        end
+      end
+
+      create :manual_create_with_notifications do
+        manual fn changeset, _ ->
+          with {:ok, record} <- Ash.DataLayer.create(changeset.resource, changeset) do
+            {:ok, record, %{notifications: []}}
+          end
+        end
+      end
+
+      create :manual_bulk_create do
+        manual ManualBulkCreate
+      end
+
+      create :create_with_result_and_notifications do
+        change before_action(fn changeset, _ ->
+                 {:ok, record} = Ash.DataLayer.create(changeset.resource, changeset)
+                 Ash.Changeset.set_result(changeset, {:ok, record, %{notifications: []}})
+               end)
+      end
+
+      update :manual_update do
+        require_atomic? false
+
+        manual fn changeset, _ ->
+          Ash.DataLayer.update(changeset.resource, changeset)
+        end
+      end
+
+      update :manual_update_with_result do
+        require_atomic? false
+
+        change before_action(fn changeset, _ ->
+                 {:ok, record} = Ash.DataLayer.update(changeset.resource, changeset)
+                 Ash.Changeset.set_result(changeset, {:ok, record})
+               end)
+
+        manual fn _changeset, _ ->
+          raise "unreachable: the result was set in a before_action hook"
+        end
+      end
+
+      update :update_with_result_and_notifications do
+        require_atomic? false
+
+        change before_action(fn changeset, _ ->
+                 {:ok, record} = Ash.DataLayer.update(changeset.resource, changeset)
+                 Ash.Changeset.set_result(changeset, {:ok, record, %{notifications: []}})
+               end)
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+      attribute :org_id, :uuid, public?: true
+    end
+  end
+
   describe "ToTenant and parse_attribute are applied in the correct order" do
     setup do
       tenant1 =
@@ -1769,6 +1871,100 @@ defmodule Ash.Actions.MultitenancyTest do
         |> Ash.read!()
 
       assert is_list(bypass)
+    end
+  end
+
+  describe "tenant metadata on manual and set_result results" do
+    setup do
+      %{tenant: Ash.UUID.generate()}
+    end
+
+    defp create_manual_post(tenant) do
+      ManualPost
+      |> Ash.Changeset.for_create(:create, %{name: "a"}, tenant: tenant)
+      |> Ash.create!()
+      |> then(&%{&1 | __metadata__: Map.delete(&1.__metadata__, :tenant)})
+    end
+
+    test "manual create returning notifications", %{tenant: tenant} do
+      record =
+        ManualPost
+        |> Ash.Changeset.for_create(:manual_create_with_notifications, %{name: "a"},
+          tenant: tenant
+        )
+        |> Ash.create!()
+
+      assert record.__metadata__[:tenant] == tenant
+
+      assert %{name: "b"} =
+               record
+               |> Ash.Changeset.for_update(:update, %{name: "b"})
+               |> Ash.update!()
+    end
+
+    test "create result set with notifications", %{tenant: tenant} do
+      record =
+        ManualPost
+        |> Ash.Changeset.for_create(:create_with_result_and_notifications, %{name: "a"},
+          tenant: tenant
+        )
+        |> Ash.create!()
+
+      assert record.__metadata__[:tenant] == tenant
+    end
+
+    test "manual update", %{tenant: tenant} do
+      record =
+        tenant
+        |> create_manual_post()
+        |> Ash.Changeset.for_update(:manual_update, %{name: "b"}, tenant: tenant)
+        |> Ash.update!()
+
+      assert record.__metadata__[:tenant] == tenant
+    end
+
+    test "manual update result set in a hook", %{tenant: tenant} do
+      record =
+        tenant
+        |> create_manual_post()
+        |> Ash.Changeset.for_update(:manual_update_with_result, %{name: "b"}, tenant: tenant)
+        |> Ash.update!()
+
+      assert record.__metadata__[:tenant] == tenant
+    end
+
+    test "update result set with notifications", %{tenant: tenant} do
+      record =
+        tenant
+        |> create_manual_post()
+        |> Ash.Changeset.for_update(:update_with_result_and_notifications, %{name: "b"},
+          tenant: tenant
+        )
+        |> Ash.update!()
+
+      assert record.__metadata__[:tenant] == tenant
+    end
+
+    test "bulk create with a non-bulk manual create", %{tenant: tenant} do
+      %{records: records} =
+        Ash.bulk_create!([%{name: "a"}, %{name: "b"}], ManualPost, :manual_create,
+          tenant: tenant,
+          return_records?: true
+        )
+
+      assert [_, _] = records
+      assert Enum.all?(records, &(&1.__metadata__[:tenant] == tenant))
+    end
+
+    test "bulk create with a bulk manual create", %{tenant: tenant} do
+      %{records: records} =
+        Ash.bulk_create!([%{name: "a"}, %{name: "b"}], ManualPost, :manual_bulk_create,
+          tenant: tenant,
+          return_records?: true
+        )
+
+      assert [_, _] = records
+      assert Enum.all?(records, &(&1.__metadata__[:tenant] == tenant))
     end
   end
 end
