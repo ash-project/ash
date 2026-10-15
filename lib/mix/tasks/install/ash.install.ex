@@ -73,6 +73,14 @@ if Code.ensure_loaded?(Igniter) do
     for an explanation of each of the configurations.
     """
 
+    @setup_keyset_signing """
+    Sign the keysets used for keyset pagination, so that Ash only accepts keysets that it
+    generated. Each environment gets its own secret. In production, the secret is read from
+    the `ASH_KEYSET_SIGNING_SECRET` environment variable in `config/runtime.exs`.
+    You can generate a value with `mix phx.gen.secret` or
+    `elixir -e ':crypto.strong_rand_bytes(32) |> Base.encode64() |> IO.puts()'`.
+    """
+
     @register_domains """
     Ash relies on your application's `:ash_domains` configuration to find domain modules for
     mix tasks (diagrams, livebooks, policy charts) and to validate that domains/resources are
@@ -210,6 +218,33 @@ if Code.ensure_loaded?(Igniter) do
           end)
         end
       )
+      |> Igniter.Scribe.section("Sign Pagination Keysets", @setup_keyset_signing, fn igniter ->
+        Igniter.Scribe.patch(igniter, fn igniter ->
+          igniter
+          |> Igniter.Project.Config.configure(
+            "dev.exs",
+            :ash,
+            [:keyset_signing_secret],
+            generate_secret()
+          )
+          |> Igniter.Project.Config.configure(
+            "test.exs",
+            :ash,
+            [:keyset_signing_secret],
+            generate_secret()
+          )
+          |> Igniter.Project.Config.configure_runtime_env(
+            :prod,
+            :ash,
+            [:keyset_signing_secret],
+            {:code,
+             quote do
+               System.get_env("ASH_KEYSET_SIGNING_SECRET") ||
+                 raise "environment variable ASH_KEYSET_SIGNING_SECRET is missing"
+             end}
+          )
+        end)
+      end)
       |> Igniter.Scribe.section("Register Your Domains", @register_domains, fn igniter ->
         igniter
       end)
@@ -227,6 +262,12 @@ if Code.ensure_loaded?(Igniter) do
           igniter
         end
       end)
+    end
+
+    defp generate_secret do
+      32
+      |> :crypto.strong_rand_bytes()
+      |> Base.encode64(padding: false)
     end
 
     defp generate_example(igniter, argv) do
