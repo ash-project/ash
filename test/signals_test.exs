@@ -696,6 +696,164 @@ defmodule Ash.Test.SignalsTest do
     end
   end
 
+  defmodule PathSignals do
+    @moduledoc false
+    use Ash.Signals
+
+    signals do
+      signal :started do
+        argument :run_id, :uuid, allow_nil?: false
+        argument :target_id, :uuid
+      end
+
+      signal :relayed do
+        argument :run_id, :uuid, allow_nil?: false
+      end
+    end
+  end
+
+  defmodule PathRun do
+    @moduledoc false
+    use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :target_id, :uuid, public?: true
+    end
+
+    actions do
+      create :start do
+        accept [:target_id]
+        emit Ash.Test.SignalsTest.PathSignals, :started, fields: [run_id: :id]
+      end
+    end
+  end
+
+  defmodule StoreSignalPath do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.force_change_attribute(
+        changeset,
+        :signal_path,
+        changeset.context[:signal_path]
+      )
+    end
+  end
+
+  # stores the `signal_path` of each listener, whose actions only signals may run
+  defmodule PathRecord do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :run_id, :uuid, public?: true
+      attribute :signal_path, :term, public?: true
+    end
+
+    signals_in do
+      from Ash.Test.SignalsTest.PathSignals do
+        on(:started, :record_started, action: :record)
+        on(:started, :observe)
+        on(:started, :relay)
+        on(:relayed, :record_relayed)
+      end
+    end
+
+    policies do
+      policy action([:record, :observe, :relay]) do
+        authorize_if signal_in(Ash.Test.SignalsTest.PathSignals, :started)
+      end
+
+      policy action(:record_relayed) do
+        authorize_if signal_in(Ash.Test.SignalsTest.PathSignals, :relayed)
+      end
+    end
+
+    actions do
+      defaults [:read]
+
+      create :record do
+        accept [:run_id]
+        change Ash.Test.SignalsTest.StoreSignalPath
+      end
+
+      # a listener that emits a signal of its own
+      create :relay do
+        accept [:run_id]
+        change Ash.Test.SignalsTest.StoreSignalPath
+        emit Ash.Test.SignalsTest.PathSignals, :relayed
+      end
+
+      create :record_relayed do
+        accept [:run_id]
+        change Ash.Test.SignalsTest.StoreSignalPath
+      end
+
+      action :observe do
+        argument :signal, Ash.Test.SignalsTest.PathSignals.Started, allow_nil?: false
+
+        run fn input, _ ->
+          send(self(), {:observed, input.context[:signal_path]})
+          :ok
+        end
+      end
+    end
+  end
+
+  defmodule PathTarget do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :signal_path, :term, public?: true
+    end
+
+    signals_in do
+      from Ash.Test.SignalsTest.PathSignals do
+        on(:started, :touch, get_by: [id: :target_id])
+      end
+    end
+
+    # the read that selects the records to update is run from the signal too
+    policies do
+      policy action([:read, :touch]) do
+        authorize_if signal_in(Ash.Test.SignalsTest.PathSignals, :started)
+      end
+    end
+
+    actions do
+      defaults [:read, :create]
+
+      update :touch do
+        require_atomic? false
+        change Ash.Test.SignalsTest.StoreSignalPath
+      end
+    end
+  end
+
   defp create_post(title, opts \\ []) do
     Post
     |> Ash.Changeset.for_create(:create, %{title: title}, opts)
@@ -1749,6 +1907,105 @@ defmodule Ash.Test.SignalsTest do
     end
   end
 
+  describe "signal_path" do
+    @started %{
+      signal_module: PathSignals,
+      signal: :started,
+      resource: PathRun,
+      action: :start
+    }
+
+    @relayed %{
+      signal_module: PathSignals,
+      signal: :relayed,
+      resource: PathRecord,
+      action: :relay
+    }
+
+    defp start_run(input \\ %{}) do
+      PathRun
+      |> Ash.Changeset.for_create(:start, input, authorize?: true)
+      |> Ash.create()
+    end
+
+    test "is in the context of listeners, starting with the signal they received" do
+      assert {:ok, _run} = start_run()
+
+      assert_received {:observed, [@started]}
+
+      assert [[@started], [@started], [@relayed, @started]] =
+               PathRecord
+               |> Ash.read!(authorize?: false)
+               |> Enum.map(& &1.signal_path)
+               |> Enum.sort_by(&length/1)
+    end
+
+    test "is in the context of update and destroy listeners, and the reads that select their records" do
+      target = Ash.create!(PathTarget, %{}, authorize?: false)
+      assert {:ok, _run} = start_run(%{target_id: target.id})
+
+      assert %{signal_path: [@started]} = Ash.get!(PathTarget, target.id, authorize?: false)
+    end
+
+    test "starts without an emitting action when reacting to a signal in a test" do
+      assert :ok =
+               react_to_signal(PathSignals, :started, %{run_id: Ash.UUID.generate()},
+                 only: {PathRecord, :observe},
+                 authorize?: true
+               )
+
+      assert_received {:observed,
+                       [
+                         %{
+                           signal_module: PathSignals,
+                           signal: :started,
+                           resource: nil,
+                           action: nil
+                         }
+                       ]}
+    end
+
+    test "can be stored and loaded again" do
+      signal_path = [
+        @started,
+        @relayed,
+        %{signal_module: PathSignals, signal: :started, resource: nil, action: nil}
+      ]
+
+      dumped = signal_path |> Ash.Signals.dump_signal_path() |> Jason.encode!() |> Jason.decode!()
+
+      assert Ash.Signals.load_signal_path(dumped) == signal_path
+    end
+
+    test "signal_in only authorizes actions run by a listener of the signal" do
+      assert {:error, %Ash.Error.Forbidden{}} =
+               PathRecord
+               |> Ash.Changeset.for_create(:record, %{run_id: Ash.UUID.generate()},
+                 authorize?: true
+               )
+               |> Ash.create()
+    end
+
+    test "signal_in matches the signal the listener received, not the signals before it" do
+      changeset =
+        PathRecord
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.set_context(%{signal_path: [@relayed, @started]})
+
+      authorizer = %{subject: changeset, changeset: changeset}
+
+      assert Ash.Policy.Check.SignalIn.match?(nil, authorizer,
+               signal_module: PathSignals,
+               signal: :relayed
+             )
+
+      refute Ash.Policy.Check.SignalIn.match?(nil, authorizer,
+               signal_module: PathSignals,
+               signal: :started
+             )
+    end
+  end
+
   describe "delivery" do
     test "receives the signals, the listeners that use it and the emitting context" do
       order_id = Ash.UUID.generate()
@@ -1770,8 +2027,19 @@ defmodule Ash.Test.SignalsTest do
                resource: Post,
                action: :announce,
                actor: %{name: "zach"},
-               source_context: %{shared: %{source: "test"}}
+               source_context: %{shared: %{source: "test"}},
+               signal_path: [
+                 %{
+                   signal_module: DeliverySignals,
+                   signal: :queued,
+                   resource: Post,
+                   action: :announce
+                 }
+               ]
              } = context
+
+      assert %{shared: %{source: "test"}, signal_path: [%{signal: :queued}]} =
+               Ash.Scope.to_opts(context)[:context]
 
       # only the inline listener ran
       assert [%{order_id: ^order_id}] = Ash.read!(QueuedReceipt)

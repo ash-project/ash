@@ -302,6 +302,54 @@ Filter in the read action to only react to some signals.
 Create, update and destroy listeners always handle the signals emitted together as bulk actions.
 Update and destroy listeners run one bulk action for each distinct set of `args` and `inputs`.
 
+### Signal path and policies
+
+Listeners have the signals that led to them in the `signal_path` key of their context, starting
+with the one they received, followed by the signals that led to it. Each entry has the signal's
+`signal_module` and `signal` name, and the `resource` and `action` that emitted it. A listener
+whose action emits a signal of its own adds it to the front of the path for that signal's
+listeners:
+
+```elixir
+# the context of a listener of `:points_earned`, which `:earn_points` emits when it handles
+# `:order_placed`
+%{
+  signal_path: [
+    %{
+      signal_module: MyApp.Loyalty.Signals,
+      signal: :points_earned,
+      resource: MyApp.Loyalty.PointsEntry,
+      action: :earn_points
+    },
+    %{
+      signal_module: MyApp.Shop.Signals,
+      signal: :order_placed,
+      resource: MyApp.Shop.Order,
+      action: :place
+    }
+  ]
+}
+```
+
+The signals themselves aren't in the path, because a listener can receive many of them at once.
+
+Listeners run as the actor that emitted the signal, but that actor often isn't allowed to run the
+listener's action directly: a customer can place an order, but shouldn't be able to award
+themselves points. The `signal_in/2` check is true when the action is run by a listener of the
+given signal, so the listener's policies can allow it:
+
+```elixir
+policies do
+  policy action(:earn_points) do
+    authorize_if signal_in(MyApp.Shop.Signals, :order_placed)
+  end
+end
+```
+
+`signal_in/2` only matches the signal the listener received, which is the first one in its path.
+For update and destroy listeners, it is also true for the read action that selects the records
+they run on.
+
 ## Delivery
 
 A listener's `delivery` decides how signals reach it. Because it's part of the listener, each
@@ -337,6 +385,10 @@ end
 
 The emitter doesn't change: it emits the same signal whatever its listeners' deliveries are. If a
 delivery fails, for example because it can't enqueue a job, the emit fails.
+
+A delivery that runs listeners later must store the `signal_path` of the
+`Ash.Signals.Delivery.Context` it is given, and pass it back in the `signal_path` key of the
+listener's context.
 
 ## Setup
 

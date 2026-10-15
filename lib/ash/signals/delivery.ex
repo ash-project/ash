@@ -32,7 +32,10 @@ defmodule Ash.Signals.Delivery do
     The context in which a signal was emitted, passed to `c:Ash.Signals.Delivery.deliver/4`.
 
     It implements `Ash.Scope.ToOpts`, so `Ash.Scope.to_opts(context)` returns the options to run
-    listeners with.
+    listeners with, including the `signal_path` in their context.
+
+    `signal_path` starts with this signal, followed by the signals that led to it. A delivery that runs listeners later must store it, and pass it back in the
+    `signal_path` key of the context. See `t:Ash.Signals.signal_path/0`.
     """
     defstruct [
       :signal_module,
@@ -43,7 +46,8 @@ defmodule Ash.Signals.Delivery do
       :tenant,
       :authorize?,
       :tracer,
-      source_context: %{}
+      source_context: %{},
+      signal_path: []
     ]
 
     @type t :: %__MODULE__{
@@ -55,13 +59,17 @@ defmodule Ash.Signals.Delivery do
             tenant: term(),
             authorize?: boolean() | nil,
             tracer: Ash.Tracer.t() | [Ash.Tracer.t()] | nil,
-            source_context: map()
+            source_context: map(),
+            signal_path: Ash.Signals.signal_path()
           }
 
     defimpl Ash.Scope.ToOpts do
       def get_actor(%{actor: actor}), do: {:ok, actor}
       def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
-      def get_context(%{source_context: source_context}), do: {:ok, source_context}
+
+      def get_context(%{source_context: source_context, signal_path: signal_path}),
+        do: {:ok, Map.put(source_context, :signal_path, signal_path)}
+
       def get_tracer(%{tracer: tracer}), do: {:ok, tracer}
       def get_authorize?(%{authorize?: authorize?}), do: {:ok, authorize?}
     end

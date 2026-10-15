@@ -29,6 +29,23 @@ defmodule Ash.Signals do
 
   @type t :: module
 
+  @typedoc """
+  The signals that led to a listener running, starting with the one it received, followed by the
+  signals that led to it. Listeners have it in the `signal_path` key of their context.
+
+  Each entry has the signal's `signal_module` and `signal` name, and the `resource` and `action`
+  that emitted it, which are `nil` for signals delivered by `Ash.Signals.Test.react_to_signal/4`.
+  It doesn't contain the signals themselves, because a listener can receive many signals at once.
+  """
+  @type signal_path :: [
+          %{
+            signal_module: t(),
+            signal: atom(),
+            resource: Ash.Resource.t() | nil,
+            action: atom() | nil
+          }
+        ]
+
   @doc """
   Emits a signal, delivering it to its listeners.
 
@@ -160,7 +177,8 @@ defmodule Ash.Signals do
           |> Keyword.merge(
             signal_module: signal_module,
             signal: signal,
-            source_context: opts[:context] || %{}
+            source_context: opts[:context] || %{},
+            signal_path: signal_path([], signal_module, name, nil, nil)
           )
         )
 
@@ -208,7 +226,7 @@ defmodule Ash.Signals do
 
   Deliveries that run listeners later, for example in a job, call this to run them the same way.
   Takes the options of the action the listener runs: `:actor`, `:tenant`, `:authorize?`,
-  `:tracer` and `:context`.
+  `:tracer` and `:context`, which should contain the `signal_path` of the delivery context.
   """
   @spec run_listener(Ash.Resource.SignalListener.t(), [struct()], Keyword.t()) ::
           :ok | {:error, term()}
@@ -302,6 +320,45 @@ defmodule Ash.Signals do
          {:ok, signal_structs} <- Ash.Type.cast_stored(type, dumped, constraints) do
       Ash.Type.apply_constraints(type, signal_structs, constraints)
     end
+  end
+
+  @doc """
+  Dumps a `t:signal_path/0` to maps of strings that can be stored, for example in a job's
+  arguments.
+
+  Load it again with `load_signal_path/1`.
+  """
+  @spec dump_signal_path(signal_path()) :: [map()]
+  def dump_signal_path(signal_path) do
+    Enum.map(signal_path, fn entry ->
+      %{
+        "signal_module" => Atom.to_string(entry.signal_module),
+        "signal" => Atom.to_string(entry.signal),
+        "resource" => entry.resource && Atom.to_string(entry.resource),
+        "action" => entry.action && Atom.to_string(entry.action)
+      }
+    end)
+  end
+
+  @doc """
+  Loads a `t:signal_path/0` from maps produced by `dump_signal_path/1`.
+
+  This creates the atoms the path refers to, so only load what `dump_signal_path/1` produced,
+  from storage you trust.
+  """
+  @spec load_signal_path([map()]) :: signal_path()
+  # The names were dumped from atoms by `dump_signal_path/1`, so they are bounded by the
+  # application's own modules, signals and actions.
+  # sobelow_skip ["DOS.StringToAtom"]
+  def load_signal_path(dumped) do
+    Enum.map(dumped, fn entry ->
+      %{
+        signal_module: String.to_atom(entry["signal_module"]),
+        signal: String.to_atom(entry["signal"]),
+        resource: entry["resource"] && String.to_atom(entry["resource"]),
+        action: entry["action"] && String.to_atom(entry["action"])
+      }
+    end)
   end
 
   defp cast_payloads(signal, payloads) do
@@ -414,6 +471,8 @@ defmodule Ash.Signals do
       tracer: private[:tracer]
     ]
 
+    action = subject.action && subject.action.name
+
     struct!(
       Ash.Signals.Delivery.Context,
       defaults
@@ -422,10 +481,23 @@ defmodule Ash.Signals do
         signal_module: signal_module,
         signal: signal,
         resource: subject.resource,
-        action: subject.action && subject.action.name,
-        source_context: Ash.Helpers.deep_merge_maps(shared_context, opts[:context] || %{})
+        action: action,
+        source_context: Ash.Helpers.deep_merge_maps(shared_context, opts[:context] || %{}),
+        signal_path:
+          signal_path(
+            subject.context[:signal_path] || [],
+            signal_module,
+            signal.name,
+            subject.resource,
+            action
+          )
       )
     )
+  end
+
+  # When the emitting action is itself a listener, its path leads to the new signal.
+  defp signal_path(path, signal_module, name, resource, action) do
+    [%{signal_module: signal_module, signal: name, resource: resource, action: action} | path]
   end
 
   defp fetch_signal!(signal_module, name) do
