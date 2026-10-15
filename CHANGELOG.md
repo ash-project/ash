@@ -8,6 +8,27 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.36.1](https://github.com/ash-project/ash/compare/v3.36.0...v3.36.1) (2026-10-15)
+
+
+
+
+### Improvements:
+
+* add `signal_path` context, and policy for signals by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `description` to emissions by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `mix ash.signals` for mapping out signals by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `react_to_signal` test helper by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* send notifications returned by `after_batch/3` in non-atomic bulk actions (#3028) by Michael Bärtschi [(#3028)](https://github.com/ash-project/ash/pull/3028)
+
+* run before_action hooks in the before_action phase in bulk actions (#3027) by Mihai Amihailesei [(#3027)](https://github.com/ash-project/ash/pull/3027)
+
 ## [v3.36.0](https://github.com/ash-project/ash/compare/v3.35.0...v3.36.0) (2026-10-14)
 
 
