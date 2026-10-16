@@ -2040,10 +2040,25 @@ defmodule Ash.Actions.ManagedRelationships do
             context: query.context
           )
 
-        Ash.Query.do_filter(query, filter, parent_stack: relationship.source)
+        Ash.Query.do_filter(
+          query,
+          Ash.Actions.Read.RelatedAuthorization.trusted_filter(
+            relationship.destination,
+            filter,
+            relationship.source
+          ),
+          parent_stack: relationship.source
+        )
       end
 
-    Ash.Query.sort(query, relationship.sort, prepend?: true)
+    Ash.Query.sort(
+      query,
+      Ash.Actions.Read.RelatedAuthorization.trusted_sort(
+        relationship.destination,
+        relationship.sort
+      ),
+      prepend?: true
+    )
   end
 
   defp do_handle_found(

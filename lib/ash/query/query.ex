@@ -3643,6 +3643,13 @@ defmodule Ash.Query do
       ...>   [precision: 2, scale: 2], %{currency: "USD"})
       %Ash.Query{calculations: %{discounted_price: %{...}}, ...}
 
+      # Only see related data that the actor can read
+      iex> Ash.Query.calculate(MyApp.Post, :author_name, :string,
+      ...>   expr(author.name), %{}, [], %{}, authorize?: true)
+      %Ash.Query{calculations: %{author_name: %{...}}, ...}
+
+  The last argument is passed to `Ash.Query.Calculation.new/6` as options.
+
   ## See also
 
   - `Ash.Resource.Calculation` for implementing custom calculations

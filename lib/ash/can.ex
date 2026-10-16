@@ -438,8 +438,7 @@ defmodule Ash.Can do
             :boolean,
             async?: false,
             actor: actor,
-            tenant: tenant,
-            authorize?: false
+            tenant: tenant
           )
 
         calculation

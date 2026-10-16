@@ -4,6 +4,7 @@
 
 defmodule Ash.Actions.Read.Relationships do
   @moduledoc false
+  alias Ash.Actions.Read.RelatedAuthorization
   require Ash.Query
   import Ash.Expr
 
@@ -349,9 +350,20 @@ defmodule Ash.Actions.Read.Relationships do
         end
       end)
       |> apply_relationship_offset(relationship)
-      |> Ash.Query.sort(relationship.sort)
-      |> Ash.Query.default_sort(relationship.default_sort)
-      |> Ash.Query.do_filter(relationship.filter, parent_stack: parent_stack)
+      |> Ash.Query.sort(
+        RelatedAuthorization.trusted_sort(relationship.destination, relationship.sort)
+      )
+      |> Ash.Query.default_sort(
+        RelatedAuthorization.trusted_sort(relationship.destination, relationship.default_sort)
+      )
+      |> Ash.Query.do_filter(
+        RelatedAuthorization.trusted_filter(
+          relationship.destination,
+          relationship.filter,
+          parent_stack
+        ),
+        parent_stack: parent_stack
+      )
       |> Ash.Query.set_context(relationship.context)
       |> hydrate_refs(query.context[:private][:actor], relationship.source, query.arguments)
       |> with_lateral_join_query(query, relationship, records)
@@ -457,7 +469,13 @@ defmodule Ash.Actions.Read.Relationships do
 
             through_query =
               relationship.through
-              |> Ash.Query.do_filter(join_relationship.filter)
+              |> Ash.Query.do_filter(
+                RelatedAuthorization.trusted_filter(
+                  relationship.through,
+                  join_relationship.filter,
+                  [relationship.source]
+                )
+              )
               |> Ash.Query.set_context(%{
                 accessing_from: %{
                   source: relationship.source,
@@ -621,8 +639,16 @@ defmodule Ash.Actions.Read.Relationships do
               source_context: query.context,
               query:
                 related_query
-                |> Ash.Query.sort(relationship.sort)
-                |> Ash.Query.do_filter(relationship.filter)
+                |> Ash.Query.sort(
+                  RelatedAuthorization.trusted_sort(relationship.destination, relationship.sort)
+                )
+                |> Ash.Query.do_filter(
+                  RelatedAuthorization.trusted_filter(
+                    relationship.destination,
+                    relationship.filter,
+                    parent_stack
+                  )
+                )
                 |> Map.put(:load, [])
                 |> Ash.Query.set_context(%{
                   accessing_from: %{source: relationship.source, name: relationship.name},
@@ -798,7 +824,13 @@ defmodule Ash.Actions.Read.Relationships do
     join_query =
       relationship.through
       |> Ash.Query.filter(^ref(relationship.source_attribute_on_join_resource) in ^record_ids)
-      |> Ash.Query.do_filter(join_relationship.filter)
+      |> Ash.Query.do_filter(
+        RelatedAuthorization.trusted_filter(
+          relationship.through,
+          join_relationship.filter,
+          [relationship.source]
+        )
+      )
       |> Ash.Query.set_context(%{
         accessing_from: %{source: relationship.source, name: relationship.join_relationship},
         parent_stack: [query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)],
@@ -825,7 +857,9 @@ defmodule Ash.Actions.Read.Relationships do
             related_query.domain
           )
       )
-      |> Ash.Query.sort(join_relationship.sort)
+      |> Ash.Query.sort(
+        RelatedAuthorization.trusted_sort(relationship.through, join_relationship.sort)
+      )
       |> Ash.Query.set_context(join_relationship.context)
       |> then(fn q ->
         if join_relationship.limit do
@@ -897,8 +931,16 @@ defmodule Ash.Actions.Read.Relationships do
 
             related_query
             |> select_destination_attribute(relationship)
-            |> Ash.Query.sort(relationship.sort)
-            |> Ash.Query.do_filter(relationship.filter)
+            |> Ash.Query.sort(
+              RelatedAuthorization.trusted_sort(relationship.destination, relationship.sort)
+            )
+            |> Ash.Query.do_filter(
+              RelatedAuthorization.trusted_filter(
+                relationship.destination,
+                relationship.filter,
+                parent_stack
+              )
+            )
             |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_ids)
             |> Ash.Query.set_context(%{
               accessing_from: %{source: relationship.source, name: relationship.name},

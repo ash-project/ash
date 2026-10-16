@@ -6,6 +6,7 @@ defmodule Ash.Actions.Read do
   @moduledoc false
 
   alias Ash.Actions.Helpers
+  alias Ash.Actions.Read.RelatedAuthorization
   alias Ash.Error.Invalid.{LimitRequired, NonCountableAction, PaginationRequired}
   alias Ash.Filter
 
@@ -2055,6 +2056,15 @@ defmodule Ash.Actions.Read do
                        parent_stack: parent_stack_from_context(query.context)
                      }) do
                   {:ok, expression} ->
+                    {calculation, expression} =
+                      RelatedAuthorization.authorize_calculation(
+                        calculation,
+                        expression,
+                        Ash.Resource.Info.related(query.resource, aggregate.relationship_path),
+                        parent_stack: parent_stack_from_context(query.context),
+                        domain: query.domain
+                      )
+
                     new_field = %{
                       calculation
                       | module: Ash.Resource.Calculation.Expression,
@@ -2503,7 +2513,14 @@ defmodule Ash.Actions.Read do
         end
 
       %Ash.Query.Exists{} = exists ->
-        if List.wrap(opts[:parent_stack]) != [] do
+        if resource do
+          exists_resource =
+            if exists.related? do
+              Ash.Resource.Info.related(resource, exists.at_path ++ exists.path)
+            else
+              exists.resource
+            end
+
           %{
             exists
             | expr:
@@ -2514,8 +2531,8 @@ defmodule Ash.Actions.Read do
                   tenant,
                   tracer,
                   domain,
-                  Ash.Resource.Info.related(resource, exists.path),
-                  Keyword.update(opts, :parent_stack, [resource], &[resource, &1])
+                  exists_resource,
+                  Keyword.update(opts, :parent_stack, [resource], &[resource | &1])
                 )
           }
         else
@@ -2576,6 +2593,12 @@ defmodule Ash.Actions.Read do
               context: opts[:source_context] || %{}
             )
 
+          {calc, expr} =
+            RelatedAuthorization.authorize_calculation(calc, expr, ref.resource,
+              parent_stack: opts[:parent_stack],
+              domain: domain
+            )
+
           expr =
             add_calc_context_to_filter(
               expr,
@@ -2597,6 +2620,7 @@ defmodule Ash.Actions.Read do
             filterable?: calc.filterable?,
             sortable?: calc.sortable?,
             sensitive?: calc.sensitive?,
+            authorize?: calc.authorize?,
             allow_nil?: calc.allow_nil?,
             load: calc.load,
             select: calc.select,
@@ -2637,8 +2661,14 @@ defmodule Ash.Actions.Read do
         calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts)
 
         if should_expand_expression?(struct, calc, opts) do
-          case expand_expression(calc, resource, opts[:parent_stack], opts[:first_combination]) do
-            {:ok, expr} ->
+          case expand_expression(
+                 calc,
+                 resource,
+                 domain,
+                 opts[:parent_stack],
+                 opts[:first_combination]
+               ) do
+            {:ok, calc, expr} ->
               args =
                 case calc do
                   %Ash.Query.Calculation{context: %{arguments: arguments}} -> arguments
@@ -2692,7 +2722,7 @@ defmodule Ash.Actions.Read do
       Ash.Resource.Calculation.has_expression?(calc.module)
   end
 
-  defp expand_expression(calc, resource, parent_stack, first_combination) do
+  defp expand_expression(calc, resource, domain, parent_stack, first_combination) do
     Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context)
     |> case do
       %Ash.Query.Function.Type{} = expr ->
@@ -2717,6 +2747,19 @@ defmodule Ash.Actions.Read do
       parent_stack: parent_stack,
       first_combination: first_combination
     })
+    |> case do
+      {:ok, expr} ->
+        {calc, expr} =
+          RelatedAuthorization.authorize_calculation(calc, expr, resource,
+            parent_stack: parent_stack,
+            domain: domain
+          )
+
+        {:ok, calc, expr}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   @doc false
@@ -3487,7 +3530,7 @@ defmodule Ash.Actions.Read do
 
     opts =
       if resource do
-        Keyword.update(opts, :parent_stack, [resource], &[resource, &1])
+        Keyword.update(opts, :parent_stack, [resource], &[resource | &1])
       else
         opts
       end
@@ -4447,6 +4490,15 @@ defmodule Ash.Actions.Read do
                parent_stack: parent_stack_from_context(query.context)
              }) do
           {:ok, expression} ->
+            {calculation, expression} =
+              RelatedAuthorization.authorize_calculation(
+                calculation,
+                expression,
+                query.resource,
+                parent_stack: parent_stack_from_context(query.context),
+                domain: query.domain
+              )
+
             expression =
               add_calc_context_to_filter(
                 expression,
@@ -4741,9 +4793,27 @@ defmodule Ash.Actions.Read do
         end
       end
 
+    # Calculations are expanded here rather than by the data layer, so that their expressions
+    # are authorized before the data layer decides what it needs to join.
+    expand = fn filter, filter_resource ->
+      add_calc_context_to_filter(
+        filter,
+        actor,
+        authorize?,
+        tenant,
+        tracer,
+        domain,
+        filter_resource,
+        expand?: true,
+        parent_stack: [resource | parent_stack],
+        source_context: source_context
+      )
+    end
+
     with {:ok, aggregate} <- authorize_aggregate_input_refs(aggregate, actor),
          {:ok, filter} <-
            filter_with_related(aggregate.query, authorize?, path_filters),
+         filter = expand.(filter, aggregate.query.resource),
          filter =
            update_aggregate_filters(
              filter,
@@ -4775,8 +4845,11 @@ defmodule Ash.Actions.Read do
         | query: Ash.Query.filter(%{aggregate.query | filter: filter}, ^additional_filter),
           field: field,
           join_filters:
-            add_join_filters(
-              aggregate.join_filters,
+            aggregate.join_filters
+            |> Map.new(fn {path, join_filter} ->
+              {path, expand.(join_filter, Ash.Resource.Info.related(aggregate.resource, path))}
+            end)
+            |> add_join_filters(
               aggregate.relationship_path,
               aggregate.resource,
               path_filters
@@ -4862,7 +4935,7 @@ defmodule Ash.Actions.Read do
          tenant,
          tracer,
          domain,
-         ref_path,
+         _ref_path,
          parent_stack,
          source_context
        ) do
@@ -4912,6 +4985,9 @@ defmodule Ash.Actions.Read do
           }
         )
 
+      {calc, expr} =
+        RelatedAuthorization.authorize_calculation(calc, expr, related_resource, domain: domain)
+
       expr =
         add_calc_context_to_filter(
           expr,
@@ -4924,9 +5000,15 @@ defmodule Ash.Actions.Read do
           source_context: agg.query.context
         )
 
-      case do_filter_with_related(related_resource, expr, path_filters, ref_path) do
+      case do_filter_with_related(related_resource, expr, path_filters) do
         {:ok, expr} ->
-          {:ok, %{field | module: Ash.Resource.Calculation.Expression, opts: [expr: expr]}}
+          {:ok,
+           %{
+             field
+             | module: Ash.Resource.Calculation.Expression,
+               opts: [expr: expr],
+               authorize?: calc.authorize?
+           }}
 
         {:error, error} ->
           {:error, error}
@@ -5263,7 +5345,7 @@ defmodule Ash.Actions.Read do
          path_filters
        ) do
     if authorize? do
-      do_filter_with_related(query.resource, query.filter, path_filters, [])
+      do_filter_with_related(query.resource, query.filter, path_filters)
     else
       {:ok, query.filter}
     end
@@ -5272,15 +5354,9 @@ defmodule Ash.Actions.Read do
   defp do_filter_with_related(
          resource,
          %Ash.Filter{expression: expression} = filter,
-         path_filters,
-         prefix
+         path_filters
        ) do
-    case do_filter_with_related(
-           resource,
-           expression,
-           path_filters,
-           prefix
-         ) do
+    case do_filter_with_related(resource, expression, path_filters) do
       {:ok, new_expr} ->
         {:ok, %{filter | expression: new_expr}}
 
@@ -5292,154 +5368,116 @@ defmodule Ash.Actions.Read do
   defp do_filter_with_related(
          resource,
          %Ash.Query.BooleanExpression{op: :or, left: left, right: right},
-         path_filters,
-         prefix
+         path_filters
        ) do
-    with {:ok, left} <- do_filter_with_related(resource, left, path_filters, prefix),
-         {:ok, right} <- do_filter_with_related(resource, right, path_filters, prefix) do
+    with {:ok, left} <- do_filter_with_related(resource, left, path_filters),
+         {:ok, right} <- do_filter_with_related(resource, right, path_filters) do
       {:ok, Ash.Query.BooleanExpression.optimized_new(:or, left, right)}
     end
   end
 
-  defp do_filter_with_related(resource, filter_expr, path_filters, prefix) do
-    paths_to_global_filter_on =
-      filter_expr
-      |> Ash.Filter.list_refs()
-      |> Enum.filter(&(&1.input? && &1.relationship_path != []))
-      |> Enum.map(& &1.relationship_path)
-      |> Enum.uniq()
+  # Input references through relationships are filtered by the related resource's read policies.
+  # The body of an `exists` is relative to its destination, so it is authorized on its own, and
+  # each relationship in the path of an input `exists` is authorized inside of it.
+  defp do_filter_with_related(resource, filter_expr, path_filters) do
+    filter_expr
+    |> input_refs_outside_of_exists()
+    |> Enum.map(& &1.relationship_path)
+    |> Enum.concat(input_exists_at_paths(filter_expr))
+    |> Enum.reject(&(&1 == []))
+    |> Enum.uniq()
+    |> Enum.reduce(authorize_exists(resource, filter_expr, path_filters), fn path, filter ->
+      Ash.Query.BooleanExpression.optimized_new(
+        :and,
+        filter,
+        RelatedAuthorization.relationship_condition(resource, path, path_filters)
+      )
+    end)
+    |> then(&{:ok, &1})
+  end
 
-    paths_to_global_filter_on
-    |> Enum.reduce_while(
-      {:ok, filter_expr},
-      fn path, {:ok, filter} ->
-        expanded_with_paths = expand_path_with_through(resource, path)
+  defp authorize_exists(resource, filter_expr, path_filters) do
+    Ash.Filter.map(filter_expr, fn
+      %Ash.Query.Exists{related?: true, at_path: at_path, path: path, expr: exists_expr} =
+          exists ->
+        {:ok, exists_expr} =
+          do_filter_with_related(
+            Ash.Resource.Info.related(resource, at_path ++ path),
+            exists_expr,
+            path_filters
+          )
 
-        case Enum.reduce_while(expanded_with_paths, {:ok, filter}, fn {relationship, filter_path},
-                                                                      {:ok, acc_filter} ->
-               read_action =
-                 relationship.read_action ||
-                   Ash.Resource.Info.primary_action!(relationship.destination, :read).name
+        exists = %{exists | expr: exists_expr}
 
-               case Map.get(
-                      path_filters,
-                      {relationship.source, relationship.name, read_action}
-                    ) do
-                 nil ->
-                   {:cont, {:ok, acc_filter}}
-
-                 %Ash.Filter{expression: authorization_filter} ->
-                   {:cont,
-                    {:ok,
-                     Ash.Query.BooleanExpression.optimized_new(
-                       :and,
-                       acc_filter,
-                       Ash.Filter.move_to_relationship_path(authorization_filter, filter_path)
-                     )}}
-               end
-             end) do
-          {:ok, result} -> {:cont, {:ok, result}}
-          {:error, error} -> {:halt, {:error, error}}
+        if exists.input? do
+          {:halt,
+           RelatedAuthorization.authorize_exists_path(
+             exists,
+             Ash.Resource.Info.related(resource, at_path),
+             path_filters
+           )}
+        else
+          {:halt, exists}
         end
-      end
-    )
-    |> case do
-      {:ok, filter} ->
-        {:ok,
-         filter
-         |> Ash.Filter.map(fn
-           %Ash.Query.Exists{
-             at_path: at_path,
-             path: exists_path,
-             expr: exists_expr,
-             related?: related?,
-             resource: unrelated_resource
-           } = exists ->
-             if related? do
-               {:ok, new_expr} =
-                 do_filter_with_related(
-                   resource,
-                   exists_expr,
-                   path_filters,
-                   prefix ++ at_path ++ exists_path
-                 )
 
-               {:halt, %{exists | expr: new_expr}}
-             else
-               primary_read_action = Ash.Resource.Info.primary_action!(unrelated_resource, :read)
-               filter_key = {:unrelated_exists, unrelated_resource, primary_read_action.name}
+      %Ash.Query.Exists{related?: false, expr: exists_expr, resource: unrelated_resource} =
+          exists ->
+        {:ok, exists_expr} =
+          do_filter_with_related(unrelated_resource, exists_expr, path_filters)
 
-               case Map.get(path_filters, filter_key) do
-                 nil ->
-                   {:ok, new_expr} =
-                     do_filter_with_related(
-                       unrelated_resource,
-                       exists_expr,
-                       path_filters,
-                       []
-                     )
+        primary_read_action = Ash.Resource.Info.primary_action!(unrelated_resource, :read)
+        filter_key = {:unrelated_exists, unrelated_resource, primary_read_action.name}
 
-                   {:halt, %{exists | expr: new_expr}}
+        case Map.get(path_filters, filter_key) do
+          nil ->
+            {:halt, %{exists | expr: exists_expr}}
 
-                 %Ash.Filter{expression: false} ->
-                   {:halt, false}
+          %Ash.Filter{expression: false} ->
+            {:halt, false}
 
-                 auth_filter ->
-                   {:ok, new_expr} =
-                     do_filter_with_related(
-                       unrelated_resource,
-                       exists_expr,
-                       path_filters,
-                       []
-                     )
-
-                   combined_expr =
-                     Ash.Query.BooleanExpression.optimized_new(
-                       :and,
-                       new_expr,
-                       auth_filter.expression
-                     )
-
-                   {:halt, %{exists | expr: combined_expr}}
-               end
-             end
-
-           other ->
-             other
-         end)}
+          auth_filter ->
+            {:halt,
+             %{
+               exists
+               | expr:
+                   Ash.Query.BooleanExpression.optimized_new(
+                     :and,
+                     exists_expr,
+                     auth_filter.expression
+                   )
+             }}
+        end
 
       other ->
         other
-    end
+    end)
   end
 
-  defp expand_path_with_through(resource, path) do
-    expand_path_with_through(resource, path, [], [])
-  end
+  # Input references that are relative to `resource`. References in the body of an `exists` are
+  # relative to its destination, except for those in `parent/1`.
+  defp input_refs_outside_of_exists(expr) do
+    Ash.Filter.flat_map(expr, fn
+      %Ash.Query.Ref{input?: true} = ref ->
+        [ref]
 
-  defp expand_path_with_through(_resource, [], _current_path, acc), do: Enum.reverse(acc)
-
-  defp expand_path_with_through(resource, [name | rest], current_path, acc) do
-    relationship = Ash.Resource.Info.relationship(resource, name)
-
-    case Map.get(relationship, :through) do
-      through when is_list(through) ->
-        nested = expand_path_with_through(resource, through, current_path, [])
-        expanded_path = current_path ++ through
-        {last_relationship, _} = List.last(nested)
-
-        expand_path_with_through(
-          last_relationship.destination,
-          rest,
-          expanded_path,
-          Enum.reverse(nested) ++ acc
-        )
+      %Ash.Query.Exists{at_path: at_path, expr: exists_expr} ->
+        exists_expr
+        |> Ash.Filter.flat_map(fn
+          %Ash.Query.Parent{expr: parent_expr} -> input_refs_outside_of_exists(parent_expr)
+          _ -> []
+        end)
+        |> Enum.map(&%{&1 | relationship_path: at_path ++ &1.relationship_path})
 
       _ ->
-        filter_path = current_path ++ [name]
-        new_acc = [{relationship, filter_path} | acc]
-        expand_path_with_through(relationship.destination, rest, filter_path, new_acc)
-    end
+        []
+    end)
+  end
+
+  defp input_exists_at_paths(expr) do
+    Ash.Filter.flat_map(expr, fn
+      %Ash.Query.Exists{related?: true, input?: true, at_path: at_path} -> [at_path]
+      _ -> []
+    end)
   end
 
   defp last_relationship(resource, list) do

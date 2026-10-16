@@ -21,8 +21,9 @@ defmodule Ash.Filter.Runtime do
 
   def filter_matches(_domain, records, nil, _opts), do: {:ok, records}
 
-  def filter_matches(domain, records, filter, opts) do
-    {records, parent} = load_records_and_parent(records, domain, opts[:parent], filter, opts)
+  def filter_matches(domain, original_records, filter, opts) do
+    {records, parent} =
+      load_records_and_parent(original_records, domain, opts[:parent], filter, opts)
 
     # Every record shares a resource, so hydrate the filter and compute its
     # relationship paths once rather than once per record.
@@ -44,13 +45,17 @@ defmodule Ash.Filter.Runtime do
       relationship_paths = Ash.Filter.relationship_paths(filter)
       opts = Keyword.put(opts, :parent, parent)
 
-      Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
+      # Relationships are loaded without authorization to evaluate the filter, so the
+      # records that match are returned as they were given.
+      records
+      |> Enum.zip(original_records)
+      |> Enum.reduce_while({:ok, []}, fn {record, original_record}, {:ok, records} ->
         case matches(record, filter, relationship_paths, opts) do
           {:ok, falsey} when falsey in [false, nil] ->
             {:cont, {:ok, records}}
 
           {:ok, _} ->
-            {:cont, {:ok, [record | records]}}
+            {:cont, {:ok, [original_record | records]}}
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -903,13 +908,14 @@ defmodule Ash.Filter.Runtime do
            relationship_path: relationship_path,
            resource: resource,
            combinations?: combinations?,
-           attribute: %Ash.Query.Calculation{
-             module: module,
-             opts: opts,
-             name: name,
-             load: load,
-             context: context
-           }
+           attribute:
+             %Ash.Query.Calculation{
+               module: module,
+               opts: opts,
+               name: name,
+               load: load,
+               context: context
+             } = calculation
          },
          record,
          parent,
@@ -983,6 +989,14 @@ defmodule Ash.Filter.Runtime do
             })
 
           with {:ok, hydrated} <- hydrated do
+            {_calculation, hydrated} =
+              Ash.Actions.Read.RelatedAuthorization.authorize_calculation(
+                calculation,
+                hydrated,
+                resource,
+                parent_stack: parent_stack(parent)
+              )
+
             hydrated
             |> Ash.Filter.prefix_refs(relationship_path)
             |> resolve_expr(record, parent, resource, unknown_on_unknown_refs?)

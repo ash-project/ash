@@ -389,6 +389,24 @@ defmodule Ash.Test.Sort.SortTest do
       end
     end
 
+    test "sorting through a to-many relationship is rejected" do
+      for query <- [
+            Ash.Query.sort_input(Post, "comments_by_author.contents"),
+            Ash.Query.sort(Post, "comments_by_author.contents")
+          ] do
+        assert %Ash.Query{
+                 valid?: false,
+                 errors: [
+                   %Ash.Error.Query.UnsortableField{
+                     resource: Ash.Test.Sort.SortTest.Post,
+                     field: :comments_by_author,
+                     reason: :to_many
+                   }
+                 ]
+               } = query
+      end
+    end
+
     test "sort rejects top-level fields configured with sortable?: false" do
       for field <- [:unsortable_title, :comment_count, :title_calculation] do
         assert %Ash.Query{

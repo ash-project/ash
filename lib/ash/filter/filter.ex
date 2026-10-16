@@ -1064,6 +1064,8 @@ defmodule Ash.Filter do
 
       paths_with_refs
       |> Enum.map(&elem(&1, 0))
+      |> Enum.concat(input_exists_paths(query.filter))
+      |> Enum.uniq()
       |> Enum.reduce_while({:ok, filters}, fn path, {:ok, filters} ->
         expanded_relationships = expand_through_path(query.resource, path)
 
@@ -1073,7 +1075,7 @@ defmodule Ash.Filter do
                  filters,
                  relationship,
                  domain,
-                 query,
+                 query.context[:shared],
                  actor,
                  tenant,
                  refs
@@ -1106,11 +1108,28 @@ defmodule Ash.Filter do
     end
   end
 
+  @doc false
+  # Adds authorization filters for specific relationships and unrelated exists, keyed the same
+  # way as `relationship_filters/7`. Items are `{:relationship, relationship}` or
+  # `{:unrelated_exists, exists}`.
+  def relationship_authorization_filters(domain, shared, actor, tenant, items, filters) do
+    Enum.reduce_while(items, {:ok, filters}, fn
+      {:relationship, relationship}, {:ok, filters} ->
+        add_authorization_path_filter(filters, relationship, domain, shared, actor, tenant, [])
+
+      {:unrelated_exists, exists}, {:ok, filters} ->
+        case add_unrelated_exists_filter(filters, exists, domain, actor, tenant) do
+          {:ok, filters} -> {:cont, {:ok, filters}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+    end)
+  end
+
   defp add_authorization_path_filter(
          filters,
          last_relationship,
          domain,
-         query,
+         shared,
          actor,
          tenant,
          _refs,
@@ -1123,7 +1142,7 @@ defmodule Ash.Filter do
            actor,
            tenant,
            base_related_query,
-           %{shared: query.context[:shared]}
+           %{shared: shared}
          ) do
       %{errors: []} = related_query ->
         if filters[{last_relationship.source, last_relationship.name, related_query.action.name}] do
@@ -1225,7 +1244,7 @@ defmodule Ash.Filter do
             filters,
             last_relationship,
             domain,
-            query,
+            query.context[:shared],
             actor,
             tenant,
             refs,
@@ -1286,7 +1305,7 @@ defmodule Ash.Filter do
                   filters,
                   last_relationship,
                   domain,
-                  query,
+                  query.context[:shared],
                   actor,
                   tenant,
                   refs,
@@ -1368,6 +1387,24 @@ defmodule Ash.Filter do
 
   defp add_unrelated_exists_authorization({:error, error}, _, _, _, _, _, _) do
     {:error, error}
+  end
+
+  # The paths of `exists` that came from input are authorized even when the `exists` has no
+  # references inside of it, e.g `exists(comments, true)`.
+  defp input_exists_paths(filter) do
+    flat_map(filter, fn
+      %Ash.Query.Exists{related?: true, at_path: at_path, path: path, expr: expr} = exists ->
+        nested = Enum.map(input_exists_paths(expr), &(at_path ++ path ++ &1))
+
+        if exists.input? do
+          [at_path ++ path | nested]
+        else
+          nested
+        end
+
+      _ ->
+        []
+    end)
   end
 
   defp collect_unrelated_exists_with_input_refs(filter) do

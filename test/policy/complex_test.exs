@@ -6,6 +6,7 @@ defmodule Ash.Test.Policy.ComplexTest do
   @doc false
   use ExUnit.Case, async: false
   require Ash.Query
+  require Ash.Expr
 
   alias Ash.Test.Support.PolicyComplex.{Bio, Comment, Post, User}
 
@@ -133,6 +134,23 @@ defmodule Ash.Test.Policy.ComplexTest do
                comments: [text: "comment by a friend of a friend on my post"]
              )
              |> Ash.read!(actor: me)
+
+    assert [] =
+             Post
+             |> Ash.Query.filter_input(
+               Ash.Expr.expr(
+                 exists(comments, text == "comment by a friend of a friend on my post")
+               )
+             )
+             |> Ash.read!(actor: me)
+  end
+
+  test "it properly scopes exists in filters", %{me: me, post_by_me: post_by_me} do
+    assert [post_by_me.id] ==
+             Post
+             |> Ash.Query.filter_input(Ash.Expr.expr(exists(comments, true)))
+             |> Ash.read!(actor: me)
+             |> Enum.map(& &1.id)
   end
 
   test "it properly scopes single loads", %{me: me} do
@@ -140,6 +158,7 @@ defmodule Ash.Test.Policy.ComplexTest do
              User
              |> Ash.Query.filter(best_friend.name == "me")
              |> Ash.Query.deselect(:private_email)
+             |> Ash.Query.load(:best_friend)
              |> Ash.read!(actor: me)
   end
 
