@@ -381,6 +381,7 @@ defmodule Ash.Actions.Read.Calculations do
         )
 
       {:error, error} ->
+        Ash.Actions.Read.AsyncLimiter.await_all(remaining)
         {:error, error}
     end
   end
