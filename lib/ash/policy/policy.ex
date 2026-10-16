@@ -351,6 +351,9 @@ defmodule Ash.Policy.Policy do
       expression = Ash.Policy.Info.field_policy_expressions(resource)[policies] ->
         {expression, authorizer}
 
+      action && policies ->
+        {static_expression(policies, resource, action), add_action_facts(authorizer)}
+
       true ->
         {policies |> raw_expression() |> simplify_policy_expression(check_context), authorizer}
     end
