@@ -351,8 +351,22 @@ defmodule Ash.Actions.Read.Calculations do
       |> Stream.concat(tasks)
       |> Ash.Actions.Read.AsyncLimiter.await_at_least_one()
 
+    {completed_errors, completed_results} =
+      Enum.split_with(newly_done, &match?({_name, _calculation, {:error, _error}}, &1))
+
+    if completed_errors == [] do
+      case Enum.find(Enum.reverse(completed_results), &match?({:__exception__, _, _}, &1)) do
+        {:__exception__, error, stacktrace} ->
+          Ash.Actions.Read.AsyncLimiter.await_all(remaining)
+          reraise error, stacktrace
+
+        nil ->
+          :ok
+      end
+    end
+
     records =
-      Enum.reduce_while(newly_done, {:ok, records}, fn
+      Enum.reduce_while(completed_errors ++ completed_results, {:ok, records}, fn
         {_name, calculation, calculation_results}, {:ok, records} ->
           case calculation_results do
             {:ok, value} ->
@@ -381,6 +395,7 @@ defmodule Ash.Actions.Read.Calculations do
         )
 
       {:error, error} ->
+        Ash.Actions.Read.AsyncLimiter.await_all(remaining)
         {:error, error}
     end
   end
