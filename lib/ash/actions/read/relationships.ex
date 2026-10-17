@@ -38,7 +38,7 @@ defmodule Ash.Actions.Read.Relationships do
         {:cont,
          {:ok, do_attach_related_records(records, relationship, related_records, related_query)}}
 
-      {relationship, _related_query, {:error, %Ash.Error.Forbidden{} = error}}, _ ->
+      {relationship, _related_query, {:error, %Ash.Error.Forbidden{} = error}}, {:ok, records} ->
         if relationship.allow_forbidden_field? do
           {:cont,
            {:ok,
