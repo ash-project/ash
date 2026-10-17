@@ -71,6 +71,16 @@ Keyset pagination, also known as cursor pagination, is done via providing an `af
 > # config/config.exs
 > config :ash, max_keyset_byte_size: 20_480
 > ```
+>
+> To ensure that Ash only accepts keysets it generated itself, configure a secret for
+> signing them. Ash then rejects any keyset that is unsigned, signed with a different
+> secret, or modified. New applications have this configured by the installer. See
+> [`keyset_signing_secret`](/documentation/topics/development/backwards-compatibility-config.md#keyset_signing_secret)
+> for details.
+>
+> ```elixir
+> config :ash, keyset_signing_secret: "a-long-random-string"
+> ```
 
 ### Pros of keyset pagination
 
