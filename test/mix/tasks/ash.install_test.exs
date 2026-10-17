@@ -63,6 +63,18 @@ defmodule Mix.Tasks.Ash.InstallTest do
     assert runtime =~ "environment variable ASH_KEYSET_SIGNING_SECRET is missing"
   end
 
+  test "uses a placeholder keyset signing secret when generating docs" do
+    rewrite =
+      test_project()
+      |> Igniter.assign(:scribe?, true)
+      |> Igniter.compose_task("ash.install", [])
+      |> apply_igniter!()
+      |> Map.fetch!(:rewrite)
+
+    assert keyset_signing_secret(rewrite, "config/dev.exs") == "<a long random string>"
+    assert keyset_signing_secret(rewrite, "config/test.exs") == "<a long random string>"
+  end
+
   defp keyset_signing_secret(rewrite, path) do
     [_, secret] =
       Regex.run(~r/keyset_signing_secret: "([^"]+)"/, config_content(rewrite, path))

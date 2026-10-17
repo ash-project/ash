@@ -383,6 +383,10 @@ accepts keysets with a valid signature. Keysets that were not signed, were signe
 a different secret, or were modified are rejected with an `Ash.Error.Page.InvalidKeyset`
 error.
 
+The secret must be a non-empty string. If it is set to anything else, such as an
+empty string or a number, Ash raises an `ArgumentError` naming the setting rather
+than silently rejecting every keyset.
+
 Keysets returned before enabling this, or before rotating the secret, are no longer
 accepted, so clients paginating at that moment will need to start again from the
 first page.
