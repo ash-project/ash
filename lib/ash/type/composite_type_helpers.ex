@@ -20,8 +20,10 @@ defmodule Ash.Type.CompositeTypeHelpers do
 
   Handles multiple error formats:
   - Single keyword list errors
-  - Lists of keyword list errors
+  - Lists of keyword list errors and exceptions; exceptions pass through
   - Other error formats (passed through to Ash.Error.to_ash_error)
+
+  Keyword list errors keep their `:path`.
 
   For backward compatibility with typed_struct.ex, returns a single error
   for single error lists, and multiple errors for multiple error lists.
@@ -29,23 +31,13 @@ defmodule Ash.Type.CompositeTypeHelpers do
   def convert_errors_to_invalid_attributes(error) do
     cond do
       Keyword.keyword?(error) ->
-        {:error,
-         Ash.Error.Changes.InvalidAttribute.exception(
-           field: error[:field],
-           message: error[:message],
-           value: error[:value],
-           vars: error
-         )}
+        {:error, keyword_to_invalid_attribute(error)}
 
-      is_list(error) && Enum.all?(error, &Keyword.keyword?/1) ->
+      is_list(error) && Enum.all?(error, &(Keyword.keyword?(&1) or is_exception(&1))) ->
         errors =
-          Enum.map(error, fn err ->
-            Ash.Error.Changes.InvalidAttribute.exception(
-              field: err[:field],
-              message: err[:message],
-              value: err[:value],
-              vars: err
-            )
+          Enum.map(error, fn
+            err when is_exception(err) -> err
+            err -> keyword_to_invalid_attribute(err)
           end)
 
         case errors do
@@ -58,12 +50,19 @@ defmodule Ash.Type.CompositeTypeHelpers do
     end
   end
 
+  defp keyword_to_invalid_attribute(error) do
+    Ash.Error.Changes.InvalidAttribute.exception(
+      field: error[:field],
+      message: error[:message],
+      value: error[:value],
+      path: error[:path] || [],
+      vars: error
+    )
+  end
+
   @doc """
   Converts constraint errors to keyword list format, ensuring each error
   has a :field key set to the specified field name.
-
-  This is used by Map, Keyword, and Struct types to normalize error formats
-  from nested type validations.
   """
   def convert_constraint_errors_to_keyword_lists(errors, field) do
     errors =
@@ -139,26 +138,25 @@ defmodule Ash.Type.CompositeTypeHelpers do
     end
   end
 
-  # Field engine for the composite types: `Ash.Type.Map`, `Ash.Type.Keyword`,
-  # `Ash.Type.Struct` and `Ash.Type.Tuple`. These functions walk the
-  # declared `fields`, and each type describes its in-memory shape.
+  # Field engine for the composite types: maps, keyword lists, structs and
+  # tuples. These functions walk the declared fields, and each type describes
+  # its in-memory shape.
   #
-  # `load_fields/5` takes an access map that reads and writes one field slot
-  # of a value:
+  # Loading takes an access map that reads and writes one field slot of a
+  # value, addressed by field name and position:
   #
-  #   * `:get` - `(value, {name, index}) -> {:ok, field_value} | :error`.
-  #     `:error` means the value has no such slot, and loading passes it
-  #     through unchanged.
-  #   * `:put` - `(value, {name, index}, field_value) -> value`.
+  #   * `:get` - returns `{:ok, field_value}`, or `:error` when the value has
+  #     no such slot. Loading passes such values through unchanged.
+  #   * `:put` - returns the value with the slot set.
   #
-  # `map_fields/4` and `check_fields/3` take the shape as options:
+  # Casting, dumping and checking take the shape as options:
   #
   #   * `:fetch` - reads a field from the input, returning `{:ok, value}` or
-  #     `:error`. Defaults to `fetch_field/2`.
+  #     `:error`. Defaults to reading the atom key, then its string form.
   #   * `:acc`, `:put` and `:finish` - build the result. Default to an empty
-  #     map, `Map.put/3` and the identity function.
-  #   * `:format_error` - turns a field failure into a list of errors.
-  #     Defaults to `format_error/4`.
+  #     map, putting each field into it, and returning it unchanged.
+  #
+  # All four types share one field-error format.
 
   # Initializes the type and constraints of every declared field.
   @doc false
@@ -388,7 +386,7 @@ defmodule Ash.Type.CompositeTypeHelpers do
                                                                  {errors, result} ->
         case fetch.(value, field) do
           {:ok, field_value} ->
-            case check_field(field, field_value, config, opts) do
+            case check_field(field, field_value, config) do
               {:ok, checked} -> {errors, put.(result, field, checked)}
               {:error, field_errors} -> {[field_errors | errors], result}
             end
@@ -411,8 +409,7 @@ defmodule Ash.Type.CompositeTypeHelpers do
 
   # Casts one field value as input and applies its constraints.
   @doc false
-  def check_field(field, value, config, opts \\ []) do
-    format_error = Keyword.get(opts, :format_error, &format_error/4)
+  def check_field(field, value, config) do
     type = config[:type]
     constraints = config[:constraints] || []
 
@@ -421,7 +418,7 @@ defmodule Ash.Type.CompositeTypeHelpers do
         case Ash.Type.apply_constraints(type, cast_value, constraints) do
           {:ok, nil} ->
             if config[:allow_nil?] == false do
-              {:error, format_error.(:nil_not_allowed, nil, field, nil)}
+              {:error, [[message: error_message("value must not be nil"), field: field]]}
             else
               {:ok, nil}
             end
@@ -430,54 +427,66 @@ defmodule Ash.Type.CompositeTypeHelpers do
             {:ok, checked}
 
           {:error, errors} ->
-            {:error, format_error.(:constraint, errors, field, cast_value)}
+            {:error, format_error(errors, field, cast_value)}
         end
 
       {:error, error} ->
-        {:error, format_error.(:cast, error, field, value)}
+        {:error, format_error(error, field, value)}
 
       # The cast dispatcher turns a bare `:error` into "is invalid", except
       # when a type's own array casting returns one.
       :error ->
-        {:error, format_error.(:cast, "is invalid", field, value)}
+        {:error, format_error(error_message("invalid value"), field, value)}
     end
   end
 
-  # Formats a field failure as a list of keyword errors.
+  # Formats a cast or constraint error so that it names the field. The
+  # formatter flattens nested lists (e.g. from array fields) and formats each
+  # error as follows:
   #
-  # `kind` is `:nil_not_allowed`, `:constraint` (an error from
-  # `apply_constraints`) or `:cast` (an error from `cast_input`).
-  @doc false
-  def format_error(:nil_not_allowed, _error, field, _value),
-    do: [[message: error_message("value must not be nil"), field: field]]
-
-  def format_error(:constraint, errors, field, _value),
-    do: convert_constraint_errors_to_keyword_lists(errors, field)
-
-  # Cast errors name the field, mirroring how `Ash.Type` formats array item
-  # errors: string errors get `field` and `value`, keyword errors and
-  # exceptions get the field prepended to their path, and nested lists (e.g.
-  # from array fields) are flattened.
-  def format_error(:cast, error, field, value) do
+  #   * a string gets `field` and `value`;
+  #   * a keyword error or exception that names inner fields (with `:field`
+  #     or `:fields`) keeps them and gets `field` prepended to its path;
+  #   * one without a field gets `field`;
+  #   * an exception becomes an Ash error first;
+  #   * any other term becomes the message of an error that names the field.
+  defp format_error(error, field, value) do
     error
     |> List.wrap()
     |> Ash.Helpers.flatten_preserving_keywords()
-    |> Enum.map(fn
-      message when is_binary(message) ->
-        [message: message, field: field, value: value]
-
-      error when is_exception(error) ->
-        error
-        |> Ash.Error.to_ash_error()
-        |> Ash.Error.set_path([field])
-
-      keyword when is_list(keyword) ->
-        Keyword.update(keyword, :path, [field], &[field | &1])
-
-      other ->
-        other
-    end)
+    |> Enum.map(&put_field(&1, field, value))
   end
+
+  defp put_field(message, field, value) when is_binary(message),
+    do: [message: message, field: field, value: value]
+
+  defp put_field(error, field, _value) when is_exception(error) do
+    error = Ash.Error.to_ash_error(error)
+
+    if Map.has_key?(error, :field) and not names_field?(error.field, Map.get(error, :fields)) do
+      %{error | field: field}
+    else
+      Ash.Error.set_path(error, [field])
+    end
+  end
+
+  defp put_field(error, field, _value) when is_list(error) do
+    if names_field?(error[:field], error[:fields]) do
+      Keyword.update(error, :path, [field], &[field | &1])
+    else
+      Keyword.put(error, :field, field)
+    end
+  end
+
+  defp put_field(other, field, _value) when is_tuple(other),
+    do: [message: inspect(other), field: field]
+
+  defp put_field(other, field, _value) do
+    message = if String.Chars.impl_for(other), do: to_string(other), else: inspect(other)
+    [message: message, field: field]
+  end
+
+  defp names_field?(field, fields), do: not is_nil(field) or fields not in [nil, []]
 
   # Pairs the elements of a tuple with the field names, in order.
   @doc false

@@ -129,8 +129,8 @@ defmodule Type.StructTest do
 
     assert {:error,
             [
-              %Ash.Error.Changes.InvalidAttribute{path: [:foo]},
-              %Ash.Error.Changes.InvalidAttribute{path: [:bar]}
+              %Ash.Error.Changes.InvalidAttribute{field: :foo},
+              %Ash.Error.Changes.InvalidAttribute{field: :bar}
             ]} =
              Ash.Type.apply_constraints(Ash.Type.Struct, %{foo: "a", bar: "b"}, constraints)
   end
@@ -457,7 +457,7 @@ defmodule Type.StructTest do
                private_vars: nil,
                value: %{:bar => "2", "foo" => ""},
                bread_crumbs: [],
-               vars: [{:value, nil}],
+               vars: [],
                path: [:metadata]
              }
            ] = changeset.errors

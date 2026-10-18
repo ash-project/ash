@@ -19,6 +19,67 @@ defmodule Ash.Test.Type.RuntimeErrorCast do
   def dump_to_native(value, _), do: {:ok, value}
 end
 
+defmodule Ash.Test.Type.ExceptionConstraint do
+  @moduledoc false
+  use Ash.Type
+
+  @impl true
+  def storage_type(_), do: :string
+
+  @impl true
+  def cast_input(value, _), do: {:ok, value}
+
+  @impl true
+  def cast_stored(value, _), do: {:ok, value}
+
+  @impl true
+  def dump_to_native(value, _), do: {:ok, value}
+
+  @impl true
+  def apply_constraints(_, _),
+    do: {:error, Ash.Error.Changes.InvalidAttribute.exception(message: "rejected")}
+end
+
+defmodule Ash.Test.Type.FieldsConstraint do
+  @moduledoc false
+  use Ash.Type
+
+  @impl true
+  def storage_type(_), do: :string
+
+  @impl true
+  def cast_input(value, _), do: {:ok, value}
+
+  @impl true
+  def cast_stored(value, _), do: {:ok, value}
+
+  @impl true
+  def dump_to_native(value, _), do: {:ok, value}
+
+  @impl true
+  def apply_constraints(_, _), do: {:error, [message: "rejected", fields: [:inner]]}
+end
+
+defmodule Ash.Test.Type.AtomConstraint do
+  @moduledoc false
+  use Ash.Type
+
+  @impl true
+  def storage_type(_), do: :string
+
+  @impl true
+  def cast_input(value, _), do: {:ok, value}
+
+  @impl true
+  def cast_stored(value, _), do: {:ok, value}
+
+  @impl true
+  def dump_to_native(value, _), do: {:ok, value}
+
+  @impl true
+  def apply_constraints(_, _), do: {:error, :too_long}
+end
+
 defmodule Ash.Type.MapTest do
   use ExUnit.Case, async: true
 
@@ -885,6 +946,55 @@ defmodule Ash.Type.MapTest do
            ] = changeset.errors
   end
 
+  describe "field constraint errors" do
+    test "name the field on exceptions instead of crashing" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map, fields: [a: [type: Ash.Test.Type.ExceptionConstraint]])
+
+      assert {:error, [%Ash.Error.Changes.InvalidAttribute{field: :a, message: "rejected"}]} =
+               Ash.Type.apply_constraints(Ash.Type.Map, %{a: "x"}, constraints)
+    end
+
+    test "turn other error terms into messages that name the field" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map, fields: [a: [type: Ash.Test.Type.AtomConstraint]])
+
+      assert {:error, [[message: "too_long", field: :a]]} =
+               Ash.Type.apply_constraints(Ash.Type.Map, %{a: "x"}, constraints)
+    end
+
+    test "keep the inner fields of nested errors that use :fields" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map, fields: [outer: [type: Ash.Test.Type.FieldsConstraint]])
+
+      assert {:error, [error]} =
+               Ash.Type.apply_constraints(Ash.Type.Map, %{outer: "x"}, constraints)
+
+      assert error[:fields] == [:inner]
+      assert error[:path] == [:outer]
+      refute Keyword.has_key?(error, :field)
+    end
+
+    test "keep the inner field of nested errors and prefix the path" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map,
+          fields: [
+            outer: [
+              type: :map,
+              constraints: [fields: [inner: [type: :integer, constraints: [min: 5]]]]
+            ]
+          ]
+        )
+
+      assert {:error, [error]} =
+               Ash.Type.apply_constraints(Ash.Type.Map, %{outer: %{inner: 1}}, constraints)
+
+      assert error[:field] == :inner
+      assert error[:path] == [:outer]
+      assert error[:min] == 5
+    end
+  end
+
   describe "field cast errors" do
     test "reach the changeset with the nested field and the attribute path" do
       changeset =
@@ -901,24 +1011,25 @@ defmodule Ash.Type.MapTest do
                Ash.Type.apply_constraints(Ash.Type.Map, %{a: "x"}, constraints)
     end
 
-    test "convert exceptions to Ash errors with the field in their path" do
+    test "convert exceptions to Ash errors that name the field" do
       {:ok, constraints} =
         Ash.Type.init(Ash.Type.Map, fields: [a: [type: Ash.Test.Type.RuntimeErrorCast]])
 
-      assert {:error, [%{path: [:a]} = error]} =
+      assert {:error, [%{field: :a} = error]} =
                Ash.Type.apply_constraints(Ash.Type.Map, %{a: "x"}, constraints)
 
       assert Ash.Error.ash_error?(error)
     end
 
-    test "prefix array item errors with the field and stay flat" do
+    test "name the field on array item errors and stay flat" do
       {:ok, constraints} = Ash.Type.init(Ash.Type.Map, fields: [a: [type: {:array, :integer}]])
 
       assert {:error, [error]} =
                Ash.Type.apply_constraints(Ash.Type.Map, %{a: ["x"]}, constraints)
 
       assert error[:message] == "is invalid"
-      assert error[:path] == [:a, 0]
+      assert error[:field] == :a
+      assert error[:path] == [0]
     end
   end
 

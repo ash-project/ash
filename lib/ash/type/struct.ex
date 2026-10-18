@@ -400,9 +400,7 @@ defmodule Ash.Type.Struct do
 
   defp handle_fields(value, constraints) do
     if fields = fields(constraints) do
-      Ash.Type.CompositeTypeHelpers.check_fields(value, fields,
-        format_error: &format_field_error/4
-      )
+      Ash.Type.CompositeTypeHelpers.check_fields(value, fields)
     else
       {:ok, value}
     end
@@ -473,20 +471,4 @@ defmodule Ash.Type.Struct do
         end
     end
   end
-
-  # Struct nil errors carry `value: nil`, and struct constraint errors use the
-  # comprehensive format, unlike the default in
-  # `Ash.Type.CompositeTypeHelpers.format_error/4`.
-  defp format_field_error(:nil_not_allowed, _error, field, _value),
-    do: [[message: error_message("value must not be nil"), field: field, value: nil]]
-
-  defp format_field_error(:constraint, errors, field, _value) do
-    errors
-    |> List.wrap()
-    |> Enum.map(&Ash.Type.CompositeTypeHelpers.format_comprehensive_error_as_keyword(&1, field))
-    |> Ash.Type.CompositeTypeHelpers.filter_non_informative_errors()
-  end
-
-  defp format_field_error(:cast, error, field, value),
-    do: Ash.Type.CompositeTypeHelpers.format_error(:cast, error, field, value)
 end
