@@ -176,6 +176,21 @@ defmodule Ash.Test.Type.CompositeLoadTest do
 
       assert loaded.extra == "passthrough"
     end
+
+    test "leaves values without the loaded field unchanged" do
+      constraints = [
+        fields: [
+          nested: [type: :struct, constraints: [instance_of: NestedDoc]]
+        ]
+      ]
+
+      values = [%{nested: build_doc()}, %{extra: "passthrough"}]
+
+      {:ok, [_, without_field]} =
+        Ash.Type.load(Ash.Type.Map, values, nil, constraints, context(%{admin: false}))
+
+      assert without_field == %{extra: "passthrough"}
+    end
   end
 
   describe "Ash.Type.Keyword" do
@@ -192,6 +207,36 @@ defmodule Ash.Test.Type.CompositeLoadTest do
         Ash.Type.load(Ash.Type.Keyword, values, nil, constraints, context(%{admin: false}))
 
       assert %Ash.ForbiddenField{field: :admin_note} = loaded[:nested].admin_note
+    end
+
+    test "keeps the order of the keyword list" do
+      constraints = [
+        fields: [
+          nested: [type: :struct, constraints: [instance_of: NestedDoc]]
+        ]
+      ]
+
+      values = [[extra: "first", nested: build_doc()]]
+
+      {:ok, [loaded]} =
+        Ash.Type.load(Ash.Type.Keyword, values, nil, constraints, context(%{admin: false}))
+
+      assert Keyword.keys(loaded) == [:extra, :nested]
+    end
+
+    test "leaves values without the loaded field unchanged" do
+      constraints = [
+        fields: [
+          nested: [type: :struct, constraints: [instance_of: NestedDoc]]
+        ]
+      ]
+
+      values = [[nested: build_doc()], [extra: "passthrough"]]
+
+      {:ok, [_, without_field]} =
+        Ash.Type.load(Ash.Type.Keyword, values, nil, constraints, context(%{admin: false}))
+
+      assert without_field == [extra: "passthrough"]
     end
   end
 

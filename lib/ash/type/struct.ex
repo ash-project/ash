@@ -12,10 +12,11 @@ defmodule Ash.Type.Struct do
       type: :boolean,
       default: false,
       doc: """
-      If set to true, nil values will be preserved both when storing and in the casted struct.
-      Otherwise, keys whose values are `nil` will be omitted.
+      Controls how loading stored or embedded values treats `nil` field values.
+      By default, loading keeps the struct default for those fields. Set
+      `preserve_nil_values?: true` to load `nil` instead. Input casting ignores this option.
 
-      preserved_nil_values? is false by default
+      Struct dumps always retain fields with `nil` values, regardless of this option.
       """
     ],
     fields: [
@@ -116,7 +117,6 @@ defmodule Ash.Type.Struct do
   """
 
   use Ash.Type
-  import Ash.Gettext
 
   @impl true
   def constraints, do: @constraints
@@ -131,43 +131,7 @@ defmodule Ash.Type.Struct do
   def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:fields])
 
   @impl true
-  def init(constraints) do
-    if is_list(constraints[:fields]) do
-      constraints[:fields]
-      |> List.wrap()
-      |> Enum.reduce_while({:ok, []}, fn {name, config}, {:ok, fields} ->
-        type = Ash.Type.get_type(config[:type])
-        constraints = config[:constraints] || []
-
-        if Keyword.get(config, :init?, true) do
-          case Ash.Type.init(type, constraints) do
-            {:ok, constraints} ->
-              {:cont,
-               {:ok,
-                [{name, Keyword.merge(config, constraints: constraints, type: type)} | fields]}}
-
-            {:error, error} ->
-              {:halt, {:error, error}}
-          end
-        else
-          {:cont, {:ok, [{name, config} | fields]}}
-        end
-      end)
-      |> case do
-        {:ok, fields} ->
-          {:ok, Keyword.put(constraints, :fields, Enum.reverse(fields))}
-
-        {:error, error} ->
-          {:error, error}
-      end
-    else
-      if is_nil(constraints[:fields]) do
-        {:ok, constraints}
-      else
-        {:error, "fields must be a list, got `#{constraints[:fields]}`"}
-      end
-    end
-  end
+  def init(constraints), do: Ash.Type.CompositeTypeHelpers.init_fields(constraints)
 
   defp fields(constraints) do
     case Keyword.fetch(constraints, :fields) do
@@ -256,60 +220,24 @@ defmodule Ash.Type.Struct do
   def cast_from_embedded(_, _), do: :error
 
   defp dump_struct_fields(value, constraints, dump_fn) do
-    if fields = fields(constraints) do
-      if constraints[:instance_of] do
-        Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
-          case dump_struct_field(value, key, config, dump_fn) do
-            {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
-            :skip -> {:cont, {:ok, acc}}
-            other -> {:halt, other}
-          end
-        end)
-      else
-        :error
-      end
+    with fields when not is_nil(fields) <- fields(constraints),
+         instance_of when not is_nil(instance_of) <- constraints[:instance_of] do
+      # Struct dumps retain nil fields so upgrades preserve the storage format.
+      Ash.Type.CompositeTypeHelpers.map_fields(value, fields, dump_fn, fetch: &Map.fetch/2)
     else
-      :error
-    end
-  end
-
-  defp dump_struct_field(value, key, config, dump_fn) do
-    case Map.fetch(value, key) do
-      {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
-      :error -> :skip
+      _ -> :error
     end
   end
 
   defp cast_struct_fields(value, constraints, cast_fn) do
-    if fields = fields(constraints) do
-      if constraints[:instance_of] do
-        nil_values = constraints[:preserve_nil_values?]
-
-        Enum.reduce_while(fields, {:ok, struct(constraints[:instance_of], [])}, fn {key, config},
-                                                                                   {:ok, acc} ->
-          case fetch_field(value, key) do
-            {:ok, value} ->
-              case cast_fn.(config[:type], value, config[:constraints] || []) do
-                {:ok, value} ->
-                  if is_nil(value) && !nil_values do
-                    {:cont, {:ok, acc}}
-                  else
-                    {:cont, {:ok, Map.put(acc, key, value)}}
-                  end
-
-                other ->
-                  {:halt, other}
-              end
-
-            :error ->
-              {:cont, {:ok, acc}}
-          end
-        end)
-      else
-        :error
-      end
+    with fields when not is_nil(fields) <- fields(constraints),
+         instance_of when not is_nil(instance_of) <- constraints[:instance_of] do
+      Ash.Type.CompositeTypeHelpers.map_fields(value, fields, cast_fn,
+        acc: struct(instance_of, []),
+        drop_nil?: constraints[:preserve_nil_values?] != true
+      )
     else
-      :error
+      _ -> :error
     end
   end
 
@@ -471,7 +399,7 @@ defmodule Ash.Type.Struct do
 
   defp handle_fields(value, constraints) do
     if fields = fields(constraints) do
-      check_fields(value, fields)
+      Ash.Type.CompositeTypeHelpers.check_fields(value, fields)
     else
       {:ok, value}
     end
@@ -492,44 +420,6 @@ defmodule Ash.Type.Struct do
           fields(constraints) ->
             {:ok, struct(struct, value)}
 
-          Ash.Resource.Info.resource?(struct) ->
-            struct
-            |> Ash.Resource.Info.public_attributes()
-            |> Enum.reduce_while({:ok, struct.__struct__()}, fn attribute, {:ok, record} ->
-              case fetch_field(value, attribute.name) do
-                {:ok, value} ->
-                  with {:ok, casted} <-
-                         Ash.Type.cast_input(
-                           attribute.type,
-                           value,
-                           attribute.constraints
-                         ),
-                       {:ok, casted} <-
-                         Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
-                    if is_nil(casted) and attribute.allow_nil? == false do
-                      {:halt,
-                       {:error, field: attribute.name, message: error_message("is required")}}
-                    else
-                      {:cont, {:ok, Map.put(record, attribute.name, casted)}}
-                    end
-                  else
-                    :error ->
-                      {:halt, {:error, "is invalid"}}
-
-                    {:error, error} ->
-                      {:halt, {:error, error}}
-                  end
-
-                :error ->
-                  if attribute.allow_nil? == false do
-                    {:halt,
-                     {:error, field: attribute.name, message: error_message("is required")}}
-                  else
-                    {:cont, {:ok, record}}
-                  end
-              end
-            end)
-
           true ->
             {:error, "is invalid"}
         end
@@ -542,102 +432,4 @@ defmodule Ash.Type.Struct do
         end
     end
   end
-
-  defp check_fields(value, fields) do
-    {errors, result} =
-      Enum.reduce(fields, {[], %{}}, fn {field, field_constraints}, {errors_acc, result_acc} ->
-        case fetch_field(value, field) do
-          {:ok, field_value} ->
-            case check_field(result_acc, field, field_value, field_constraints) do
-              {:ok, updated_result} ->
-                {errors_acc, updated_result}
-
-              {:error, field_errors} ->
-                {errors_acc ++ field_errors, result_acc}
-            end
-
-          :error ->
-            if field_constraints[:allow_nil?] == false do
-              field_error = [message: error_message("field must be present"), field: field]
-              {errors_acc ++ [field_error], result_acc}
-            else
-              {errors_acc, result_acc}
-            end
-        end
-      end)
-
-    case errors do
-      [] -> {:ok, result}
-      _ -> {:error, errors}
-    end
-  end
-
-  defp check_field(result, field, field_value, field_constraints) do
-    case Ash.Type.cast_input(
-           field_constraints[:type],
-           field_value,
-           field_constraints[:constraints] || []
-         ) do
-      {:ok, field_value} ->
-        case Ash.Type.apply_constraints(
-               field_constraints[:type],
-               field_value,
-               field_constraints[:constraints] || []
-             ) do
-          {:ok, nil} ->
-            if field_constraints[:allow_nil?] == false do
-              {:error,
-               [[message: error_message("value must not be nil"), field: field, value: nil]]}
-            else
-              {:ok, Map.put(result, field, nil)}
-            end
-
-          {:ok, field_value} ->
-            {:ok, Map.put(result, field, field_value)}
-
-          {:error, errors} ->
-            formatted_errors =
-              errors
-              |> List.wrap()
-              |> Enum.map(
-                &Ash.Type.CompositeTypeHelpers.format_comprehensive_error_as_keyword(&1, field)
-              )
-              |> Ash.Type.CompositeTypeHelpers.filter_non_informative_errors()
-
-            {:error, formatted_errors}
-        end
-
-      {:error, error} when is_binary(error) ->
-        {:error, [[message: error, field: field, value: field_value]]}
-
-      {:error, error} when is_list(error) ->
-        if Keyword.keyword?(error) do
-          {:error, [Keyword.update(error, :path, [field], &[field | &1])]}
-        else
-          {:error,
-           Enum.map(error, fn error ->
-             if Keyword.keyword?(error) do
-               Keyword.update(error, :path, [field], &[field | &1])
-             else
-               error
-             end
-           end)}
-        end
-
-      {:error, error} ->
-        {:error, error}
-
-      :error ->
-        {:error, [[message: error_message("invalid value"), field: field, value: field_value]]}
-    end
-  end
-
-  defp fetch_field(map, atom) when is_atom(atom) do
-    case Map.fetch(map, atom) do
-      {:ok, value} -> {:ok, value}
-      :error -> fetch_field(map, to_string(atom))
-    end
-  end
-
-  defp fetch_field(map, key), do: Map.fetch(map, key)
 end

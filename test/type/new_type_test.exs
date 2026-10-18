@@ -14,6 +14,14 @@ defmodule Ash.Test.Type.NewTypeTest do
       constraints: [match: ~r/^(?!0{3})(?!6{3})[0-8]\d{2}-(?!0{2})\d{2}-(?!0{4})\d{4}$/]
   end
 
+  defmodule Count do
+    use Ash.Type.NewType, subtype_of: :integer
+  end
+
+  defmodule ShortCode do
+    use Ash.Type.NewType, subtype_of: :string, constraints: [allow_empty?: true, min_length: 2]
+  end
+
   defmodule CustomMap do
     use Ash.Type.NewType,
       subtype_of: :map,
@@ -111,6 +119,23 @@ defmodule Ash.Test.Type.NewTypeTest do
                CustomMapWithArray,
                %{"custom_map" => [%{"foo" => "baz", "bar" => "42", "other" => "ignored"}]}
              )
+  end
+
+  test "it casts empty strings in arrays to nil like its subtype" do
+    assert {:ok, [nil, 1]} = Ash.Type.cast_input({:array, :integer}, ["", "1"])
+    assert {:ok, [nil, 1]} = Ash.Type.cast_input({:array, Count}, ["", "1"])
+  end
+
+  test "it casts empty strings that fail constraints to nil in arrays like scalars" do
+    assert {:ok, nil} = Ash.Type.cast_input(ShortCode, "")
+    assert {:ok, [nil]} = Ash.Type.cast_input({:array, ShortCode}, [""])
+  end
+
+  test "array nil_items? constraints still reject empty strings cast to nil" do
+    assert {:ok, [nil]} = Ash.Type.cast_input({:array, ShortCode}, [""])
+
+    assert {:error, _} =
+             Ash.Type.apply_constraints({:array, ShortCode}, [nil], nil_items?: false)
   end
 
   test "returns error for invalid keys" do
