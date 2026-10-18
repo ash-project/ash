@@ -122,7 +122,7 @@ defmodule Ash.Policy.Policy do
 
   @spec solve(authorizer :: Authorizer.t()) ::
           {:ok, boolean() | list(map), Authorizer.t()}
-          | {:error, Authorizer.t(), Ash.Error.t()}
+          | {:error, Authorizer.t(), Ash.Error.t() | :unsatisfiable}
   def solve(authorizer) do
     check_context = check_context(authorizer)
 
