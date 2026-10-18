@@ -308,6 +308,10 @@ defmodule Ash.Type.Tuple do
 
   def cast_from_embedded(_, _), do: :error
 
+  # A missing key loads as `nil` in its position, so later fields keep their
+  # positions. Loading does not apply constraints, so a missing
+  # `allow_nil?: false` field loads as `nil` without an error, the same as a
+  # stored `nil`.
   defp cast_tuple_fields(value, constraints, cast_fn) do
     Enum.reduce_while(constraints[:fields], {:ok, []}, fn {key, config}, {:ok, acc} ->
       case Ash.Type.Helpers.fetch_field(value, key) do
@@ -321,12 +325,13 @@ defmodule Ash.Type.Tuple do
           end
 
         :error ->
-          {:cont, {:ok, acc}}
+          {:cont, {:ok, [nil | acc]}}
       end
     end)
     |> case do
       {:ok, value} -> {:ok, value |> Enum.reverse() |> List.to_tuple()}
       {:error, error} -> {:error, error}
+      :error -> :error
     end
   end
 

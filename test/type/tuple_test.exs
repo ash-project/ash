@@ -343,6 +343,69 @@ defmodule Ash.Type.TupleTest do
     end
   end
 
+  describe "loading invalid stored values" do
+    setup do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            a: [type: :string, allow_nil?: false],
+            b: [type: :integer],
+            c: [type: :string]
+          ]
+        )
+
+      %{constraints: constraints}
+    end
+
+    test "cast_stored returns an error when a field fails to cast", %{constraints: constraints} do
+      assert :error =
+               Ash.Type.cast_stored(
+                 Ash.Type.Tuple,
+                 %{"a" => "x", "b" => "abc", "c" => "z"},
+                 constraints
+               )
+    end
+
+    test "cast_from_embedded returns an error when a field fails to cast", %{
+      constraints: constraints
+    } do
+      assert :error =
+               Ash.Type.cast_from_embedded(
+                 Ash.Type.Tuple,
+                 %{"a" => "x", "b" => "abc", "c" => "z"},
+                 constraints
+               )
+    end
+
+    test "a missing first field loads as nil in its position", %{constraints: constraints} do
+      assert {:ok, {nil, 1, "z"}} =
+               Ash.Type.cast_stored(Ash.Type.Tuple, %{"b" => 1, "c" => "z"}, constraints)
+    end
+
+    test "a missing middle field loads as nil in its position", %{constraints: constraints} do
+      assert {:ok, {"x", nil, "z"}} =
+               Ash.Type.cast_stored(Ash.Type.Tuple, %{"a" => "x", "c" => "z"}, constraints)
+
+      assert {:ok, {"x", nil, "z"}} =
+               Ash.Type.cast_from_embedded(Ash.Type.Tuple, %{a: "x", c: "z"}, constraints)
+    end
+
+    test "a missing last field loads as nil in its position", %{constraints: constraints} do
+      assert {:ok, {"x", 1, nil}} =
+               Ash.Type.cast_stored(Ash.Type.Tuple, %{"a" => "x", "b" => 1}, constraints)
+    end
+
+    test "apply_constraints rejects a missing field that does not allow nil", %{
+      constraints: constraints
+    } do
+      assert {:ok, value} =
+               Ash.Type.cast_stored(Ash.Type.Tuple, %{"b" => 1, "c" => "z"}, constraints)
+
+      assert {:error, [[message: "value must not be nil", field: :a]]} =
+               Ash.Type.apply_constraints(Ash.Type.Tuple, value, constraints)
+    end
+  end
+
   describe "dump/cast round-trip" do
     test "dump_to_native then cast_stored preserves data" do
       {:ok, constraints} =
