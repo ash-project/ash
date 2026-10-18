@@ -833,4 +833,13 @@ defmodule Type.KeywordTest do
       assert restored == original
     end
   end
+
+  describe "load" do
+    test "returns an error for load keys that are not declared fields" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Keyword, fields: [foo: [type: :string]])
+
+      assert {:error, "cannot load [:unknown]" <> _} =
+               Ash.Type.Keyword.load([[foo: "bar"]], [:unknown], constraints, %{})
+    end
+  end
 end

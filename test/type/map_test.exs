@@ -867,4 +867,18 @@ defmodule Ash.Type.MapTest do
              }
            ] = changeset.errors
   end
+
+  test "init returns an error when fields is not a list" do
+    assert {:error, "fields must be a list, got `%{a: 1}`"} =
+             Ash.Type.Map.init(fields: %{a: 1})
+  end
+
+  describe "load" do
+    test "returns an error for load keys that are not declared fields" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Map, fields: [foo: [type: :string]])
+
+      assert {:error, "cannot load [:unknown]" <> _} =
+               Ash.Type.Map.load([%{foo: "bar"}], [:unknown], constraints, %{})
+    end
+  end
 end

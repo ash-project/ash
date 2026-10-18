@@ -91,43 +91,4 @@ defmodule Ash.Type.Helpers do
         [[field: attribute.name]]
     end
   end
-
-  def dump_fields(value, fields, dump_fn, opts \\ []) do
-    reduce_fields(value, fields, dump_fn, %{}, opts)
-  end
-
-  def cast_fields(value, fields, cast_fn, acc, opts \\ []) do
-    reduce_fields(value, fields, cast_fn, acc, opts)
-  end
-
-  # Applies `fun` to each field present in `value` and puts the result into
-  # `acc`. Callers pass `drop_nil?: true` to skip `nil` results and `:fetch`
-  # to replace the atom-then-string key lookup.
-  defp reduce_fields(value, fields, fun, acc, opts) do
-    drop_nil? = Keyword.get(opts, :drop_nil?, false)
-    fetch = Keyword.get(opts, :fetch, &fetch_field/2)
-
-    Enum.reduce_while(fields, {:ok, acc}, fn {key, config}, {:ok, acc} ->
-      case fetch.(value, key) do
-        {:ok, field_value} ->
-          case fun.(config[:type], field_value, config[:constraints] || []) do
-            {:ok, nil} when drop_nil? -> {:cont, {:ok, acc}}
-            {:ok, result} -> {:cont, {:ok, Map.put(acc, key, result)}}
-            other -> {:halt, other}
-          end
-
-        :error ->
-          {:cont, {:ok, acc}}
-      end
-    end)
-  end
-
-  def fetch_field(map, atom) when is_atom(atom) do
-    case Map.fetch(map, atom) do
-      {:ok, value} -> {:ok, value}
-      :error -> fetch_field(map, to_string(atom))
-    end
-  end
-
-  def fetch_field(map, key), do: Map.fetch(map, key)
 end

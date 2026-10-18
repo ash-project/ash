@@ -406,6 +406,39 @@ defmodule Ash.Type.TupleTest do
     end
   end
 
+  test "init rejects duplicate field names" do
+    assert {:error, "fields must have unique names, got duplicates `[:a]`"} =
+             Ash.Type.Tuple.init(fields: [a: [type: :integer], a: [type: :string]])
+  end
+
+  describe "load" do
+    test "returns an error for load keys that are not declared fields" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Tuple, fields: [foo: [type: :string]])
+
+      assert {:error, "cannot load [:unknown]" <> _} =
+               Ash.Type.Tuple.load([{"bar"}], [:unknown], constraints, %{})
+    end
+  end
+
+  describe "apply_constraints" do
+    test "rejects tuples with the wrong number of elements" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple, fields: [a: [type: :string], b: [type: :string]])
+
+      assert {:error, [message: _, expected_length: 2, value_length: 1]} =
+               Ash.Type.apply_constraints(Ash.Type.Tuple, {"x"}, constraints)
+    end
+
+    test "reports every invalid field" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple, fields: [a: [type: :integer], b: [type: :integer]])
+
+      # Cast errors do not name the failing field yet, matching Map and Keyword.
+      assert {:error, ["is invalid", "is invalid"]} =
+               Ash.Type.apply_constraints(Ash.Type.Tuple, {"x", "y"}, constraints)
+    end
+  end
+
   describe "dump/cast round-trip" do
     test "dump_to_native then cast_stored preserves data" do
       {:ok, constraints} =
