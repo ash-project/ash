@@ -221,7 +221,7 @@ defmodule Ash.Type.NewType do
         term
         |> Stream.with_index()
         |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-          case cast_input(item, constraints) do
+          case Ash.Type.cast_input(__MODULE__, item, constraints) do
             :error ->
               {:halt,
                {:error,
