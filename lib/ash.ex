@@ -2878,7 +2878,8 @@ defmodule Ash do
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
-          {:ok, Ash.Resource.Record.t() | [Ash.Resource.Record.t()] | nil} | {:error, term}
+          {:ok, Ash.Resource.Record.t() | [Ash.Resource.Record.t()] | :ok | nil}
+          | {:error, term}
 
   @doc spark_opts: [{2, @load_opts_schema}]
   def load(data, query, opts \\ [])

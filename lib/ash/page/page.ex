@@ -10,7 +10,7 @@ defmodule Ash.Page do
 
   @doc false
   # This is a custom validator for an options schema
-  @spec page_opts(page() | false | nil | Keyword.t()) :: {:ok, page()} | {:error, String.t()}
+  @spec page_opts(term()) :: {:ok, false | nil | Keyword.t()} | {:error, String.t()}
   def page_opts(term) when term in [false, nil], do: {:ok, term}
 
   def page_opts(term) when not is_list(term) do

@@ -112,9 +112,29 @@ defmodule Ash.Test do
           | :ok
           | {:ok, term}
           | {:error, term},
-          error_class :: Ash.Error.class_module(),
           (Ash.Error.t() -> boolean)
-        ) :: Ash.Error.t() | no_return
+        ) :: :ok | nil | no_return
+  @spec refute_has_error(
+          Ash.Changeset.t()
+          | Ash.Query.t()
+          | Ash.ActionInput.t()
+          | :ok
+          | {:ok, term}
+          | {:error, term},
+          error_class :: Ash.Error.class_module() | nil,
+          (Ash.Error.t() -> boolean)
+        ) :: :ok | nil | no_return
+  @spec refute_has_error(
+          Ash.Changeset.t()
+          | Ash.Query.t()
+          | Ash.ActionInput.t()
+          | :ok
+          | {:ok, term}
+          | {:error, term},
+          error_class :: Ash.Error.class_module() | nil,
+          (Ash.Error.t() -> boolean),
+          opts :: Keyword.t()
+        ) :: :ok | nil | no_return
   def refute_has_error(changeset_query_or_input, error_class \\ nil, callback, opts \\ [])
 
   # An :ok response doesn't have any errors!
