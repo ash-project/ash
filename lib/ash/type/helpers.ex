@@ -93,38 +93,31 @@ defmodule Ash.Type.Helpers do
   end
 
   def dump_fields(value, fields, dump_fn, opts \\ []) do
+    reduce_fields(value, fields, dump_fn, %{}, opts)
+  end
+
+  def cast_fields(value, fields, cast_fn, acc, opts \\ []) do
+    reduce_fields(value, fields, cast_fn, acc, opts)
+  end
+
+  # Applies `fun` to each field present in `value` and puts the result into
+  # `acc`. Callers pass `drop_nil?: true` to skip `nil` results and `:fetch`
+  # to replace the atom-then-string key lookup.
+  defp reduce_fields(value, fields, fun, acc, opts) do
     drop_nil? = Keyword.get(opts, :drop_nil?, false)
     fetch = Keyword.get(opts, :fetch, &fetch_field/2)
 
-    Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
+    Enum.reduce_while(fields, {:ok, acc}, fn {key, config}, {:ok, acc} ->
       case fetch.(value, key) do
         {:ok, field_value} ->
-          case dump_fn.(config[:type], field_value, config[:constraints] || []) do
+          case fun.(config[:type], field_value, config[:constraints] || []) do
             {:ok, nil} when drop_nil? -> {:cont, {:ok, acc}}
-            {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
+            {:ok, result} -> {:cont, {:ok, Map.put(acc, key, result)}}
             other -> {:halt, other}
           end
 
         :error ->
           {:cont, {:ok, acc}}
-      end
-    end)
-  end
-
-  def cast_fields(value, fields, cast_fn, acc, opts \\ []) do
-    drop_nil? = Keyword.get(opts, :drop_nil?, false)
-
-    Enum.reduce_while(fields, {:ok, acc}, fn {key, config}, {:ok, casted} ->
-      case fetch_field(value, key) do
-        {:ok, field_value} ->
-          case cast_fn.(config[:type], field_value, config[:constraints] || []) do
-            {:ok, nil} when drop_nil? -> {:cont, {:ok, casted}}
-            {:ok, cast_value} -> {:cont, {:ok, Map.put(casted, key, cast_value)}}
-            other -> {:halt, other}
-          end
-
-        :error ->
-          {:cont, {:ok, casted}}
       end
     end)
   end
