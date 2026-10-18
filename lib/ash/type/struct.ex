@@ -499,10 +499,8 @@ defmodule Ash.Type.Struct do
     end
   end
 
-  defp format_field_error(:cast, error, _field, _value), do: error
-
-  defp format_field_error(:invalid, _error, field, value),
-    do: [[message: error_message("invalid value"), field: field, value: value]]
+  defp format_field_error(:cast, error, field, _value),
+    do: error |> List.wrap() |> Ash.Error.set_path([field])
 
   defp prefix_path(error, field), do: Keyword.update(error, :path, [field], &[field | &1])
 end

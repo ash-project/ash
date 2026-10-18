@@ -12,6 +12,23 @@ defmodule Type.StructTest do
     defstruct [:foo, :bar, not_nil_by_default: "foo"]
   end
 
+  defmodule ExceptionErrorType do
+    use Ash.Type
+
+    @impl true
+    def storage_type(_), do: :string
+
+    @impl true
+    def cast_input(_, _),
+      do: {:error, Ash.Error.Changes.InvalidAttribute.exception(message: "rejected")}
+
+    @impl true
+    def cast_stored(value, _), do: {:ok, value}
+
+    @impl true
+    def dump_to_native(value, _), do: {:ok, value}
+  end
+
   defmodule Embedded do
     use Ash.Resource, data_layer: :embedded
 
@@ -102,6 +119,20 @@ defmodule Type.StructTest do
              Ash.Type.apply_constraints(Ash.Type.Struct, %{"name" => "fred", :title => "title"},
                instance_of: Embedded
              )
+  end
+
+  test "collects exception errors from every invalid field" do
+    constraints = [
+      instance_of: Metadata,
+      fields: [foo: [type: ExceptionErrorType], bar: [type: ExceptionErrorType]]
+    ]
+
+    assert {:error,
+            [
+              %Ash.Error.Changes.InvalidAttribute{path: [:foo]},
+              %Ash.Error.Changes.InvalidAttribute{path: [:bar]}
+            ]} =
+             Ash.Type.apply_constraints(Ash.Type.Struct, %{foo: "a", bar: "b"}, constraints)
   end
 
   test "cast_stored does not cast keys with nil values by default" do
