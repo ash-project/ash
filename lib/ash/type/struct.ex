@@ -474,8 +474,9 @@ defmodule Ash.Type.Struct do
     end
   end
 
-  # Struct field errors carry the offending `value` and prefix nested paths,
-  # unlike the default format in `Ash.Type.CompositeTypeHelpers.format_error/4`.
+  # Struct nil errors carry `value: nil`, and struct constraint errors use the
+  # comprehensive format, unlike the default in
+  # `Ash.Type.CompositeTypeHelpers.format_error/4`.
   defp format_field_error(:nil_not_allowed, _error, field, _value),
     do: [[message: error_message("value must not be nil"), field: field, value: nil]]
 
@@ -486,21 +487,6 @@ defmodule Ash.Type.Struct do
     |> Ash.Type.CompositeTypeHelpers.filter_non_informative_errors()
   end
 
-  defp format_field_error(:cast, error, field, value) when is_binary(error),
-    do: [[message: error, field: field, value: value]]
-
-  defp format_field_error(:cast, error, field, _value) when is_list(error) do
-    if Keyword.keyword?(error) do
-      [prefix_path(error, field)]
-    else
-      Enum.map(error, fn error ->
-        if Keyword.keyword?(error), do: prefix_path(error, field), else: error
-      end)
-    end
-  end
-
-  defp format_field_error(:cast, error, field, _value),
-    do: error |> List.wrap() |> Ash.Error.set_path([field])
-
-  defp prefix_path(error, field), do: Keyword.update(error, :path, [field], &[field | &1])
+  defp format_field_error(:cast, error, field, value),
+    do: Ash.Type.CompositeTypeHelpers.format_error(:cast, error, field, value)
 end

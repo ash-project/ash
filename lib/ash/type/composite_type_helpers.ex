@@ -454,7 +454,30 @@ defmodule Ash.Type.CompositeTypeHelpers do
   def format_error(:constraint, errors, field, _value),
     do: convert_constraint_errors_to_keyword_lists(errors, field)
 
-  def format_error(:cast, error, _field, _value), do: [error]
+  # Cast errors name the field, mirroring how `Ash.Type` formats array item
+  # errors: string errors get `field` and `value`, keyword errors and
+  # exceptions get the field prepended to their path, and nested lists (e.g.
+  # from array fields) are flattened.
+  def format_error(:cast, error, field, value) do
+    error
+    |> List.wrap()
+    |> Ash.Helpers.flatten_preserving_keywords()
+    |> Enum.map(fn
+      message when is_binary(message) ->
+        [message: message, field: field, value: value]
+
+      error when is_exception(error) ->
+        error
+        |> Ash.Error.to_ash_error()
+        |> Ash.Error.set_path([field])
+
+      keyword when is_list(keyword) ->
+        Keyword.update(keyword, :path, [field], &[field | &1])
+
+      other ->
+        other
+    end)
+  end
 
   # Pairs the elements of a tuple with the field names, in order.
   @doc false

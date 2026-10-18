@@ -2,6 +2,23 @@
 #
 # SPDX-License-Identifier: MIT
 
+defmodule Ash.Test.Type.RuntimeErrorCast do
+  @moduledoc false
+  use Ash.Type
+
+  @impl true
+  def storage_type(_), do: :string
+
+  @impl true
+  def cast_input(_, _), do: {:error, %RuntimeError{message: "boom"}}
+
+  @impl true
+  def cast_stored(value, _), do: {:ok, value}
+
+  @impl true
+  def dump_to_native(value, _), do: {:ok, value}
+end
+
 defmodule Ash.Type.MapTest do
   use ExUnit.Case, async: true
 
@@ -866,6 +883,43 @@ defmodule Ash.Type.MapTest do
                path: [:metadata]
              }
            ] = changeset.errors
+  end
+
+  describe "field cast errors" do
+    test "reach the changeset with the nested field and the attribute path" do
+      changeset =
+        Ash.Changeset.for_create(Post, :create, %{metadata: %{foo: "bar", integer_min_0: "x"}})
+
+      assert [%Ash.Error.Changes.InvalidAttribute{field: :integer_min_0, path: [:metadata]}] =
+               changeset.errors
+    end
+
+    test "name the failing field" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Map, fields: [a: [type: :integer]])
+
+      assert {:error, [[message: "is invalid", field: :a, value: "x"]]} =
+               Ash.Type.apply_constraints(Ash.Type.Map, %{a: "x"}, constraints)
+    end
+
+    test "convert exceptions to Ash errors with the field in their path" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map, fields: [a: [type: Ash.Test.Type.RuntimeErrorCast]])
+
+      assert {:error, [%{path: [:a]} = error]} =
+               Ash.Type.apply_constraints(Ash.Type.Map, %{a: "x"}, constraints)
+
+      assert Ash.Error.ash_error?(error)
+    end
+
+    test "prefix array item errors with the field and stay flat" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Map, fields: [a: [type: {:array, :integer}]])
+
+      assert {:error, [error]} =
+               Ash.Type.apply_constraints(Ash.Type.Map, %{a: ["x"]}, constraints)
+
+      assert error[:message] == "is invalid"
+      assert error[:path] == [:a, 0]
+    end
   end
 
   test "init returns an error when fields is not a list" do

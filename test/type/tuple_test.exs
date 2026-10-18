@@ -433,8 +433,11 @@ defmodule Ash.Type.TupleTest do
       {:ok, constraints} =
         Ash.Type.init(Ash.Type.Tuple, fields: [a: [type: :integer], b: [type: :integer]])
 
-      # Cast errors do not name the failing field yet, matching Map and Keyword.
-      assert {:error, ["is invalid", "is invalid"]} =
+      assert {:error,
+              [
+                [message: "is invalid", field: :a, value: "x"],
+                [message: "is invalid", field: :b, value: "y"]
+              ]} =
                Ash.Type.apply_constraints(Ash.Type.Tuple, {"x", "y"}, constraints)
     end
   end
