@@ -135,6 +135,20 @@ defmodule Type.StructTest do
              Ash.Type.apply_constraints(Ash.Type.Struct, %{foo: "a", bar: "b"}, constraints)
   end
 
+  test "collects exception errors from struct fields in arrays with the item index" do
+    {:ok, constraints} =
+      Ash.Type.init({:array, Ash.Type.Struct},
+        items: [instance_of: Metadata, fields: [foo: [type: ExceptionErrorType]]]
+      )
+
+    assert {:error, [%Ash.Error.Changes.InvalidAttribute{field: :foo, path: [1]}]} =
+             Ash.Type.apply_constraints(
+               {:array, Ash.Type.Struct},
+               [%{}, %{foo: "a"}],
+               constraints
+             )
+  end
+
   test "cast_stored does not cast keys with nil values by default" do
     constraints = [
       instance_of: Metadata,

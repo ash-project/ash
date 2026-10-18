@@ -1379,6 +1379,11 @@ defmodule Ash.Type do
                   string when is_binary(string) ->
                     [message: string, index: index]
 
+                  error when is_exception(error) ->
+                    error
+                    |> Ash.Error.to_ash_error()
+                    |> Ash.Error.set_path([index])
+
                   vars ->
                     Keyword.put(vars, :index, index)
                 end)

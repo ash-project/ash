@@ -955,6 +955,17 @@ defmodule Ash.Type.MapTest do
                Ash.Type.apply_constraints(Ash.Type.Map, %{a: "x"}, constraints)
     end
 
+    test "name the field and item index on exceptions in arrays of maps" do
+      {:ok, constraints} =
+        Ash.Type.init({:array, Ash.Type.Map},
+          items: [fields: [a: [type: Ash.Test.Type.ExceptionConstraint]]]
+        )
+
+      assert {:error,
+              [%Ash.Error.Changes.InvalidAttribute{field: :a, path: [0], message: "rejected"}]} =
+               Ash.Type.apply_constraints({:array, Ash.Type.Map}, [%{a: "x"}], constraints)
+    end
+
     test "turn other error terms into messages that name the field" do
       {:ok, constraints} =
         Ash.Type.init(Ash.Type.Map, fields: [a: [type: Ash.Test.Type.AtomConstraint]])

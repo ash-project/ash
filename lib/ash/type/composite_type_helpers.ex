@@ -249,8 +249,9 @@ defmodule Ash.Type.CompositeTypeHelpers do
   # The caller's explicit sub-loads union with auto-recursion into any
   # declared field whose type is loadable. The auto-added sub-load is `[]`,
   # which tells inner load callbacks to do their default work (e.g. struct
-  # fields apply field-policy scrubbing to populated values). An explicit load of an undeclared field returns an error, so a
-  # misspelled load fails instead of returning unloaded data.
+  # fields apply field-policy scrubbing to populated values). An explicit load
+  # of an undeclared field returns an error, so a misspelled load fails instead
+  # of returning unloaded data.
   defp effective_load(indexed_fields, load) do
     explicit =
       load
