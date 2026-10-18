@@ -91,4 +91,50 @@ defmodule Ash.Type.Helpers do
         [[field: attribute.name]]
     end
   end
+
+  def dump_fields(value, fields, dump_fn, opts \\ []) do
+    drop_nil? = Keyword.get(opts, :drop_nil?, false)
+    fetch = Keyword.get(opts, :fetch, &fetch_field/2)
+
+    Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
+      case fetch.(value, key) do
+        {:ok, field_value} ->
+          case dump_fn.(config[:type], field_value, config[:constraints] || []) do
+            {:ok, nil} when drop_nil? -> {:cont, {:ok, acc}}
+            {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
+            other -> {:halt, other}
+          end
+
+        :error ->
+          {:cont, {:ok, acc}}
+      end
+    end)
+  end
+
+  def cast_fields(value, fields, cast_fn, acc, opts \\ []) do
+    drop_nil? = Keyword.get(opts, :drop_nil?, false)
+
+    Enum.reduce_while(fields, {:ok, acc}, fn {key, config}, {:ok, casted} ->
+      case fetch_field(value, key) do
+        {:ok, field_value} ->
+          case cast_fn.(config[:type], field_value, config[:constraints] || []) do
+            {:ok, nil} when drop_nil? -> {:cont, {:ok, casted}}
+            {:ok, cast_value} -> {:cont, {:ok, Map.put(casted, key, cast_value)}}
+            other -> {:halt, other}
+          end
+
+        :error ->
+          {:cont, {:ok, casted}}
+      end
+    end)
+  end
+
+  def fetch_field(map, atom) when is_atom(atom) do
+    case Map.fetch(map, atom) do
+      {:ok, value} -> {:ok, value}
+      :error -> fetch_field(map, to_string(atom))
+    end
+  end
+
+  def fetch_field(map, key), do: Map.fetch(map, key)
 end

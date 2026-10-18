@@ -257,60 +257,23 @@ defmodule Ash.Type.Struct do
   def cast_from_embedded(_, _), do: :error
 
   defp dump_struct_fields(value, constraints, dump_fn) do
-    if fields = fields(constraints) do
-      if constraints[:instance_of] do
-        Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
-          case dump_struct_field(value, key, config, dump_fn) do
-            {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
-            :skip -> {:cont, {:ok, acc}}
-            other -> {:halt, other}
-          end
-        end)
-      else
-        :error
-      end
+    with fields when not is_nil(fields) <- fields(constraints),
+         instance_of when not is_nil(instance_of) <- constraints[:instance_of] do
+      # Struct dumps retain nil fields so upgrades preserve the storage format.
+      Ash.Type.Helpers.dump_fields(value, fields, dump_fn, fetch: &Map.fetch/2)
     else
-      :error
-    end
-  end
-
-  defp dump_struct_field(value, key, config, dump_fn) do
-    case Map.fetch(value, key) do
-      {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
-      :error -> :skip
+      _ -> :error
     end
   end
 
   defp cast_struct_fields(value, constraints, cast_fn) do
-    if fields = fields(constraints) do
-      if constraints[:instance_of] do
-        nil_values = constraints[:preserve_nil_values?]
-
-        Enum.reduce_while(fields, {:ok, struct(constraints[:instance_of], [])}, fn {key, config},
-                                                                                   {:ok, acc} ->
-          case fetch_field(value, key) do
-            {:ok, value} ->
-              case cast_fn.(config[:type], value, config[:constraints] || []) do
-                {:ok, value} ->
-                  if is_nil(value) && !nil_values do
-                    {:cont, {:ok, acc}}
-                  else
-                    {:cont, {:ok, Map.put(acc, key, value)}}
-                  end
-
-                other ->
-                  {:halt, other}
-              end
-
-            :error ->
-              {:cont, {:ok, acc}}
-          end
-        end)
-      else
-        :error
-      end
+    with fields when not is_nil(fields) <- fields(constraints),
+         instance_of when not is_nil(instance_of) <- constraints[:instance_of] do
+      Ash.Type.Helpers.cast_fields(value, fields, cast_fn, struct(instance_of, []),
+        drop_nil?: constraints[:preserve_nil_values?] != true
+      )
     else
-      :error
+      _ -> :error
     end
   end
 
@@ -497,7 +460,7 @@ defmodule Ash.Type.Struct do
             struct
             |> Ash.Resource.Info.public_attributes()
             |> Enum.reduce_while({:ok, struct.__struct__()}, fn attribute, {:ok, record} ->
-              case fetch_field(value, attribute.name) do
+              case Ash.Type.Helpers.fetch_field(value, attribute.name) do
                 {:ok, value} ->
                   with {:ok, casted} <-
                          Ash.Type.cast_input(
@@ -547,7 +510,7 @@ defmodule Ash.Type.Struct do
   defp check_fields(value, fields) do
     {errors, result} =
       Enum.reduce(fields, {[], %{}}, fn {field, field_constraints}, {errors_acc, result_acc} ->
-        case fetch_field(value, field) do
+        case Ash.Type.Helpers.fetch_field(value, field) do
           {:ok, field_value} ->
             case check_field(result_acc, field, field_value, field_constraints) do
               {:ok, updated_result} ->
@@ -632,13 +595,4 @@ defmodule Ash.Type.Struct do
         {:error, [[message: error_message("invalid value"), field: field, value: field_value]]}
     end
   end
-
-  defp fetch_field(map, atom) when is_atom(atom) do
-    case Map.fetch(map, atom) do
-      {:ok, value} -> {:ok, value}
-      :error -> fetch_field(map, to_string(atom))
-    end
-  end
-
-  defp fetch_field(map, key), do: Map.fetch(map, key)
 end

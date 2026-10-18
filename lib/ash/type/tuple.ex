@@ -310,7 +310,7 @@ defmodule Ash.Type.Tuple do
 
   defp cast_tuple_fields(value, constraints, cast_fn) do
     Enum.reduce_while(constraints[:fields], {:ok, []}, fn {key, config}, {:ok, acc} ->
-      case fetch_field(value, key) do
+      case Ash.Type.Helpers.fetch_field(value, key) do
         {:ok, value} ->
           case cast_fn.(config[:type], value, config[:constraints] || []) do
             {:ok, value} ->
@@ -435,13 +435,4 @@ defmodule Ash.Type.Tuple do
         {:error, [[message: error_message("invalid value"), field: field]]}
     end
   end
-
-  defp fetch_field(map, atom) when is_atom(atom) do
-    case Map.fetch(map, atom) do
-      {:ok, value} -> {:ok, value}
-      :error -> fetch_field(map, to_string(atom))
-    end
-  end
-
-  defp fetch_field(map, key), do: Map.fetch(map, key)
 end
