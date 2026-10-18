@@ -376,6 +376,19 @@ defmodule Ash.Test.Actions.AggregateTest do
                )
     end
 
+    test "aggregates over a calculation field" do
+      for thing3 <- [1, 2] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{thing: "calculated", thing3: thing3})
+        |> Ash.create!(authorize?: false)
+      end
+
+      mine = Ash.Query.filter(Comment, thing == "calculated")
+
+      assert %{v: 6} =
+               Ash.aggregate!(mine, {:v, :sum, field: :doubled_thing3}, authorize?: false)
+    end
+
     test "min, max and sum over no records at all return the default" do
       mine = Ash.Query.filter(Comment, thing == "no-such-comment")
 

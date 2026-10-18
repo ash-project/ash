@@ -398,8 +398,16 @@ defmodule Ash.DataLayer.Ets do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
 
-                value = aggregate_value(matches, kind, field, uniq?, include_nil?, default_value)
-                {:cont, {:ok, Map.put(acc, name, value)}}
+                case load_aggregate_field(matches, field, resource, domain, context) do
+                  {:ok, matches} ->
+                    value =
+                      aggregate_value(matches, kind, field, uniq?, include_nil?, default_value)
+
+                    {:cont, {:ok, Map.put(acc, name, value)}}
+
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
 
               {:error, error} ->
                 {:halt, {:error, error}}
@@ -415,6 +423,21 @@ defmodule Ash.DataLayer.Ets do
 
       other ->
         other
+    end
+  end
+
+  # Records come straight from the table, so calculation and aggregate fields
+  # have to be loaded before their values can be aggregated.
+  defp load_aggregate_field(records, field, resource, domain, context) do
+    if is_atom(field) and not is_nil(Ash.Resource.Info.attribute(resource, field)) do
+      {:ok, records}
+    else
+      Ash.load(records, field,
+        domain: domain,
+        tenant: context[:tenant],
+        actor: context[:actor],
+        authorize?: false
+      )
     end
   end
 

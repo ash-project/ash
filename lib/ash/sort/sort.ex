@@ -383,7 +383,7 @@ defmodule Ash.Sort do
   end
 
   defp type_sortable?(resource, %Ash.Resource.Aggregate{} = aggregate) do
-    case aggregate_type(resource, aggregate) do
+    case get_type(resource, aggregate) do
       {type, constraints} ->
         do_type_sortable?(resource, type, constraints)
 
@@ -469,52 +469,6 @@ defmodule Ash.Sort do
 
   defp field_name(%Ash.Query.Calculation{calc_name: name}) when not is_nil(name), do: name
   defp field_name(%{name: name}), do: name
-
-  defp aggregate_type(resource, aggregate) do
-    attribute =
-      if aggregate.field do
-        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-        Ash.Resource.Info.field(related, aggregate.field)
-      end
-
-    case attribute do
-      %Ash.Resource.Aggregate{} = related_aggregate ->
-        case aggregate_type(
-               Ash.Resource.Info.related(resource, aggregate.relationship_path),
-               related_aggregate
-             ) do
-          {type, constraints} ->
-            case Ash.Query.Aggregate.kind_to_type(aggregate.kind, type, constraints) do
-              {:ok, type, constraints} ->
-                {type, constraints}
-
-              _ ->
-                nil
-            end
-
-          nil ->
-            nil
-        end
-
-      nil ->
-        case Ash.Query.Aggregate.kind_to_type(aggregate.kind, nil, nil) do
-          {:ok, type, constraints} ->
-            {type, constraints}
-
-          _ ->
-            nil
-        end
-
-      field ->
-        case Ash.Query.Aggregate.kind_to_type(aggregate.kind, field.type, field.constraints) do
-          {:ok, type, constraints} ->
-            {type, constraints}
-
-          _ ->
-            nil
-        end
-    end
-  end
 
   defp get_type(resource, %Ash.Resource.Aggregate{} = aggregate) do
     case Ash.Query.Aggregate.aggregate_type(resource, aggregate) do

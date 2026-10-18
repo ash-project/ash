@@ -2049,9 +2049,10 @@ defmodule Ash.Actions.Read do
                     context: query.context
                   )
 
+                # The aggregate query targets the related resource, or the
+                # destination resource of an unrelated aggregate.
                 case Ash.Filter.hydrate_refs(expression, %{
-                       resource:
-                         Ash.Resource.Info.related(query.resource, aggregate.relationship_path),
+                       resource: aggregate.query.resource,
                        public?: false,
                        parent_stack: parent_stack_from_context(query.context)
                      }) do
@@ -2060,7 +2061,7 @@ defmodule Ash.Actions.Read do
                       RelatedAuthorization.authorize_calculation(
                         calculation,
                         expression,
-                        Ash.Resource.Info.related(query.resource, aggregate.relationship_path),
+                        aggregate.query.resource,
                         parent_stack: parent_stack_from_context(query.context),
                         domain: query.domain
                       )

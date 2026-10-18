@@ -3530,7 +3530,7 @@ defmodule Ash.Query do
     {related, actual_relationship, opts_with_resource, is_unrelated?} =
       case relationship do
         [module] when is_atom(module) ->
-          if function_exported?(module, :__info__, 1) do
+          if Ash.Resource.Info.resource?(module) do
             {module, [], Keyword.put(opts, :resource, module), true}
           else
             related = Ash.Resource.Info.related(query.resource, relationship)
