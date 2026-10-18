@@ -116,7 +116,7 @@ defmodule Type.StructTest do
              Ash.Type.cast_stored(Ash.Type.Struct, %{"not_nil_by_default" => nil}, constraints)
   end
 
-  test "cast_stored casts keys with nil values by default" do
+  test "cast_stored keeps keys with nil values when preserve_nil_values? is true" do
     constraints = [
       instance_of: Metadata,
       preserve_nil_values?: true,
@@ -574,7 +574,7 @@ defmodule Type.StructTest do
                Ash.Type.dump_to_embedded(Ash.Type.Struct, nil, instance_of: DumpMetadata)
     end
 
-    test "respects preserve_nil_values? true" do
+    test "dump retains nil fields when preserve_nil_values? is true" do
       constraints = [
         instance_of: DumpMetadata,
         preserve_nil_values?: true,
@@ -585,7 +585,7 @@ defmodule Type.StructTest do
                Ash.Type.dump_to_embedded(Ash.Type.Struct, %DumpMetadata{name: nil}, constraints)
     end
 
-    test "keeps nil fields with preserve_nil_values? false" do
+    test "dump retains nil fields when preserve_nil_values? is false" do
       constraints = [
         instance_of: DumpMetadata,
         preserve_nil_values?: false,

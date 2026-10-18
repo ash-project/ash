@@ -131,6 +131,13 @@ defmodule Ash.Test.Type.NewTypeTest do
     assert {:ok, [nil]} = Ash.Type.cast_input({:array, ShortCode}, [""])
   end
 
+  test "array nil_items? constraints still reject empty strings cast to nil" do
+    assert {:ok, [nil]} = Ash.Type.cast_input({:array, ShortCode}, [""])
+
+    assert {:error, _} =
+             Ash.Type.apply_constraints({:array, ShortCode}, [nil], nil_items?: false)
+  end
+
   test "returns error for invalid keys" do
     foo = {:foo, [type: :string]}
     bar = {:bar, [type: :integer]}
