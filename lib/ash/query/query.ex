@@ -4436,7 +4436,7 @@ defmodule Ash.Query do
   - `filter/2` for adding filter conditions
   """
   @spec apply_to(t(), records :: list(Ash.Resource.Record.t()), opts :: Keyword.t()) ::
-          {:ok, list(Ash.Resource.Record.t())}
+          {:ok, list(Ash.Resource.Record.t())} | {:error, Ash.Error.t()}
   def apply_to(query, records, opts \\ []) do
     domain =
       query.domain || Ash.Resource.Info.domain(query.resource) || opts[:domain] ||
