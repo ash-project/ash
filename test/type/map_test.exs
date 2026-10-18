@@ -539,8 +539,8 @@ defmodule Ash.Type.MapTest do
           preserve_nil_values?: false
         )
 
-      assert {:ok, %{}} =
-               Ash.Type.dump_to_native(Ash.Type.Map, %{name: nil}, constraints)
+      assert {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Map, %{name: nil}, constraints)
+      assert dumped == %{}
     end
 
     test "honors string keys in field lookup" do

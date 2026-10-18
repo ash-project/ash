@@ -574,6 +574,28 @@ defmodule Type.StructTest do
                Ash.Type.dump_to_embedded(Ash.Type.Struct, nil, instance_of: DumpMetadata)
     end
 
+    test "respects preserve_nil_values? true" do
+      constraints = [
+        instance_of: DumpMetadata,
+        preserve_nil_values?: true,
+        fields: [name: [type: :string]]
+      ]
+
+      assert {:ok, %{name: nil}} =
+               Ash.Type.dump_to_embedded(Ash.Type.Struct, %DumpMetadata{name: nil}, constraints)
+    end
+
+    test "keeps nil fields with preserve_nil_values? false" do
+      constraints = [
+        instance_of: DumpMetadata,
+        preserve_nil_values?: false,
+        fields: [name: [type: :string]]
+      ]
+
+      assert {:ok, %{name: nil}} =
+               Ash.Type.dump_to_embedded(Ash.Type.Struct, %DumpMetadata{name: nil}, constraints)
+    end
+
     test "returns error without instance_of" do
       assert :error =
                Ash.Type.dump_to_embedded(

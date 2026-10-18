@@ -12,10 +12,11 @@ defmodule Ash.Type.Struct do
       type: :boolean,
       default: false,
       doc: """
-      If set to true, nil values will be preserved both when storing and in the casted struct.
-      Otherwise, keys whose values are `nil` will be omitted.
+      Controls how loading stored or embedded values treats `nil` field values.
+      By default, loading keeps the struct default for those fields. Set
+      `preserve_nil_values?: true` to load `nil` instead. Input casting ignores this option.
 
-      preserved_nil_values? is false by default
+      Struct dumps always retain fields with `nil` values, regardless of this option.
       """
     ],
     fields: [
