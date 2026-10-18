@@ -177,6 +177,35 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Enum.map(& &1.forbidden_field_author)
   end
 
+  test "forbidden relationships preserve other loaded relationships", %{
+    me: me,
+    post_by_me: post
+  } do
+    load = [
+      comments: [],
+      forbidden_field_author: Ash.Query.for_read(User, :always_forbid)
+    ]
+
+    for load <- [load, Enum.reverse(load)] do
+      assert %Post{
+               comments: [_ | _],
+               forbidden_field_author: %Ash.ForbiddenField{}
+             } = Ash.load!(post, load, actor: me)
+    end
+  end
+
+  test "forbidden relationships fail without allowing forbidden fields", %{
+    me: me,
+    post_by_me: post
+  } do
+    load = [author: Ash.Query.for_read(User, :always_forbid)]
+
+    assert {:error, %Ash.Error.Forbidden{}} = Ash.load(post, load, actor: me)
+
+    assert {:error, %Ash.Error.Forbidden{}} =
+             Post |> Ash.Query.load(load) |> Ash.read(actor: me)
+  end
+
   test "calculations containing aggregates authorize their aggregates", %{
     me: me,
     post_by_my_friend: post_by_my_friend,
