@@ -356,6 +356,97 @@ defmodule Ash.DataLayer.EtsTemporalTest do
     end
   end
 
+  # A record carries the instant it was read or written at, so that a later load sees
+  # what it saw. That instant is not the record's to write at: a write given no `as_of`
+  # is made now, whatever record it is given.
+  describe "a write given a record from an earlier read or write is made now" do
+    defp precise_names_at(instant) do
+      Precise |> Ash.Query.as_of(instant) |> Ash.read!() |> Enum.map(& &1.name)
+    end
+
+    defp precise_update!(record, name) do
+      record |> Ash.Changeset.for_update(:update, %{name: name}) |> Ash.update!()
+    end
+
+    # The record to write, and the instants its history was written at.
+    defp given(:created) do
+      created = Ash.create!(Precise, %{id: 1, name: "a"})
+      {created, [created.valid_at.lower]}
+    end
+
+    defp given(:updated) do
+      created = Ash.create!(Precise, %{id: 1, name: "a"})
+      updated = precise_update!(created, "b")
+      {updated, [created.valid_at.lower, updated.valid_at.lower]}
+    end
+
+    defp given(:read_before_another_write) do
+      created = Ash.create!(Precise, %{id: 1, name: "a"})
+      read = Ash.get!(Precise, 1)
+      other = precise_update!(Ash.get!(Precise, 1), "b")
+      {read, [created.valid_at.lower, other.valid_at.lower]}
+    end
+
+    defp given(:read_as_of_an_earlier_instant) do
+      created = Ash.create!(Precise, %{id: 1, name: "a"})
+      updated = precise_update!(created, "b")
+      read = Ash.get!(Precise, 1, as_of: created.valid_at.lower)
+      {read, [created.valid_at.lower, updated.valid_at.lower]}
+    end
+
+    defp write(:destroy, record), do: Ash.destroy!(record)
+
+    defp write(:destroy_changeset, record),
+      do: record |> Ash.Changeset.for_destroy(:destroy, %{}) |> Ash.destroy!()
+
+    defp write(:update, record), do: Ash.update!(record, %{name: "c"})
+    defp write(:update_changeset, record), do: precise_update!(record, "c")
+
+    for {given, given_desc} <- [
+          created: "the record a create returned",
+          updated: "the record an update returned",
+          read_before_another_write: "a record read before another write",
+          read_as_of_an_earlier_instant: "a record read as of an earlier instant"
+        ],
+        {write, write_desc, now} <- [
+          {:destroy, "Ash.destroy/2", []},
+          {:destroy_changeset, "a destroy changeset", []},
+          {:update, "Ash.update/3", ["c"]},
+          {:update_changeset, "an update changeset", ["c"]}
+        ] do
+      test "#{write_desc}, given #{given_desc}, leaves the history before it alone" do
+        {record, instants} = given(unquote(given))
+        history = Enum.map(instants, &precise_names_at/1)
+
+        write(unquote(write), record)
+
+        assert Enum.map(instants, &precise_names_at/1) == history
+        assert Precise |> Ash.read!() |> Enum.map(& &1.name) == unquote(now)
+      end
+    end
+
+    test "a write given a record no version of which holds now is refused as stale" do
+      created = Ash.create!(Precise, %{id: 1, name: "a"})
+      Precise |> Ash.get!(1) |> Ash.destroy!()
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+               Ash.destroy(created)
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+               Ash.update(created, %{name: "c"})
+
+      assert ["a"] = precise_names_at(created.valid_at.lower)
+    end
+
+    test "a write reports the instant it was made at, not the one of the record it was given" do
+      created = Ash.create!(Precise, %{id: 1, name: "a"})
+      updated = precise_update!(created, "b")
+
+      assert updated.__metadata__.as_of == updated.valid_at.lower
+      assert %{name: "b"} = Ash.reload!(updated)
+    end
+  end
+
   describe "a destroy ends a version rather than erasing it" do
     test "the record keeps the values it held up to the instant of the write" do
       early = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "early", valid_at: @early})
@@ -666,7 +757,7 @@ defmodule Ash.DataLayer.EtsTemporalTest do
         |> Ash.Changeset.as_of(@future.lower)
         |> Ash.create()
 
-      assert :ok = Ash.destroy(scheduled)
+      assert :ok = Ash.destroy(scheduled, as_of: @future.lower)
       assert {:ok, current} = create_now()
 
       assert {:ok, %{valid_at: %Ash.Range{lower: lower, upper: nil}}} =

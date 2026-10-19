@@ -4224,7 +4224,6 @@ defmodule Ash do
 
     checked = check_as_of_option(changeset, opts)
     opts = Keyword.put_new(opts, :tenant, Map.get(changeset.data.__metadata__, :tenant))
-    opts = Keyword.put_new(opts, :as_of, Map.get(changeset.data.__metadata__, :as_of))
 
     with :ok <- checked,
          {:ok, opts} <- UpdateOpts.validate(opts),
@@ -4252,12 +4251,6 @@ defmodule Ash do
     opts =
       case Map.fetch(record.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
-        _ -> opts
-      end
-
-    opts =
-      case Map.fetch(record.__metadata__, :as_of) do
-        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 
@@ -4370,12 +4363,6 @@ defmodule Ash do
     opts =
       case Map.fetch(data.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
-        _ -> opts
-      end
-
-    opts =
-      case Map.fetch(data.__metadata__, :as_of) do
-        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 

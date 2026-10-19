@@ -143,6 +143,11 @@ As of an instant, a temporal write makes something true *from `as_of` onward*. T
   currently valid version down to `[lower, as_of)`. The record is gone from that instant on,
   and untouched before it. Destroy at the exact instant the version began, and it's removed
   entirely.
+- **A record's own instant is for loading, not writing.** A record keeps the instant it was
+  read or written at, so loading on it or reloading it sees that same moment. Writes don't use
+  it. Update or destroy a record without `as_of`, and the write happens now, on the version
+  valid now, even if you're holding an older one. To write at the record's instant, pass it:
+  `as_of: record.__metadata__.as_of`.
 
 ```elixir
 # create the current version, valid from now on

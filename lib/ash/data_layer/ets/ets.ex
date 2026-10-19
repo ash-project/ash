@@ -2150,7 +2150,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp do_destroy(table, resource, record, tenant, filter, domain, actor, supersede, range?) do
-    pkey = pkey_map(resource, record)
+    pkey = holding_key(table, resource, record, supersede, range?)
 
     if has_filter?(filter) do
       case ETS.Set.get(table, pkey) do
@@ -2169,6 +2169,9 @@ defmodule Ash.DataLayer.Ets do
             {:error, error} ->
               {:error, error}
           end
+
+        {:ok, _} ->
+          {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, filter: filter)}
 
         {:error, error} ->
           {:error, error}
@@ -2200,6 +2203,10 @@ defmodule Ash.DataLayer.Ets do
     case {supersede, ETS.Set.get(table, pkey)} do
       {{period, %Ash.Range{} = written}, {:ok, {_key, stored}}} when is_map(stored) ->
         close_version(table, pkey, stored, resource, period, written)
+
+      # No version holds the instant, so there is none for it to end.
+      {{period, %Ash.Range{}}, {:ok, _}} ->
+        {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
 
       _ ->
         with {:ok, _} <- ETS.Set.delete(table, pkey), do: :ok
@@ -2396,11 +2403,11 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def update(resource, changeset, pkey \\ nil, from_bulk? \\ false) do
-    pkey = pkey || pkey_map(resource, changeset.data)
-
     supersede = supersession(resource, changeset)
+    range? = match?(%Ash.Range{}, changeset.as_of)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant, false),
+         pkey = pkey || holding_key(table, resource, changeset.data, supersede, range?),
          _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
          {:ok, record} <-
            do_update(
@@ -2449,6 +2456,37 @@ defmodule Ash.DataLayer.Ets do
       {period, written}
     else
       _ -> nil
+    end
+  end
+
+  # An instant write reaches the version holding its instant, as a SQL layer's `@> as_of`
+  # match does, rather than only the version the caller holds: that one may have been
+  # superseded since it was read. A range reaches the versions it overlaps on its own.
+  defp holding_key(table, resource, record, {period, %Ash.Range{lower: instant}}, false) do
+    pkey = pkey_map(resource, record)
+
+    with false <- holds?(table, pkey, period, instant),
+         {:ok, periods} <- stored_periods(table, resource, record),
+         %Ash.Range{} = holding <-
+           periods
+           |> Map.get(primary_key(resource, record), [])
+           |> Enum.find(&(match?(%Ash.Range{}, &1) and Ash.Range.contains?(&1, instant))) do
+      Map.put(pkey, period, holding)
+    else
+      _ -> pkey
+    end
+  end
+
+  defp holding_key(_table, resource, record, _supersede, _range?), do: pkey_map(resource, record)
+
+  defp holds?(table, pkey, period, instant) do
+    case Map.get(pkey, period) do
+      %Ash.Range{} = held ->
+        Ash.Range.contains?(held, instant) and
+          match?({:ok, {_key, stored}} when is_map(stored), ETS.Set.get(table, pkey))
+
+      _ ->
+        false
     end
   end
 
@@ -2540,7 +2578,7 @@ defmodule Ash.DataLayer.Ets do
           {:ok, _} ->
             {:error,
              Ash.Error.Changes.StaleRecord.exception(
-               resource: record.__struct__,
+               resource: resource,
                filter: changeset_filter
              )}
 

@@ -322,19 +322,17 @@ defmodule Ash.Actions.Helpers do
   end
 
   @doc false
-  # Stamp an explicit point-in-time `as_of` onto a written record's metadata, so a later
-  # `Ash.load/3` of that record reuses the same instant (parity with how tenant is
-  # stamped — see `Ash.load/3`). Only a concrete `DateTime` is stamped: a `:now`/`nil`
-  # write is anchored at the *data layer's* clock, which core never observes, so stamping
-  # a (slightly earlier) core `now()` could place `as_of` before the row's validity and
-  # make the reload miss it. Those are left for `load` to default to the current instant.
-  # A range is concrete in the same way, and stamps the instant it begins at.
+  # Stamp the instant a write was made at onto the record it returns, so a later
+  # `Ash.load/3` or `Ash.reload/2` of that record reuses it (parity with how tenant is
+  # stamped — see `Ash.load/3`). It replaces any instant the record was read or written at
+  # before, since the record now reflects this write. Later writes don't reuse it: a write
+  # given no `as_of` is made now. A range stamps the instant it begins at.
   def put_write_as_of(metadata, resource, %Ash.Range{} = as_of),
     do: put_write_as_of(metadata, resource, Ash.Temporal.resolve_write_as_of(as_of))
 
   def put_write_as_of(metadata, resource, %DateTime{} = as_of) do
     if Ash.Resource.Info.temporal?(resource) do
-      Map.put_new(metadata, :as_of, as_of)
+      Map.put(metadata, :as_of, as_of)
     else
       metadata
     end
