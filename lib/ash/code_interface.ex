@@ -449,7 +449,7 @@ defmodule Ash.CodeInterface do
           require Ash.CodeInterface
           Ash.CodeInterface.define_interface(unquote(domain), unquote(resource), unquote(escaped))
         end,
-        Macro.Env.location(env)
+        env
       )
     end)
 
