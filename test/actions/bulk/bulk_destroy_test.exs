@@ -489,6 +489,19 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     assert [] = Ash.read!(Post)
   end
 
+  for strategy <- [:atomic, :stream] do
+    test "returns private attributes selected by default with the #{strategy} strategy" do
+      Ash.bulk_create!([%{title: "title1"}], Post, :create)
+
+      assert %Ash.BulkResult{records: [%{inserted_at: %DateTime{}}]} =
+               Ash.bulk_destroy!(Post, :destroy, %{},
+                 strategy: unquote(strategy),
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+  end
+
   test "sends notifications" do
     assert %Ash.BulkResult{records: [%{}, %{}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,

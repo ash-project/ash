@@ -637,12 +637,12 @@ defmodule Ash.Actions.Destroy.Bulk do
     if opts[:select] do
       opts
     else
-      all_attributes =
+      selected_by_default =
         resource
-        |> Ash.Resource.Info.public_attributes()
-        |> Enum.map(& &1.name)
+        |> Ash.Resource.Info.selected_by_default_attribute_names()
+        |> MapSet.to_list()
 
-      Keyword.put(opts, :select, all_attributes)
+      Keyword.put(opts, :select, selected_by_default)
     end
   end
 
