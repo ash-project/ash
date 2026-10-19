@@ -27,6 +27,35 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
     end
   end
 
+  defmodule Engagement do
+    @moduledoc false
+    use Ash.Type
+
+    @impl true
+    def storage_type(_), do: :map
+
+    @impl true
+    def composite?(_), do: true
+
+    @impl true
+    def composite_types(_), do: [{:likes, :integer, []}, {:shares, :integer, []}]
+
+    @impl true
+    def cast_input(nil, _), do: {:ok, nil}
+
+    def cast_input(%{likes: likes, shares: shares}, _)
+        when is_integer(likes) and is_integer(shares),
+        do: {:ok, %{likes: likes, shares: shares}}
+
+    def cast_input(_, _), do: :error
+
+    @impl true
+    def cast_stored(value, constraints), do: cast_input(value, constraints)
+
+    @impl true
+    def dump_to_native(value, _), do: {:ok, value}
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -45,6 +74,7 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
       attribute(:kind, :atom, public?: true)
       attribute(:status, Status, public?: true)
       attribute(:bio, Bio, public?: true)
+      attribute(:engagement, Engagement, public?: true)
       attribute(:score, :integer, public?: true)
       attribute(:tags, {:array, :string}, public?: true)
 
@@ -54,6 +84,10 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
         public?: true,
         constraints: [inner_type: :integer]
       )
+    end
+
+    calculations do
+      calculate(:likes, :integer, expr(type(get_path(engagement, [:likes]), :integer)))
     end
 
     actions do
@@ -72,6 +106,7 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
         kind: :greeting,
         status: :published,
         bio: %{title: "Dr."},
+        engagement: %{likes: 1, shares: 2},
         score: 3,
         tags: ["a", "b"],
         valid_at: %Ash.Range{lower: 1, upper: 10}
@@ -187,6 +222,21 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
                |> Ash.Query.filter_input(%{"bio" => %{"at_path" => ["title"], "eq" => "Dr."}})
                |> Ash.read!()
     end
+
+    test "at_path on a composite attribute, which acts as a map" do
+      assert [%Post{}] =
+               Post
+               |> Ash.Query.filter_input(%{"engagement" => %{"at_path" => ["shares"], "eq" => 2}})
+               |> Ash.read!()
+    end
+
+    test "get_path on a composite attribute in a calculation, which acts as a map" do
+      require Ash.Query
+
+      assert [%Post{likes: 1}] = Post |> Ash.Query.load(:likes) |> Ash.read!()
+      assert [%Post{}] = Post |> Ash.Query.filter(likes == 1) |> Ash.read!()
+      assert [] = Post |> Ash.Query.filter(likes == 2) |> Ash.read!()
+    end
   end
 
   describe "types that act as another for functions declared narrowly" do
@@ -207,6 +257,29 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
       def returns, do: [:integer]
     end
 
+    defmodule EngagementTuple do
+      @moduledoc false
+      use Ash.Type
+
+      @impl true
+      def storage_type(_), do: :map
+
+      @impl true
+      def composite?(_), do: true
+
+      @impl true
+      def acts_as(_), do: :tuple
+
+      @impl true
+      def cast_input(value, _), do: {:ok, value}
+
+      @impl true
+      def cast_stored(value, _), do: {:ok, value}
+
+      @impl true
+      def dump_to_native(value, _), do: {:ok, value}
+    end
+
     defp ref(attribute) do
       %Ash.Query.Ref{
         attribute: Ash.Resource.Info.attribute(Post, attribute),
@@ -221,6 +294,20 @@ defmodule Ash.Test.Filter.InputPredicateArgumentTypesTest do
 
     test "a utc_datetime_usec attribute is accepted where :utc_datetime is declared" do
       assert {:ok, %AgeAt{}} = Ash.Query.Function.new(AgeAt, [ref(:inserted_at)])
+    end
+
+    test "a composite attribute is accepted where :map is declared" do
+      assert {:ok, %Ash.Query.Function.GetPath{}} =
+               Ash.Query.Function.new(Ash.Query.Function.GetPath, [ref(:engagement), [:likes]])
+    end
+
+    test "a composite type, and an array of one, act as a map" do
+      assert Ash.Type.acts_as(Engagement) == :map
+      assert Ash.Type.acts_as({:array, Engagement}) == {:array, :map}
+    end
+
+    test "a composite type that declares acts_as keeps it" do
+      assert Ash.Type.acts_as(EngagementTuple) == :tuple
     end
 
     test "an integer attribute is still rejected where :string is declared" do

@@ -135,6 +135,9 @@ defmodule Ash.Type do
   Ash.Query.filter(expr(coordinates[:x] == 1))
   ```
 
+  A composite type acts as `:map` (see `c:acts_as/1`), so it is accepted by functions that
+  declare a `:map` argument.
+
   And you can also *construct* composite types in expressions, for example:
 
   ```elixir
@@ -386,7 +389,8 @@ defmodule Ash.Type do
   `:atom` attribute is accepted there because `Ash.Type.Atom` acts as
   `:string`, and an `Ash.Type.Enum` is accepted because it acts as `:atom`,
   which in turn acts as `:string`. Return `nil` (the default) if the type
-  stands in for nothing else.
+  stands in for nothing else. A composite type (see `c:composite?/1`) that
+  returns `nil` acts as `:map`.
   """
   @callback acts_as(constraints) :: t() | nil
 
@@ -1497,8 +1501,12 @@ defmodule Ash.Type do
     type = get_type(type)
 
     if ash_type?(type) && function_exported?(type, :acts_as, 1) do
-      type.acts_as(constraints)
+      type.acts_as(constraints) || composite_acts_as(type, constraints)
     end
+  end
+
+  defp composite_acts_as(type, constraints) do
+    if function_exported?(type, :composite?, 1) && type.composite?(constraints), do: :map
   end
 
   @doc """
