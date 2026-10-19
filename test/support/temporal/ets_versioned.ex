@@ -36,6 +36,12 @@ defmodule Ash.Test.Temporal.EtsVersioned do
       accept [:name]
     end
 
+    update :update_in_memory do
+      accept [:name]
+      require_atomic? false
+      atomic_upgrade? false
+    end
+
     update :update_and_load do
       accept [:name]
       change load(:shout)
