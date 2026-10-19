@@ -64,6 +64,8 @@ The `namespace:` value is concatenated to the host module. With `Helpdesk.Suppor
 
 Ash refuses to overwrite an existing module, so the generated target name must be unique. Definitions without a `namespace:` (and without a block-level default) continue to land on the host module.
 
+Generated namespace modules retain the host's compiler environment. Elixir compiler tracers observe these modules, so compile-time tools can track their definitions and references.
+
 ## Using the code interface
 
 If the action is an update or destroy, it will take a record or a changeset as its _first_ argument.
