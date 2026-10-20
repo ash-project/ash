@@ -75,10 +75,7 @@ defmodule Mix.Tasks.Ash.InstallTest do
     assert keyset_signing_secret(rewrite, "config/test.exs") == "<a long random string>"
   end
 
-  @tag :tmp_dir
-  test "derives the prod keyset signing secret from Phoenix's secret_key_base", %{
-    tmp_dir: tmp_dir
-  } do
+  test "derives the prod keyset signing secret from Phoenix's secret_key_base" do
     rewrite =
       test_project(
         files: %{
@@ -105,10 +102,9 @@ defmodule Mix.Tasks.Ash.InstallTest do
         else: System.delete_env("SECRET_KEY_BASE")
     end)
 
-    path = Path.join(tmp_dir, "runtime.exs")
-    File.write!(path, runtime)
+    config = Config.Reader.eval!("config/runtime.exs", runtime, env: :prod)
 
-    assert Config.Reader.read!(path, env: :prod)[:ash][:keyset_signing_secret] ==
+    assert config[:ash][:keyset_signing_secret] ==
              :crypto.mac(:hmac, :sha256, "phoenix prod secret", "ash keyset signing")
   end
 
