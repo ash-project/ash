@@ -161,6 +161,51 @@ Update `config/config.exs`:
 ...
 ```
 
+## Sign Pagination Keysets
+Sign the keysets used for keyset pagination, so that Ash only accepts keysets that it
+generated. Each environment gets its own secret. In production, the secret is read from
+the `ASH_KEYSET_SIGNING_SECRET` environment variable in `config/runtime.exs`.
+You can generate a value with `mix phx.gen.secret` or
+`elixir -e ':crypto.strong_rand_bytes(32) |> Base.encode64() |> IO.puts()'`.
+
+If your application uses Phoenix, the production secret is instead derived from Phoenix's
+`SECRET_KEY_BASE` environment variable, so there is only one secret to manage.
+
+Update `config/dev.exs`:
+```diff
+  import Config
+- config :ash, policies: [show_policy_breakdowns?: true]
+  
++ config :ash,
++   policies: [show_policy_breakdowns?: true],
++   keyset_signing_secret: "<a long random string>"
++
+```
+
+Create `config/runtime.exs`:
+```
+import Config
+
+if config_env() == :prod do
+  config :ash,
+    keyset_signing_secret:
+      System.get_env("ASH_KEYSET_SIGNING_SECRET") ||
+        raise("environment variable ASH_KEYSET_SIGNING_SECRET is missing")
+end
+
+```
+
+Update `config/test.exs`:
+```diff
+  import Config
+- config :ash, policies: [show_policy_breakdowns?: true]
+  
++ config :ash,
++   policies: [show_policy_breakdowns?: true],
++   keyset_signing_secret: "<a long random string>"
++
+```
+
 ## Register Your Domains
 Ash relies on your application's `:ash_domains` configuration to find domain modules for
 mix tasks (diagrams, livebooks, policy charts) and to validate that domains/resources are
