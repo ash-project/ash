@@ -75,6 +75,43 @@ defmodule Mix.Tasks.Ash.InstallTest do
     assert keyset_signing_secret(rewrite, "config/test.exs") == "<a long random string>"
   end
 
+  @tag :tmp_dir
+  test "derives the prod keyset signing secret from Phoenix's secret_key_base", %{
+    tmp_dir: tmp_dir
+  } do
+    rewrite =
+      test_project(
+        files: %{
+          "config/dev.exs" => """
+          import Config
+
+          config :test, TestWeb.Endpoint, secret_key_base: "phoenix dev secret"
+          """
+        }
+      )
+      |> Igniter.compose_task("ash.install", [])
+      |> apply_igniter!()
+      |> Map.fetch!(:rewrite)
+
+    runtime = config_content(rewrite, "config/runtime.exs")
+    refute runtime =~ "ASH_KEYSET_SIGNING_SECRET"
+
+    previous = System.get_env("SECRET_KEY_BASE")
+    System.put_env("SECRET_KEY_BASE", "phoenix prod secret")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("SECRET_KEY_BASE", previous),
+        else: System.delete_env("SECRET_KEY_BASE")
+    end)
+
+    path = Path.join(tmp_dir, "runtime.exs")
+    File.write!(path, runtime)
+
+    assert Config.Reader.read!(path, env: :prod)[:ash][:keyset_signing_secret] ==
+             :crypto.mac(:hmac, :sha256, "phoenix prod secret", "ash keyset signing")
+  end
+
   defp keyset_signing_secret(rewrite, path) do
     [_, secret] =
       Regex.run(~r/keyset_signing_secret: "([^"]+)"/, config_content(rewrite, path))

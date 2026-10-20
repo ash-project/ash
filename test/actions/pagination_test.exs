@@ -702,7 +702,7 @@ defmodule Ash.Actions.PaginationTest do
       end)
     end
 
-    test "keysets are signed with a key derived from the secret" do
+    test "keysets are signed with the secret" do
       put_keyset_signing_secret("secret")
 
       %{results: [record]} =
@@ -711,20 +711,9 @@ defmodule Ash.Actions.PaginationTest do
         |> Ash.read!(action: :keyset, page: [limit: 1])
 
       message = :erlang.term_to_binary([record.name, record.id])
-      signing_key = :crypto.mac(:hmac, :sha256, "secret", "ash keyset signing")
 
       assert Base.decode64!(record.__metadata__.keyset) ==
-               :crypto.mac(:hmac, :sha256, signing_key, message) <> message
-    end
-
-    test "a keyset signed with the secret itself is rejected" do
-      put_keyset_signing_secret("secret")
-
-      message = :erlang.term_to_binary([Ash.UUID.generate()])
-      keyset = Base.encode64(:crypto.mac(:hmac, :sha256, "secret", message) <> message)
-
-      assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
-               Ash.Page.Keyset.filter(Ash.Query.new(User), keyset, [{:id, :asc}], :after)
+               :crypto.mac(:hmac, :sha256, "secret", message) <> message
     end
 
     test "signed keysets are not limited by max_keyset_byte_size" do

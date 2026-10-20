@@ -79,6 +79,9 @@ if Code.ensure_loaded?(Igniter) do
     the `ASH_KEYSET_SIGNING_SECRET` environment variable in `config/runtime.exs`.
     You can generate a value with `mix phx.gen.secret` or
     `elixir -e ':crypto.strong_rand_bytes(32) |> Base.encode64() |> IO.puts()'`.
+
+    If your application uses Phoenix, the production secret is instead derived from Phoenix's
+    `SECRET_KEY_BASE` environment variable, so there is only one secret to manage.
     """
 
     @register_domains """
@@ -237,11 +240,7 @@ if Code.ensure_loaded?(Igniter) do
             :prod,
             :ash,
             [:keyset_signing_secret],
-            {:code,
-             quote do
-               System.get_env("ASH_KEYSET_SIGNING_SECRET") ||
-                 raise "environment variable ASH_KEYSET_SIGNING_SECRET is missing"
-             end}
+            {:code, prod_keyset_signing_secret(igniter)}
           )
         end)
       end)
@@ -271,6 +270,39 @@ if Code.ensure_loaded?(Igniter) do
       32
       |> :crypto.strong_rand_bytes()
       |> Base.encode64(padding: false)
+    end
+
+    # Phoenix apps reuse `SECRET_KEY_BASE` in production, deriving a separate key from
+    # it so that Ash never signs with the same key that Phoenix is given
+    defp prod_keyset_signing_secret(igniter) do
+      if phoenix_secret_key_base?(igniter) do
+        quote do
+          :crypto.mac(
+            :hmac,
+            :sha256,
+            System.get_env("SECRET_KEY_BASE") ||
+              raise("environment variable SECRET_KEY_BASE is missing"),
+            "ash keyset signing"
+          )
+        end
+      else
+        quote do
+          System.get_env("ASH_KEYSET_SIGNING_SECRET") ||
+            raise "environment variable ASH_KEYSET_SIGNING_SECRET is missing"
+        end
+      end
+    end
+
+    # Phoenix sets `secret_key_base` for its endpoint in `config/dev.exs`
+    defp phoenix_secret_key_base?(igniter) do
+      endpoint = Module.concat(Igniter.Libs.Phoenix.web_module(igniter), Endpoint)
+
+      Igniter.Project.Config.configures_key?(
+        igniter,
+        "dev.exs",
+        Igniter.Project.Application.app_name(igniter),
+        [endpoint, :secret_key_base]
+      )
     end
 
     defp generate_example(igniter, argv) do

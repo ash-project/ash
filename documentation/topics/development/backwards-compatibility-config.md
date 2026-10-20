@@ -370,6 +370,26 @@ Unlike the other settings, the installer generates a separate random secret for
 each environment rather than a fixed value. Use a different secret in each
 environment, and keep the production secret out of source control.
 
+If your application uses Phoenix, the installer instead derives the production
+secret from Phoenix's `SECRET_KEY_BASE`, so there is only one secret to manage.
+Deriving a separate key means Ash never signs with the same key that Phoenix is
+given:
+
+```elixir
+# config/runtime.exs
+if config_env() == :prod do
+  config :ash,
+    keyset_signing_secret:
+      :crypto.mac(
+        :hmac,
+        :sha256,
+        System.get_env("SECRET_KEY_BASE") ||
+          raise("environment variable SECRET_KEY_BASE is missing"),
+        "ash keyset signing"
+      )
+end
+```
+
 ### Old Behavior
 
 Keysets returned by Ash were plain encoded values. Ash accepted any keyset passed
@@ -383,9 +403,6 @@ signature. Keysets that were not signed, were signed with a different secret, or
 modified are rejected with an `Ash.Error.Page.InvalidKeyset` error, before they are
 decoded. Because a signed keyset can only have come from your application, signed
 keysets are not limited by `max_keyset_byte_size`.
-
-Ash signs with a key derived from the configured secret rather than the secret itself,
-so the secret can safely be shared with other uses, like Phoenix's `secret_key_base`.
 
 The secret must be a non-empty string. If it is set to anything else, such as an
 empty string or a number, Ash raises an `ArgumentError` naming the setting rather

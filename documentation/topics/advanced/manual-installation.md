@@ -168,6 +168,9 @@ the `ASH_KEYSET_SIGNING_SECRET` environment variable in `config/runtime.exs`.
 You can generate a value with `mix phx.gen.secret` or
 `elixir -e ':crypto.strong_rand_bytes(32) |> Base.encode64() |> IO.puts()'`.
 
+If your application uses Phoenix, the production secret is instead derived from Phoenix's
+`SECRET_KEY_BASE` environment variable, so there is only one secret to manage.
+
 Update `config/dev.exs`:
 ```diff
   import Config

@@ -16,7 +16,6 @@ defmodule Ash.Page.Keyset do
   # a hostile cursor (e.g. a compressed term that inflates to tens of MB) from
   # exhausting memory. Configurable via `config :ash, max_keyset_byte_size: ...`.
   @default_max_keyset_byte_size 10_240
-  @signing_key_label "ash keyset signing"
 
   @derive {Inspect, only: [:results, :count, :before, :after, :more?]}
   defstruct [:results, :count, :before, :after, :limit, :rerun, :more?]
@@ -156,16 +155,13 @@ defmodule Ash.Page.Keyset do
     end)
   end
 
-  # Keysets are signed with a key derived from the configured secret, rather than
-  # the secret itself, so that the same secret can safely be shared with other
-  # uses, like Phoenix's `secret_key_base`
   defp signing_key do
     case Application.get_env(:ash, :keyset_signing_secret) do
       nil ->
         nil
 
       secret when is_binary(secret) and secret != "" ->
-        :crypto.mac(:hmac, :sha256, secret, @signing_key_label)
+        secret
 
       "" ->
         raise ArgumentError,
