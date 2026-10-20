@@ -626,6 +626,7 @@ defmodule Ash.Actions.Update do
                             changeset.resource
                             |> Ash.Query.do_filter(changeset.filter)
                             |> Ash.Query.do_filter(record_filter)
+                            |> Ash.Query.as_of(Ash.Temporal.resolve_write_as_of(changeset.as_of))
                             |> Ash.Query.select(changeset.action_select)
                             |> Ash.Query.data_layer_query()
                             |> case do

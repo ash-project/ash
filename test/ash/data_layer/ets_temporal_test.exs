@@ -8,6 +8,7 @@ defmodule Ash.DataLayer.EtsTemporalTest do
 
   alias Ash.Test.Temporal.{EtsVersioned, Precise}
 
+  import Ash.Expr
   require Ash.Query
 
   setup do
@@ -251,6 +252,24 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                Ash.DataLayer.update(EtsVersioned, changeset)
 
       assert ["first"] = names_at(~U[2020-06-01 00:00:00Z])
+    end
+
+    # With nothing to write, an update with a filter re-reads the record to check the
+    # filter still holds. That read must see the version at the write's instant, not
+    # every version of the record.
+    test "an update that changes nothing, on a record with several versions, writes none" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+      record = Ash.get!(EtsVersioned, 1)
+
+      assert {:ok, %{name: "second", valid_at: @open}} =
+               record
+               |> Ash.Changeset.for_update(:update_in_memory, %{name: "second"})
+               |> Ash.Changeset.filter(expr(not is_nil(name)))
+               |> Ash.update()
+
+      assert ["first"] = names_at(~U[2020-06-01 00:00:00Z])
+      assert ["second"] = names_at(~U[2021-06-01 00:00:00Z])
     end
   end
 
