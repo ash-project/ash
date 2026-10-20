@@ -1599,7 +1599,7 @@ defmodule Ash.Actions.Read.Calculations do
                   initial_data,
                   strict_loads?,
                   reuse_values?,
-                  true,
+                  authorize?,
                   authorize_relationships?
                 )
 
@@ -1618,7 +1618,7 @@ defmodule Ash.Actions.Read.Calculations do
                   initial_data,
                   strict_loads?,
                   reuse_values?,
-                  true,
+                  authorize?,
                   authorize_relationships?
                 )
 
@@ -1770,7 +1770,9 @@ defmodule Ash.Actions.Read.Calculations do
                 initial_data,
                 strict_loads?,
                 reuse_values?,
-                true,
+                # must match how `LoadRelationship` reads the query, or the merged
+                # calculations get their requirements loaded twice, in two different ways
+                authorize?,
                 authorize?
               )
             )

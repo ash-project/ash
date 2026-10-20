@@ -2384,6 +2384,23 @@ defmodule Ash.Test.CalculationTest do
         assert loaded.children_pause_months_since_jan == [[1, 6]]
         assert loaded.children_pause_months_since_jun == [[6]]
       end
+
+      test "related calculations load one nested relationship with different queries through a loaded relationship, authorize?: #{authorize?}",
+           %{parent: parent} do
+        Ash.Seed.seed!(Pause, %{parent_id: parent.id, month: 1})
+        Ash.Seed.seed!(Pause, %{parent_id: parent.id, month: 6})
+
+        parent = Ash.get!(Parent, parent.id, load: [children: :rule], authorize?: false)
+
+        loaded =
+          Ash.load!(parent, [:children_pause_months_since_jan, :children_pause_months_since_jun],
+            reuse_values?: true,
+            authorize?: unquote(authorize?)
+          )
+
+        assert loaded.children_pause_months_since_jan == [[1, 6]]
+        assert loaded.children_pause_months_since_jun == [[6]]
+      end
     end
   end
 end
