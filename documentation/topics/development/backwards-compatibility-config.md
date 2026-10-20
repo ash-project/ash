@@ -378,10 +378,14 @@ by a client.
 
 ### New Behavior
 
-Ash signs each keyset it returns with an HMAC using the configured secret, and only
-accepts keysets with a valid signature. Keysets that were not signed, were signed with
-a different secret, or were modified are rejected with an `Ash.Error.Page.InvalidKeyset`
-error.
+Ash signs each keyset it returns with an HMAC, and only accepts keysets with a valid
+signature. Keysets that were not signed, were signed with a different secret, or were
+modified are rejected with an `Ash.Error.Page.InvalidKeyset` error, before they are
+decoded. Because a signed keyset can only have come from your application, signed
+keysets are not limited by `max_keyset_byte_size`.
+
+Ash signs with a key derived from the configured secret rather than the secret itself,
+so the secret can safely be shared with other uses, like Phoenix's `secret_key_base`.
 
 The secret must be a non-empty string. If it is set to anything else, such as an
 empty string or a number, Ash raises an `ArgumentError` naming the setting rather

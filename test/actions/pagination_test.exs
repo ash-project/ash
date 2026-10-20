@@ -610,13 +610,14 @@ defmodule Ash.Actions.PaginationTest do
     test "a tampered signed keyset is rejected" do
       put_keyset_signing_secret("secret")
 
-      %{results: [%{__metadata__: %{keyset: keyset}}]} =
-        Ash.read!(User, action: :keyset, page: [limit: 1])
+      %{results: [%{__metadata__: %{keyset: first}}, %{__metadata__: %{keyset: second}}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 2])
 
-      decoded = Base.decode64!(keyset)
-      size = byte_size(decoded) - 1
-      <<rest::binary-size(^size), last>> = decoded
-      tampered = Base.encode64(rest <> <<Bitwise.bxor(last, 1)>>)
+      # the signature from one keyset with the values from another, both of
+      # which are valid on their own
+      <<signature::binary-size(32), _::binary>> = Base.decode64!(first)
+      <<_::binary-size(32), values::binary>> = Base.decode64!(second)
+      tampered = Base.encode64(signature <> values)
 
       assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
         Ash.read!(User, action: :keyset, page: [limit: 1, after: tampered])
@@ -695,6 +696,56 @@ defmodule Ash.Actions.PaginationTest do
         Ash.read!(User, action: :keyset, page: [limit: 1])
 
       put_keyset_signing_secret("other secret")
+
+      assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
+        Ash.read!(User, action: :keyset, page: [limit: 1, after: keyset])
+      end)
+    end
+
+    test "keysets are signed with a key derived from the secret" do
+      put_keyset_signing_secret("secret")
+
+      %{results: [record]} =
+        User
+        |> Ash.Query.sort(name: :asc)
+        |> Ash.read!(action: :keyset, page: [limit: 1])
+
+      message = :erlang.term_to_binary([record.name, record.id])
+      signing_key = :crypto.mac(:hmac, :sha256, "secret", "ash keyset signing")
+
+      assert Base.decode64!(record.__metadata__.keyset) ==
+               :crypto.mac(:hmac, :sha256, signing_key, message) <> message
+    end
+
+    test "a keyset signed with the secret itself is rejected" do
+      put_keyset_signing_secret("secret")
+
+      message = :erlang.term_to_binary([Ash.UUID.generate()])
+      keyset = Base.encode64(:crypto.mac(:hmac, :sha256, "secret", message) <> message)
+
+      assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
+               Ash.Page.Keyset.filter(Ash.Query.new(User), keyset, [{:id, :asc}], :after)
+    end
+
+    test "signed keysets are not limited by max_keyset_byte_size" do
+      put_keyset_signing_secret("secret")
+
+      %{results: [%{id: id, __metadata__: %{keyset: keyset}}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 1])
+
+      put_max_keyset_byte_size(1)
+
+      %{results: [%{id: next_id}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 1, after: keyset])
+
+      refute id == next_id
+    end
+
+    test "unsigned keysets are limited by max_keyset_byte_size" do
+      %{results: [%{__metadata__: %{keyset: keyset}}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 1])
+
+      put_max_keyset_byte_size(1)
 
       assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
         Ash.read!(User, action: :keyset, page: [limit: 1, after: keyset])
@@ -1251,5 +1302,18 @@ defmodule Ash.Actions.PaginationTest do
     previous = Application.get_env(:ash, :keyset_signing_secret)
     Application.put_env(:ash, :keyset_signing_secret, secret)
     on_exit(fn -> Application.put_env(:ash, :keyset_signing_secret, previous) end)
+  end
+
+  defp put_max_keyset_byte_size(max_keyset_byte_size) do
+    previous = Application.get_env(:ash, :max_keyset_byte_size)
+    Application.put_env(:ash, :max_keyset_byte_size, max_keyset_byte_size)
+
+    on_exit(fn ->
+      if previous do
+        Application.put_env(:ash, :max_keyset_byte_size, previous)
+      else
+        Application.delete_env(:ash, :max_keyset_byte_size)
+      end
+    end)
   end
 end
