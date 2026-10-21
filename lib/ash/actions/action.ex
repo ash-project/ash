@@ -257,10 +257,10 @@ defmodule Ash.Actions.Action do
               # Run after_transaction hooks even on error
               Ash.ActionInput.run_after_transaction_hooks(error_result, input)
           end
-        rescue
-          error ->
+        catch
+          kind, reason ->
             if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
-            reraise error, __STACKTRACE__
+            :erlang.raise(kind, reason, __STACKTRACE__)
         after
           if notify? do
             Process.delete(:ash_started_transaction?)
