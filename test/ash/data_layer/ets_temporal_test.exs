@@ -154,6 +154,21 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert open.valid_at == @open
       assert [%{name: "early"}] = EtsVersioned |> Ash.Query.as_of(@early.lower) |> Ash.read!()
     end
+
+    test "and loading onto several versions keeps each version's own values" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "early", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
+
+      versions =
+        Enum.flat_map([@early.lower, @open.lower], fn instant ->
+          EtsVersioned |> Ash.Query.as_of(instant) |> Ash.read!()
+        end)
+
+      assert [%{name: "early"}, %{name: "open"}] =
+               Ash.load!(versions, [:name], reuse_values?: true)
+
+      assert [%{shout: "early!"}, %{shout: "open!"}] = Ash.load!(versions, :shout)
+    end
   end
 
   describe "an update supersedes the version it acts on" do

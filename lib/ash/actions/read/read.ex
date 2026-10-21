@@ -3284,8 +3284,14 @@ defmodule Ash.Actions.Read do
         end)
       else
         if Ash.Resource.Info.primary_key_simple_equality?(original_query.resource) do
+          key_fields =
+            case Ash.Resource.Info.temporal_attribute(original_query.resource) do
+              nil -> pkey
+              period -> pkey ++ [period]
+            end
+
           key_fun =
-            case Ash.Resource.Info.primary_key(original_query.resource) do
+            case key_fields do
               [field] -> &{Map.get(&1, field), &1}
               fields -> &{Map.take(&1, fields), &1}
             end
