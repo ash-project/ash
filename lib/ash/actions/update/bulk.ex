@@ -712,6 +712,8 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts) do
+    query = Ash.Actions.Helpers.unscope_write_read_as_of(query, atomic_changeset.as_of)
+
     context =
       struct(
         Ash.Resource.Change.Context,
