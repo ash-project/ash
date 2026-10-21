@@ -2480,6 +2480,15 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(
+         %Ash.CustomExpression{expression: expression},
+         include_exists?,
+         with_refs?,
+         expand_aggregates?
+       ) do
+    do_relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?)
+  end
+
+  defp do_relationship_paths(
          %Ash.Query.Exists{at_path: at_path, related?: related?, expr: expression},
          false,
          with_refs?,

@@ -80,6 +80,23 @@ defmodule Ash.CustomExpressionTest do
     def operator_expression(_), do: :unknown
   end
 
+  defmodule ExampleAuthor do
+    use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, allow_nil?: false
+    end
+
+    actions do
+      defaults [:read]
+    end
+  end
+
   defmodule ExampleResource do
     use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
 
@@ -91,6 +108,10 @@ defmodule Ash.CustomExpressionTest do
       uuid_primary_key :id
       attribute :name, :string, allow_nil?: false
       attribute :score, :integer, allow_nil?: false, default: 0
+    end
+
+    relationships do
+      belongs_to :author, ExampleAuthor
     end
 
     actions do
@@ -111,6 +132,8 @@ defmodule Ash.CustomExpressionTest do
       calculate :matches_query?, :boolean, expr(jaro_distance(name, ^arg(:query)) >= 0.6) do
         argument :query, :string, allow_nil?: false
       end
+
+      calculate :author_name, :string, expr(author.name)
     end
   end
 
@@ -130,6 +153,20 @@ defmodule Ash.CustomExpressionTest do
              ExampleResource
              |> Ash.Query.for_read(:matches_query_with_explicit_filter, %{query: "fop"})
              |> Ash.read!()
+  end
+
+  test "relationship references in custom expression arguments are included in relationship paths" do
+    assert [[:author]] =
+             ExampleResource
+             |> Ash.Filter.parse!(expr(jaro_distance(author.name, "zach") >= 0.9))
+             |> Ash.Filter.relationship_paths()
+
+    paths =
+      ExampleResource
+      |> Ash.Filter.parse!(expr(jaro_distance(author_name, "zach") >= 0.9))
+      |> Ash.Filter.relationship_paths()
+
+    assert [:author] in paths
   end
 
   describe "operator_expression" do
