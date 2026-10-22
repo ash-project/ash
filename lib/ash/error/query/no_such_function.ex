@@ -25,7 +25,7 @@ defmodule Ash.Error.Query.NoSuchFunction do
       message <>
         "\n\n There is a calculation with the same name on the resource, did you mean to pass a keyword list instead of an arguments list?"
     else
-      error
+      message
     end
   end
 

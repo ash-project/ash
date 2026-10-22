@@ -1134,22 +1134,26 @@ defmodule Ash.Expr do
     """
   end
 
-  def do_expr({op, _, args}, escape?) when is_atom(op) and is_list(args) do
-    last_arg = List.last(args)
+  def do_expr({op, _, args} = expr, escape?) when is_atom(op) and is_list(args) do
+    if sigil?(expr) do
+      sigil(expr)
+    else
+      last_arg = List.last(args)
 
-    args =
-      if Keyword.keyword?(last_arg) && Keyword.has_key?(last_arg, :do) do
-        Enum.map(:lists.droplast(args), &do_expr(&1, false)) ++
-          [
-            Enum.map(last_arg, fn {key, arg_value} ->
-              {key, do_expr(arg_value, false)}
-            end)
-          ]
-      else
-        Enum.map(args, &do_expr(&1, false))
-      end
+      args =
+        if Keyword.keyword?(last_arg) && Keyword.has_key?(last_arg, :do) do
+          Enum.map(:lists.droplast(args), &do_expr(&1, false)) ++
+            [
+              Enum.map(last_arg, fn {key, arg_value} ->
+                {key, do_expr(arg_value, false)}
+              end)
+            ]
+        else
+          Enum.map(args, &do_expr(&1, false))
+        end
 
-    soft_escape(%Ash.Query.Call{name: op, args: args, operator?: false}, escape?)
+      soft_escape(%Ash.Query.Call{name: op, args: args, operator?: false}, escape?)
+    end
   end
 
   def do_expr({left, _, _}, escape?) when is_tuple(left), do: do_expr(left, escape?)
@@ -2176,6 +2180,22 @@ defmodule Ash.Expr do
 
   defp cond_condition([condition | rest]) do
     {:and, [], [condition, cond_condition(rest)]}
+  end
+
+  defp sigil?({op, _, [{:<<>>, _, parts}, mods]}) when is_list(parts) and is_list(mods) do
+    String.starts_with?(Atom.to_string(op), "sigil_")
+  end
+
+  defp sigil?(_), do: false
+
+  # A sigil without interpolation is a literal, so it is left to Elixir to expand.
+  defp sigil({_, _, [{:<<>>, _, parts}, _]} = expr) do
+    if Enum.all?(parts, &is_binary/1) do
+      expr
+    else
+      raise ArgumentError,
+            "sigils with interpolation are not supported in expressions, pin the value instead. Got: #{Macro.to_string(expr)}"
+    end
   end
 
   defp soft_escape(%_{} = val, _) do

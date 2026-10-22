@@ -53,6 +53,28 @@ defmodule Ash.Test.ExprTest do
     end
   end
 
+  describe "sigils" do
+    test "are literal values" do
+      assert expr(~D[2024-01-01]) == ~D[2024-01-01]
+      assert expr(~U[2024-01-01 00:00:00Z]) == ~U[2024-01-01 00:00:00Z]
+      assert expr(~w(a b)a) == [:a, :b]
+      assert expr(~SQL"foo") == "foo"
+      assert expr(~i"Foo") == Ash.CiString.new("Foo")
+    end
+
+    test "with interpolation are rejected" do
+      assert_raise ArgumentError, ~r/sigils with interpolation/, fn ->
+        Code.eval_quoted(
+          quote do
+            import Ash.Expr
+
+            expr(~s"#{name}")
+          end
+        )
+      end
+    end
+  end
+
   describe "determine_types" do
     test "it determines the type of an if statement with complex values" do
       {:ok, %func{arguments: args}} =
