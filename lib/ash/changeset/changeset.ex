@@ -4851,10 +4851,10 @@ defmodule Ash.Changeset do
               Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
               {:error, error}
           end
-        rescue
-          error ->
+        catch
+          kind, reason ->
             if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
-            reraise error, __STACKTRACE__
+            :erlang.raise(kind, reason, __STACKTRACE__)
         after
           if notify? do
             Process.delete(:ash_started_transaction?)

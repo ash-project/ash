@@ -122,12 +122,12 @@ defmodule Ash.Actions.Create.Bulk do
                   opts
                 )
             end
-          rescue
-            error ->
+          catch
+            kind, reason ->
               if notify?,
                 do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
 
-              reraise error, __STACKTRACE__
+              :erlang.raise(kind, reason, __STACKTRACE__)
           after
             if notify? do
               Process.delete(:ash_started_transaction?)
@@ -763,10 +763,10 @@ defmodule Ash.Actions.Create.Bulk do
               end
             end)
         end
-      rescue
-        error ->
+      catch
+        kind, reason ->
           if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
-          reraise error, __STACKTRACE__
+          :erlang.raise(kind, reason, __STACKTRACE__)
       after
         if notify? do
           notifications = Ash.Actions.Helpers.take_queued_notifications()

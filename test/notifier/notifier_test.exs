@@ -339,6 +339,107 @@ defmodule Ash.Test.NotifierTest do
     end
   end
 
+  defmodule ReraisingMnesia do
+    @moduledoc false
+    # Mnesia, except that a throw or exit out of a transaction rolls it back and is then
+    # re-raised as is, like DBConnection (and so AshPostgres) does, instead of becoming
+    # `{:error, _}`.
+    use Spark.Dsl.Extension, transformers: [], sections: []
+
+    @behaviour Ash.DataLayer
+
+    callbacks = Ash.DataLayer.behaviour_info(:callbacks)
+
+    for {name, arity} = function <- Ash.DataLayer.Mnesia.__info__(:functions),
+        function in callbacks,
+        name != :transaction do
+      args = Macro.generate_arguments(arity, __MODULE__)
+
+      @impl true
+      def unquote(name)(unquote_splicing(args)) do
+        Ash.DataLayer.Mnesia.unquote(name)(unquote_splicing(args))
+      end
+    end
+
+    @impl true
+    def transaction(resource, func, timeout, reason) do
+      result =
+        Ash.DataLayer.Mnesia.transaction(
+          resource,
+          fn ->
+            try do
+              func.()
+            catch
+              # `Ash.DataLayer.rollback/2` and Mnesia's own aborts
+              :exit, {:aborted, _} = abort ->
+                exit(abort)
+
+              kind, value when kind in [:throw, :exit] ->
+                Process.put({__MODULE__, :escaped}, {kind, value, __STACKTRACE__})
+                :mnesia.abort(:escaped)
+            end
+          end,
+          timeout,
+          reason
+        )
+
+      case Process.delete({__MODULE__, :escaped}) do
+        nil -> result
+        {kind, value, stacktrace} -> :erlang.raise(kind, value, stacktrace)
+      end
+    end
+  end
+
+  defmodule ThrowingPost do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: ReraisingMnesia,
+      notifiers: [Notifier]
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+
+      create :create_then_throw do
+        change fn changeset, _ ->
+          Ash.Changeset.after_action(changeset, fn _changeset, _result ->
+            Ash.create!(__MODULE__, %{name: "inner"})
+            throw(:boom)
+          end)
+        end
+      end
+
+      read :read_create_then_throw do
+        transaction? true
+
+        prepare fn query, _ ->
+          Ash.Query.after_action(query, fn _query, _results ->
+            Ash.create!(__MODULE__, %{name: "inner"})
+            throw(:boom)
+          end)
+        end
+      end
+
+      action :generic_create_then_throw do
+        transaction? true
+
+        run fn _input, _ ->
+          Ash.create!(__MODULE__, %{name: "inner"})
+          throw(:boom)
+        end
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+  end
+
   setup do
     Application.put_env(Notifier, :notifier_test_pid, self())
     Application.put_env(Notifier2, :notifier_test_pid, self())
@@ -752,5 +853,100 @@ defmodule Ash.Test.NotifierTest do
 
       assert_receive {:notification, %{data: %TransactionalPost{name: "next"}}}
     end
+  end
+
+  describe "transactions ended by a throw or exit" do
+    setup do
+      capture_log(fn ->
+        Ash.DataLayer.Mnesia.start(Domain)
+        :mnesia.create_table(ThrowingPost, attributes: [:_pkey, :val])
+      end)
+
+      on_exit(fn ->
+        capture_log(fn ->
+          :mnesia.stop()
+          :mnesia.delete_schema([node()])
+        end)
+      end)
+    end
+
+    test "notifications queued in an `Ash.transaction` ended by a throw are not sent by the next action" do
+      assert :boom ==
+               catch_throw(
+                 Ash.transaction(ThrowingPost, fn ->
+                   Ash.create!(ThrowingPost, %{name: "inner"})
+                   throw(:boom)
+                 end)
+               )
+
+      assert_rolled_back_and_not_sent()
+    end
+
+    test "notifications queued in an `Ash.transaction` ended by an exit are not sent by the next action" do
+      assert :boom ==
+               catch_exit(
+                 Ash.transaction(ThrowingPost, fn ->
+                   Ash.create!(ThrowingPost, %{name: "inner"})
+                   exit(:boom)
+                 end)
+               )
+
+      assert_rolled_back_and_not_sent()
+    end
+
+    test "notifications queued in a create ended by a throw are not sent by the next action" do
+      assert :boom ==
+               catch_throw(
+                 ThrowingPost
+                 |> Ash.Changeset.for_create(:create_then_throw, %{name: "outer"})
+                 |> Ash.create()
+               )
+
+      assert_rolled_back_and_not_sent()
+    end
+
+    test "notifications queued in a generic action ended by a throw are not sent by the next action" do
+      assert :boom ==
+               catch_throw(
+                 ThrowingPost
+                 |> Ash.ActionInput.for_action(:generic_create_then_throw, %{})
+                 |> Ash.run_action()
+               )
+
+      assert_rolled_back_and_not_sent()
+    end
+
+    test "notifications queued in a read ended by a throw are not sent" do
+      assert :boom ==
+               catch_throw(Ash.read(ThrowingPost, action: :read_create_then_throw))
+
+      assert_rolled_back_and_not_sent()
+    end
+
+    test "notifications queued in a bulk create ended by a throw are not sent by the next action" do
+      assert :boom ==
+               catch_throw(
+                 Ash.bulk_create([%{name: "outer"}], ThrowingPost, :create_then_throw,
+                   transaction: :all,
+                   notify?: true
+                 )
+               )
+
+      assert_rolled_back_and_not_sent()
+    end
+  end
+
+  # Asserts, before any other Ash call, that the rows were rolled back, that nothing was sent and
+  # that nothing is left queued; then that the next action sends only its own notification.
+  defp assert_rolled_back_and_not_sent do
+    assert [] = :mnesia.dirty_all_keys(ThrowingPost)
+    refute_received {:notification, _}
+    refute Process.get(:ash_notifications)
+
+    Ash.create!(ThrowingPost, %{name: "next"})
+
+    assert_receive {:notification, %{data: %ThrowingPost{name: "next"}}}
+    refute_received {:notification, %{data: %ThrowingPost{name: "inner"}}}
+    assert [%{name: "next"}] = Ash.read!(ThrowingPost)
   end
 end

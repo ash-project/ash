@@ -4547,11 +4547,11 @@ defmodule Ash do
 
           {:error, Ash.Error.to_ash_error(error)}
       end
-    rescue
-      error ->
+    catch
+      kind, reason ->
         Process.delete(:ash_notifications)
 
-        reraise error, __STACKTRACE__
+        :erlang.raise(kind, reason, __STACKTRACE__)
     after
       if notify? do
         Process.delete(:ash_started_transaction?)
@@ -4651,11 +4651,11 @@ defmodule Ash do
 
           {:error, Ash.Error.to_ash_error(error)}
       end
-    rescue
-      error ->
+    catch
+      kind, reason ->
         Process.delete(:ash_notifications)
 
-        reraise error, __STACKTRACE__
+        :erlang.raise(kind, reason, __STACKTRACE__)
     after
       if notify? do
         Process.delete(:ash_started_transaction?)
