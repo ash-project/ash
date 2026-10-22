@@ -1110,11 +1110,12 @@ validate present([:first_name, :last_name], at_least: 1)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#actions-action-validate-validation){: #actions-action-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+| [`validation`](#actions-action-validate-validation){: #actions-action-validate-validation .spark-required} | `(any, any -> any) \| module \| any` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`error_expr`](#actions-action-validate-error_expr){: #actions-action-validate-error_expr } | `any` |  | The expression used to produce an error for an expression-based validation. |
 | [`where`](#actions-action-validate-where){: #actions-action-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`only_when_valid?`](#actions-action-validate-only_when_valid?){: #actions-action-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-action-validate-message){: #actions-action-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
@@ -1382,11 +1383,12 @@ validate changing(:email)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#actions-create-validate-validation){: #actions-create-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+| [`validation`](#actions-create-validate-validation){: #actions-create-validate-validation .spark-required} | `(any, any -> any) \| module \| any` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`error_expr`](#actions-create-validate-error_expr){: #actions-create-validate-error_expr } | `any` |  | The expression used to produce an error for an expression-based validation. |
 | [`where`](#actions-create-validate-where){: #actions-create-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`only_when_valid?`](#actions-create-validate-only_when_valid?){: #actions-create-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-create-validate-message){: #actions-create-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
@@ -1778,11 +1780,12 @@ validate present([:first_name, :last_name], at_least: 1)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#actions-read-validate-validation){: #actions-read-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+| [`validation`](#actions-read-validate-validation){: #actions-read-validate-validation .spark-required} | `(any, any -> any) \| module \| any` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`error_expr`](#actions-read-validate-error_expr){: #actions-read-validate-error_expr } | `any` |  | The expression used to produce an error for an expression-based validation. |
 | [`where`](#actions-read-validate-where){: #actions-read-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`only_when_valid?`](#actions-read-validate-only_when_valid?){: #actions-read-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-read-validate-message){: #actions-read-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
@@ -2089,11 +2092,12 @@ validate changing(:email)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#actions-update-validate-validation){: #actions-update-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+| [`validation`](#actions-update-validate-validation){: #actions-update-validate-validation .spark-required} | `(any, any -> any) \| module \| any` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`error_expr`](#actions-update-validate-error_expr){: #actions-update-validate-error_expr } | `any` |  | The expression used to produce an error for an expression-based validation. |
 | [`where`](#actions-update-validate-where){: #actions-update-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`only_when_valid?`](#actions-update-validate-only_when_valid?){: #actions-update-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-update-validate-message){: #actions-update-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
@@ -2453,11 +2457,12 @@ validate changing(:email)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#actions-destroy-validate-validation){: #actions-destroy-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+| [`validation`](#actions-destroy-validate-validation){: #actions-destroy-validate-validation .spark-required} | `(any, any -> any) \| module \| any` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`error_expr`](#actions-destroy-validate-error_expr){: #actions-destroy-validate-error_expr } | `any` |  | The expression used to produce an error for an expression-based validation. |
 | [`where`](#actions-destroy-validate-where){: #actions-destroy-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`only_when_valid?`](#actions-destroy-validate-only_when_valid?){: #actions-destroy-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-destroy-validate-message){: #actions-destroy-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
@@ -3309,11 +3314,12 @@ validate present([:first_name, :last_name], at_least: 1)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#validations-validate-validation){: #validations-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+| [`validation`](#validations-validate-validation){: #validations-validate-validation .spark-required} | `(any, any -> any) \| module \| any` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`error_expr`](#validations-validate-error_expr){: #validations-validate-error_expr } | `any` |  | The expression used to produce an error for an expression-based validation. |
 | [`where`](#validations-validate-where){: #validations-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`on`](#validations-validate-on){: #validations-validate-on } | `:create \| :update \| :destroy \| :read \| :action \| list(:create \| :update \| :destroy \| :read \| :action)` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of destroy, read, or generic actions, so by default they are not included. |
 | [`only_when_valid?`](#validations-validate-only_when_valid?){: #validations-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
@@ -3468,11 +3474,12 @@ validate changing(:email)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#pipelines-pipeline-validate-validation){: #pipelines-pipeline-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+| [`validation`](#pipelines-pipeline-validate-validation){: #pipelines-pipeline-validate-validation .spark-required} | `(any, any -> any) \| module \| any` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`error_expr`](#pipelines-pipeline-validate-error_expr){: #pipelines-pipeline-validate-error_expr } | `any` |  | The expression used to produce an error for an expression-based validation. |
 | [`where`](#pipelines-pipeline-validate-where){: #pipelines-pipeline-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`only_when_valid?`](#pipelines-pipeline-validate-only_when_valid?){: #pipelines-pipeline-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#pipelines-pipeline-validate-message){: #pipelines-pipeline-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
