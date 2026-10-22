@@ -8,6 +8,93 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.0](https://github.com/ash-project/ash/compare/v3.36.1...v3.37.0) (2026-10-22)
+
+
+
+
+### Features:
+
+* allow annotating calculations as `authorize? true` by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* sign keyset pagination cursors (#3038) by Ahatch3 [(#3038)](https://github.com/ash-project/ash/pull/3038)
+
+* document loading the same relationship and its effects (#3034) by Mckay Hinds [(#3034)](https://github.com/ash-project/ash/pull/3034)
+
+### Bug Fixes:
+
+* discard queued notifications when a transaction ends in a throw or exit (#3054) by [@Torkan](https://github.com/Torkan) [(#3054)](https://github.com/ash-project/ash/pull/3054)
+
+* don't produce "not in allowed" error for `nil` enum value in atomics by [@zachdaniel](https://github.com/zachdaniel)
+
+* get relationship paths from custom expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* honor `as_of` range in temporal bulk updates and destroys (#3051) by [@yosalama](https://github.com/yosalama) [(#3051)](https://github.com/ash-project/ash/pull/3051)
+
+* keep each version's values when loading onto temporal records (#3052) by [@yosalama](https://github.com/yosalama) [(#3052)](https://github.com/ash-project/ash/pull/3052)
+
+* ensure that `authorize?` option doesn't conflict on calc dep loads by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure reread uses `as_of` instead of producing stale error (#3048) by [@manuganji](https://github.com/manuganji) [(#3048)](https://github.com/ash-project/ash/pull/3048)
+
+* preserve compiler environment for namespaced interfaces (#3047) by jeffhuen [(#3047)](https://github.com/ash-project/ash/pull/3047)
+
+* don't reuse the stored timestamp for a record for destroying by [@zachdaniel](https://github.com/zachdaniel)
+
+* enable composite types to act as maps in queries and calculations (#3045) by Nöl [(#3045)](https://github.com/ash-project/ash/pull/3045)
+
+* allow present at_least/at_most validations on atomic updates (#3044) by BBopsCode [(#3044)](https://github.com/ash-project/ash/pull/3044)
+
+* don't use read action to find parent() referenced rows in ets by [@zachdaniel](https://github.com/zachdaniel)
+
+* select "selected by default" attributes for bulk destroy by [@zachdaniel](https://github.com/zachdaniel)
+
+* declare boolean return types for contains/2 (#3042) by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* retry failed NewType array item casts as nil for empty strings by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* keep tuple field positions when loading stored values by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* return an error when loading undeclared composite fields by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* leave composite values unchanged when they lack a loaded field by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* reject duplicate and non-list fields in composite type init by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* check tuple size and report every invalid field in tuple constraints by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* collect exception errors from every invalid struct field by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* name the failing field in Map, Keyword and Tuple cast errors by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* format composite constraint errors like cast errors by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* include return_query? tuples and error returns in read, page and apply_to specs (#3041) by Łukasz Samson [(#3041)](https://github.com/ash-project/ash/pull/3041)
+
+* correct specs for page_opts, load, refute_has_error and Policy.solve (#3040) by Łukasz Samson [(#3040)](https://github.com/ash-project/ash/pull/3040)
+
+* various issues with sort + aggregate type determination by [@zachdaniel](https://github.com/zachdaniel)
+
+* preserve related records when loading forbidden relationships (#3039) by MiGoYAm [(#3039)](https://github.com/ash-project/ash/pull/3039)
+
+* move elixir version requirement to 1.17 by [@zachdaniel](https://github.com/zachdaniel)
+
+* drain pending calculations before returning an error (#3035) by Jake Schurch [(#3035)](https://github.com/ash-project/ash/pull/3035)
+
+* validate calculation arguments once and preserve input errors (#3031) by Barnabas Jovanovics [(#3031)](https://github.com/ash-project/ash/pull/3031)
+
+* properly set tenant on all action results by [@zachdaniel](https://github.com/zachdaniel)
+
+* fail atomic changes with their errors instead of crashing (#3033) by [@Torkan](https://github.com/Torkan) [(#3033)](https://github.com/ash-project/ash/pull/3033)
+
+### Performance Improvements:
+
+* further optimize expression caching by [@zachdaniel](https://github.com/zachdaniel)
+
+* policy: specialize fallback expressions for known actions (#3036) by Jake Schurch [(#3036)](https://github.com/ash-project/ash/pull/3036)
+
 ## [v3.36.1](https://github.com/ash-project/ash/compare/v3.36.0...v3.36.1) (2026-10-15)
 
 
