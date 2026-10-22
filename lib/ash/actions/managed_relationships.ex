@@ -235,7 +235,7 @@ defmodule Ash.Actions.ManagedRelationships do
                                 tenant: changeset.tenant
                               )
                               |> Ash.Query.filter(^keys)
-                              |> sort_and_filter(relationship)
+                              |> sort_and_filter(relationship, source_before_write(changeset))
                               |> Ash.Query.set_context(relationship.context)
                               |> Ash.Query.limit(1)
                               |> Ash.read_one()
@@ -1902,7 +1902,19 @@ defmodule Ash.Actions.ManagedRelationships do
                     tenant: changeset.tenant
                   )
                   |> Ash.Query.filter(^keys)
-                  |> sort_and_filter(relationship)
+                  |> sort_and_filter(
+                    relationship,
+                    lookup_source(
+                      record,
+                      relationship,
+                      input,
+                      create_or_update,
+                      join_keys,
+                      changeset,
+                      actor,
+                      opts
+                    )
+                  )
                   |> Ash.Query.set_context(relationship.context)
                   |> Ash.Query.limit(1)
                   |> Ash.read_one()
@@ -2018,37 +2030,34 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  defp sort_and_filter(query, relationship) do
-    query =
-      if Ash.Actions.Read.Relationships.do_has_parent_expr?(relationship.filter) do
-        Ash.Query.add_error(
-          query,
-          Ash.Error.Changes.InvalidRelationship.exception(
-            relationship: relationship.name,
-            message:
-              "cannot be managed with `manage_relationship` because its filter references `parent(...)`, " <>
-                "which is not available when looking up records to relate"
-          )
-        )
-      else
-        filter =
-          Ash.Expr.fill_template(
-            relationship.filter,
-            actor: query.context[:private][:actor],
-            tenant: query.to_tenant,
-            args: %{},
-            context: query.context
-          )
+  defp sort_and_filter(query, relationship, source) do
+    filter =
+      Ash.Expr.fill_template(
+        relationship.filter,
+        actor: query.context[:private][:actor],
+        tenant: query.to_tenant,
+        args: %{},
+        context: query.context
+      )
 
-        Ash.Query.do_filter(
-          query,
-          Ash.Actions.Read.RelatedAuthorization.trusted_filter(
-            relationship.destination,
-            filter,
-            relationship.source
-          ),
-          parent_stack: relationship.source
-        )
+    query =
+      relationship.destination
+      |> Ash.Actions.Read.RelatedAuthorization.trusted_filter(filter, relationship.source)
+      |> resolve_parent_refs(relationship, source)
+      |> case do
+        {:ok, filter} ->
+          Ash.Query.do_filter(query, filter, parent_stack: relationship.source)
+
+        :error ->
+          Ash.Query.add_error(
+            query,
+            Ash.Error.Changes.InvalidRelationship.exception(
+              relationship: relationship.name,
+              message:
+                "cannot be managed with `manage_relationship` because its filter references a " <>
+                  "`parent(...)` value that is not available on the source record"
+            )
+          )
       end
 
     Ash.Query.sort(
@@ -2059,6 +2068,102 @@ defmodule Ash.Actions.ManagedRelationships do
       ),
       prepend?: true
     )
+  end
+
+  # The lookup query has no parent binding. Instead, each `parent(...)` gets its value
+  # from the source record, as relationship loads do for data layers without lateral
+  # joins. If a reference has no value there (a relationship path, an attribute that is
+  # unloaded or unset, a nested parent), the lookup fails. It must not silently match
+  # more records than the relationship allows.
+  defp resolve_parent_refs(filter, relationship, source) do
+    if Ash.Actions.Read.Relationships.do_has_parent_expr?(filter) do
+      with {:ok, resolved} <-
+             Ash.Actions.Read.Relationships.resolve_parent_in_filter(
+               filter,
+               source,
+               relationship.source
+             ),
+           false <- Ash.Actions.Read.Relationships.do_has_parent_expr?(resolved) do
+        {:ok, resolved}
+      else
+        _ -> :error
+      end
+    else
+      {:ok, filter}
+    end
+  end
+
+  # A many_to_many filter can refer to the join row through the join relationship, as in
+  # `parent(join_rel.attr)`. That row does not exist yet. This operation creates it next,
+  # so a pending row with the attributes it will get (the join input, the source key and
+  # the tenant) stands in for it. Its other attributes stay unknown.
+  defp lookup_source(
+         record,
+         %{type: :many_to_many} = relationship,
+         input,
+         join_create,
+         join_keys,
+         changeset,
+         actor,
+         opts
+       ) do
+    if Ash.Actions.Read.Relationships.do_has_parent_expr?(relationship.filter) do
+      {join_input, _input} = split_join_keys(Map.new(input), join_keys)
+
+      join_relationship =
+        Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
+
+      pending_join =
+        relationship.through
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.set_context(%{
+          accessing_from: %{source: join_relationship.source, name: join_relationship.name}
+        })
+        |> Ash.Changeset.for_create(join_create, join_input,
+          actor: actor,
+          context: Map.take(changeset.context, [:shared]),
+          tenant: changeset.tenant,
+          authorize?: opts[:authorize?],
+          require?: false,
+          skip_unknown_inputs: Map.keys(join_input),
+          domain: domain(changeset, join_relationship)
+        )
+        |> maybe_force_change_attribute(
+          relationship,
+          :source_attribute_on_join_resource,
+          Map.get(record, relationship.source_attribute)
+        )
+        |> Ash.Actions.Create.handle_attribute_multitenancy()
+        |> source_before_write()
+
+      Map.put(record, relationship.join_relationship, pending_join)
+    else
+      record
+    end
+  end
+
+  defp lookup_source(record, _relationship, _input, _join_create, _join_keys, _, _, _) do
+    record
+  end
+
+  # Managed belongs_to lookups run before the source record is written, so the pending
+  # changeset attributes stand in for it. On a create, an attribute without a value stays
+  # unloaded, so a `parent(...)` reference to it fails closed.
+  defp source_before_write(changeset) do
+    changeset.resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.reduce(changeset.data, fn %{name: name}, source ->
+      case Map.fetch(changeset.attributes, name) do
+        {:ok, value} ->
+          Map.put(source, name, value)
+
+        :error when changeset.action_type == :create ->
+          Map.put(source, name, %Ash.NotLoaded{type: :attribute, field: name})
+
+        :error ->
+          source
+      end
+    end)
   end
 
   defp do_handle_found(
@@ -3035,7 +3140,7 @@ defmodule Ash.Actions.ManagedRelationships do
       )
       |> Ash.Query.set_tenant(changeset.tenant)
       |> Ash.Query.set_context(join_relationship.context)
-      |> sort_and_filter(relationship)
+      |> sort_and_filter(relationship, source_record)
 
     join_destroy_result =
       Ash.bulk_destroy(
