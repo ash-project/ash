@@ -238,18 +238,9 @@ defmodule Ash.Actions.Destroy.Bulk do
                 _ ->
                   read_opts = Keyword.take(read_opts, Ash.stream_opt_keys())
 
-                  # We need to figure out a way to capture errors raised by the stream when picking items off somehow
-                  # for now, we only go this route if there are potentially more records in the result set than
-                  # in the batch size, to solve this problem for atomic upgrades.
-                  # we can likely make the stream throw something instead of raising something
-                  # like `{:stream_error, ...}` if a specific option is passed in.
-                  # once we figure this out, we may be able to remove the branch above
                   run(
                     domain,
-                    Ash.stream!(
-                      query,
-                      read_opts
-                    ),
+                    Ash.Actions.Helpers.Bulk.stream_query(domain, query, read_opts),
                     action,
                     input,
                     Keyword.merge(opts,
@@ -1910,6 +1901,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp map_batches(stream, resource, opts, ref, callback) do
+    callback = Ash.Actions.Helpers.Bulk.with_read_errors(callback, resource, opts)
     max_concurrency = opts[:max_concurrency]
 
     max_concurrency =

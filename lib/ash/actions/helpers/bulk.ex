@@ -28,6 +28,58 @@ defmodule Ash.Actions.Helpers.Bulk do
           | {:error_hooks_done, term(), Ash.Changeset.t()}
 
   @doc """
+  Streams the records a bulk update or destroy reads with its query.
+
+  A failed read doesn't raise. It ends the stream with a read error element, which the
+  batch callback wrapped by `with_read_errors/3` turns into an error of the bulk action.
+  """
+  @spec stream_query(Ash.Domain.t(), Ash.Query.t(), Keyword.t()) :: Enumerable.t()
+  def stream_query(domain, query, opts) do
+    opts = opts |> Ash.StreamOpts.validate!() |> Ash.StreamOpts.to_options()
+
+    Ash.Actions.Read.Stream.run(domain, query, opts, &[{:ash_bulk_read_error, &1}])
+  end
+
+  @doc """
+  Wraps the batch callback of a bulk update or destroy to handle a read error that ends the
+  records streamed by `stream_query/3`.
+
+  The batch's records are processed first. The read error is then handled like any other
+  error of the action: rolled back with `rollback_on_error?`, thrown with `stop_on_error?`,
+  and otherwise returned as an `{:error, error}` result.
+  """
+  @spec with_read_errors((list() -> Enumerable.t()), Ash.Resource.t(), Keyword.t()) ::
+          (list() -> Enumerable.t())
+  def with_read_errors(callback, resource, opts) do
+    fn batch ->
+      case Enum.split_with(batch, &(!read_error?(&1))) do
+        {_records, []} ->
+          callback.(batch)
+
+        {records, [read_error | _]} ->
+          results = if records == [], do: [], else: callback.(records)
+
+          error =
+            read_error
+            |> read_error_reason()
+            |> Ash.Error.to_error_class()
+            |> maybe_rollback(resource, opts)
+            |> maybe_stop_on_error(opts)
+
+          Enum.concat(results, [{:error, error}])
+      end
+    end
+  end
+
+  # Records in a batch of `stream_batches` are paired with their index.
+  defp read_error?({:ash_bulk_read_error, _error}), do: true
+  defp read_error?({{:ash_bulk_read_error, _error}, _index}), do: true
+  defp read_error?(_), do: false
+
+  defp read_error_reason({:ash_bulk_read_error, error}), do: error
+  defp read_error_reason({{:ash_bulk_read_error, error}, _index}), do: error
+
+  @doc """
   Conditionally rolls back transaction for bulk operations.
 
   Only rolls back if `opts[:transaction]` and `opts[:rollback_on_error?]` are set
