@@ -2325,6 +2325,7 @@ defmodule Ash.Actions.Update.Bulk do
         argument_names
       )
       |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
+      |> Ash.Actions.Helpers.Bulk.add_filter(opts)
 
     case opts[:transform_changeset] do
       nil -> changeset

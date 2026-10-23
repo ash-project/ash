@@ -763,6 +763,29 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end)
   end
 
+  test "the `filter` option skips records that no longer match it with the stream strategy" do
+    [unchanged, changed] =
+      Ash.bulk_create!([%{title: "title"}, %{title: "title"}], Post, :create,
+        return_records?: true,
+        authorize?: false
+      ).records
+
+    Ash.update!(changed, %{title: "changed"}, authorize?: false)
+
+    assert %Ash.BulkResult{records: [%{id: id}]} =
+             Ash.bulk_update!([unchanged, changed], :update, %{title2: "updated value"},
+               resource: Post,
+               strategy: :stream,
+               filter: [title: "title"],
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert id == unchanged.id
+    assert Ash.get!(Post, changed.id, authorize?: false).title2 == nil
+  end
+
   test "sends notifications" do
     assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,

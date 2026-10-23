@@ -489,6 +489,30 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     assert [] = Ash.read!(Post)
   end
 
+  test "the `filter` option skips records that no longer match it with the stream strategy" do
+    [unchanged, changed] =
+      Ash.bulk_create!([%{title: "title"}, %{title: "title"}], Post, :create,
+        return_records?: true,
+        authorize?: false
+      ).records
+
+    Ash.update!(changed, %{title: "changed"}, authorize?: false)
+
+    assert %Ash.BulkResult{records: [%{id: id}]} =
+             Ash.bulk_destroy!([unchanged, changed], :destroy, %{},
+               resource: Post,
+               strategy: :stream,
+               filter: [title: "title"],
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert id == unchanged.id
+    assert [%{id: remaining_id}] = Ash.read!(Post, authorize?: false)
+    assert remaining_id == changed.id
+  end
+
   for strategy <- [:atomic, :stream] do
     test "returns private attributes selected by default with the #{strategy} strategy" do
       Ash.bulk_create!([%{title: "title1"}], Post, :create)

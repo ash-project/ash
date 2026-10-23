@@ -1881,14 +1881,15 @@ defmodule Ash.Actions.Destroy.Bulk do
       |> Ash.Changeset.pin_temporal_write_now()
 
     changeset =
-      handle_params(
-        changeset,
+      changeset
+      |> handle_params(
         Keyword.get(opts, :assume_casted?, false),
         action,
         opts,
         input,
         argument_names
       )
+      |> Ash.Actions.Helpers.Bulk.add_filter(opts)
 
     case opts[:transform_changeset] do
       nil -> changeset

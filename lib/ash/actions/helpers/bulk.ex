@@ -45,6 +45,22 @@ defmodule Ash.Actions.Helpers.Bulk do
   end
 
   @doc """
+  Adds the `filter` option of a bulk update or destroy to the changeset of a record.
+
+  Records read with a query were filtered when they were read, but may no longer
+  match by the time they're updated or destroyed, and records that were passed in
+  haven't been filtered at all. Records that don't match are skipped.
+  """
+  @spec add_filter(Ash.Changeset.t(), Keyword.t()) :: Ash.Changeset.t()
+  def add_filter(changeset, opts) do
+    if opts[:filter] && Ash.DataLayer.data_layer_can?(changeset.resource, :changeset_filter) do
+      Ash.Changeset.filter(changeset, opts[:filter])
+    else
+      changeset
+    end
+  end
+
+  @doc """
   Conditionally stops bulk operation on error.
 
   Throws if `stop_on_error?` is set and `return_stream?` is false.
