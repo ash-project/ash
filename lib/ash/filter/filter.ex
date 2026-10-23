@@ -2684,6 +2684,7 @@ defmodule Ash.Filter do
              uniq?: aggregate.uniq?,
              read_action: read_action,
              authorize?: aggregate.authorize?,
+             multitenancy: aggregate.multitenancy,
              join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
            ) do
         {:ok, query_aggregate} ->
@@ -3456,6 +3457,7 @@ defmodule Ash.Filter do
                      uniq?: aggregate.uniq?,
                      read_action: read_action,
                      authorize?: aggregate.authorize?,
+                     multitenancy: aggregate.multitenancy,
                      join_filters:
                        Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                    ] ++ aggregate_opts
@@ -4425,6 +4427,7 @@ defmodule Ash.Filter do
                          uniq?: aggregate.uniq?,
                          read_action: aggregate.read_action,
                          authorize?: aggregate.authorize?,
+                         multitenancy: aggregate.multitenancy,
                          join_filters:
                            Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                        ] ++ aggregate_opts

@@ -77,6 +77,7 @@ defmodule Ash.Actions.Sort do
   Opts
 
   * `:domain` - The domain to use if data needs to be loaded
+  * `:tenant` - The tenant to use if data needs to be loaded
   * `:lazy?` - Whether to use already loaded values or to re-load them when necessary. Defaults to `false`
   * `:resource` - The resource being sorted.
   """
@@ -252,6 +253,7 @@ defmodule Ash.Actions.Sort do
         Enum.map(records, fn record ->
           Ash.load!(record, query,
             domain: opts[:domain],
+            tenant: opts[:tenant],
             reuse_values?: true,
             authorize?: false,
             lazy?: opts[:lazy?] || false
@@ -263,6 +265,7 @@ defmodule Ash.Actions.Sort do
         |> Stream.flat_map(fn batch ->
           Ash.load!(batch, query,
             domain: opts[:domain],
+            tenant: opts[:tenant],
             reuse_values?: true,
             authorize?: false,
             lazy?: opts[:lazy?] || false

@@ -493,7 +493,11 @@ defmodule Ash.DataLayer.Ets do
              parent
            ),
          records <-
-           distinct_and_sort(records, sort, distinct, distinct_sort, maybe_not_distinct?, domain),
+           distinct_and_sort(records, sort, distinct, distinct_sort,
+             maybe_not_distinct?: maybe_not_distinct?,
+             domain: domain,
+             tenant: context[:private][:tenant]
+           ),
          records <- Enum.drop(records, offset || []),
          records <- do_limit(records, limit),
          {:ok, records} <-
@@ -515,42 +519,21 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp distinct_and_sort(records, sort, distinct, distinct_sort, maybe_not_distinct?, domain) do
+  defp distinct_and_sort(records, sort, distinct, distinct_sort, opts) do
+    opts = Keyword.put(opts, :rekey?, false)
+
     if distinct in [nil, []] do
-      Sort.runtime_sort(records, sort,
-        domain: domain,
-        maybe_not_distinct?: maybe_not_distinct?,
-        rekey?: false
-      )
+      Sort.runtime_sort(records, sort, opts)
     else
       if distinct_sort in [nil, []] do
-        Sort.runtime_sort(records, sort,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
-        |> Sort.runtime_distinct(distinct,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
+        records
+        |> Sort.runtime_sort(sort, opts)
+        |> Sort.runtime_distinct(distinct, opts)
       else
         records
-        |> Sort.runtime_sort(distinct_sort,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
-        |> Sort.runtime_distinct(distinct,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
-        |> Sort.runtime_sort(sort,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
+        |> Sort.runtime_sort(distinct_sort, opts)
+        |> Sort.runtime_distinct(distinct, opts)
+        |> Sort.runtime_sort(sort, opts)
       end
     end
   end
@@ -1005,7 +988,11 @@ defmodule Ash.DataLayer.Ets do
                        context[:actor]
                      ),
                    sorted <-
-                     Sort.runtime_sort(filtered, query.sort, domain: domain, rekey?: false) do
+                     Sort.runtime_sort(filtered, query.sort,
+                       domain: domain,
+                       tenant: context[:tenant],
+                       rekey?: false
+                     ) do
                 field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
                 value =

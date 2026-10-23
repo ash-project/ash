@@ -292,7 +292,9 @@ defmodule Ash.DataLayer.Mnesia do
          {:ok, filtered} <-
            filter_matches(records, filter, domain, tenant, context[:private][:actor]),
          offset_records <-
-           filtered |> Sort.runtime_sort(sort, domain: domain) |> Enum.drop(offset || 0),
+           filtered
+           |> Sort.runtime_sort(sort, domain: domain, tenant: tenant)
+           |> Enum.drop(offset || 0),
          limited_records <- do_limit(offset_records, limit),
          {:ok, records} <-
            Ash.DataLayer.Ets.do_add_aggregates(

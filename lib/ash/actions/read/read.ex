@@ -4733,6 +4733,7 @@ defmodule Ash.Actions.Read do
                  uniq?: resource_aggregate.uniq?,
                  read_action: read_action,
                  authorize?: resource_aggregate.authorize?,
+                 multitenancy: resource_aggregate.multitenancy,
                  join_filters:
                    Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
                ] ++ aggregate_opts
@@ -5196,6 +5197,7 @@ defmodule Ash.Actions.Read do
           uniq?: resource_aggregate.uniq?,
           read_action: read_action,
           authorize?: resource_aggregate.authorize?,
+          multitenancy: resource_aggregate.multitenancy,
           join_filters:
             Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
         ] ++ aggregate_opts
