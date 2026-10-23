@@ -626,6 +626,7 @@ defmodule Ash.Actions.Update do
                               Ash.Filter.get_filter(changeset.resource, changeset.data)
 
                             changeset.resource
+                            |> Ash.Query.set_tenant(changeset.tenant)
                             |> Ash.Query.do_filter(changeset.filter)
                             |> Ash.Query.do_filter(record_filter)
                             |> Ash.Query.as_of(Ash.Temporal.resolve_write_as_of(changeset.as_of))

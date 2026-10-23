@@ -799,6 +799,27 @@ defmodule Ash.Actions.MultitenancyTest do
       assert Comment |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
     end
 
+    test "a filtered update that changes nothing reads the record from its tenant", %{
+      tenant1: tenant1
+    } do
+      comment =
+        Comment
+        |> Ash.Changeset.for_create(:create, %{name: "fred"}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert {:ok, %{name: "fred"}} =
+               comment
+               |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
+               |> Ash.Changeset.filter(name: "fred")
+               |> Ash.update()
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+               comment
+               |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
+               |> Ash.Changeset.filter(name: "george")
+               |> Ash.update()
+    end
+
     test "a record can be destroyed in a tenant", %{tenant1: tenant1} do
       Comment
       |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
