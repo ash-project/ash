@@ -228,7 +228,9 @@ defmodule Ash.Actions.Update do
                    authorize_query?: false,
                    return_records?: true,
                    atomic_changeset: atomic_changeset,
-                   authorize_changeset_with: authorize_changeset_with
+                   authorize_changeset_with: authorize_changeset_with,
+                   transaction:
+                     Keyword.get(opts, :transaction?, true) && action.transaction? && :batch
                  )
                ) do
             %Ash.BulkResult{status: :success, records: [record], notifications: notifications} ->

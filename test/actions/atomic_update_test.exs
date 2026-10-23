@@ -180,6 +180,97 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     end
   end
 
+  defmodule TransactionalEts do
+    @moduledoc false
+    # ETS, except that it supports transactions: a transaction snapshots the resource's
+    # private table, and restores it when the transaction is rolled back.
+    use Spark.Dsl.Extension,
+      sections: Ash.DataLayer.Ets.sections(),
+      transformers: Ash.DataLayer.Ets.transformers()
+
+    @behaviour Ash.DataLayer
+
+    callbacks = Ash.DataLayer.behaviour_info(:callbacks)
+
+    for {name, arity} = function <- Ash.DataLayer.Ets.__info__(:functions),
+        function in callbacks,
+        name not in [:can?, :transaction, :rollback, :in_transaction?] do
+      args = Macro.generate_arguments(arity, __MODULE__)
+
+      @impl true
+      def unquote(name)(unquote_splicing(args)) do
+        Ash.DataLayer.Ets.unquote(name)(unquote_splicing(args))
+      end
+    end
+
+    @impl true
+    def can?(_, :transact), do: true
+    def can?(resource, feature), do: Ash.DataLayer.Ets.can?(resource, feature)
+
+    @impl true
+    def in_transaction?(_), do: Process.get({__MODULE__, :in_transaction?}, false)
+
+    @impl true
+    def rollback(_, value), do: throw({__MODULE__, :rollback, value})
+
+    @impl true
+    def transaction(resource, func, _timeout, _reason) do
+      table = Process.get({:ash_ets_table, Ash.DataLayer.Ets.Info.table(resource), nil})
+      snapshot = table && ETS.Set.to_list!(table)
+      in_transaction? = Process.put({__MODULE__, :in_transaction?}, true)
+
+      try do
+        {:ok, func.()}
+      catch
+        {__MODULE__, :rollback, value} ->
+          if table, do: table |> ETS.Set.delete_all!() |> ETS.Set.put!(snapshot)
+          {:error, value}
+      after
+        Process.put({__MODULE__, :in_transaction?}, in_transaction? || false)
+      end
+    end
+  end
+
+  defmodule FailingAfterAction do
+    use Ash.Resource.Change
+
+    def change(changeset, _, _) do
+      Ash.Changeset.after_action(changeset, fn _changeset, _result ->
+        {:error, "after action failed"}
+      end)
+    end
+
+    def atomic(changeset, opts, context), do: {:ok, change(changeset, opts, context)}
+  end
+
+  defmodule Order do
+    use Ash.Resource, domain: Domain, data_layer: TransactionalEts
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :state, :atom, allow_nil?: false, default: :open, public?: true
+    end
+
+    actions do
+      defaults [:read, create: [:state]]
+
+      update :pay do
+        change set_attribute(:state, :paid)
+        change FailingAfterAction
+      end
+
+      update :pay_without_transaction do
+        transaction? false
+        change set_attribute(:state, :paid)
+        change FailingAfterAction
+      end
+    end
+  end
+
   test "atomics can be added to a changeset" do
     author =
       Author
@@ -458,6 +549,41 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       assert Author.increment_score!(author).score == 4
       assert Author.increment_score!(author).score == 5
       assert Author.increment_score!(author).score == 1
+    end
+  end
+
+  describe "after_action errors when upgraded to an atomic update" do
+    test "roll back the update" do
+      order = Ash.create!(Order, %{})
+
+      assert {:error, _} =
+               order
+               |> Ash.Changeset.for_update(:pay)
+               |> Ash.update()
+
+      assert Ash.get!(Order, order.id).state == :open
+    end
+
+    test "do not roll back the update with `rollback_on_error?: false`" do
+      order = Ash.create!(Order, %{})
+
+      assert {:error, _} =
+               order
+               |> Ash.Changeset.for_update(:pay)
+               |> Ash.update(rollback_on_error?: false)
+
+      assert Ash.get!(Order, order.id).state == :paid
+    end
+
+    test "do not roll back the update when the action has `transaction? false`" do
+      order = Ash.create!(Order, %{})
+
+      assert {:error, _} =
+               order
+               |> Ash.Changeset.for_update(:pay_without_transaction)
+               |> Ash.update()
+
+      assert Ash.get!(Order, order.id).state == :paid
     end
   end
 end
