@@ -1030,7 +1030,7 @@ defmodule Ash.Changeset do
       if opts[:reference_changes_via_conflict?] do
         changeset.atomics ++
           Enum.map(changeset.attributes, fn {attr, _value} ->
-            {attr, %Ash.Query.UpsertConflict{attribute: attr}}
+            {attr, %Ash.Query.UpsertConflict{attribute: attr, resource: changeset.resource}}
           end)
       else
         changeset.atomics ++ Map.to_list(changeset.attributes)

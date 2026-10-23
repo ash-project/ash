@@ -20,6 +20,7 @@ defmodule Ash.Test.ExprTest do
     attributes do
       uuid_primary_key :id
       attribute :roles, {:array, Role}
+      attribute :on_hand, :integer, constraints: [min: 0]
     end
   end
 
@@ -180,6 +181,15 @@ defmodule Ash.Test.ExprTest do
 
       assert {:ok, {Ash.Type.Integer, []}} = result
       assert microseconds < 1_000_000
+    end
+
+    test "upsert_conflict/1 has the type of the attribute it refers to" do
+      {:ok, conflict} =
+        expr(upsert_conflict(:on_hand))
+        |> Ash.Filter.hydrate_refs(%{resource: Resource})
+
+      assert {:ok, {Ash.Type.Integer, constraints}} = Ash.Expr.determine_type(conflict)
+      assert constraints[:min] == 0
     end
   end
 

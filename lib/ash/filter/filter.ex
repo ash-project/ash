@@ -4721,8 +4721,8 @@ defmodule Ash.Filter do
     end
   end
 
-  def do_hydrate_refs(%Ash.Query.UpsertConflict{} = this, _context),
-    do: {:ok, this}
+  def do_hydrate_refs(%Ash.Query.UpsertConflict{} = this, context),
+    do: {:ok, %{this | resource: this.resource || context[:resource]}}
 
   def do_hydrate_refs(
         %Ash.Query.Exists{related?: false, resource: nil} = exists,

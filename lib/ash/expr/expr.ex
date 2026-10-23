@@ -1887,8 +1887,19 @@ defmodule Ash.Expr do
       %{__struct__: Ash.Query.Parent, expr: expr} ->
         determine_type(expr)
 
-      %{__struct__: Ash.Query.UpsertConflict, expr: expr} ->
-        determine_type(expr)
+      %{__struct__: Ash.Query.UpsertConflict, attribute: attribute, resource: resource}
+      when not is_nil(resource) ->
+        case Ash.Resource.Info.attribute(resource, attribute) do
+          %Ash.Resource.Attribute{} = attribute ->
+            determine_type(%Ash.Query.Ref{
+              attribute: attribute,
+              relationship_path: [],
+              resource: resource
+            })
+
+          nil ->
+            :error
+        end
 
       %{__struct__: Ash.Query.Function.GetPath, arguments: [left, path]} ->
         determine_get_path_type(left, path)
