@@ -1225,7 +1225,11 @@ defmodule Ash.Expr do
           {[:any], [:any]}
       end
 
-    overloads = Ash.Query.Operator.operator_overloads(name) || %{}
+    overloads =
+      for {declarer, signatures} <- Ash.Query.Operator.operator_overloads_by_type(name),
+          {match_types, value} <- signatures do
+        {match_types, value, declarer}
+      end
 
     no_signatures? = types == :var_args || returns == :no_return || returns == :unknown
 
@@ -1254,18 +1258,23 @@ defmodule Ash.Expr do
     if no_signatures? do
       []
     else
-      {more_match_types, overload_cast_as_types, overload_returns} =
+      {more_match_types, overload_cast_as_types, overload_returns, overload_declarers} =
         overloads
-        |> Enum.reduce({[], [], []}, fn {match_types, value}, {match_acc, cast_acc, return_acc} ->
+        |> Enum.reduce({[], [], [], []}, fn {match_types, value, declarer},
+                                            {match_acc, cast_acc, return_acc, declarer_acc} ->
           case value do
             {cast_as_types, return_type} when is_list(cast_as_types) ->
-              {[match_types | match_acc], [cast_as_types | cast_acc], [return_type | return_acc]}
+              {[match_types | match_acc], [cast_as_types | cast_acc], [return_type | return_acc],
+               [declarer | declarer_acc]}
 
             return_type ->
-              {[match_types | match_acc], [nil | cast_acc], [return_type | return_acc]}
+              {[match_types | match_acc], [nil | cast_acc], [return_type | return_acc],
+               [declarer | declarer_acc]}
           end
         end)
-        |> then(fn {m, c, r} -> {Enum.reverse(m), Enum.reverse(c), Enum.reverse(r)} end)
+        |> then(fn {m, c, r, d} ->
+          {Enum.reverse(m), Enum.reverse(c), Enum.reverse(r), Enum.reverse(d)}
+        end)
 
       # Put overloads first so they have priority over built-in types like :same
       types = Enum.concat(more_match_types, types)
@@ -1277,6 +1286,8 @@ defmodule Ash.Expr do
         )
 
       returns = Enum.concat(overload_returns, returns)
+
+      declarers = Enum.concat(overload_declarers, Stream.duplicate(nil, length(types)))
 
       returns =
         Enum.map(returns, fn
@@ -1310,21 +1321,17 @@ defmodule Ash.Expr do
           types -> types
         end)
 
-      types
-      |> Enum.zip(cast_as_types_list)
-      |> Enum.zip(returns)
-      |> Enum.map(fn {{match_types, cast_as_types}, returns} ->
-        {match_types, cast_as_types, returns}
-      end)
+      [types, cast_as_types_list, returns, declarers]
+      |> Enum.zip()
     end
-    |> Enum.reject(fn {match_types, _, _} -> match_types == :any end)
-    |> Enum.filter(fn {match_types, _, _} ->
+    |> Enum.reject(fn {match_types, _, _, _} -> match_types == :any end)
+    |> Enum.filter(fn {match_types, _, _, _} ->
       match_types == :same ||
         length(match_types) == length(values)
     end)
-    |> Enum.with_index()
-    |> Enum.map(fn {{match_types, cast_as_types, returns}, signature_index} ->
-      is_overload? = signature_index < Enum.count(overloads)
+    |> Enum.filter(&overload_grounded?(&1, values, value_types))
+    |> Enum.map(fn {match_types, cast_as_types, returns, declarer} ->
+      is_overload? = not is_nil(declarer)
 
       # An overload that declares `cast_as_types` is forcibly converting
       # operands to a different type than they natively resolve to (e.g.
@@ -1672,6 +1679,31 @@ defmodule Ash.Expr do
 
         select_matches(types, length(values), values)
     end
+  end
+
+  # An overload belongs to the type that declares it, and only applies once an operand is
+  # known to be of that type: a literal of it, or an expression that resolves to it.
+  # Otherwise it would claim operands of unknown type, so that with a money type
+  # declaring `[money, :decimal]`, `fragment("...") < 0` would compare as money.
+  defp overload_grounded?({_match_types, _cast_as_types, _returns, nil}, _values, _value_types),
+    do: true
+
+  defp overload_grounded?({match_types, _cast_as_types, _returns, declarer}, values, value_types) do
+    declarer = Ash.Type.get_type(declarer)
+
+    declarer_positions =
+      match_types
+      |> Enum.zip(values)
+      |> Enum.with_index()
+      |> Enum.filter(&match?({{{^declarer, _}, _value}, _index}, &1))
+
+    declarer_positions == [] or
+      Enum.any?(declarer_positions, fn {{{_, constraints}, value}, index} ->
+        case elem(value_types, index) do
+          {:ok, {^declarer, _}} -> true
+          _ -> !Ash.Expr.expr?(value) && matches_type?(declarer, value, constraints)
+        end
+      end)
   end
 
   defp unwrap_new_type({type, constraints}) do

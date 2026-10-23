@@ -195,18 +195,32 @@ defmodule Ash.Query.Operator do
 
   @doc "Get type overloads for the given operator"
   def operator_overloads(operator) do
+    operator
+    |> operator_overloads_by_type()
+    |> Enum.reduce(%{}, fn {_type, overloads}, acc ->
+      Map.merge(acc, overloads, fn _, left, right ->
+        List.wrap(left) ++ List.wrap(right)
+      end)
+    end)
+  end
+
+  @doc false
+  # The overloads for the given operator, alongside the known type that declares them.
+  def operator_overloads_by_type(operator) do
     :ash
     |> Application.get_env(:known_types, [])
     |> List.wrap()
-    |> Enum.reduce(%{}, fn type, acc ->
+    |> Enum.uniq()
+    |> Enum.flat_map(fn type ->
       Code.ensure_compiled!(type)
 
       if function_exported?(type, :operator_overloads, 0) do
-        Map.merge(acc, type.operator_overloads()[operator] || %{}, fn _, left, right ->
-          List.wrap(left) ++ List.wrap(right)
-        end)
+        case type.operator_overloads()[operator] do
+          overloads when overloads in [nil, %{}] -> []
+          overloads -> [{type, overloads}]
+        end
       else
-        acc
+        []
       end
     end)
   end
