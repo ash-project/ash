@@ -657,7 +657,8 @@ defmodule Ash.DataLayer.Ets do
   end
 
   def run_query_with_lateral_join(query, root_data, _destination_resource, [
-        {source_query, source_attribute, source_attribute_on_join_resource, relationship},
+        {source_query, source_attribute, source_attribute_on_join_resource,
+         %{type: :many_to_many} = relationship},
         {through_query, destination_attribute_on_join_resource, destination_attribute,
          _through_relationship}
       ]) do
@@ -676,6 +677,7 @@ defmodule Ash.DataLayer.Ets do
         root_data
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           through_query
+          |> resolve_parent(parent)
           |> Ash.Query.filter(
             ^ref(source_attribute_on_join_resource) ==
               ^Map.get(parent, source_attribute)
@@ -736,6 +738,140 @@ defmodule Ash.DataLayer.Ets do
           end
         end)
     end
+  end
+
+  # A through path: each step after the first is read once per record it is reached from, so
+  # that `parent/1` in its query refers to that record.
+  def run_query_with_lateral_join(query, root_data, _destination_resource, [
+        {source_query, source_attribute, destination_attribute, relationship} | [_ | _] = rest
+      ]) do
+    primary_key = Ash.Resource.Info.primary_key(source_query.resource)
+
+    source_query
+    |> lateral_join_source(root_data, source_attribute, query.domain)
+    |> case do
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, root_data} ->
+        Enum.reduce_while(root_data, {:ok, []}, fn parent, {:ok, results} ->
+          rest
+          |> follow_through_path(
+            [parent],
+            source_attribute,
+            destination_attribute,
+            query.domain
+          )
+          |> case do
+            {:ok, records, source_attribute, destination_attribute} ->
+              values =
+                records
+                |> Enum.map(&Map.get(&1, source_attribute))
+                |> Enum.reject(&is_nil/1)
+                |> Enum.uniq()
+
+              new_filter =
+                if is_nil(query.filter) do
+                  Ash.Filter.parse!(query.resource, [{destination_attribute, [in: values]}])
+                else
+                  Ash.Filter.add_to_filter!(query.filter, [{destination_attribute, [in: values]}])
+                end
+
+              case run_query(%{query | filter: new_filter}, relationship.source, parent) do
+                {:ok, new_results} ->
+                  new_results =
+                    Enum.map(
+                      new_results,
+                      &Map.put(&1, :__lateral_join_source__, Map.take(parent, primary_key))
+                    )
+
+                  {:cont, {:ok, new_results ++ results}}
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+    end
+  end
+
+  defp follow_through_path([], records, source_attribute, destination_attribute, _domain) do
+    {:ok, records, source_attribute, destination_attribute}
+  end
+
+  defp follow_through_path(
+         [{through_query, next_source_attribute, next_destination_attribute, _} | rest],
+         records,
+         source_attribute,
+         destination_attribute,
+         domain
+       ) do
+    records
+    |> Enum.reduce_while({:ok, []}, fn record, {:ok, acc} ->
+      through_query
+      |> resolve_parent(record)
+      |> Ash.Query.filter(^ref(destination_attribute) == ^Map.get(record, source_attribute))
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+      |> Ash.Query.set_domain(domain)
+      |> Ash.read(authorize?: false)
+      |> case do
+        {:ok, through_data} -> {:cont, {:ok, through_data ++ acc}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, through_data} ->
+        primary_key = Ash.Resource.Info.primary_key(through_query.resource)
+
+        follow_through_path(
+          rest,
+          Enum.uniq_by(through_data, &Map.take(&1, primary_key)),
+          next_source_attribute,
+          next_destination_attribute,
+          domain
+        )
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  # Replaces `parent/1` expressions in the query's filter with their values for `parent`.
+  defp resolve_parent(%{filter: nil} = query, _parent), do: query
+
+  defp resolve_parent(query, parent) do
+    filter =
+      Ash.Filter.map(query.filter, fn
+        %Ash.Query.Parent{expr: expr} ->
+          case Ash.Expr.eval(expr,
+                 record: parent,
+                 resource: parent.__struct__,
+                 unknown_on_unknown_refs?: true
+               ) do
+            {:ok, value} ->
+              value
+
+            {:error, error} ->
+              throw({:resolve_parent_error, error})
+
+            :unknown ->
+              throw(
+                {:resolve_parent_error,
+                 "could not resolve a `parent/1` expression in a through relationship step"}
+              )
+          end
+
+        other ->
+          other
+      end)
+
+    %{query | filter: filter}
+  catch
+    {:resolve_parent_error, error} ->
+      Ash.Query.add_error(query, error)
   end
 
   def do_add_calculations(records, _resource, [], _domain), do: {:ok, records}
