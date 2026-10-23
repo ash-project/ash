@@ -1261,7 +1261,9 @@ defmodule Ash.Filter do
           )
         end)
       else
-        case Ash.can(aggregate_query, actor,
+        # The result is shared by every unrelated aggregate over this resource and action, so it
+        # can only hold the authorization filter, not this aggregate's own filter.
+        case Ash.can(Map.put(aggregate_query, :filter, nil), actor,
                run_queries?: false,
                pre_flight?: false,
                alter_source?: true,

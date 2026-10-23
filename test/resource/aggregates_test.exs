@@ -881,8 +881,10 @@ defmodule Ash.Test.Resource.AggregatesTest do
              |> Ash.read!(tenant: "tenant1")
              |> Enum.map(& &1.count_all_tenants) == [4, 2, 1]
 
+      post_ids = Enum.map([mostly_elsewhere, local, only_elsewhere], & &1.id)
+
       assert MultitenantComment
-             |> Ash.Query.filter(post.count_all_tenants > 3)
+             |> Ash.Query.filter(post_id in ^post_ids and post.count_all_tenants > 3)
              |> Ash.read!(tenant: "tenant1")
              |> Enum.map(& &1.post_id) == [mostly_elsewhere.id]
     end
