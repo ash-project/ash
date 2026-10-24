@@ -4088,6 +4088,8 @@ defmodule Ash.Filter do
       |> Keyword.take([
         :query,
         :field,
+        :expr,
+        :expr_type,
         :default,
         :filterable?,
         :type,
