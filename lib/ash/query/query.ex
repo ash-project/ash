@@ -4651,10 +4651,7 @@ defmodule Ash.Query do
                    Enum.uniq(
                      selected_fields(
                        ash_query.resource,
-                       with_temporal_field(
-                         combination.select || default_select,
-                         ash_query.resource
-                       )
+                       combination.select || default_select
                      ) ++ Map.keys(combination.calculations)
                    )
                }}
@@ -4667,17 +4664,6 @@ defmodule Ash.Query do
       true ->
         {:ok, opts[:initial_query] || Ash.DataLayer.resource_to_query(ash_query.resource, domain),
          %{}}
-    end
-  end
-
-  # A temporal resource's combination legs must always project the period attribute: the
-  # point-in-time `valid_at @> as_of` filter and the back-join (which keys on id + period)
-  # both reference it, so it has to be in each leg's SELECT / the combination fieldset.
-  defp with_temporal_field(fields, resource) do
-    if Ash.Resource.Info.temporal?(resource) do
-      Enum.uniq(fields ++ [Ash.Resource.Info.temporal_attribute(resource)])
-    else
-      fields
     end
   end
 
@@ -4711,13 +4697,8 @@ defmodule Ash.Query do
         |> do_filter(combination.filter)
         |> sort(combination.sort)
         |> select(
-          with_temporal_field(
-            combination.select ||
-              MapSet.to_list(
-                Ash.Resource.Info.selected_by_default_attribute_names(query.resource)
-              ),
-            query.resource
-          )
+          combination.select ||
+            MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(query.resource))
         )
         |> Ash.Query.set_context(query.context)
         |> Ash.Query.set_context(%{data_layer: %{combination_query?: true}})

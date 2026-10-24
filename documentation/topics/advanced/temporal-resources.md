@@ -85,9 +85,10 @@ it for you, exactly as above:
   end
 ```
 
-Either way, it's marked `generated?`. You never pass a period in as action input. Its value
-comes from the instant of the write. If you declare it yourself, it can't allow nil, and it has
-to keep the `[from, to)` bounds.
+Either way, it's marked `generated?` and `always_select?`. You never pass a period in as action
+input. Its value comes from the instant of the write. Together with the primary key it
+identifies a version, so a select can't leave it out. If you declare it yourself, it can't allow
+nil, and it has to keep the `[from, to)` bounds.
 
 The migration generator handles the table for you. It emits the period column, a
 `PRIMARY KEY (id, valid_at WITHOUT OVERLAPS)` (a GiST exclusion that stops two rows of the same

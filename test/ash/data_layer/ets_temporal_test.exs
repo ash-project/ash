@@ -169,6 +169,18 @@ defmodule Ash.DataLayer.EtsTemporalTest do
 
       assert [%{shout: "early!"}, %{shout: "open!"}] = Ash.load!(versions, :shout)
     end
+
+    test "and loading a calculation onto a version runs it in the data layer" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
+
+      assert %{whisper: "open..."} = Ash.load!(record, :whisper)
+    end
+
+    test "and the period is selected even when a select leaves it out" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
+
+      assert [%{valid_at: @open}] = EtsVersioned |> Ash.Query.select([:name]) |> Ash.read!()
+    end
   end
 
   describe "an update supersedes the version it acts on" do
