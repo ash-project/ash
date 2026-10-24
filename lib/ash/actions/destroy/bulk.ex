@@ -183,7 +183,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
               |> Keyword.put(:domain, domain)
-              |> Keyword.delete(:load)
+              |> Keyword.drop([:load, :strict?])
 
             query =
               Ash.Query.do_filter(query, opts[:filter])
@@ -1117,6 +1117,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             return_errors?: opts[:return_errors?],
             filter: opts[:filter],
             load: opts[:load],
+            strict?: opts[:strict?],
             resource: opts[:resource],
             return_notifications?: opts[:return_notifications?],
             notify?: opts[:notify?],
@@ -1385,7 +1386,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         end
 
       if load = opts[:load] do
-        Ash.Changeset.load(changeset, load)
+        Ash.Changeset.load(changeset, load, Keyword.take(opts, [:strict?]))
       else
         changeset
       end

@@ -873,7 +873,7 @@ defmodule Ash.Actions.Helpers do
 
   def apply_opts_load(%Ash.Changeset{} = changeset, opts) do
     if opts[:load] do
-      Ash.Changeset.load(changeset, opts[:load])
+      Ash.Changeset.load(changeset, opts[:load], Keyword.take(opts, [:strict?]))
     else
       changeset
     end

@@ -366,6 +366,14 @@ defmodule Ash do
     load: [
       type: :any,
       doc: "A load statement to add onto the changeset"
+    ],
+    strict?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If set to true, only the fields listed for a relationship in `load` are loaded on it,
+      as with the `strict?` option to `Ash.load/3`.
+      """
     ]
   ]
 

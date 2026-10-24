@@ -176,7 +176,7 @@ defmodule Ash.Actions.Update.Bulk do
                     &Map.put(&1, :query_for, :bulk_update)
                   )
                   |> Keyword.put(:domain, domain)
-                  |> Keyword.delete(:load)
+                  |> Keyword.drop([:load, :strict?])
 
                 if query.limit && query.limit < (opts[:batch_size] || 100) do
                   read_opts = Keyword.take(read_opts, Keyword.keys(Ash.read_opts()))
@@ -1462,6 +1462,7 @@ defmodule Ash.Actions.Update.Bulk do
             tracer: opts[:tracer],
             atomic_changeset: atomic_changeset,
             load: opts[:load],
+            strict?: opts[:strict?],
             resource: opts[:resource],
             input_was_stream?: false,
             return_errors?: opts[:return_errors?],
@@ -1857,7 +1858,7 @@ defmodule Ash.Actions.Update.Bulk do
         end
 
       if load = opts[:load] do
-        Ash.Changeset.load(changeset, load)
+        Ash.Changeset.load(changeset, load, Keyword.take(opts, [:strict?]))
       else
         changeset
       end

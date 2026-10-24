@@ -677,27 +677,43 @@ defmodule Ash.Changeset do
       iex> changeset.load
       [:author, :comments]
 
+      # Only select the listed fields on a related record
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create, %{title: "My Post"})
+      iex> changeset = Ash.Changeset.load(changeset, [author: [:name]], strict?: true)
+
+  ## Options
+
+  - `strict?` - If set to true, only the fields listed for a relationship are loaded on it,
+    as with `Ash.Query.load/3`. Defaults to `false`.
+
   ## See also
 
   - `select/3` for controlling which attributes are returned
   - `loading?/2` for checking if something is being loaded
-  - `Ash.Query.load/2` for loading in queries
+  - `Ash.Query.load/3` for loading in queries
   - `Ash.ActionInput.load/2` for loading in generic actions
   """
-  @spec load(t(), term()) :: t()
-  def load(changeset, load) do
+  @spec load(t(), term(), Keyword.t()) :: t()
+  def load(changeset, load, opts \\ []) do
     query =
       changeset.resource
       |> Ash.Query.new()
       |> Map.put(:errors, [])
       |> Ash.Query.load(changeset.load)
-      |> Ash.Query.load(load)
+      |> Ash.Query.load(load, opts)
 
     # As in `Ash.Query.load/2`, loading a plain attribute just ensures it is selected.
     {attributes, load} =
       load
       |> List.wrap()
       |> Enum.split_with(&(is_atom(&1) && Ash.Resource.Info.attribute(changeset.resource, &1)))
+
+    load =
+      if opts[:strict?] do
+        Enum.map(load, &strict_load(changeset.resource, &1))
+      else
+        load
+      end
 
     changeset =
       if attributes == [] do
@@ -710,6 +726,18 @@ defmodule Ash.Changeset do
 
     Enum.reduce(query.errors, changeset, &add_error(&2, &1))
   end
+
+  # The changeset holds a load statement rather than a query, so a relationship loaded
+  # strictly is stored as the related query that a strict `Ash.Query.load/3` builds for it.
+  defp strict_load(resource, {name, _statement} = load) when is_atom(name) do
+    if Ash.Resource.Info.relationship(resource, name) do
+      {name, Keyword.fetch!(Ash.Query.load(resource, [load], strict?: true).load, name)}
+    else
+      load
+    end
+  end
+
+  defp strict_load(_resource, load), do: load
 
   @doc """
   Ensures that the given attributes are selected.
@@ -2024,6 +2052,14 @@ defmodule Ash.Changeset do
       type: :any,
       doc: "Data to load on the result after running the action."
     ],
+    strict?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If set to true, only the fields listed for a relationship in `load` are loaded on it.
+      See `load/3`.
+      """
+    ],
     context: [
       type: :map,
       doc: "Context to set on the query, changeset, or input"
@@ -2401,7 +2437,7 @@ defmodule Ash.Changeset do
               |> set_actor(opts)
               |> set_authorize(opts)
               |> set_tracer(opts)
-              |> load(opts[:load])
+              |> load(opts[:load], Keyword.take(opts, [:strict?]))
               |> set_tenant(opts[:tenant] || changeset.tenant)
               |> cast_params(action, params, opts)
               |> set_argument_defaults(action)
@@ -3228,7 +3264,7 @@ defmodule Ash.Changeset do
     |> set_actor(opts)
     |> set_authorize(opts)
     |> set_tracer(opts)
-    |> load(opts[:load])
+    |> load(opts[:load], Keyword.take(opts, [:strict?]))
     |> timeout(changeset.timeout || opts[:timeout])
     |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
     |> maybe_set_as_of(opts[:as_of] || changeset.as_of)

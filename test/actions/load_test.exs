@@ -2534,6 +2534,110 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
+  describe "strict?: true on write actions" do
+    setup do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post", author_id: author.id})
+        |> Ash.create!()
+
+      %{author: author, post: post}
+    end
+
+    defp assert_strict_author(post) do
+      assert post.author.name == "a"
+      assert %Ash.NotLoaded{} = post.author.bio
+    end
+
+    test "create only loads specified fields on related resource", %{author: author} do
+      Post
+      |> Ash.create!(%{title: "new", author_id: author.id},
+        load: [author: [:name]],
+        strict?: true
+      )
+      |> assert_strict_author()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "new", author_id: author.id})
+      |> Ash.create!(load: [author: [:name]], strict?: true)
+      |> assert_strict_author()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "new", author_id: author.id})
+      |> Ash.Changeset.load([author: [:name]], strict?: true)
+      |> Ash.create!()
+      |> assert_strict_author()
+    end
+
+    test "loads all fields on related resource without strict?", %{author: author} do
+      post =
+        Ash.create!(Post, %{title: "new", author_id: author.id}, load: [author: [:name]])
+
+      assert post.author.name == "a"
+      refute match?(%Ash.NotLoaded{}, post.author.bio)
+    end
+
+    test "update only loads specified fields on related resource", %{post: post} do
+      post
+      |> Ash.update!(%{title: "updated"}, load: [author: [:name]], strict?: true)
+      |> assert_strict_author()
+    end
+
+    test "destroy only loads specified fields on related resource", %{post: post} do
+      post
+      |> Ash.destroy!(return_destroyed?: true, load: [author: [:name]], strict?: true)
+      |> assert_strict_author()
+    end
+
+    test "bulk_create only loads specified fields on related resource", %{author: author} do
+      assert %Ash.BulkResult{records: [post]} =
+               Ash.bulk_create!([%{title: "new", author_id: author.id}], Post, :create,
+                 return_records?: true,
+                 load: [author: [:name]],
+                 strict?: true
+               )
+
+      assert_strict_author(post)
+    end
+
+    for strategy <- [:atomic, :stream] do
+      test "bulk_update with the #{strategy} strategy only loads specified fields on related resource",
+           %{post: post} do
+        assert %Ash.BulkResult{records: [post]} =
+                 Post
+                 |> Ash.Query.filter(id == ^post.id)
+                 |> Ash.bulk_update!(:update, %{title: "updated"},
+                   strategy: unquote(strategy),
+                   return_records?: true,
+                   load: [author: [:name]],
+                   strict?: true
+                 )
+
+        assert_strict_author(post)
+      end
+
+      test "bulk_destroy with the #{strategy} strategy only loads specified fields on related resource",
+           %{post: post} do
+        assert %Ash.BulkResult{records: [post]} =
+                 Post
+                 |> Ash.Query.filter(id == ^post.id)
+                 |> Ash.bulk_destroy!(:destroy, %{},
+                   strategy: unquote(strategy),
+                   return_records?: true,
+                   load: [author: [:name]],
+                   strict?: true
+                 )
+
+        assert_strict_author(post)
+      end
+    end
+  end
+
   test "read action loads are ignored with `Ash.load`" do
     author =
       Author

@@ -1796,7 +1796,7 @@ defmodule Ash.Actions.Create.Bulk do
           {:ok, records} ->
             load_query =
               resource
-              |> Ash.Query.load(List.wrap(opts[:load]))
+              |> Ash.Query.load(List.wrap(opts[:load]), Keyword.take(opts, [:strict?]))
               |> Ash.Actions.Helpers.merge_notifier_calculations(
                 Ash.Notifier.notifier_calculation_query(resource, action)
               )

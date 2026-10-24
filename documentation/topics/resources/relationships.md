@@ -597,7 +597,8 @@ end
 
 ### Query when loading with strict?: true
 
-When using `Ash.Query.load` or `Ash.load` with the `strict?: true` option, the
+When using `Ash.Query.load`, `Ash.load`, or the `load` option of a create, update
+or destroy action with the `strict?: true` option, the
 query that is provided to the load callback might be configured with a
 select-statement that doesn't load the attributes you want to group matching
 results by. If your codebase utilizes the strict loading functionality, it is
