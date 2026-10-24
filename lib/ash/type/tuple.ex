@@ -130,6 +130,21 @@ defmodule Ash.Type.Tuple do
 
   def cast_input(value, constraints) when is_tuple(value), do: check_size(value, constraints)
 
+  # A map keyed by field name, the only shape JSON input can take. Keys may be
+  # atoms or strings; a missing field takes `nil` in its position and other keys
+  # are ignored, leaving `apply_constraints/2` to enforce `allow_nil?: false`.
+  def cast_input(value, constraints) when is_map(value) and not is_struct(value) do
+    {:ok,
+     constraints[:fields]
+     |> Enum.map(fn {key, _config} ->
+       case Ash.Type.CompositeTypeHelpers.fetch_field(value, key) do
+         {:ok, field_value} -> field_value
+         :error -> nil
+       end
+     end)
+     |> List.to_tuple()}
+  end
+
   def cast_input(_, _), do: :error
 
   @impl true
