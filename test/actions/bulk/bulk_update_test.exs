@@ -212,6 +212,19 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule TitleIsLocked do
+    @moduledoc false
+    use Ash.Policy.SimpleCheck
+
+    def describe(_opts), do: "the title is locked"
+    def requires_original_data?(_authorizer, _opts), do: true
+
+    def match?(_actor, %{changeset: %Ash.Changeset{data: post}}, _opts),
+      do: post.title == "locked"
+
+    def match?(_actor, _context, _opts), do: false
+  end
+
   defmodule AtomicOnlyValidation do
     use Ash.Resource.Validation
 
@@ -331,6 +344,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       update :update_manual do
         manual ManualUpdate
       end
+
+      update :update_unless_locked
 
       update :update_with_change do
         require_atomic? false
@@ -496,6 +511,11 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     policies do
       policy action(:update_with_policy) do
         authorize_if context_equals(:authorize?, true)
+      end
+
+      policy action(:update_unless_locked) do
+        forbid_if TitleIsLocked
+        authorize_if always()
       end
 
       policy action(:update_with_policy_without_requiring_actor) do
@@ -1532,6 +1552,55 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end)
     end
 
+    test "a policy requiring the original data is checked against each record of a query" do
+      Ash.bulk_create!([%{title: "unlocked"}, %{title: "locked"}], Post, :create,
+        authorize?: false
+      )
+
+      assert %Ash.BulkResult{status: :success, records: [%{title2: "updated value"}]} =
+               Post
+               |> Ash.Query.filter(title == "unlocked")
+               |> Ash.bulk_update(:update_unless_locked, %{title2: "updated value"},
+                 strategy: [:atomic, :atomic_batches, :stream],
+                 authorize?: true,
+                 return_records?: true,
+                 return_errors?: true
+               )
+
+      assert %Ash.BulkResult{status: :error, errors: [%Ash.Error.Forbidden{}]} =
+               Post
+               |> Ash.Query.filter(title == "locked")
+               |> Ash.bulk_update(:update_unless_locked, %{title2: "updated value"},
+                 strategy: [:atomic, :atomic_batches, :stream],
+                 authorize?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "a policy requiring the original data is checked against each record given" do
+      %Ash.BulkResult{records: [unlocked, locked]} =
+        Ash.bulk_create!([%{title: "unlocked"}, %{title: "locked"}], Post, :create,
+          authorize?: false,
+          return_records?: true,
+          sorted?: true
+        )
+
+      assert %Ash.BulkResult{status: :success, records: [%{title2: "updated value"}]} =
+               Ash.bulk_update([unlocked], :update_unless_locked, %{title2: "updated value"},
+                 authorize?: true,
+                 return_records?: true,
+                 return_errors?: true
+               )
+
+      assert %Ash.BulkResult{status: :error, errors: [%Ash.Error.Forbidden{}]} =
+               Ash.bulk_update([locked], :update_unless_locked, %{title2: "updated value"},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert is_nil(Ash.get!(Post, locked.id, authorize?: false).title2)
+    end
+
     test "respects filter when using atomic" do
       assert %Ash.BulkResult{
                records: [
@@ -1577,6 +1646,30 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                return_errors?: true,
                authorize?: false
              )
+  end
+
+  test "streams instead of using atomic batches when the read action adds hooks" do
+    Ash.bulk_create!([%{title: "title"}], Post, :create, authorize?: false)
+
+    assert %Ash.BulkResult{status: :success, records: [%{title2: "updated value"}]} =
+             Ash.bulk_update(Post, :update, %{title2: "updated value"},
+               read_action: :query_with_after_action,
+               strategy: [:atomic, :atomic_batches, :stream],
+               authorize?: false,
+               return_records?: true,
+               return_errors?: true
+             )
+
+    assert %Ash.BulkResult{status: :error, errors: [error]} =
+             Ash.bulk_update(Post, :update, %{title2: "updated value"},
+               read_action: :query_with_after_action,
+               strategy: [:atomic, :atomic_batches],
+               authorize?: false,
+               return_errors?: true
+             )
+
+    assert Exception.message(error) =~
+             "Could not use `:atomic_batches`: cannot atomically update a query if it has `after_action` hooks"
   end
 
   test "stop_on_error? stops processing on invalid changesets" do

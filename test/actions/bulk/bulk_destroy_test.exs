@@ -101,6 +101,19 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
   end
 
+  defmodule TitleIsLocked do
+    @moduledoc false
+    use Ash.Policy.SimpleCheck
+
+    def describe(_opts), do: "the title is locked"
+    def requires_original_data?(_authorizer, _opts), do: true
+
+    def match?(_actor, %{changeset: %Ash.Changeset{data: post}}, _opts),
+      do: post.title == "locked"
+
+    def match?(_actor, _context, _opts), do: false
+  end
+
   defmodule AtomicOnlyValidation do
     use Ash.Resource.Validation
 
@@ -198,6 +211,18 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       read :read do
         primary? true
         pagination keyset?: true, required?: false
+      end
+
+      read :read_with_before_action do
+        pagination keyset?: true, required?: false
+        prepare fn query, _context -> Ash.Query.before_action(query, & &1) end
+      end
+
+      destroy :destroy_unless_locked
+
+      destroy :archive_unless_locked do
+        soft? true
+        change set_attribute(:title2, "archived")
       end
 
       destroy :destroy_with_change do
@@ -346,6 +371,11 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
       policy action(:destroy_with_policy) do
         authorize_if context_equals(:authorize?, true)
+      end
+
+      policy action([:destroy_unless_locked, :archive_unless_locked]) do
+        forbid_if TitleIsLocked
+        authorize_if always()
       end
 
       policy action(:read) do
@@ -896,6 +926,42 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   end
 
   describe "authorization" do
+    test "a policy requiring the original data is checked against each record given" do
+      %Ash.BulkResult{records: [unlocked, locked]} =
+        Ash.bulk_create!([%{title: "unlocked"}, %{title: "locked"}], Post, :create,
+          return_records?: true,
+          sorted?: true
+        )
+
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_destroy([unlocked], :destroy_unless_locked, %{},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert %Ash.BulkResult{status: :error, errors: [%Ash.Error.Forbidden{}]} =
+               Ash.bulk_destroy([locked], :destroy_unless_locked, %{},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert [%{title: "locked"}] = Ash.read!(Post, authorize?: false)
+    end
+
+    test "a soft destroy with a policy requiring the original data streams the query" do
+      Ash.bulk_create!([%{title: "unlocked"}], Post, :create)
+
+      assert %Ash.BulkResult{status: :success, records: [%{title2: "archived"}]} =
+               Post
+               |> Ash.Query.filter(title == "unlocked")
+               |> Ash.bulk_destroy(:archive_unless_locked, %{},
+                 strategy: [:atomic, :atomic_batches, :stream],
+                 authorize?: true,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+
     test "policy success results in successes" do
       assert %Ash.BulkResult{records: [_, _], errors: []} =
                Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -1614,6 +1680,31 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                  authorize?: true,
                  return_errors?: true
                )
+    end
+
+    test "streams instead of using atomic batches when the read action adds hooks" do
+      Ash.bulk_create!([%{title: "soft"}, %{title: "hard"}], Post, :create)
+
+      assert %Ash.BulkResult{status: :success, records: [%{title2: "archived"}]} =
+               Post
+               |> Ash.Query.filter(title == "soft")
+               |> Ash.bulk_destroy(:archive_unless_locked, %{},
+                 read_action: :read_with_before_action,
+                 strategy: [:atomic, :atomic_batches, :stream],
+                 return_records?: true,
+                 return_errors?: true
+               )
+
+      assert %Ash.BulkResult{status: :success} =
+               Post
+               |> Ash.Query.filter(title == "hard")
+               |> Ash.bulk_destroy(:destroy, %{},
+                 read_action: :read_with_before_action,
+                 strategy: [:atomic, :atomic_batches, :stream],
+                 return_errors?: true
+               )
+
+      assert [%{title: "soft"}] = Ash.read!(Post)
     end
 
     test "bulk_destroy fails when read_action is not specified and primary read is forbidden" do

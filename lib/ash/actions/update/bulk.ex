@@ -1015,7 +1015,7 @@ defmodule Ash.Actions.Update.Bulk do
               if atomic_changeset.context[:data_layer][:use_atomic_update_data?] do
                 [atomic_changeset.data]
               else
-                query
+                Ash.Query.ensure_selected(query, action_select)
               end
 
             run(
@@ -1025,7 +1025,8 @@ defmodule Ash.Actions.Update.Bulk do
               input,
               Keyword.merge(opts,
                 authorize_query?: false,
-                input_was_stream?: false
+                input_was_stream?: false,
+                strategy: [:stream]
               ),
               e.source
             )
@@ -1323,8 +1324,15 @@ defmodule Ash.Actions.Update.Bulk do
               {:not_atomic, "data layer does not support updating a query"}
           end
 
+        fully_atomic_changeset =
+          with %Ash.Changeset{} = atomic_changeset <- fully_atomic_changeset,
+               {:ok, batch_query} <-
+                 atomic_batch_query(resource, read_action, atomic_changeset, :bulk_update, opts) do
+            {atomic_changeset, batch_query}
+          end
+
         case fully_atomic_changeset do
-          %Ash.Changeset{} = atomic_changeset ->
+          {%Ash.Changeset{} = atomic_changeset, batch_query} ->
             query =
               resource
               |> Ash.Query.new()
@@ -1370,6 +1378,7 @@ defmodule Ash.Actions.Update.Bulk do
               _ ->
                 do_atomic_batches(
                   atomic_changeset,
+                  batch_query,
                   domain,
                   stream,
                   action,
@@ -1411,8 +1420,35 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
+  @doc false
+  # Each atomic batch updates a query built from the read action. The read action's
+  # preparations can add hooks that rule out updating it atomically, so the query is built
+  # once, before choosing atomic batches, and reused for every batch.
+  def atomic_batch_query(resource, read_action, atomic_changeset, query_for, opts) do
+    query =
+      Ash.Query.for_read(resource, read_action.name, %{},
+        actor: opts[:actor],
+        authorize?: false,
+        context: Map.put(atomic_changeset.context, :query_for, query_for),
+        tenant: atomic_changeset.tenant,
+        tracer: opts[:tracer]
+      )
+
+    cond do
+      !Enum.empty?(query.before_action) ->
+        {:not_atomic, "cannot atomically update a query if it has `before_action` hooks"}
+
+      !Enum.empty?(query.after_action) ->
+        {:not_atomic, "cannot atomically update a query if it has `after_action` hooks"}
+
+      true ->
+        {:ok, query}
+    end
+  end
+
   defp do_atomic_batches(
          atomic_changeset,
+         batch_query,
          domain,
          stream,
          action,
@@ -1436,16 +1472,7 @@ defmodule Ash.Actions.Update.Bulk do
       fn batch ->
         pkeys = Ash.pkey_filter(batch, pkey)
 
-        read_action = get_read_action(resource, action, opts).name
-
-        resource
-        |> Ash.Query.for_read(read_action, %{},
-          actor: opts[:actor],
-          authorize?: false,
-          context: Map.put(atomic_changeset.context, :query_for, :bulk_update),
-          tenant: atomic_changeset.tenant,
-          tracer: opts[:tracer]
-        )
+        batch_query
         |> Ash.Query.set_context(%{private: %{internal?: true}})
         |> Ash.Query.filter(^pkeys)
         |> Ash.Query.filter(^atomic_changeset.filter)
@@ -1472,7 +1499,7 @@ defmodule Ash.Actions.Update.Bulk do
             notification_metadata: opts[:notification_metadata],
             return_records?: opts[:return_records?],
             allow_stream_with: opts[:allow_stream_with],
-            read_action: read_action,
+            read_action: batch_query.action.name,
             strategy: [:atomic],
             transaction: opts[:transaction] || true,
             rollback_on_error?: opts[:rollback_on_error?],

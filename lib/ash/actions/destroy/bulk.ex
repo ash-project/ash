@@ -884,10 +884,9 @@ defmodule Ash.Actions.Destroy.Bulk do
              )}
 
           _strategy ->
-            # Fallback to stream strategy - returns complete BulkResult
             run(
               atomic_changeset.domain,
-              query,
+              Ash.Query.ensure_selected(query, action_select),
               atomic_changeset.action,
               input,
               Keyword.put(opts, :strategy, [:stream]),
@@ -974,6 +973,19 @@ defmodule Ash.Actions.Destroy.Bulk do
               {:not_atomic, "data layer does not support destroying a query"}
           end
 
+        fully_atomic_changeset =
+          with %Ash.Changeset{valid?: true} = atomic_changeset <- fully_atomic_changeset,
+               {:ok, batch_query} <-
+                 Ash.Actions.Update.Bulk.atomic_batch_query(
+                   resource,
+                   read_action,
+                   atomic_changeset,
+                   :bulk_destroy,
+                   opts
+                 ) do
+            {atomic_changeset, batch_query}
+          end
+
         case fully_atomic_changeset do
           %Ash.Changeset{valid?: false, errors: errors} = changeset ->
             # Run after_transaction hooks for failed changesets
@@ -995,7 +1007,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 }
             end
 
-          %Ash.Changeset{} = atomic_changeset ->
+          {%Ash.Changeset{} = atomic_changeset, batch_query} ->
             query =
               resource
               |> Ash.Query.new()
@@ -1032,6 +1044,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               _ ->
                 do_atomic_batches(
                   atomic_changeset,
+                  batch_query,
                   domain,
                   stream,
                   action,
@@ -1064,7 +1077,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp do_atomic_batches(atomic_changeset, domain, stream, action, input, opts) do
+  defp do_atomic_batches(atomic_changeset, batch_query, domain, stream, action, input, opts) do
     resource = opts[:resource]
 
     batch_size =
@@ -1087,16 +1100,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       fn batch ->
         pkeys = Ash.pkey_filter(batch, pkey)
 
-        read_action = Ash.Actions.Update.Bulk.get_read_action(resource, action, opts).name
-
-        resource
-        |> Ash.Query.for_read(read_action, %{},
-          actor: opts[:actor],
-          authorize?: false,
-          context: Map.put(atomic_changeset.context, :query_for, :bulk_destroy),
-          tenant: atomic_changeset.tenant,
-          tracer: opts[:tracer]
-        )
+        batch_query
         |> Ash.Query.set_context(%{private: %{internal?: true}})
         |> Ash.Query.filter(^pkeys)
         |> Ash.Query.select([])
@@ -1121,7 +1125,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             resource: opts[:resource],
             return_notifications?: opts[:return_notifications?],
             notify?: opts[:notify?],
-            read_action: read_action,
+            read_action: batch_query.action.name,
             return_records?: return_records?,
             allow_stream_with: opts[:allow_stream_with],
             strategy: [:atomic],
