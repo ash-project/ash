@@ -335,6 +335,21 @@ defmodule Ash.Test.Actions.AggregateTest do
   end
 
   describe "Ash.aggregate" do
+    test "aggregates with a path are rejected" do
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [%Ash.Error.Query.InvalidQuery{field: :path, value: [:comments]} = error]
+              }} =
+               Ash.aggregate(Post, {:total, :sum, path: [:comments], field: :thing3},
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "against Ash.Test.Actions.AggregateTest.Comment"
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidQuery{field: :path}]}} =
+               Ash.count(Post, path: [:comments], authorize?: false)
+    end
+
     test "an aggregate's read_action filter is not bypassed by a supplied `action`" do
       ScopedCount |> Ash.Changeset.for_create(:create, %{public: true}) |> Ash.create!()
       ScopedCount |> Ash.Changeset.for_create(:create, %{public: false}) |> Ash.create!()
