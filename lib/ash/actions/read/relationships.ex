@@ -1209,7 +1209,8 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
-  defp resolve_parent_in_filter(filter, parent_record, source_resource) do
+  @doc false
+  def resolve_parent_in_filter(filter, parent_record, source_resource) do
     {:ok,
      Ash.Filter.map(filter, fn
        %Ash.Query.Parent{expr: expr} ->
@@ -1236,6 +1237,74 @@ defmodule Ash.Actions.Read.Relationships do
       {:error,
        "could not resolve a `parent/1` expression in a relationship filter; the referenced " <>
          "parent field(s) must be selected on the source query"}
+  end
+
+  @doc false
+  # Cascades query a relationship for many source records at once, with no parent
+  # binding. This resolves the `parent()` references once for each record, and records
+  # with equal resolved filters share one clause. It returns an error when it cannot
+  # resolve a reference, or when the relationship sorts on `parent()`.
+  def filter_by_parents(query, relationship, records) do
+    with false <- sort_has_parent_expr?(query),
+         {:ok, groups} <- group_by_resolved_filter(query.filter, relationship, records) do
+      filter =
+        Enum.reduce(groups, false, fn {resolved, group}, acc ->
+          expr(^acc or ^group_filter(relationship, resolved, group))
+        end)
+
+      # `related_query/4` makes a parent-filtered query a lateral join of its source. With
+      # the parents resolved, the query does not need that, and SQL data layers cannot use
+      # a lateral join query for a bulk update or destroy.
+      query =
+        %{query | filter: nil}
+        |> Ash.Query.do_filter(filter)
+        |> Ash.Query.set_context(%{data_layer: %{lateral_join_source: nil}})
+
+      {:ok, query}
+    else
+      true ->
+        {:error,
+         Ash.Error.to_ash_error(
+           "could not resolve a `parent/1` expression in a relationship sort without a parent binding"
+         )}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp group_by_resolved_filter(filter, relationship, records) do
+    Enum.reduce_while(records, {:ok, %{}}, fn record, {:ok, groups} ->
+      with {:ok, resolved} <- resolve_parent_in_filter(filter, record, relationship.source),
+           false <- do_has_parent_expr?(resolved) do
+        {:cont, {:ok, Map.update(groups, resolved, [record], &[record | &1])}}
+      else
+        true ->
+          {:halt,
+           {:error,
+            Ash.Error.to_ash_error(
+              "could not resolve a nested `parent/1` expression in a relationship filter"
+            )}}
+
+        {:error, error} ->
+          {:halt, {:error, Ash.Error.to_ash_error(error)}}
+      end
+    end)
+  end
+
+  defp group_filter(%{no_attributes?: true}, resolved, _records), do: resolved.expression
+
+  defp group_filter(relationship, resolved, records) do
+    values = Enum.map(records, &Map.get(&1, relationship.source_attribute))
+
+    expr(^ref(relationship.destination_attribute) in ^values and ^resolved.expression)
+  end
+
+  defp sort_has_parent_expr?(%Ash.Query{resource: resource, sort: sort, context: context}) do
+    case Ash.Actions.Sort.process(resource, sort, %{}, context) do
+      {:ok, sort} -> has_parent_expr_in_sort?(sort)
+      _ -> false
+    end
   end
 
   defp regroup_manual_results(records, %{cardinality: :many}, count) do
