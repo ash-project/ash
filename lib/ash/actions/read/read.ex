@@ -2098,6 +2098,11 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  # Records the reselect didn't return (unpersisted, deleted, filtered out) have no row to run
+  # data layer calculations against, so their expressions are evaluated in memory instead, and
+  # anything that can't be evaluated in memory (fragments, aggregates, related refs) is `nil`.
+  # 4.0: find a better way to handle this, like leaving these calculations not loaded or
+  # erroring, instead of guessing from whatever the record happens to carry.
   defp compute_expression_at_runtime_for_missing_records(data, query, data_layer_calculations) do
     if Enum.any?(data, & &1.__metadata__[:private][:missing_from_data_layer]) do
       {require_calculating, rest} =
@@ -2108,8 +2113,13 @@ defmodule Ash.Actions.Read do
         end)
         |> Enum.split_with(& &1.__metadata__[:private][:missing_from_data_layer])
 
+      calculations =
+        Enum.map(data_layer_calculations, fn {calc, expression} ->
+          %{calc | module: Ash.Resource.Calculation.Expression, opts: [expr: expression]}
+        end)
+
       require_calculating
-      |> recalculate(query, Enum.map(data_layer_calculations, &elem(&1, 0)))
+      |> recalculate(query, calculations)
       |> case do
         {:ok, result} ->
           {:ok,

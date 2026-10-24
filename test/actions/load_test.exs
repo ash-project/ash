@@ -210,6 +210,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
       calculate :campaign_upcase, :string, Ash.Test.Actions.LoadTest.UpcaseName
       calculate :tracked_campaign_upcase, :string, Ash.Test.Actions.LoadTest.TrackedUpcaseName
+      calculate :exclaim_name, :string, Ash.Test.Actions.LoadTest.ExclaimName
 
       calculate :posts_calc, :struct, PostsWithACalc do
         constraints instance_of: Ash.Test.Actions.LoadTest.Post
@@ -274,6 +275,14 @@ defmodule Ash.Test.Actions.LoadTest do
         |> String.upcase()
       end)
     end
+  end
+
+  defmodule ExclaimName do
+    @moduledoc "An expression-only calculation, with no `calculate/3`."
+    use Ash.Resource.Calculation
+
+    @impl true
+    def expression(_, _), do: expr(name <> "!")
   end
 
   defmodule PostsInSameCategory do
@@ -721,6 +730,12 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.create!()
 
       assert {:ok, [%Post{title: "post1"}]} = Ash.load({:ok, [post]}, [])
+    end
+
+    test "expression calculations on a record missing from the data layer are evaluated in memory" do
+      author = %Author{id: Ash.UUID.generate(), name: "zach"}
+
+      assert %{exclaim_name: "zach!"} = Ash.load!(author, :exclaim_name, authorize?: false)
     end
 
     test "it allows loading manual relationships" do
