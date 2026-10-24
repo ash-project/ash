@@ -1510,8 +1510,17 @@ defmodule Ash.Test.SignalsTest do
 
   describe "verification" do
     # Verification happens outside the test process, so verifier errors are emitted as warnings.
+    # The warnings are read from this process's diagnostics, since stderr also carries whatever
+    # concurrently running tests write to it. Verifier warnings are still printed, so stderr is
+    # captured only to keep them out of the test output.
     defp compile_warnings(code) do
-      ExUnit.CaptureIO.capture_io(:stderr, fn -> Code.compile_string(code) end)
+      {warnings, _stderr} =
+        ExUnit.CaptureIO.with_io(:stderr, fn ->
+          {_, diagnostics} = Code.with_diagnostics(fn -> Code.compile_string(code) end)
+          Enum.map_join(diagnostics, "\n", & &1.message)
+        end)
+
+      warnings
     end
 
     defp compile_listener(signals_in, actions) do
