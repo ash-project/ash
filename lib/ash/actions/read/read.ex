@@ -291,10 +291,12 @@ defmodule Ash.Actions.Read do
     relationship? = Map.has_key?(query.context, :accessing_from)
 
     page_opts =
-      if Keyword.has_key?(opts, :page) do
-        page_opts(action, opts[:page], relationship?)
-      else
-        page_opts(action, query.page, relationship?)
+      cond do
+        # with no page, an unpaginated read doesn't pick up the action's default limit or
+        # run a count for it
+        opts[:skip_pagination?] -> nil
+        Keyword.has_key?(opts, :page) -> page_opts(action, opts[:page], relationship?)
+        true -> page_opts(action, query.page, relationship?)
       end
       |> clamp_page_limit(action, query)
 

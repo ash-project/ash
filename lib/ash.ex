@@ -176,6 +176,15 @@ defmodule Ash do
     use Spark.Options.Validator, schema: read_opts_schema
   end
 
+  @unpaginated_read_opts_schema Keyword.delete(@read_opts_schema, :page)
+
+  unpaginated_read_opts_schema = @unpaginated_read_opts_schema
+
+  defmodule UnpaginatedReadOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: unpaginated_read_opts_schema
+  end
+
   @read_one_opts_schema Spark.Options.merge(
                           [
                             not_found_error?: [
@@ -3263,6 +3272,96 @@ defmodule Ash do
     else
       {:error, error} ->
         {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
+    end
+  end
+
+  @doc """
+  Runs an `Ash.Query` without pagination or raises an error. See `unpaginated_read/2` for more.
+
+  ## Examples
+
+      iex> Ash.unpaginated_read!(MyApp.Post)
+      [%MyApp.Post{}, %MyApp.Post{}, ...]
+
+  ## See also
+
+  - `unpaginated_read/2` for the non-raising version
+  """
+  @spec unpaginated_read!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
+          list(Ash.Resource.Record.t()) | no_return
+  @doc spark_opts: [{1, @unpaginated_read_opts_schema}]
+  def unpaginated_read!(query, opts \\ []) do
+    Ash.Helpers.expect_resource_or_query!(query)
+    Ash.Helpers.expect_options!(opts)
+
+    query
+    |> unpaginated_read(opts)
+    |> Ash.Helpers.unwrap_or_raise!()
+  end
+
+  @doc """
+  Runs an `Ash.Query` without pagination, returning every record it matches.
+
+  The read action runs as usual, including its preparations and authorization, but its
+  pagination is skipped. Pagination being `required?` doesn't apply, its `default_limit`
+  isn't used, and any page options on the query are ignored. A limit set with
+  `Ash.Query.limit/2` still applies.
+
+  Use this when your own code needs every record a query matches from an action that
+  paginates, like for an export, or to compute something across all of them.
+
+  > ### Don't use this to bypass a pagination requirement {: .warning}
+  >
+  > An action that requires pagination is declaring that callers shouldn't read it all at
+  > once. API extensions, and anything else that reads on behalf of a client, must not use
+  > this to get around pagination that an action defines.
+
+  ## Examples
+
+      iex> Ash.unpaginated_read(MyApp.Post)
+      {:ok, [%MyApp.Post{}, %MyApp.Post{}, ...]}
+
+  ## See also
+
+  - `unpaginated_read!/2` for the raising version
+  - `read/2` for reading with pagination
+
+  ## Options
+
+  #{Spark.Options.docs(@unpaginated_read_opts_schema)}
+  """
+  @spec unpaginated_read(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
+          {:ok, list(Ash.Resource.Record.t())}
+          | {:ok, list(Ash.Resource.Record.t()), Ash.Query.t()}
+          | {:error, term}
+  @doc spark_opts: [{1, @unpaginated_read_opts_schema}]
+  def unpaginated_read(query, opts \\ []) do
+    Ash.Helpers.expect_resource_or_query!(query)
+    Ash.Helpers.expect_options!(opts)
+
+    query = Ash.Query.new(query)
+
+    domain = Ash.Helpers.domain!(query, opts)
+
+    query =
+      if opts[:lock] do
+        Ash.Query.lock(query, opts[:lock])
+      else
+        query
+      end
+
+    with {:ok, opts} <- UnpaginatedReadOpts.validate(opts),
+         opts <- UnpaginatedReadOpts.to_options(opts),
+         {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
+      case Ash.Actions.Read.unpaginated_read(query, action, opts) do
+        {:ok, results} -> {:ok, results}
+        {:ok, results, query} -> {:ok, results, query}
+        {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+      end
+    else
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
     end
   end
 
