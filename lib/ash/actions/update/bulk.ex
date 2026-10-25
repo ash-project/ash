@@ -2834,8 +2834,7 @@ defmodule Ash.Actions.Update.Bulk do
               changeset.context[:changed?] || changed?
             )
 
-          new_notifications =
-            Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
+          Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
 
           {changeset, manage_notifications} =
             if changeset.valid? do
@@ -2847,7 +2846,7 @@ defmodule Ash.Actions.Update.Bulk do
                      tenant: opts[:tenant]
                    ) do
                 {:error, error} ->
-                  {Ash.Changeset.add_error(changeset, error), new_notifications}
+                  {Ash.Changeset.add_error(changeset, error), []}
 
                 {changeset, manage_instructions} ->
                   {changeset, manage_instructions.notifications}

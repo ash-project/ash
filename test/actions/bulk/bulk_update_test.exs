@@ -465,6 +465,14 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
         change ConditionalAfterActionErrorWithAfterTransaction
       end
 
+      read :forbidden_read
+
+      update :set_forbidden_parent do
+        require_atomic? false
+        argument :parent_id, :uuid, allow_nil?: false
+        change manage_relationship(:parent_id, :forbidden_parent, type: :append)
+      end
+
       update :remove_related_posts do
         require_atomic? false
 
@@ -509,6 +517,11 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
 
     policies do
+      policy action(:forbidden_read) do
+        access_type :strict
+        forbid_if always()
+      end
+
       policy action(:update_with_policy) do
         authorize_if context_equals(:authorize?, true)
       end
@@ -550,6 +563,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     relationships do
       belongs_to :author, Author, public?: true
+
+      belongs_to :forbidden_parent, __MODULE__, read_action: :forbidden_read
 
       many_to_many :related_posts, __MODULE__,
         through: PostLink,
@@ -2459,6 +2474,27 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       updated_post = Ash.load!(updated_post, :related_posts)
       assert length(updated_post.related_posts) == 1
       assert hd(updated_post.related_posts).id == related_post2.id
+    end
+
+    test "a failing managed belongs_to returns its error when notifying" do
+      parent = Ash.create!(Post, %{title: "parent"})
+
+      # loading the current parent fails, as its read action is forbidden
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post"})
+        |> Ash.Changeset.force_change_attribute(:forbidden_parent_id, parent.id)
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :error, errors: [%Ash.Error.Forbidden{}]} =
+               Post
+               |> Ash.Query.filter(id == ^post.id)
+               |> Ash.bulk_update(:set_forbidden_parent, %{parent_id: post.id},
+                 strategy: :stream,
+                 notify?: true,
+                 return_errors?: true,
+                 authorize?: true
+               )
     end
 
     test "manage_relationship falls back to stream when atomic requested" do
