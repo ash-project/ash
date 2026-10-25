@@ -12,6 +12,11 @@ defmodule Ash.Test.Resource.DefaultActionsTest do
       @moduledoc false
       use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
 
+      # A private ETS table belongs to one process, so it has no transactions.
+      ets do
+        private? true
+      end
+
       attributes do
         uuid_primary_key :id
       end

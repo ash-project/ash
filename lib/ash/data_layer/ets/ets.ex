@@ -113,10 +113,40 @@ defmodule Ash.DataLayer.Ets do
       end
     end
 
+    # The manager also holds the table's transaction lock: one transaction at a time, the
+    # rest waiting in the order they asked, as a pool checks out a connection.
+    def lock(resource, tenant, ref, mode, timeout) do
+      {:ok, table} = Ash.DataLayer.Ets.table_name(resource, tenant, true)
+      name = Module.concat(table, TableManager)
+
+      case GenServer.start(__MODULE__, {resource, table}, name: name) do
+        {:error, {:already_started, _pid}} -> call_lock(name, ref, mode, timeout)
+        {:error, error} -> {:error, error}
+        {:ok, _pid} -> call_lock(name, ref, mode, timeout)
+      end
+    end
+
+    defp call_lock(name, ref, mode, timeout) do
+      GenServer.call(name, {:lock, ref, mode}, timeout)
+    catch
+      :exit, {:timeout, _} ->
+        GenServer.cast(name, {:cancel, ref})
+        :timeout
+    end
+
+    def unlock(resource, tenant, ref) do
+      {:ok, table} = Ash.DataLayer.Ets.table_name(resource, tenant, true)
+      GenServer.call(Module.concat(table, TableManager), {:unlock, ref})
+    catch
+      # The table was stopped, and its lock with it.
+      :exit, _ -> :ok
+    end
+
     def init({resource, table}) do
       case do_wrap_existing(resource, table) do
         {:ok, table} ->
-          {:ok, {resource, table}, :hibernate}
+          {:ok, %{resource: resource, table: table, holder: nil, waiting: :queue.new()},
+           :hibernate}
 
         {:error, error} ->
           {:error, error}
@@ -124,6 +154,53 @@ defmodule Ash.DataLayer.Ets do
     end
 
     def handle_call(:wait, _, state), do: {:reply, :ok, state}
+
+    # A `:try` request is refused rather than queued, so a transaction that already holds
+    # a table never waits for another one.
+    def handle_call({:lock, ref, mode}, {pid, _} = from, state) do
+      cond do
+        is_nil(state.holder) -> {:reply, :ok, hold(state, pid, ref)}
+        mode == :try -> {:reply, :busy, state}
+        true -> {:noreply, %{state | waiting: :queue.in({from, ref}, state.waiting)}}
+      end
+    end
+
+    def handle_call({:unlock, ref}, _from, state), do: {:reply, :ok, release(state, ref)}
+
+    # A waiter that gave up: forgotten if still waiting, released if granted meanwhile.
+    def handle_cast({:cancel, ref}, state) do
+      waiting = :queue.filter(fn {_from, waiting} -> waiting != ref end, state.waiting)
+      {:noreply, release(%{state | waiting: waiting}, ref)}
+    end
+
+    def handle_info({:DOWN, monitor, :process, _, _}, %{holder: {_, monitor, ref}} = state),
+      do: {:noreply, release(state, ref)}
+
+    def handle_info(_, state), do: {:noreply, state}
+
+    defp hold(state, pid, ref), do: %{state | holder: {pid, Process.monitor(pid), ref}}
+
+    defp release(%{holder: {_pid, monitor, ref}} = state, ref) do
+      Process.demonitor(monitor, [:flush])
+      grant_next(%{state | holder: nil})
+    end
+
+    defp release(state, _ref), do: state
+
+    defp grant_next(state) do
+      case :queue.out(state.waiting) do
+        {:empty, _} ->
+          state
+
+        {{:value, {{pid, _} = from, ref}}, waiting} ->
+          if Process.alive?(pid) do
+            GenServer.reply(from, :ok)
+            hold(%{state | waiting: waiting}, pid, ref)
+          else
+            grant_next(%{state | waiting: waiting})
+          end
+      end
+    end
 
     defp do_wrap_existing(_resource, table) do
       case ETS.Set.wrap_existing(table) do
@@ -258,7 +335,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :distinct), do: true
-  def can?(_, :transact), do: false
+  def can?(resource, :transact), do: not Ash.DataLayer.Ets.Info.private?(resource)
   def can?(_, {:filter_expr, _}), do: true
 
   case Application.compile_env(:ash, :no_join_mnesia_ets) || false do
@@ -289,6 +366,196 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:atomic, :create}), do: true
   def can?(_, :through_relationship), do: true
   def can?(_, _), do: false
+
+  @undo :ash_ets_transaction_undo
+
+  # A transaction holds the lock of each shared table it touches, so a read and the write
+  # that depends on it cannot interleave with another transaction's, and it records each
+  # object it changes, so a rollback can put it back. The tables of the resources an
+  # action touches are locked up front, in one order, and waited for; a table first
+  # locked inside a transaction is tried once, so transactions never wait in a cycle. One
+  # that outlives its timeout is undone when it finishes, as a database refuses to commit.
+  @doc false
+  @impl true
+  def transaction(resource, func, timeout, reason) do
+    table = Ash.DataLayer.Ets.Info.table(resource)
+    deadline = deadline(timeout)
+
+    {locks, mode} =
+      if holding_locks?() do
+        {[lock(resource, reason)], :try}
+      else
+        {transaction_locks(resource, reason), :wait}
+      end
+
+    locks
+    |> with_locks(mode, deadline, fn ->
+      Process.put(@undo, [%{} | Process.get(@undo, [])])
+
+      try do
+        result = func.()
+
+        if past?(deadline) do
+          undo()
+          :timeout
+        else
+          commit_undo()
+          {:res, result}
+        end
+      catch
+        {{:ash_ets_rollback, ^table}, value} ->
+          undo()
+          {:error, value}
+
+        kind, error ->
+          undo()
+          :erlang.raise(kind, error, __STACKTRACE__)
+      end
+    end)
+    |> case do
+      {:res, result} ->
+        {:ok, result}
+
+      {:error, error} ->
+        {:error, error}
+
+      :timeout ->
+        {:error,
+         Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: name(reason, resource))}
+
+      :busy ->
+        {:error,
+         "could not lock the table of #{inspect(resource)}, first written inside another transaction"}
+    end
+  end
+
+  @doc false
+  @impl true
+  def rollback(resource, value) do
+    throw({{:ash_ets_rollback, Ash.DataLayer.Ets.Info.table(resource)}, value})
+  end
+
+  @doc false
+  @impl true
+  def in_transaction?(resource) do
+    Process.get({:ash_ets_transaction, Ash.DataLayer.Ets.Info.table(resource)}, false)
+  end
+
+  defp with_locks([], _mode, _deadline, fun), do: fun.()
+
+  defp with_locks([{table, tenant, resource} | locks], mode, deadline, fun) do
+    ref = make_ref()
+
+    case TableManager.lock(resource, tenant, ref, mode, remaining(deadline)) do
+      :ok ->
+        Process.put({:ash_ets_transaction, table}, true)
+
+        try do
+          with_locks(locks, mode, deadline, fun)
+        after
+          Process.delete({:ash_ets_transaction, table})
+          TableManager.unlock(resource, tenant, ref)
+        end
+
+      refused ->
+        refused
+    end
+  end
+
+  defp deadline(timeout) when is_integer(timeout),
+    do: System.monotonic_time(:millisecond) + timeout
+
+  defp deadline(_), do: :infinity
+
+  defp remaining(:infinity), do: :infinity
+  defp remaining(deadline), do: max(deadline - System.monotonic_time(:millisecond), 0)
+
+  defp past?(:infinity), do: false
+  defp past?(deadline), do: System.monotonic_time(:millisecond) > deadline
+
+  defp name(%{metadata: %{resource: resource, action: action}}, _) when is_atom(action),
+    do: "#{inspect(resource)}.#{action}"
+
+  defp name(_, resource), do: inspect(resource)
+
+  defp holding_locks? do
+    Enum.any?(Process.get_keys(true), &match?({:ash_ets_transaction, _}, &1))
+  end
+
+  defp transaction_locks(resource, reason) do
+    [resource | touched_resources(reason)]
+    |> Enum.filter(&shared_table?/1)
+    |> Enum.map(&lock(&1, reason))
+    |> Enum.uniq_by(fn {table, tenant, _} -> {table, tenant} end)
+    |> Enum.sort()
+  end
+
+  defp lock(resource, reason) do
+    tenant =
+      if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+        reason[:tenant]
+      end
+
+    {Ash.DataLayer.Ets.Info.table(resource), tenant, resource}
+  end
+
+  defp shared_table?(resource) do
+    Ash.Resource.Info.data_layer(resource) == __MODULE__ and
+      not Ash.DataLayer.Ets.Info.private?(resource)
+  end
+
+  defp touched_resources(%{metadata: %{resource: resource, action: action}})
+       when is_atom(action) do
+    case Ash.Resource.Info.action(resource, action) do
+      %{touches_resources: touches_resources} -> [resource | touches_resources]
+      _ -> [resource]
+    end
+  end
+
+  defp touched_resources(%{
+         metadata: %{query: %{action: %{touches_resources: touches_resources}}}
+       }),
+       do: touches_resources
+
+  defp touched_resources(_), do: []
+
+  # The object each key held before the transaction first changed it, `[]` for none, so
+  # a rollback restores the table to what it was. Outside a transaction, nothing to keep.
+  defp remember(table, keys) do
+    case Process.get(@undo) do
+      [changes | parents] ->
+        changes =
+          Enum.reduce(keys, changes, fn key, changes ->
+            Map.put_new_lazy(changes, {table.table, key}, fn -> :ets.lookup(table.table, key) end)
+          end)
+
+        Process.put(@undo, [changes | parents])
+        :ok
+
+      _ ->
+        :ok
+    end
+  end
+
+  # A committed transaction inside another hands its changes to it, keeping what the
+  # outer one recorded first.
+  defp commit_undo do
+    case Process.get(@undo) do
+      [_changes] -> Process.delete(@undo)
+      [changes, outer | rest] -> Process.put(@undo, [Map.merge(changes, outer) | rest])
+    end
+  end
+
+  defp undo do
+    [changes | rest] = Process.get(@undo)
+
+    if rest == [], do: Process.delete(@undo), else: Process.put(@undo, rest)
+
+    Enum.each(changes, fn
+      {{tab, key}, []} -> :ets.delete(tab, key)
+      {{tab, _key}, objects} -> :ets.insert(tab, objects)
+    end)
+  end
 
   @doc false
   @impl true
@@ -2045,6 +2312,8 @@ defmodule Ash.DataLayer.Ets do
 
     case dump_to_native(record, attributes) do
       {:ok, casted} ->
+        remember(table, [pkey])
+
         if :ets.insert_new(table.table, {pkey, casted}) do
           {_key, record} = ETS.Set.get!(table, pkey)
           cast_record(record, resource)
@@ -2079,6 +2348,8 @@ defmodule Ash.DataLayer.Ets do
     end)
     |> case do
       {:ok, batch, indices} ->
+        remember(table, Enum.map(batch, &elem(&1, 0)))
+
         case ETS.Set.put(table, batch) do
           {:ok, set} ->
             if return_records? do
@@ -2332,7 +2603,9 @@ defmodule Ash.DataLayer.Ets do
         {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
 
       _ ->
-        with {:ok, _} <- ETS.Set.delete(table, pkey), do: :ok
+        with :ok <- remember(table, [pkey]),
+             {:ok, _} <- ETS.Set.delete(table, pkey),
+             do: :ok
     end
   end
 
@@ -2357,6 +2630,7 @@ defmodule Ash.DataLayer.Ets do
     with {:ok, closed} <- close_at(prior, written.lower, resource, period),
          {:ok, resumed} <- resume_after(prior, written, resource, period),
          {:ok, versions} <- carved(resource, pkey, period, stored, [closed, resumed]),
+         :ok <- remember(table, [pkey]),
          {:ok, table} <- ETS.Set.delete(table, pkey),
          {:ok, _} <- put_versions(table, versions) do
       :ok
@@ -2364,7 +2638,11 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp put_versions(table, []), do: {:ok, table}
-  defp put_versions(table, versions), do: ETS.Set.put(table, versions)
+
+  defp put_versions(table, versions) do
+    remember(table, Enum.map(versions, &elem(&1, 0)))
+    ETS.Set.put(table, versions)
+  end
 
   # An instant ends validity for good; a range hands back what lies beyond its upper bound.
   defp resume_after(_prior, %Ash.Range{upper: nil}, _resource, _period), do: {:ok, nil}
@@ -2728,6 +3006,7 @@ defmodule Ash.DataLayer.Ets do
          {:ok, {_key, opened_data} = opened} <-
            version(resource, pkey, period, data, opening),
          {:ok, kept} <- carved(resource, pkey, period, prior_data, [closed, resumed]),
+         :ok <- remember(table, [pkey]),
          {:ok, table} <- ETS.Set.delete(table, pkey),
          {:ok, _table} <- put_versions(table, kept ++ [opened]) do
       {:ok, opened_data}
@@ -2828,6 +3107,8 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp put_data(table, pkey, data) do
+    remember(table, [pkey])
+
     case ETS.Set.put(
            table,
            {pkey, data}

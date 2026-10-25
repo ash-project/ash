@@ -679,6 +679,167 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsTransactionAccount do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:read, :destroy]
+
+      create :create do
+        primary? true
+        accept [:email]
+      end
+
+      create :create_then_fail do
+        accept [:email]
+
+        change after_action(fn _changeset, _record, _context ->
+                 raise "after the write"
+               end)
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :email, :string, public?: true
+    end
+
+    identities do
+      identity :unique_email, [:email], pre_check_with: Domain
+    end
+  end
+
+  defmodule EtsTransactionLeft do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:read]
+
+      create :create do
+        primary? true
+        touches_resources [Ash.DataLayer.EtsTest.EtsTransactionRight]
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
+  defmodule EtsTransactionRight do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:read]
+
+      create :create do
+        primary? true
+        touches_resources [Ash.DataLayer.EtsTest.EtsTransactionLeft]
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
+  describe "transactions on a shared table" do
+    setup do
+      # Each table's manager is gone before the next test starts, since some count processes.
+      on_exit(fn ->
+        for resource <- [EtsTransactionAccount, EtsTransactionLeft, EtsTransactionRight] do
+          {:ok, table} = Ash.DataLayer.Ets.table_name(resource, nil, true)
+
+          case Process.whereis(Module.concat(table, Ash.DataLayer.Ets.TableManager)) do
+            nil ->
+              :ok
+
+            pid ->
+              ref = Process.monitor(pid)
+              Ash.DataLayer.Ets.stop(resource)
+              assert_receive {:DOWN, ^ref, :process, ^pid, _}
+          end
+        end
+      end)
+    end
+
+    test "only a private table has none" do
+      refute Ash.DataLayer.data_layer_can?(EtsTestUser, :transact)
+      assert Ash.DataLayer.data_layer_can?(EtsTransactionAccount, :transact)
+    end
+
+    test "simultaneous creates of one identity value keep one record" do
+      results =
+        at_once(20, fn _ -> Ash.create(EtsTransactionAccount, %{email: "same@example.com"}) end)
+
+      assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+      assert Enum.count(results, &match?({:error, %Ash.Error.Invalid{}}, &1)) == 19
+      assert [_] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a rollback undoes the writes made in the transaction" do
+      assert {:error, _} =
+               Ash.transaction(EtsTransactionAccount, fn ->
+                 Ash.create!(EtsTransactionAccount, %{email: "kept@example.com"})
+                 Ash.DataLayer.rollback(EtsTransactionAccount, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "an action that raises after its write leaves no record" do
+      result =
+        try do
+          Ash.create(EtsTransactionAccount, %{email: "gone@example.com"},
+            action: :create_then_fail
+          )
+        rescue
+          error -> {:raised, error}
+        end
+
+      refute match?({:ok, _}, result)
+      assert [] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "actions that lock each other's tables in opposite orders all complete" do
+      results =
+        for _round <- 1..10 do
+          at_once(2, fn
+            1 -> Ash.create(EtsTransactionLeft, %{})
+            2 -> Ash.create(EtsTransactionRight, %{})
+          end)
+        end
+
+      assert Enum.all?(List.flatten(results), &match?({:ok, _}, &1))
+    end
+  end
+
+  # Runs `fun` for 1..count in as many processes released together, giving each three
+  # seconds; one still running then is reported as `:still_running`.
+  defp at_once(count, fun) do
+    tasks =
+      for n <- 1..count do
+        Task.async(fn ->
+          receive do
+            :go -> fun.(n)
+          end
+        end)
+      end
+
+    Enum.each(tasks, &send(&1.pid, :go))
+
+    tasks
+    |> Task.yield_many(3_000)
+    |> Enum.map(fn
+      {_task, {:ok, result}} ->
+        result
+
+      {task, nil} ->
+        Task.shutdown(task, :brutal_kill)
+        :still_running
+    end)
+  end
+
   defp cast_user!({pkey, attrs}) do
     {:ok, user} = Ash.DataLayer.Ets.cast_record(attrs, EtsTestUser)
     {pkey, user}
