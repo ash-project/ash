@@ -18,10 +18,11 @@ defmodule Ash.DataLayer.MnesiaTest do
   end
 
   @no_pkey_test_table :test_events
+  @lock_test_tables [:test_lock_posts, :test_lock_notes]
 
   setup do
     # Clean up any existing tables before each test
-    for table <- [@default_test_table, @no_pkey_test_table] do
+    for table <- [@default_test_table, @no_pkey_test_table | @lock_test_tables] do
       try do
         :mnesia.delete_table(table)
       catch
@@ -32,6 +33,12 @@ defmodule Ash.DataLayer.MnesiaTest do
     # Create fresh tables for each test
     :mnesia.create_table(@default_test_table, attributes: [:id, :val])
     :mnesia.create_table(@no_pkey_test_table, attributes: [:id, :val])
+
+    for table <- @lock_test_tables do
+      :mnesia.create_table(table, attributes: [:id, :val])
+    end
+
+    :persistent_term.put({__MODULE__, :runs}, :counters.new(1, []))
     :ok
   end
 
@@ -63,6 +70,90 @@ defmodule Ash.DataLayer.MnesiaTest do
       attribute :roles, {:array, :atom}, public?: true
       create_timestamp :inserted_at
       update_timestamp :updated_at, writable?: true, public?: true
+    end
+  end
+
+  defmodule CountRuns do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn changeset ->
+        :counters.add(:persistent_term.get({Ash.DataLayer.MnesiaTest, :runs}), 1, 1)
+        changeset
+      end)
+    end
+  end
+
+  defmodule MnesiaLockTestNote do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
+
+    mnesia do
+      table :test_lock_notes
+    end
+
+    actions do
+      defaults [:read, create: :*]
+
+      create :create_touching_posts do
+        accept [:body]
+        touches_resources [Ash.DataLayer.MnesiaTest.MnesiaLockTestPost]
+        change CountRuns
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :body, :string, public?: true
+    end
+  end
+
+  defmodule MnesiaLockTestPost do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
+
+    mnesia do
+      table :test_lock_posts
+    end
+
+    actions do
+      defaults [:read]
+
+      create :create do
+        primary? true
+        accept [:title]
+        change CountRuns
+      end
+
+      create :create_with_note do
+        accept [:title]
+        change CountRuns
+
+        change after_action(fn _changeset, post, _context ->
+                 Ash.create!(MnesiaLockTestNote, %{body: post.title})
+                 {:ok, post}
+               end)
+      end
+
+      create :create_with_declared_note do
+        accept [:title]
+        touches_resources [MnesiaLockTestNote]
+        change CountRuns
+
+        change after_action(fn _changeset, post, _context ->
+                 Ash.create!(MnesiaLockTestNote, %{body: post.title})
+                 {:ok, post}
+               end)
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true
+    end
+
+    identities do
+      identity :unique_title, [:title], pre_check_with: Domain
     end
   end
 
@@ -377,6 +468,124 @@ defmodule Ash.DataLayer.MnesiaTest do
                notifications: nil,
                error_count: 0
              } = resp
+    end
+  end
+
+  describe "transactions under contention" do
+    test "simultaneous creates that check an identity all succeed" do
+      results = all_at_once(20, &Ash.create(MnesiaTestUser, %{name: "user #{&1}"}))
+
+      assert Enum.all?(results, &match?({:ok, _}, &1))
+      assert length(Ash.read!(MnesiaTestUser)) == 20
+    end
+
+    test "a create waiting on a lock runs its hooks once" do
+      results = all_at_once(20, &Ash.create(MnesiaLockTestPost, %{title: "post #{&1}"}))
+
+      assert Enum.all?(results, &match?({:ok, _}, &1))
+      assert runs() == 20
+    end
+
+    test "an action waits for a lock on a resource it declares in touches_resources" do
+      holder = hold_table_lock(:test_lock_notes)
+      restarts = :mnesia.system_info(:transaction_restarts)
+
+      task =
+        Task.async(fn ->
+          Ash.create(MnesiaLockTestPost, %{title: "post"}, action: :create_with_declared_note)
+        end)
+
+      assert await_restart(restarts) == :ok
+      release(holder)
+
+      assert {:ok, _} = Task.await(task)
+      assert runs() == 1
+      assert [_] = Ash.read!(MnesiaLockTestNote)
+    end
+
+    test "actions that lock each other's tables in opposite orders all complete, running once" do
+      results =
+        for _round <- 1..10 do
+          all_at_once(2, fn
+            1 ->
+              Ash.create(MnesiaLockTestPost, %{title: "post #{System.unique_integer()}"},
+                action: :create_with_declared_note
+              )
+
+            2 ->
+              Ash.create(MnesiaLockTestNote, %{body: "note"}, action: :create_touching_posts)
+          end)
+        end
+
+      assert Enum.all?(List.flatten(results), &match?({:ok, _}, &1))
+      assert runs() == 20
+    end
+
+    test "an action that meets a lock on a resource it does not declare fails without running again" do
+      holder = hold_table_lock(:test_lock_notes)
+
+      result = Ash.create(MnesiaLockTestPost, %{title: "post"}, action: :create_with_note)
+      release(holder)
+
+      assert {:error, _} = result
+      assert runs() == 1
+      assert [] = Ash.read!(MnesiaLockTestPost)
+    end
+  end
+
+  defp all_at_once(count, fun) do
+    tasks =
+      for n <- 1..count do
+        Task.async(fn ->
+          receive do
+            :go -> fun.(n)
+          end
+        end)
+      end
+
+    Enum.each(tasks, &send(&1.pid, :go))
+    Task.await_many(tasks)
+  end
+
+  defp runs, do: :counters.get(:persistent_term.get({__MODULE__, :runs}), 1)
+
+  defp hold_table_lock(table) do
+    test = self()
+
+    holder =
+      spawn_link(fn ->
+        :mnesia.transaction(fn ->
+          :mnesia.lock({:table, table}, :write)
+          send(test, :locked)
+
+          receive do
+            :release -> :ok
+          end
+        end)
+
+        send(test, :released)
+      end)
+
+    assert_receive :locked
+    holder
+  end
+
+  defp release(holder) do
+    send(holder, :release)
+    assert_receive :released
+  end
+
+  defp await_restart(restarts, polls \\ 100) do
+    cond do
+      :mnesia.system_info(:transaction_restarts) > restarts ->
+        :ok
+
+      polls == 0 ->
+        :no_restart
+
+      true ->
+        Process.sleep(10)
+        await_restart(restarts, polls - 1)
     end
   end
 

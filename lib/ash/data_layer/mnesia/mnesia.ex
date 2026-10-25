@@ -987,8 +987,25 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def transaction(_, func, _timeout, _reason) do
-    case Mnesia.transaction(func, 1) do
+  def transaction(resource, func, _timeout, reason) do
+    tables = transaction_tables(resource, reason)
+    started = {__MODULE__, make_ref()}
+
+    # Mnesia makes a transaction that meets a lock held by an older one wait by
+    # restarting it, and the hooks it runs must run once. The tables of the
+    # resources the action touches are locked before any of it runs, and a
+    # restart after it has started aborts as a transaction without restarts does.
+    result =
+      Mnesia.transaction(fn ->
+        if Process.get(started), do: Mnesia.abort(:nomore)
+        Enum.each(tables, &Mnesia.lock({:table, &1}, :write))
+        Process.put(started, true)
+        func.()
+      end)
+
+    Process.delete(started)
+
+    case result do
       {:atomic, result} ->
         {:ok, result}
 
@@ -1009,6 +1026,28 @@ defmodule Ash.DataLayer.Mnesia do
         end
     end
   end
+
+  defp transaction_tables(resource, reason) do
+    [resource | touched_resources(reason)]
+    |> Enum.filter(&(Ash.Resource.Info.data_layer(&1) == __MODULE__))
+    |> Enum.map(&Ash.DataLayer.Mnesia.Info.table/1)
+    |> Enum.uniq()
+  end
+
+  defp touched_resources(%{metadata: %{resource: resource, action: action}})
+       when is_atom(action) do
+    case Ash.Resource.Info.action(resource, action) do
+      %{touches_resources: touches_resources} -> [resource | touches_resources]
+      _ -> [resource]
+    end
+  end
+
+  defp touched_resources(%{
+         metadata: %{query: %{action: %{touches_resources: touches_resources}}}
+       }),
+       do: touches_resources
+
+  defp touched_resources(_), do: []
 
   @doc false
   @impl true
