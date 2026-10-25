@@ -776,20 +776,9 @@ defmodule Ash.DataLayer.EtsTest do
 
   describe "transactions on a shared table" do
     setup do
-      # Each table's manager is gone before the next test starts, since some count processes.
       on_exit(fn ->
         for resource <- [EtsTransactionAccount, EtsTransactionLeft, EtsTransactionRight] do
-          {:ok, table} = Ash.DataLayer.Ets.table_name(resource, nil, true)
-
-          case Process.whereis(Module.concat(table, Ash.DataLayer.Ets.TableManager)) do
-            nil ->
-              :ok
-
-            pid ->
-              ref = Process.monitor(pid)
-              Ash.DataLayer.Ets.stop(resource)
-              assert_receive {:DOWN, ^ref, :process, ^pid, _}
-          end
+          Ash.DataLayer.Ets.stop(resource)
         end
       end)
     end

@@ -153,6 +153,10 @@ defmodule Ash.DataLayer.Ets do
       :exit, {:timeout, _} ->
         GenServer.cast(name, {:cancel, ref})
         :timeout
+
+      # The table was stopped while the transaction waited for it.
+      :exit, reason ->
+        {:error, Exception.format_exit(reason)}
     end
 
     def unlock(resource, tenant, ref) do
