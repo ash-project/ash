@@ -855,7 +855,7 @@ defmodule Ash.Actions.Update.Bulk do
 
           results = List.wrap(results)
 
-          {results, notifications} =
+          {results, after_batch_errors, notifications} =
             if has_after_batch_hooks? do
               run_atomic_after_batch_hooks(
                 results,
@@ -865,16 +865,21 @@ defmodule Ash.Actions.Update.Bulk do
                 context
               )
             else
-              {results, []}
+              {results, [], []}
             end
+
+          if after_batch_errors != [] && opts[:transaction] && opts[:rollback_on_error?] &&
+               Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+            Ash.DataLayer.rollback(atomic_changeset.resource, hd(after_batch_errors))
+          end
 
           {results, errors, notifications} =
             if Enum.empty?(atomic_changeset.after_action) do
-              {results, [], notifications}
+              {results, after_batch_errors, notifications}
             else
               Enum.reduce(
                 results,
-                {[], [], notifications},
+                {[], after_batch_errors, notifications},
                 fn result, {results, errors, notifications} ->
                   # we can't actually know if the changeset changed or not when doing atomics
                   # so we just have to set it to statically true here.
@@ -1119,11 +1124,11 @@ defmodule Ash.Actions.Update.Bulk do
         {atomic_changeset, Ash.Resource.set_metadata(result, %{atomic_index: index})}
       end)
 
-    {records_with_changesets, notifications} =
+    {records_with_changesets, notifications, errors} =
       conditional_after_batch_hooks
       |> Enum.reduce(
-        {results, []},
-        fn {where, indices}, {records, additional_notifications} ->
+        {results, [], []},
+        fn {where, indices}, {records, additional_notifications, errors} ->
           {to_apply, to_not_apply} =
             case where do
               true ->
@@ -1139,41 +1144,42 @@ defmodule Ash.Actions.Update.Bulk do
             end
 
           if Enum.empty?(to_apply) do
-            {records, additional_notifications}
+            {records, additional_notifications, errors}
           else
-            {applied, notifications} =
+            {applied, notifications, errors} =
               Enum.reduce(
                 indices,
-                {to_apply, additional_notifications},
-                fn index, {records, additional_notifications} ->
+                {to_apply, additional_notifications, errors},
+                fn index, {records, additional_notifications, errors} ->
                   change = Enum.at(all_changes, index)
                   {module, opts} = change.change
 
                   case Ash.Resource.Change.after_batch(module, records, opts, context) do
                     :ok ->
-                      {to_apply, additional_notifications}
+                      {to_apply, additional_notifications, errors}
 
                     instructions ->
                       Enum.reduce(
                         instructions,
-                        {[], additional_notifications},
+                        {[], additional_notifications, errors},
                         fn
-                          {:ok, record}, {records, additional_notifications} ->
-                            {[{atomic_changeset, record} | records], additional_notifications}
+                          {:ok, record}, {records, additional_notifications, errors} ->
+                            {[{atomic_changeset, record} | records], additional_notifications,
+                             errors}
 
-                          {:error, error}, _ ->
-                            raise Ash.Error.to_ash_error(error)
+                          {:error, error}, {records, additional_notifications, errors} ->
+                            {records, additional_notifications, [error | errors]}
 
                           %Ash.Notifier.Notification{} = notification,
-                          {records, additional_notifications} ->
-                            {records, [notification | additional_notifications]}
+                          {records, additional_notifications, errors} ->
+                            {records, [notification | additional_notifications], errors}
                         end
                       )
                   end
                 end
               )
 
-            {applied ++ to_not_apply, notifications ++ additional_notifications}
+            {applied ++ to_not_apply, notifications ++ additional_notifications, errors}
           end
         end
       )
@@ -1184,7 +1190,7 @@ defmodule Ash.Actions.Update.Bulk do
       |> Stream.map(&elem(&1, 1))
       |> Enum.sort_by(& &1.__metadata__.atomic_index)
 
-    {final_results, notifications}
+    {final_results, Enum.reverse(errors), notifications}
   end
 
   @doc false

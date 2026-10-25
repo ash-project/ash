@@ -750,7 +750,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         {:ok, results} ->
           results = List.wrap(results)
 
-          {results, notifications} =
+          {results, after_batch_errors, notifications} =
             if has_after_batch_hooks? do
               Ash.Actions.Update.Bulk.run_atomic_after_batch_hooks(
                 results,
@@ -760,16 +760,21 @@ defmodule Ash.Actions.Destroy.Bulk do
                 context
               )
             else
-              {results, []}
+              {results, [], []}
             end
+
+          if after_batch_errors != [] && opts[:transaction] && opts[:rollback_on_error?] &&
+               Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+            Ash.DataLayer.rollback(atomic_changeset.resource, hd(after_batch_errors))
+          end
 
           {results, errors, notifications} =
             if Enum.empty?(atomic_changeset.after_action) do
-              {results, [], notifications}
+              {results, after_batch_errors, notifications}
             else
               Enum.reduce(
                 results,
-                {[], [], notifications},
+                {[], after_batch_errors, notifications},
                 fn result, {results, errors, notifications} ->
                   case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
                     {:error, error} ->
