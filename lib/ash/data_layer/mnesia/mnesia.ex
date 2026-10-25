@@ -246,6 +246,9 @@ defmodule Ash.DataLayer.Mnesia do
         {:error, error}
     end
     |> case do
+      {:ok, results} ->
+        {:ok, results}
+
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
 
