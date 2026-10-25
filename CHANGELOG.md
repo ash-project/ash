@@ -8,6 +8,81 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.1](https://github.com/ash-project/ash/compare/v3.37.0...v3.37.1) (2026-10-25)
+
+
+
+
+### Improvements:
+
+* support maps as tuple inputs by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `Ash.unpaginated_read` by [@zachdaniel](https://github.com/zachdaniel)
+
+* support `strict?: true` on changesets for strict loading by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* wait for an ETS table manager to exit when stopping its table by [@zachdaniel](https://github.com/zachdaniel)
+
+* let a contended Mnesia transaction wait instead of failing (#3084) by Aaron Paterson [(#3084)](https://github.com/ash-project/ash/pull/3084)
+
+* wait for an ETS table's manager to create the table (#3083) by Aaron Paterson [(#3083)](https://github.com/ash-project/ash/pull/3083)
+
+* return the results of a Mnesia aggregate query (#3085) by Aaron Paterson [(#3085)](https://github.com/ash-project/ash/pull/3085)
+
+* load before destroying records in streaming bulk destroys by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't require original data for atomic bulk actions that won't notify by [@zachdaniel](https://github.com/zachdaniel)
+
+* apply an upsert_condition passed to Ash.create by [@zachdaniel](https://github.com/zachdaniel)
+
+* keep an aggregate query's arguments when authorizing its relationship path by [@zachdaniel](https://github.com/zachdaniel)
+
+* try every operator signature before reporting a cast error by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't store :ok as a notification when a managed belongs_to fails in bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
+* return errors from cascade_destroy and after_batch hooks instead of raising by [@zachdaniel](https://github.com/zachdaniel)
+
+* apply the smaller of a relationship's limit and its query's limit by [@zachdaniel](https://github.com/zachdaniel)
+
+* honor requested strategies when bulk update authorization needs initial data by [@zachdaniel](https://github.com/zachdaniel)
+
+* always lateral join through relationships by [@zachdaniel](https://github.com/zachdaniel)
+
+* do not choose `atomic_batches` strategy incorrectly by [@zachdaniel](https://github.com/zachdaniel)
+
+* honor `skip_unknown_inputs` constraint on embeddable types by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle expression calculations in simulating calculation loading by [@zachdaniel](https://github.com/zachdaniel)
+
+* make the lack of support for `path` option explicit in `Ash.aggregate` by [@zachdaniel](https://github.com/zachdaniel)
+
+* include expr & expr_type in unique name for inline aggregates by [@zachdaniel](https://github.com/zachdaniel)
+
+* always select temporal period as its needed for loading by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that changeset.tenant is set on upgraded changesets by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't raise on a non-bang `get_by` call by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure multiple unrelated aggregate authorizations don't conflate by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure aggregate multitenancy is passed everywhere by [@zachdaniel](https://github.com/zachdaniel)
+
+* apply operator overloads more strictly only on known matches by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that upsert_conflict/1 expression is properly typed by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure stream bulk actions apply changeset filter by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure atomic upgrade uses same transaction semantics as normal update by [@zachdaniel](https://github.com/zachdaniel)
+
+* read each step of a through relationship the way its relationship reads by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle sigils in expressions more gracefully by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.37.0](https://github.com/ash-project/ash/compare/v3.36.1...v3.37.0) (2026-10-22)
 
 
