@@ -67,6 +67,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
         destination_attribute: :author_id,
         public?: true
     end
+
+    aggregates do
+      count :post_count, :posts, public?: true
+    end
+
+    calculations do
+      calculate :has_posts?, :boolean, expr(exists(posts, true)), public?: true
+    end
   end
 
   defmodule PostLink do
@@ -1172,6 +1180,44 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                )
 
       assert [%Post{title: "Related 1"}, %Post{title: "Related 2"}] = post.related_posts
+    end
+
+    test "loads aggregates and calculations before destroying when streaming" do
+      post = Ash.create!(Post, %{title: "Post"})
+
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "Author"})
+        |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{records: [author]} =
+               Ash.bulk_destroy!([author], :destroy, %{},
+                 resource: Author,
+                 strategy: :stream,
+                 return_records?: true,
+                 load: [:post_count, :has_posts?]
+               )
+
+      assert author.post_count == 1
+      assert author.has_posts?
+    end
+
+    test "warns when loading aggregates with an atomic strategy" do
+      for strategy <- [:atomic, :atomic_batches] do
+        Ash.create!(Author, %{name: "Author"})
+
+        log =
+          capture_log(fn ->
+            Ash.bulk_destroy!(Author, :destroy, %{},
+              strategy: strategy,
+              return_records?: true,
+              load: [:post_count]
+            )
+          end)
+
+        assert log =~ ":post_count"
+      end
     end
   end
 

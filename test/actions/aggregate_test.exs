@@ -903,6 +903,24 @@ defmodule Ash.Test.Actions.AggregateTest do
       assert Ash.exists?(query, authorize?: false)
     end
 
+    test "an aggregate's query for a read action with arguments keeps them when authorizing" do
+      post = Ash.create!(Post, %{public: true}, authorize?: false)
+
+      for thing <- ["c", "c", "d"] do
+        Ash.create!(Comment, %{post_id: post.id, public: true, thing: thing}, authorize?: false)
+      end
+
+      query = Ash.Query.for_read(Comment, :by_thing_argument, %{thing: "c"})
+
+      for authorize? <- [false, true] do
+        assert %{aggregates: %{c_count: 2}} =
+                 Post
+                 |> Ash.Query.filter(id == ^post.id)
+                 |> Ash.Query.aggregate(:c_count, :count, :comments, query: query)
+                 |> Ash.read_one!(authorize?: authorize?)
+      end
+    end
+
     test "aggregates can reference calculations" do
       post = Post |> Ash.create!(%{public: true}, authorize?: false)
 
