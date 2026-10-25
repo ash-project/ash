@@ -213,7 +213,13 @@ defmodule Ash.DataLayer.Ets do
               :ok
 
             pid ->
+              # Wait for the manager to exit, so its table is gone by the time this returns
+              ref = Process.monitor(pid)
               Process.exit(pid, :shutdown)
+
+              receive do
+                {:DOWN, ^ref, :process, _, _} -> :ok
+              end
           end
       end
     end
