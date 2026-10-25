@@ -95,6 +95,12 @@ defmodule Ash.DataLayer.MnesiaTest do
 
     actions do
       defaults [:read, create: :*]
+
+      create :create_touching_posts do
+        accept [:body]
+        touches_resources [Ash.DataLayer.MnesiaTest.MnesiaLockTestPost]
+        change CountRuns
+      end
     end
 
     attributes do
@@ -483,6 +489,24 @@ defmodule Ash.DataLayer.MnesiaTest do
       assert {:ok, _} = Task.await(task)
       assert runs() == 1
       assert [_] = Ash.read!(MnesiaLockTestNote)
+    end
+
+    test "actions that lock each other's tables in opposite orders all complete, running once" do
+      results =
+        for _round <- 1..10 do
+          all_at_once(2, fn
+            1 ->
+              Ash.create(MnesiaLockTestPost, %{title: "post #{System.unique_integer()}"},
+                action: :create_with_declared_note
+              )
+
+            2 ->
+              Ash.create(MnesiaLockTestNote, %{body: "note"}, action: :create_touching_posts)
+          end)
+        end
+
+      assert Enum.all?(List.flatten(results), &match?({:ok, _}, &1))
+      assert runs() == 20
     end
 
     test "an action that meets a lock on a resource it does not declare fails without running again" do
