@@ -401,6 +401,28 @@ defmodule Ash.Test.Notifier.PubSubTest do
     assert_receive {:broadcast, ^message, "any_update", %Ash.Notifier.Notification{}}
   end
 
+  test "a publication with previous_values? doesn't stop an atomic bulk update that won't notify" do
+    Post
+    |> Ash.Changeset.for_create(:create, %{name: "ted"})
+    |> Ash.create!()
+
+    assert %Ash.BulkResult{status: :success} =
+             Ash.bulk_update(Post, :update, %{name: "fred"},
+               strategy: [:atomic],
+               return_errors?: true
+             )
+
+    assert [%{name: "fred"}] = Ash.read!(Post)
+    refute_received {:broadcast, _, "update", _}
+
+    assert %Ash.BulkResult{status: :error} =
+             Ash.bulk_update(Post, :update, %{name: "george"},
+               strategy: [:atomic],
+               notify?: true,
+               return_errors?: true
+             )
+  end
+
   test "publishing a message with a different delimiter" do
     user =
       User
