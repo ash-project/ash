@@ -113,6 +113,17 @@ defmodule Ash.DataLayer.Ets do
       end
     end
 
+    def init({resource, table}) do
+      case do_wrap_existing(resource, table) do
+        {:ok, table} ->
+          {:ok, %{resource: resource, table: table, holder: nil, waiting: :queue.new()},
+           :hibernate}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+
     # The manager also holds the table's transaction lock: one transaction at a time, the
     # rest waiting in the order they asked, as a pool checks out a connection.
     def lock(resource, tenant, ref, mode, timeout) do
@@ -140,17 +151,6 @@ defmodule Ash.DataLayer.Ets do
     catch
       # The table was stopped, and its lock with it.
       :exit, _ -> :ok
-    end
-
-    def init({resource, table}) do
-      case do_wrap_existing(resource, table) do
-        {:ok, table} ->
-          {:ok, %{resource: resource, table: table, holder: nil, waiting: :queue.new()},
-           :hibernate}
-
-        {:error, error} ->
-          {:error, error}
-      end
     end
 
     def handle_call(:wait, _, state), do: {:reply, :ok, state}
