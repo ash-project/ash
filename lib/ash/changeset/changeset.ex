@@ -2079,6 +2079,11 @@ defmodule Ash.Changeset do
       default: false,
       doc:
         "If `true`, and a record was *not* upserted because its filter prevented the upsert, the original record (which was *not* upserted) will be returned."
+    ],
+    upsert_condition: [
+      type: :any,
+      doc:
+        "An expression to check if the record should be updated when there's a conflict."
     ]
   ]
 

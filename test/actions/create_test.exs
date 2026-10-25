@@ -719,6 +719,89 @@ defmodule Ash.Test.Actions.CreateTest do
       assert Ash.Resource.get_metadata(post, :upsert_skipped)
     end
 
+    test "skips upsert when condition is passed to Ash.create/2,3 directly on action changeset" do
+      assert %Post{id: id, title: "foo_action", updated_at: updated_at} =
+               Post
+               |> Ash.Changeset.for_create(:create, %{
+                 title: "foo_action",
+                 contents: "bar",
+                 tag: "before"
+               })
+               |> Ash.create!()
+
+      assert %Post{id: ^id, title: "foo_action", contents: "bar", updated_at: ^updated_at} =
+               post =
+               Post
+               |> Ash.Changeset.for_create(:create, %{
+                 title: "foo_action",
+                 contents: "bar",
+                 tag: "after"
+               })
+               |> Ash.create!(
+                 upsert?: true,
+                 return_skipped_upsert?: true,
+                 upsert_identity: :unique_title,
+                 upsert_fields: [:contents, :updated_at],
+                 upsert_condition: expr(contents != upsert_conflict(:contents))
+               )
+
+      assert Ash.Resource.get_metadata(post, :upsert_skipped)
+    end
+
+    test "skips upsert when condition is passed to Ash.create/3 on resource" do
+      assert %Post{id: id, title: "foo_resource", updated_at: updated_at} =
+               Ash.create!(Post, %{
+                 title: "foo_resource",
+                 contents: "bar",
+                 tag: "before"
+               })
+
+      assert %Post{id: ^id, title: "foo_resource", contents: "bar", updated_at: ^updated_at} =
+               post =
+               Ash.create!(
+                 Post,
+                 %{
+                   title: "foo_resource",
+                   contents: "bar",
+                   tag: "after"
+                 },
+                 upsert?: true,
+                 return_skipped_upsert?: true,
+                 upsert_identity: :unique_title,
+                 upsert_fields: [:contents, :updated_at],
+                 upsert_condition: expr(contents != upsert_conflict(:contents))
+               )
+
+      assert Ash.Resource.get_metadata(post, :upsert_skipped)
+    end
+
+    test "skips upsert when upsert_condition expr(false) is passed to Ash.create/2" do
+      assert %Post{id: id, title: "foo_false", updated_at: updated_at} =
+               Post
+               |> Ash.Changeset.for_create(:create, %{
+                 title: "foo_false",
+                 contents: "bar"
+               })
+               |> Ash.create!()
+
+      assert %Post{id: ^id, title: "foo_false", contents: "bar", updated_at: ^updated_at} =
+               post =
+               Post
+               |> Ash.Changeset.for_create(:create, %{
+                 title: "foo_false",
+                 contents: "overwritten"
+               })
+               |> Ash.create!(
+                 upsert?: true,
+                 return_skipped_upsert?: true,
+                 upsert_identity: :unique_title,
+                 upsert_fields: [:contents, :updated_at],
+                 upsert_condition: expr(false)
+               )
+
+      assert Ash.Resource.get_metadata(post, :upsert_skipped)
+    end
+
     test "skips upsert when condition doesn't match, returning error unless asked for" do
       Post
       |> Ash.Changeset.new()

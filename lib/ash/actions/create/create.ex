@@ -169,13 +169,42 @@ defmodule Ash.Actions.Create do
 
     touch_update_defaults? = Keyword.get(opts, :touch_update_defaults?, true)
 
+    current_upsert_condition = get_in(changeset.context, [:private, :upsert_condition])
+
+    upsert_condition =
+      cond do
+        not is_nil(opts[:upsert_condition]) ->
+          opts[:upsert_condition]
+
+        not is_nil(current_upsert_condition) ->
+          current_upsert_condition
+
+        true ->
+          action.upsert_condition
+      end
+
+    changeset =
+      if changeset.__validated_for_action__ == action.name and
+           not is_nil(opts[:upsert_condition]) and
+           opts[:upsert_condition] != current_upsert_condition do
+        Ash.Changeset.filter(changeset, opts[:upsert_condition])
+      else
+        changeset
+      end
+
+    opts =
+      opts
+      |> Keyword.put(:upsert_identity, upsert_identity)
+      |> Keyword.put(:upsert_condition, upsert_condition)
+
     changeset =
       Ash.Changeset.set_context(changeset, %{
         private: %{
           upsert?: true,
           upsert_identity: upsert_identity,
           upsert_fields: upsert_fields,
-          touch_update_defaults?: touch_update_defaults?
+          touch_update_defaults?: touch_update_defaults?,
+          upsert_condition: upsert_condition
         }
       })
 
