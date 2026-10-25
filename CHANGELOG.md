@@ -49,7 +49,7 @@ SPDX-License-Identifier: MIT
 
 * honor requested strategies when bulk update authorization needs initial data by [@zachdaniel](https://github.com/zachdaniel)
 
-* always lateral join through relationships by [@zachdaniel](https://github.com/zachdaniel)
+* [security] always lateral join through relationships ([CVE-2026-114214](https://cna.erlef.org/cves/CVE-2026-114214.html), [GHSA-g2h4-xp57-q863](https://github.com/ash-project/ash/security/advisories/GHSA-g2h4-xp57-q863)) by [@zachdaniel](https://github.com/zachdaniel)
 
 * do not choose `atomic_batches` strategy incorrectly by [@zachdaniel](https://github.com/zachdaniel)
 
