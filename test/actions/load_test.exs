@@ -1526,6 +1526,20 @@ defmodule Ash.Test.Actions.LoadTest do
       assert author.latest_post.id == post2.id
     end
 
+    test "a has_one with a sort loaded with a limit of 0 is nil" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post1"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      assert is_nil(Ash.load!(author, latest_post: Ash.Query.limit(Post, 0)).latest_post)
+    end
+
     test "it throws an error when passing it an Ash.Query" do
       assert_raise ArgumentError, ~r/Ash.load expects a record or records/, fn ->
         Post
@@ -2749,6 +2763,39 @@ defmodule Ash.Test.Actions.LoadTest do
       # The top 3 categories should be A, B, C (priorities 100, 90, 80)
       top_category_names = post_with_top.top_categories |> Enum.map(& &1.name) |> Enum.sort()
       assert top_category_names == ["A", "B", "C"]
+    end
+
+    test "a smaller limit on the related query applies to a relationship with a limit" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      for priority <- [100, 90, 80, 70] do
+        category =
+          Category
+          |> Ash.Changeset.for_create(:create, %{name: "#{priority}"})
+          |> Ash.create!()
+
+        PostCategory
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          category_id: category.id,
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      priorities = fn limit ->
+        post
+        |> Ash.load!(top_post_categories: Ash.Query.limit(PostCategory, limit))
+        |> Map.get(:top_post_categories)
+        |> Enum.map(& &1.priority)
+      end
+
+      assert priorities.(2) == [100, 90]
+      assert priorities.(0) == []
+      assert priorities.(10) == [100, 90, 80]
     end
   end
 

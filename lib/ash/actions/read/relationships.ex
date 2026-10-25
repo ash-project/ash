@@ -359,7 +359,7 @@ defmodule Ash.Actions.Read.Relationships do
       |> then(fn query ->
         case relationship_limit(relationship) do
           nil -> query
-          limit -> Ash.Query.limit(query, limit)
+          limit -> Ash.Query.limit(query, min(limit, query.limit || limit))
         end
       end)
       |> apply_relationship_offset(relationship)
