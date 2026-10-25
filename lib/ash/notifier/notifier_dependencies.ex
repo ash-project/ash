@@ -22,6 +22,11 @@ defmodule Ash.Notifier.NotifierDependencies do
     opts[:statement] || []
   end
 
+  # The statement is loaded as `Ash.Query.load/2` would load it, so a relationship comes
+  # with its attributes rather than its primary key alone.
+  @impl true
+  def strict_loads?, do: false
+
   @impl true
   def calculate(records, opts, _context) do
     statement = List.wrap(opts[:statement] || [])

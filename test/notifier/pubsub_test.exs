@@ -289,6 +289,65 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
   end
 
+  defmodule LoadedAuthor do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+  end
+
+  defmodule PostWithRelationshipLoad do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      notifiers: [Ash.Notifier.PubSub]
+
+    pub_sub do
+      module PubSub
+      prefix "post_author"
+
+      publish :create, "created", load: [:author]
+    end
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    relationships do
+      belongs_to :author, LoadedAuthor do
+        public?(true)
+        attribute_writable?(true)
+      end
+    end
+  end
+
   setup do
     Application.put_env(PubSub, :notifier_test_pid, self())
 
@@ -496,6 +555,16 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
       assert_receive {:broadcast, "post_load:any_created", "any_create",
                       %Ash.Notifier.Notification{data: %{name: "dave"}}}
+    end
+
+    test "a loaded relationship carries its attributes, as Ash.load/3 gives it" do
+      author = Ash.create!(LoadedAuthor, %{name: "frida"})
+      Ash.create!(PostWithRelationshipLoad, %{author_id: author.id})
+
+      assert_receive {:broadcast, "post_author:created", "create",
+                      %Ash.Notifier.Notification{data: %{author: loaded}}}
+
+      assert loaded.name == "frida"
     end
 
     test "a streaming bulk_destroy loads fields before destroying the records" do
