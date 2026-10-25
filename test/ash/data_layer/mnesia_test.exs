@@ -185,6 +185,18 @@ defmodule Ash.DataLayer.MnesiaTest do
     end
   end
 
+  describe "aggregates" do
+    test "count and exists return their values" do
+      assert Ash.count!(MnesiaTestUser) == 0
+      refute Ash.exists?(MnesiaTestUser)
+
+      Ash.create!(MnesiaTestUser, %{name: "John"})
+
+      assert Ash.count!(MnesiaTestUser) == 1
+      assert Ash.exists?(MnesiaTestUser)
+    end
+  end
+
   describe "bulk_create/3" do
     test "can? bulk_create" do
       assert MnesiaDataLayer.can?(:test_resource, :bulk_create)
