@@ -1011,25 +1011,38 @@ defmodule Ash.Actions.Update.Bulk do
              )}
 
           _strategy ->
-            input_stream =
-              if atomic_changeset.context[:data_layer][:use_atomic_update_data?] do
-                [atomic_changeset.data]
-              else
-                Ash.Query.ensure_selected(query, action_select)
-              end
+            if :stream in List.wrap(opts[:strategy]) do
+              input_stream =
+                if atomic_changeset.context[:data_layer][:use_atomic_update_data?] do
+                  [atomic_changeset.data]
+                else
+                  Ash.Query.ensure_selected(query, action_select)
+                end
 
-            run(
-              atomic_changeset.domain,
-              input_stream,
-              atomic_changeset.action,
-              input,
-              Keyword.merge(opts,
-                authorize_query?: false,
-                input_was_stream?: false,
-                strategy: [:stream]
-              ),
-              e.source
-            )
+              run(
+                atomic_changeset.domain,
+                input_stream,
+                atomic_changeset.action,
+                input,
+                Keyword.merge(opts,
+                  authorize_query?: false,
+                  input_was_stream?: false,
+                  strategy: [:stream]
+                ),
+                e.source
+              )
+            else
+              {:error,
+               Ash.Error.to_error_class(
+                 Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+                   resource: atomic_changeset.resource,
+                   action: atomic_changeset.action.name,
+                   requested_strategies: opts[:strategy],
+                   not_atomic_batches_reason: "authorization requires initial data",
+                   not_atomic_reason: "authorization requires initial data"
+                 )
+               )}
+            end
         end
 
       {:error, error} ->
@@ -1500,7 +1513,8 @@ defmodule Ash.Actions.Update.Bulk do
             return_records?: opts[:return_records?],
             allow_stream_with: opts[:allow_stream_with],
             read_action: batch_query.action.name,
-            strategy: [:atomic],
+            # `:stream` lets authorization that needs each record fall back to streaming the batch
+            strategy: if(:stream in opts[:strategy], do: [:atomic, :stream], else: [:atomic]),
             transaction: opts[:transaction] || true,
             rollback_on_error?: opts[:rollback_on_error?],
             stop_on_error?: opts[:stop_on_error?]

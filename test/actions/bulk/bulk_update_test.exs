@@ -1577,6 +1577,20 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                )
     end
 
+    test "a policy requiring the original data needs the stream strategy for a query" do
+      Ash.bulk_create!([%{title: "unlocked"}], Post, :create, authorize?: false)
+
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_update(Post, :update_unless_locked, %{title2: "updated value"},
+                 strategy: [:atomic, :atomic_batches],
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert Exception.message(error) =~ "had no matching bulk strategy that could be used"
+      assert Exception.message(error) =~ "Could not use `:stream`: Not in requested strategies"
+    end
+
     test "a policy requiring the original data is checked against each record given" do
       %Ash.BulkResult{records: [unlocked, locked]} =
         Ash.bulk_create!([%{title: "unlocked"}, %{title: "locked"}], Post, :create,
@@ -1587,6 +1601,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
       assert %Ash.BulkResult{status: :success, records: [%{title2: "updated value"}]} =
                Ash.bulk_update([unlocked], :update_unless_locked, %{title2: "updated value"},
+                 strategy: [:atomic, :atomic_batches, :stream],
                  authorize?: true,
                  return_records?: true,
                  return_errors?: true
@@ -1594,9 +1609,18 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
       assert %Ash.BulkResult{status: :error, errors: [%Ash.Error.Forbidden{}]} =
                Ash.bulk_update([locked], :update_unless_locked, %{title2: "updated value"},
+                 strategy: [:atomic, :atomic_batches, :stream],
                  authorize?: true,
                  return_errors?: true
                )
+
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_update([locked], :update_unless_locked, %{title2: "updated value"},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert Exception.message(error) =~ "Could not use `:stream`: Not in requested strategies"
 
       assert is_nil(Ash.get!(Post, locked.id, authorize?: false).title2)
     end
