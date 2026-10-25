@@ -40,8 +40,11 @@ defmodule Ash.DataLayer.Ets do
   @moduledoc """
   An ETS (Erlang Term Storage) backed Ash Datalayer, for testing and lightweight usage.
 
-  Remember, this does not have support for transactions! This is not recommended for production
-  use, especially in multi-user applications. It can, however, be great for prototyping.
+  Remember, this has no support for transactions unless `config :ash, ets_transactions?: true`
+  is set, and then only for tables that are not `private?`. See the
+  [backwards compatibility guide](/documentation/topics/development/backwards-compatibility-config.md#ets_transactions).
+  This is not recommended for production use, especially in multi-user applications. It can,
+  however, be great for prototyping.
   """
 
   use Spark.Dsl.Extension,
@@ -355,7 +358,14 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :distinct), do: true
-  def can?(resource, :transact), do: not Ash.DataLayer.Ets.Info.private?(resource)
+
+  # A resource's actions take `transaction?` from this when the resource compiles.
+  if Application.compile_env(:ash, :ets_transactions?, false) do
+    def can?(resource, :transact), do: not Ash.DataLayer.Ets.Info.private?(resource)
+  else
+    def can?(_, :transact), do: false
+  end
+
   def can?(_, {:filter_expr, _}), do: true
 
   case Application.compile_env(:ash, :no_join_mnesia_ets) || false do

@@ -202,7 +202,8 @@ if Code.ensure_loaded?(Igniter) do
                 {[:transaction_rollback_on_error?], true},
                 {[:redact_sensitive_values_in_errors?], true},
                 {[:default_string_length_count], :codepoints},
-                {[:infer_generic_action_reactors?], false}
+                {[:infer_generic_action_reactors?], false},
+                {[:ets_transactions?], true}
               ],
               comment: """
               These enable behaviors that will become the default in the next major

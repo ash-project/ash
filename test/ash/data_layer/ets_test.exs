@@ -728,6 +728,15 @@ defmodule Ash.DataLayer.EtsTest do
                  raise "after the write"
                end)
       end
+
+      create :create_slowly do
+        accept [:email]
+
+        change after_action(fn _changeset, record, _context ->
+                 Process.sleep(50)
+                 {:ok, record}
+               end)
+      end
     end
 
     attributes do
@@ -774,10 +783,61 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsTransactionOrganization do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:read, create: [:owner_id]]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :owner_id, :uuid, public?: true
+    end
+  end
+
+  defmodule EtsTransactionPost do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    actions do
+      defaults [:read, create: [:organization_id]]
+    end
+
+    policies do
+      policy action_type(:read) do
+        authorize_if always()
+      end
+
+      policy action_type(:create) do
+        authorize_if expr(organization.owner_id == ^actor(:id))
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    relationships do
+      belongs_to :organization, Ash.DataLayer.EtsTest.EtsTransactionOrganization,
+        public?: true,
+        attribute_writable?: true
+    end
+  end
+
+  # Ash's test config sets `ets_transactions?`.
   describe "transactions on a shared table" do
     setup do
       on_exit(fn ->
-        for resource <- [EtsTransactionAccount, EtsTransactionLeft, EtsTransactionRight] do
+        for resource <- [
+              EtsTransactionAccount,
+              EtsTransactionLeft,
+              EtsTransactionRight,
+              EtsTransactionOrganization,
+              EtsTransactionPost
+            ] do
           Ash.DataLayer.Ets.stop(resource)
         end
       end)
@@ -786,6 +846,33 @@ defmodule Ash.DataLayer.EtsTest do
     test "only a private table has none" do
       refute Ash.DataLayer.data_layer_can?(EtsTestUser, :transact)
       assert Ash.DataLayer.data_layer_can?(EtsTransactionAccount, :transact)
+    end
+
+    test "a create's filter policy is checked after the insert, in the transaction" do
+      owner = Ash.UUID.generate()
+      organization = Ash.create!(EtsTransactionOrganization, %{owner_id: owner})
+
+      assert {:ok, _} =
+               Ash.create(EtsTransactionPost, %{organization_id: organization.id},
+                 actor: %{id: owner}
+               )
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Ash.create(EtsTransactionPost, %{organization_id: organization.id},
+                 actor: %{id: Ash.UUID.generate()}
+               )
+
+      assert [_] = Ash.read!(EtsTransactionPost)
+    end
+
+    test "an action that runs past its timeout is undone" do
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.Timeout{}]}} =
+               Ash.create(EtsTransactionAccount, %{email: "late@example.com"},
+                 action: :create_slowly,
+                 timeout: 10
+               )
+
+      assert [] = Ash.read!(EtsTransactionAccount)
     end
 
     test "simultaneous creates of one identity value keep one record" do
