@@ -179,7 +179,7 @@ defmodule Ash.Test.Type.DecimalTest do
 
       [balance] =
         Balance
-        |> Ash.Query.calculate(:by_column, :decimal, Ash.Expr.expr(amount / amount))
+        |> Ash.Query.calculate(:by_column, :decimal, Ash.Expr.expr(amount / positive_amount))
         |> Ash.Query.calculate(:by_integer, :decimal, Ash.Expr.expr(amount / 2))
         |> Ash.Query.calculate(
           :by_literal,
@@ -188,7 +188,7 @@ defmodule Ash.Test.Type.DecimalTest do
         )
         |> Ash.read!()
 
-      assert Comp.equal?(balance.calculations.by_column, Decimal.new(1))
+      assert Comp.equal?(balance.calculations.by_column, Decimal.new("2.5"))
       assert Comp.equal?(balance.calculations.by_integer, Decimal.new("1.25"))
       assert Comp.equal?(balance.calculations.by_literal, Decimal.new(5))
     end

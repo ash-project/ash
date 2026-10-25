@@ -1325,11 +1325,10 @@ defmodule Ash.Expr do
       |> Enum.zip()
     end
     |> Enum.reject(fn {match_types, _, _, _} -> match_types == :any end)
-    |> Enum.filter(fn {match_types, _, _, _} ->
-      match_types == :same ||
-        length(match_types) == length(values)
+    |> Enum.filter(fn {match_types, _, _, _} = overload ->
+      (match_types == :same || length(match_types) == length(values)) &&
+        overload_grounded?(overload, values, value_types)
     end)
-    |> Enum.filter(&overload_grounded?(&1, values, value_types))
     |> Enum.map(fn {match_types, cast_as_types, returns, declarer} ->
       is_overload? = not is_nil(declarer)
 

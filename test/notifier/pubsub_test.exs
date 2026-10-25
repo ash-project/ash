@@ -133,6 +133,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
       publish("named_create", :create, "created", load: [:name])
       publish :update, "updated", load: [:name]
+      publish :destroy, "destroyed", load: [:same_name_count, :has_same_name?]
       publish_all("any_create", :create, "any_created", load: [:name])
     end
 
@@ -142,7 +143,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
     actions do
       default_accept :*
-      defaults [:read, create: :*, update: :*]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -151,6 +152,21 @@ defmodule Ash.Test.Notifier.PubSubTest do
       attribute :name, :string do
         public?(true)
       end
+    end
+
+    relationships do
+      has_many :same_name_posts, __MODULE__ do
+        source_attribute :name
+        destination_attribute :name
+      end
+    end
+
+    aggregates do
+      count :same_name_count, :same_name_posts
+    end
+
+    calculations do
+      calculate :has_same_name?, :boolean, expr(exists(same_name_posts, true))
     end
   end
 
@@ -401,6 +417,28 @@ defmodule Ash.Test.Notifier.PubSubTest do
     assert_receive {:broadcast, ^message, "any_update", %Ash.Notifier.Notification{}}
   end
 
+  test "a publication with previous_values? doesn't stop an atomic bulk update that won't notify" do
+    Post
+    |> Ash.Changeset.for_create(:create, %{name: "ted"})
+    |> Ash.create!()
+
+    assert %Ash.BulkResult{status: :success} =
+             Ash.bulk_update(Post, :update, %{name: "fred"},
+               strategy: [:atomic],
+               return_errors?: true
+             )
+
+    assert [%{name: "fred"}] = Ash.read!(Post)
+    refute_received {:broadcast, _, "update", _}
+
+    assert %Ash.BulkResult{status: :error} =
+             Ash.bulk_update(Post, :update, %{name: "george"},
+               strategy: [:atomic],
+               notify?: true,
+               return_errors?: true
+             )
+  end
+
   test "publishing a message with a different delimiter" do
     user =
       User
@@ -458,6 +496,20 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
       assert_receive {:broadcast, "post_load:any_created", "any_create",
                       %Ash.Notifier.Notification{data: %{name: "dave"}}}
+    end
+
+    test "a streaming bulk_destroy loads fields before destroying the records" do
+      PostWithLoad
+      |> Ash.Changeset.for_create(:create, %{name: "erin"})
+      |> Ash.create!()
+
+      Ash.bulk_destroy!(PostWithLoad, :destroy, %{}, strategy: :stream, notify?: true)
+
+      assert_receive {:broadcast, "post_load:destroyed", "destroy",
+                      %Ash.Notifier.Notification{data: data}}
+
+      assert data.same_name_count == 1
+      assert data.calculations[:has_same_name?]
     end
   end
 

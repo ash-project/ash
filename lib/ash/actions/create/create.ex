@@ -179,6 +179,21 @@ defmodule Ash.Actions.Create do
         }
       })
 
+    # The condition the changeset was built with is already in its filter, so a different one
+    # passed when running it is added to it, as `bulk_create` does
+    changeset =
+      case opts[:upsert_condition] do
+        nil ->
+          changeset
+
+        upsert_condition ->
+          if upsert_condition == get_in(changeset.context, [:private, :upsert_condition]) do
+            changeset
+          else
+            Ash.Changeset.filter(changeset, upsert_condition)
+          end
+      end
+
     with %{valid?: true} = changeset <- handle_multitenancy(changeset, action),
          %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
          %{valid?: true} = changeset <- check_upsert_support(changeset, opts),

@@ -652,6 +652,37 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsSharedTableTestEvent do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+  end
+
+  test "processes making the first create on a shared table at once all succeed" do
+    on_exit(fn -> Ash.DataLayer.Ets.stop(EtsSharedTableTestEvent) end)
+
+    tasks =
+      for i <- 1..50 do
+        Task.async(fn ->
+          receive do
+            :go -> Ash.create(EtsSharedTableTestEvent, %{name: "event #{i}"})
+          end
+        end)
+      end
+
+    Enum.each(tasks, &send(&1.pid, :go))
+
+    assert [] == tasks |> Task.await_many() |> Enum.reject(&match?({:ok, _}, &1))
+    assert length(Ash.read!(EtsSharedTableTestEvent)) == 50
+  end
+
   defp filter_users(filter) do
     EtsTestUser
     |> Ash.Query.new()
