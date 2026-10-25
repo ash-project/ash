@@ -226,6 +226,10 @@ defmodule Ash.Test.Actions.ThroughTest do
         through: [:media_set, :entries, :item],
         public?: true
 
+      has_one :an_entry_item, Ash.Test.Actions.ThroughTest.Item,
+        through: [:media_set, :entries, :item],
+        public?: true
+
       has_many :sorted_entries, Ash.Test.Actions.ThroughTest.Entry,
         through: [:media_set, :sorted_entries],
         public?: true
@@ -591,6 +595,30 @@ defmodule Ash.Test.Actions.ThroughTest do
 
       assert product.limited_entries_of_media_sets |> Enum.map(& &1.position) |> Enum.sort() ==
                [2, 3, 5, 6]
+    end
+
+    test "a limit of 1 on one record's load follows the path" do
+      [product | _] = create_products()
+
+      names =
+        Enum.flat_map(0..5, fn offset ->
+          query = Item |> Ash.Query.sort(:name) |> Ash.Query.limit(1) |> Ash.Query.offset(offset)
+
+          product
+          |> Ash.load!([entry_items: query], authorize?: false)
+          |> Map.get(:entry_items)
+          |> Enum.map(& &1.name)
+        end)
+
+      assert names == ["a1", "a2", "a3"]
+    end
+
+    test "a has_one loaded with a limit of 1 follows the path" do
+      products =
+        create_products()
+        |> Ash.load!([an_entry_item: Ash.Query.limit(Item, 1)], authorize?: false)
+
+      assert Enum.map(products, &String.first(&1.an_entry_item.name)) == ["a", "b"]
     end
 
     test "a middle relationship's limit applies to each record it is reached from" do
