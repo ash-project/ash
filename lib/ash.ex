@@ -3743,7 +3743,10 @@ defmodule Ash do
     Ash.Helpers.expect_resource!(resource)
     Ash.Helpers.expect_options!(opts)
 
-    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_create_opts()))
+    # `for_create/4` uses `upsert_condition` in place of the action's, but doesn't declare it
+    changeset_opts =
+      Keyword.take(opts, [:upsert_condition | Keyword.keys(Ash.Changeset.for_create_opts())])
+
     create_opts = Keyword.take(opts, Keyword.keys(@create_opts_schema))
 
     action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name

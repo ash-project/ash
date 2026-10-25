@@ -359,7 +359,7 @@ defmodule Ash.Actions.Read.Relationships do
       |> then(fn query ->
         case relationship_limit(relationship) do
           nil -> query
-          limit -> Ash.Query.limit(query, limit)
+          limit -> Ash.Query.limit(query, min(limit, query.limit || limit))
         end
       end)
       |> apply_relationship_offset(relationship)
@@ -2050,6 +2050,10 @@ defmodule Ash.Actions.Read.Relationships do
           # not records with __lateral_join_source__ fields
           false
 
+        # The through path is only applied by the lateral join
+        is_list(Map.get(relationship, :through)) ->
+          true
+
         limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
           is_nil(relationship.sort) && relationship.cardinality != :many ->
           has_parent_expr?(relationship, query.context, query.domain)
@@ -2059,9 +2063,6 @@ defmodule Ash.Actions.Read.Relationships do
           has_parent_expr?(relationship, query.context, query.domain)
 
         has_parent_expr?(relationship, query.context, query.domain) ->
-          true
-
-        is_list(Map.get(relationship, :through)) ->
           true
 
         relationship.type == :many_to_many && !is_list(relationship.through) &&

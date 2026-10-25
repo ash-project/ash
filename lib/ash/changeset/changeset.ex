@@ -883,7 +883,7 @@ defmodule Ash.Changeset do
 
       changeset = set_phase(changeset, :atomic)
 
-      with :ok <- verify_notifiers_support_atomic(resource, action),
+      with :ok <- verify_notifiers_support_atomic(resource, action, opts),
            %Ash.Changeset{} = changeset <-
              atomic_params(changeset, action, params, opts),
            %Ash.Changeset{} = changeset <- set_argument_defaults(changeset, action),
@@ -1125,19 +1125,24 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp verify_notifiers_support_atomic(resource, action) do
-    resource
-    |> Ash.Resource.Info.notifiers()
-    |> Enum.filter(fn notifier ->
-      Ash.Notifier.requires_original_data?(notifier, resource, action)
-    end)
-    |> case do
-      [] ->
-        :ok
+  defp verify_notifiers_support_atomic(resource, action, opts) do
+    # Original data is only needed to build notifications, so skip the check when there won't be any
+    if opts[:notify?] == false and !opts[:return_notifications?] do
+      :ok
+    else
+      resource
+      |> Ash.Resource.Info.notifiers()
+      |> Enum.filter(fn notifier ->
+        Ash.Notifier.requires_original_data?(notifier, resource, action)
+      end)
+      |> case do
+        [] ->
+          :ok
 
-      notifiers ->
-        {:not_atomic,
-         "notifiers #{inspect(notifiers)} require original data for #{inspect(resource)}.#{action.name}"}
+        notifiers ->
+          {:not_atomic,
+           "notifiers #{inspect(notifiers)} require original data for #{inspect(resource)}.#{action.name}"}
+      end
     end
   end
 

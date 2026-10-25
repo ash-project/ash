@@ -102,6 +102,9 @@ defmodule Ash.Resource.Change.CascadeUpdate do
          {:ok, opts} <- validate_relationship_and_action(opts, changeset) do
       Ash.Changeset.after_action(changeset, fn _changeset, result ->
         case {update_related(changeset, [result], opts, context), opts.return_notifications?} do
+          {{:error, error}, _} ->
+            {:error, error}
+
           {%{status: status, errors: errors}, _} when status in [:error, :partial_success] ->
             {:error, Ash.Error.to_error_class(errors)}
 
@@ -134,6 +137,9 @@ defmodule Ash.Resource.Change.CascadeUpdate do
       result = Enum.map(records, &{:ok, &1})
 
       case {update_related(changeset, records, opts, context), opts.return_notifications?} do
+        {{:error, error}, _} ->
+          Enum.map(result, fn _ -> {:error, error} end)
+
         {%{status: status, errors: errors}, _} when status in [:error, :partial_success] ->
           Enum.map(result, fn _ -> {:error, Ash.Error.to_error_class(errors)} end)
 
@@ -280,25 +286,29 @@ defmodule Ash.Resource.Change.CascadeUpdate do
 
         data
         |> List.wrap()
-        |> Ash.load!(
-          [{relationship.name, load_query}],
-          scope: context
-        )
-        |> Enum.flat_map(fn record ->
-          record
-          |> Map.get(relationship.name)
-          |> List.wrap()
-        end)
-        |> Ash.bulk_update!(
-          action.name,
-          inputs,
-          Keyword.update(
-            context_opts,
-            :context,
-            action_context,
-            &Map.merge(&1, action_context)
-          )
-        )
+        |> Ash.load([{relationship.name, load_query}], scope: context)
+        |> case do
+          {:ok, data} ->
+            data
+            |> Enum.flat_map(fn record ->
+              record
+              |> Map.get(relationship.name)
+              |> List.wrap()
+            end)
+            |> Ash.bulk_update(
+              action.name,
+              inputs,
+              Keyword.update(
+                context_opts,
+                :context,
+                action_context,
+                &Map.merge(&1, action_context)
+              )
+            )
+
+          {:error, error} ->
+            {:error, error}
+        end
     end
   end
 

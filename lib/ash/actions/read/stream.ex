@@ -6,11 +6,11 @@ defmodule Ash.Actions.Read.Stream do
   @moduledoc false
 
   def run!(domain, query, opts) do
-    run(domain, query, opts, &Ash.Helpers.unwrap_or_raise!({:error, &1}))
+    run(domain, query, opts, :raise)
   end
 
   # Like `run!/3`, but when a read fails, the stream emits whatever `on_error` returns for the
-  # error and then ends, instead of raising.
+  # error and then ends, instead of raising. `:raise` raises, as `run!/3` does.
   def run(domain, query, opts, on_error) do
     query = Ash.Query.new(query)
 
@@ -187,6 +187,8 @@ defmodule Ash.Actions.Read.Stream do
     )
     |> take_query_limit(query)
   end
+
+  defp read(query, opts, :raise), do: {:ok, Ash.read!(query, opts)}
 
   defp read(query, opts, on_error) do
     case Ash.read(query, opts) do

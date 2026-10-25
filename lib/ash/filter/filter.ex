@@ -1571,13 +1571,25 @@ defmodule Ash.Filter do
     if query.__validated_for_action__ == action do
       query
     else
-      Ash.Query.for_read(query, action, relationship_read_action_arguments(relationship),
+      Ash.Query.for_read(
+        query,
+        action,
+        relationship_query_arguments(relationship, base_query, action),
         actor: actor,
         authorize?: true,
         tenant: tenant,
         domain: domain,
         context: source_context
       )
+    end
+  end
+
+  # The base query's arguments are for its own action, so they only apply when that action is read
+  defp relationship_query_arguments(relationship, base_query, action) do
+    if base_query.action && base_query.action.name == action do
+      Map.merge(base_query.arguments || %{}, relationship_read_action_arguments(relationship))
+    else
+      relationship_read_action_arguments(relationship)
     end
   end
 

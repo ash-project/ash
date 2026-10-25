@@ -273,10 +273,13 @@ defmodule Ash.Actions.Update.UpdateMany do
               Ash.DataLayer.rollback(resource, Ash.Error.to_ash_error(error))
           end
 
+        # Rows an after_batch hook fails were still written, so they aren't missing.
+        seen = Enum.reduce(written, seen, &MapSet.put(&2, Map.take(&1, pkey)))
+
         # after_batch change callbacks, run the same way an atomic bulk update runs them.
-        {written, after_batch_notifications} =
+        {written, after_batch_errors, after_batch_notifications} =
           if Enum.empty?(conditional_after_batch_hooks) do
-            {written, []}
+            {written, [], []}
           else
             Ash.Actions.Update.Bulk.run_atomic_after_batch_hooks(
               written,
@@ -322,7 +325,10 @@ defmodule Ash.Actions.Update.UpdateMany do
             do: after_batch_notifications ++ group_notifications,
             else: group_notifications
 
-        {records_acc ++ Enum.reverse(group_records), errors_acc ++ Enum.reverse(group_errors),
+        group_errors =
+          Enum.map(after_batch_errors, &Ash.Error.to_ash_error/1) ++ Enum.reverse(group_errors)
+
+        {records_acc ++ Enum.reverse(group_records), errors_acc ++ group_errors,
          notifications_acc ++ group_notifications, seen}
       end)
 
