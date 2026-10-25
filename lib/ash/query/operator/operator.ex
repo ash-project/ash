@@ -251,8 +251,14 @@ defmodule Ash.Query.Operator do
 
   @doc false
   def try_cast_with_ref(mod, left, right) do
-    Enum.find_value(mod.types(), fn type ->
-      try_cast(left, right, type)
+    # A value that can't be cast to one signature may still cast to a later one
+    mod.types()
+    |> Enum.reduce_while(nil, fn type, first_error ->
+      case try_cast(left, right, type) do
+        {:ok, _, _} = ok -> {:halt, ok}
+        {:error, _} = error -> {:cont, first_error || error}
+        nil -> {:cont, first_error}
+      end
     end)
     |> case do
       nil ->
