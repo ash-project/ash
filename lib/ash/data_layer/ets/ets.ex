@@ -101,7 +101,8 @@ defmodule Ash.DataLayer.Ets do
         case GenServer.start(__MODULE__, {resource, table},
                name: Module.concat(table, TableManager)
              ) do
-          {:error, {:already_started, _pid}} ->
+          {:error, {:already_started, pid}} ->
+            await_init(pid)
             ETS.Set.wrap_existing(table)
 
           {:error, error} ->
@@ -111,6 +112,15 @@ defmodule Ash.DataLayer.Ets do
             ETS.Set.wrap_existing(table)
         end
       end
+    end
+
+    # A manager's name is registered before its init/1 creates the table, and a call is
+    # only answered once init/1 has returned. A manager that died answers nothing; the
+    # table lookup that follows then reports the table as missing.
+    defp await_init(pid) do
+      GenServer.call(pid, :wait)
+    catch
+      :exit, _ -> :ok
     end
 
     def init({resource, table}) do
