@@ -255,7 +255,8 @@ defmodule Ash.Query do
 
   @typedoc "Result type for around_transaction hooks, containing either successful records or an error."
   @type around_result ::
-          {:ok, list(Ash.Resource.Record.t())}
+          {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()}
+          | {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page(), t}
           | {:error, Ash.Error.t()}
 
   @typedoc "Function type for before_transaction hooks that run before query execution."
@@ -267,7 +268,7 @@ defmodule Ash.Query do
              {:ok, list(Ash.Resource.Record.t())} | {:error, any})
 
   @typedoc "Function type for around_transaction hooks that wrap query execution in a transaction."
-  @type around_transaction_fun :: (t -> {:ok, Ash.Resource.Record.t()} | {:error, any})
+  @type around_transaction_fun :: (t, (t -> around_result) -> around_result)
 
   alias Ash.Actions.Sort
 
