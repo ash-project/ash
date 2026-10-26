@@ -253,10 +253,7 @@ defmodule Ash.Query do
                                               false
                                             )
 
-  @typedoc """
-  Result type for around_transaction hooks: the records read (a page of them when paginating,
-  followed by the query when `return_query?: true` is given), or an error.
-  """
+  @typedoc "Result type for around_transaction hooks, containing either successful records or an error."
   @type around_result ::
           {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()}
           | {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page(), t}
@@ -270,11 +267,7 @@ defmodule Ash.Query do
           (t, {:ok, list(Ash.Resource.Record.t())} | {:error, any} ->
              {:ok, list(Ash.Resource.Record.t())} | {:error, any})
 
-  @typedoc """
-  Function type for around_transaction hooks that wrap query execution in a transaction.
-
-  Receives the query and a callback that runs the read with the query it is given.
-  """
+  @typedoc "Function type for around_transaction hooks that wrap query execution in a transaction."
   @type around_transaction_fun :: (t, (t -> around_result) -> around_result)
 
   alias Ash.Actions.Sort
