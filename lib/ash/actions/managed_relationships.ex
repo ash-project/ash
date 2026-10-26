@@ -878,6 +878,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
   defp can_bulk_create?(relationship, opts) do
     opts[:bulk?] == true &&
+      not Ash.Actions.Read.Relationships.do_has_parent_expr?(relationship.filter) &&
       case opts[:on_no_match] do
         {:create, _action_name} ->
           relationship.type != :many_to_many &&

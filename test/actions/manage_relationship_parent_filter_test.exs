@@ -104,6 +104,17 @@ defmodule Ash.Test.Actions.ManageRelationshipParentFilterTest do
         change manage_relationship(:employee_ids, :employees, type: :append, value_is_key: :id)
       end
 
+      update :bulk_add_employees do
+        require_atomic? false
+        argument :employees, {:array, :map}, allow_nil?: false
+
+        change manage_relationship(:employees,
+                 on_lookup: :relate,
+                 on_no_match: :create,
+                 bulk?: true
+               )
+      end
+
       update :tag do
         require_atomic? false
         argument :tag_ids, {:array, :integer}, allow_nil?: false
@@ -362,6 +373,27 @@ defmodule Ash.Test.Actions.ManageRelationshipParentFilterTest do
       |> Ash.Changeset.for_update(:add_employees, %{employee_ids: [foreign.id]})
       |> Ash.update()
       |> assert_filtered_out()
+    end
+
+    test "relates and creates records with `bulk?: true`", %{
+      project: project,
+      same_org: same_org
+    } do
+      assert {:ok, %{employees: employees}} =
+               project
+               |> Ash.Changeset.for_update(:bulk_add_employees, %{
+                 employees: [%{id: same_org.id}, %{id: 3, org_id: 10, name: "new"}]
+               })
+               |> Ash.update()
+
+      assert employees |> Enum.map(& &1.id) |> Enum.sort() == [1, 3]
+
+      assert project
+             |> Ash.load!(:employees)
+             |> Map.get(:employees)
+             |> Enum.map(& &1.id)
+             |> Enum.sort() ==
+               [1, 3]
     end
   end
 
