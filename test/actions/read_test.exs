@@ -323,6 +323,25 @@ defmodule Ash.Test.Actions.ReadTest do
       assert {:messages, [:around_transaction_start, :before_action, :around_transaction_end]} =
                :erlang.process_info(self(), :messages)
     end
+
+    test "its callback returns a page when paginating and the query when asked for" do
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+      |> Ash.create!()
+
+      query =
+        Ash.Query.around_transaction(Post, fn query, callback ->
+          result = callback.(query)
+          send(self(), {:around_transaction_result, result})
+          result
+        end)
+
+      assert {:ok, %Ash.Page.Keyset{}} = Ash.read(query, page: [limit: 1])
+      assert_received {:around_transaction_result, {:ok, %Ash.Page.Keyset{results: [_]}}}
+
+      assert {:ok, [_], %Ash.Query{}} = Ash.read(query, return_query?: true)
+      assert_received {:around_transaction_result, {:ok, [_], %Ash.Query{}}}
+    end
   end
 
   describe "Ash.get! with action" do
