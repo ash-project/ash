@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.2](https://github.com/ash-project/ash/compare/v3.37.1...v3.37.2) (2026-10-26)
+
+
+
+
+### Bug Fixes:
+
+* don't crash a bulk create when an upsert it runs singly is skipped by [@zachdaniel](https://github.com/zachdaniel)
+
+* [security] scope upserts to the tenant under attribute multitenancy ([CVE-2026-96581](https://cna.erlef.org/cves/CVE-2026-96581.html), [GHSA-vw7c-67pf-gh96](https://github.com/ash-project/ash/security/advisories/GHSA-vw7c-67pf-gh96)) by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.37.1](https://github.com/ash-project/ash/compare/v3.37.0...v3.37.1) (2026-10-25)
 
 
