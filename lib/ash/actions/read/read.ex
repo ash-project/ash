@@ -3296,14 +3296,11 @@ defmodule Ash.Actions.Read do
         end)
       else
         if Ash.Resource.Info.primary_key_simple_equality?(original_query.resource) do
-          key_fields =
-            case Ash.Resource.Info.temporal_attribute(original_query.resource) do
-              nil -> pkey
-              period -> pkey ++ [period]
-            end
-
+          # Not keyed on a temporal resource's period: the read is at one instant, so it returns
+          # one version of each record, and the version a record was read as may since have
+          # been split by a later write. `Ash.load/3` reads records held at other instants apart.
           key_fun =
-            case key_fields do
+            case pkey do
               [field] -> &{Map.get(&1, field), &1}
               fields -> &{Map.take(&1, fields), &1}
             end

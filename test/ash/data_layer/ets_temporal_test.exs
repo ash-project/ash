@@ -170,6 +170,40 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert [%{shout: "early!"}, %{shout: "open!"}] = Ash.load!(versions, :shout)
     end
 
+    test "and loading onto several versions reads each one at its own instant" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "early", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
+
+      versions =
+        Enum.flat_map([@early.lower, @open.lower], fn instant ->
+          EtsVersioned |> Ash.Query.select([:id]) |> Ash.Query.as_of(instant) |> Ash.read!()
+        end)
+
+      assert [
+               %{name: "early", whisper: "early...", valid_at: @early},
+               %{name: "open", whisper: "open...", valid_at: @open}
+             ] = Ash.load!(versions, [:name, :whisper])
+    end
+
+    test "and loading onto a version a later write has split sees its instant" do
+      EtsVersioned
+      |> Ash.Changeset.for_create(:create, %{id: 1, name: "early"}, as_of: @early.lower)
+      |> Ash.create!()
+
+      held =
+        EtsVersioned
+        |> Ash.Query.select([:id])
+        |> Ash.Query.as_of(~U[2026-06-01 00:00:00Z])
+        |> Ash.read_one!()
+
+      held
+      |> Ash.Changeset.for_update(:update, %{name: "open"}, as_of: @open.lower)
+      |> Ash.update!()
+
+      assert %{name: "open", shout: "open!", whisper: "open...", valid_at: @open} =
+               Ash.load!(held, [:name, :shout, :whisper])
+    end
+
     test "and loading a calculation onto a version runs it in the data layer" do
       record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
 
