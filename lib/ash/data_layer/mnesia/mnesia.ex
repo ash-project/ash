@@ -90,6 +90,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :bulk_create), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
+  def can?(_, :changeset_filter), do: true
   def can?(_, :create), do: true
   def can?(_, :read), do: true
   def can?(_, :calculate), do: true
@@ -566,21 +567,57 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def destroy(resource, %{data: record}) do
+  def destroy(resource, %{data: record} = changeset) do
     pkey =
       resource
       |> Ash.Resource.Info.primary_key()
       |> Enum.map(&Map.get(record, &1))
 
+    table = Ash.DataLayer.Mnesia.Info.table(resource)
+
     result =
       Mnesia.transaction(fn ->
-        Mnesia.delete({Ash.DataLayer.Mnesia.Info.table(resource), pkey})
+        with :ok <- check_changeset_filter(Mnesia.read({table, pkey}), resource, changeset) do
+          Mnesia.delete({table, pkey})
+        end
       end)
 
     case result do
+      {:atomic, {:error, error}} -> {:error, error}
       {:atomic, _} -> :ok
       {:aborted, error} -> {:error, error}
     end
+  end
+
+  # The stored record must still match the changeset's filter to be written or deleted
+  defp check_changeset_filter(_stored, _resource, %{filter: filter}) when filter in [nil, true],
+    do: :ok
+
+  defp check_changeset_filter(_stored, _resource, %{filter: %Ash.Filter{expression: true}}),
+    do: :ok
+
+  defp check_changeset_filter([{_, _, record}], resource, changeset) do
+    with {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource),
+         {:ok, [_]} <-
+           filter_matches(
+             [record],
+             changeset.filter,
+             changeset.domain,
+             changeset.tenant,
+             changeset.context[:private][:actor]
+           ) do
+      :ok
+    else
+      {:ok, []} -> stale_record(resource, changeset)
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp check_changeset_filter([], resource, changeset), do: stale_record(resource, changeset)
+
+  defp stale_record(resource, changeset) do
+    {:error,
+     Ash.Error.Changes.StaleRecord.exception(resource: resource, filter: changeset.filter)}
   end
 
   @doc false
@@ -600,7 +637,12 @@ defmodule Ash.DataLayer.Mnesia do
       Mnesia.transaction(fn ->
         with {:ok, record} <- Ash.Changeset.apply_attributes(%{changeset | action_type: :update}),
              {:ok, record} <-
-               do_update(Ash.DataLayer.Mnesia.Info.table(resource), {pkey, record}, resource),
+               do_update(
+                 Ash.DataLayer.Mnesia.Info.table(resource),
+                 {pkey, record},
+                 resource,
+                 changeset
+               ),
              {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource) do
           new_pkey = pkey_list(resource, record)
 
@@ -657,7 +699,7 @@ defmodule Ash.DataLayer.Mnesia do
     |> Enum.map(&Map.get(data, &1))
   end
 
-  defp do_update(table, {pkey, record}, resource) do
+  defp do_update(table, {pkey, record}, resource, changeset) do
     attributes = Ash.Resource.Info.attributes(resource)
 
     case Ash.DataLayer.Ets.dump_to_native(record, attributes) do
@@ -666,10 +708,12 @@ defmodule Ash.DataLayer.Mnesia do
           [] ->
             {:error, "Record not found matching: #{inspect(pkey)}"}
 
-          [{_, _, record}] ->
-            Mnesia.write({table, pkey, Map.merge(record, casted)})
-            [{_, _, record}] = Mnesia.read({table, pkey})
-            {:ok, record}
+          [{_, _, record}] = stored ->
+            with :ok <- check_changeset_filter(stored, resource, changeset) do
+              Mnesia.write({table, pkey, Map.merge(record, casted)})
+              [{_, _, record}] = Mnesia.read({table, pkey})
+              {:ok, record}
+            end
         end
 
       {:error, error} ->
@@ -750,7 +794,7 @@ defmodule Ash.DataLayer.Mnesia do
             |> set_upsert_action(:update)
           else
             {:ok, []} ->
-              {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+              Ash.DataLayer.Ets.skipped_upsert(resource, changeset, result)
 
             {:error, reason} ->
               {:error, reason}

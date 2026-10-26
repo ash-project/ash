@@ -1988,4 +1988,250 @@ defmodule Ash.Actions.MultitenancyTest do
       assert Enum.all?(records, &(&1.__metadata__[:tenant] == tenant))
     end
   end
+
+  defmodule UpsertTicket do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    multitenancy do
+      strategy :attribute
+      attribute :org_id
+      # pre-checking an `all_tenants?` identity requires it
+      global? true
+    end
+
+    identities do
+      identity :unique_email, [:email], all_tenants?: true, pre_check_with: Domain
+    end
+
+    actions do
+      defaults [:read]
+
+      create :open do
+        primary? true
+        accept [:id, :subject, :email, :secret]
+      end
+
+      create :save do
+        accept [:id, :subject]
+        upsert? true
+        upsert_fields [:subject]
+      end
+
+      create :save_all_fields do
+        accept [:id, :subject]
+        upsert? true
+      end
+
+      create :save_by_email do
+        accept [:email, :subject]
+        upsert? true
+        upsert_identity :unique_email
+        upsert_fields [:subject]
+      end
+
+      create :save_unless_locked do
+        accept [:id, :subject]
+        upsert? true
+        upsert_fields [:subject]
+        upsert_condition expr(subject != "locked")
+      end
+
+      create :save_bypass do
+        accept [:id, :subject, :org_id]
+        multitenancy :bypass
+        upsert? true
+        upsert_fields [:subject]
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id, writable?: true, public?: true
+      attribute :org_id, :string, allow_nil?: false, public?: true
+      attribute :subject, :string, public?: true
+      attribute :email, :string, public?: true
+      attribute :secret, :string, public?: true
+    end
+  end
+
+  describe "upserts with attribute multitenancy" do
+    setup do
+      victim =
+        Ash.create!(
+          UpsertTicket,
+          %{subject: "theirs", email: "victim@example.com", secret: "secret"},
+          tenant: "org2"
+        )
+
+      %{victim: victim}
+    end
+
+    test "an upsert on the primary key doesn't update or return a record in another tenant", %{
+      victim: victim
+    } do
+      assert {:error, error} =
+               Ash.create(UpsertTicket, %{id: victim.id, subject: "hello"},
+                 action: :save,
+                 tenant: "org1"
+               )
+
+      assert stale_record?(error)
+      refute inspect(error) =~ "secret"
+      assert %{org_id: "org2", subject: "theirs"} = reload_ticket(victim)
+    end
+
+    test "an upsert on the primary key doesn't return a skipped record in another tenant", %{
+      victim: victim
+    } do
+      assert {:error, error} =
+               Ash.create(UpsertTicket, %{id: victim.id, subject: "hello"},
+                 action: :save,
+                 tenant: "org1",
+                 return_skipped_upsert?: true
+               )
+
+      assert stale_record?(error)
+      refute inspect(error) =~ "secret"
+      assert %{org_id: "org2", subject: "theirs"} = reload_ticket(victim)
+    end
+
+    test "an upsert on the primary key with the default upsert fields doesn't move a record from another tenant",
+         %{victim: victim} do
+      assert {:error, _} =
+               Ash.create(UpsertTicket, %{id: victim.id, subject: "hello"},
+                 action: :save_all_fields,
+                 tenant: "org1"
+               )
+
+      assert %{org_id: "org2", subject: "theirs"} = reload_ticket(victim)
+    end
+
+    test "an upsert on the primary key still updates a record in the same tenant", %{
+      victim: victim
+    } do
+      assert %{id: id, org_id: "org2", subject: "hello", secret: "secret"} =
+               Ash.create!(UpsertTicket, %{id: victim.id, subject: "hello"},
+                 action: :save,
+                 tenant: "org2"
+               )
+
+      assert id == victim.id
+    end
+
+    test "the tenant is combined with the action's upsert condition", %{victim: victim} do
+      assert {:error, error} =
+               Ash.create(UpsertTicket, %{id: victim.id, subject: "hello"},
+                 action: :save_unless_locked,
+                 tenant: "org1"
+               )
+
+      assert stale_record?(error)
+      assert %{org_id: "org2", subject: "theirs"} = reload_ticket(victim)
+
+      assert %{subject: "hello"} =
+               Ash.create!(UpsertTicket, %{id: victim.id, subject: "hello"},
+                 action: :save_unless_locked,
+                 tenant: "org2"
+               )
+    end
+
+    test "an upsert that bypasses multitenancy is not scoped to the tenant", %{victim: victim} do
+      assert %{org_id: "org2", subject: "hello"} =
+               Ash.create!(UpsertTicket, %{id: victim.id, subject: "hello", org_id: "org1"},
+                 action: :save_bypass,
+                 tenant: "org1"
+               )
+    end
+
+    test "a bulk upsert on the primary key doesn't update or return a record in another tenant",
+         %{victim: victim} do
+      result =
+        Ash.bulk_create([%{id: victim.id, subject: "hello"}], UpsertTicket, :save,
+          tenant: "org1",
+          return_records?: true,
+          return_errors?: true
+        )
+
+      refute Enum.any?(result.records || [], &(&1.id == victim.id))
+      refute inspect(result) =~ "secret"
+      assert %{org_id: "org2", subject: "theirs"} = reload_ticket(victim)
+    end
+
+    test "a bulk upsert on the primary key doesn't return a skipped record in another tenant",
+         %{victim: victim} do
+      result =
+        Ash.bulk_create([%{id: victim.id, subject: "hello"}], UpsertTicket, :save,
+          tenant: "org1",
+          return_records?: true,
+          return_errors?: true,
+          return_skipped_upsert?: true
+        )
+
+      refute Enum.any?(result.records || [], &(&1.id == victim.id))
+      refute inspect(result) =~ "secret"
+      assert %{org_id: "org2", subject: "theirs"} = reload_ticket(victim)
+    end
+
+    test "a bulk upsert on the primary key still updates a record in the same tenant", %{
+      victim: victim
+    } do
+      assert %{records: [%{org_id: "org2", subject: "hello"}]} =
+               Ash.bulk_create!([%{id: victim.id, subject: "hello"}], UpsertTicket, :save,
+                 tenant: "org2",
+                 return_records?: true
+               )
+    end
+
+    test "an upsert on an all_tenants? identity doesn't update or return a record in another tenant",
+         %{victim: victim} do
+      assert {:error, error} =
+               Ash.create(UpsertTicket, %{email: victim.email, subject: "hello"},
+                 action: :save_by_email,
+                 tenant: "org1"
+               )
+
+      refute inspect(error) =~ "secret"
+      assert %{org_id: "org2", subject: "theirs"} = reload_ticket(victim)
+    end
+
+    test "a bulk upsert on an all_tenants? identity doesn't update or return a record in another tenant",
+         %{victim: victim} do
+      result =
+        Ash.bulk_create([%{email: victim.email, subject: "hello"}], UpsertTicket, :save_by_email,
+          tenant: "org1",
+          return_records?: true,
+          return_errors?: true
+        )
+
+      refute Enum.any?(result.records || [], &(&1.id == victim.id))
+      refute inspect(result) =~ "secret"
+      assert %{org_id: "org2", subject: "theirs"} = reload_ticket(victim)
+    end
+
+    test "an upsert on an all_tenants? identity still updates a record in the same tenant", %{
+      victim: victim
+    } do
+      assert %{id: id, subject: "hello"} =
+               Ash.create!(UpsertTicket, %{email: victim.email, subject: "hello"},
+                 action: :save_by_email,
+                 tenant: "org2"
+               )
+
+      assert id == victim.id
+    end
+  end
+
+  defp reload_ticket(record) do
+    Ash.get!(UpsertTicket, record.id, tenant: record.org_id)
+  end
+
+  defp stale_record?(%{errors: errors}) do
+    Enum.any?(errors, &match?(%Ash.Error.Changes.StaleRecord{}, &1))
+  end
 end

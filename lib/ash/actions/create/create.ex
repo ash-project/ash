@@ -333,6 +333,13 @@ defmodule Ash.Actions.Create do
 
     changeset = set_tenant(changeset)
 
+    changeset =
+      if opts[:upsert?] do
+        Ash.Changeset.filter(changeset, Helpers.upsert_tenant_filter(changeset))
+      else
+        changeset
+      end
+
     is_upsert? = changeset.context[:private][:upsert?]
 
     can_atomic_create? =

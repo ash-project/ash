@@ -1720,7 +1720,7 @@ defmodule Ash.DataLayer.Ets do
             |> set_upsert_action(:update)
           else
             {:ok, []} ->
-              {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+              skipped_upsert(resource, changeset, result)
 
             {:error, reason} ->
               {:error, reason}
@@ -1729,6 +1729,29 @@ defmodule Ash.DataLayer.Ets do
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
       end
+    end
+  end
+
+  @doc false
+  # The record an upsert skipped is only returned from the changeset's tenant: an upsert on the
+  # primary key or an `all_tenants?` identity can conflict with a record in another tenant
+  def skipped_upsert(resource, changeset, result) do
+    tenant_filter =
+      case Ash.Actions.Helpers.upsert_tenant_filter(changeset) do
+        nil -> nil
+        tenant_filter -> Ash.Filter.parse!(resource, tenant_filter)
+      end
+
+    case filter_matches([result], tenant_filter, changeset.domain, changeset.tenant, nil) do
+      {:ok, [result]} ->
+        {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+
+      {:ok, []} ->
+        {:error,
+         Ash.Error.Changes.StaleRecord.exception(resource: resource, filter: changeset.filter)}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

@@ -903,6 +903,7 @@ defmodule Ash.Actions.Create.Bulk do
       |> set_lazy_non_matching_defaults()
       |> set_lazy_matching_defaults(lazy_matching_default_values)
       |> set_tenant(action)
+      |> filter_upsert_by_tenant()
 
     case opts[:transform_changeset] do
       nil -> changeset
@@ -919,6 +920,14 @@ defmodule Ash.Actions.Create.Bulk do
         Ash.Changeset.set_context(changeset, %{
           shared: %{private: %{multitenancy: :bypass_all}}
         })
+    end
+  end
+
+  defp filter_upsert_by_tenant(changeset) do
+    if changeset.context.private[:upsert?] do
+      Ash.Changeset.filter(changeset, Ash.Actions.Helpers.upsert_tenant_filter(changeset))
+    else
+      changeset
     end
   end
 
