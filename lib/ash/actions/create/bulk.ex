@@ -1443,10 +1443,10 @@ defmodule Ash.Actions.Create.Bulk do
                              ]}
 
                           _ ->
-                            []
+                            {:ok, []}
                         end
                       else
-                        []
+                        {:ok, []}
                       end
 
                     {:ok, %{__metadata__: %{upsert_skipped: true}} = record} ->
@@ -1458,7 +1458,7 @@ defmodule Ash.Actions.Create.Bulk do
                            })
                          ]}
                       else
-                        []
+                        {:ok, []}
                       end
 
                     {:ok, result} ->
