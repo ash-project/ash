@@ -54,6 +54,10 @@ defmodule Ash.Test.Resource.Changes.CascadeParentFilterTest do
         change cascade_destroy(:reviewed_tasks, action: :destroy)
       end
 
+      destroy :destroy_latest do
+        change cascade_destroy(:latest_tasks, action: :destroy)
+      end
+
       update :archive do
         require_atomic? false
         change cascade_update(:tasks, action: :archive)
@@ -76,6 +80,14 @@ defmodule Ash.Test.Resource.Changes.CascadeParentFilterTest do
       has_many :reviewed_tasks, Task do
         destination_attribute :project_id
         filter expr(reviewer_id == parent(reviewer.id))
+        public? true
+      end
+
+      has_many :latest_tasks, Task do
+        destination_attribute :project_id
+        filter expr(org_id == parent(org_id))
+        sort id: :desc
+        limit 1
         public? true
       end
 
@@ -137,6 +149,30 @@ defmodule Ash.Test.Resource.Changes.CascadeParentFilterTest do
     test "fails loudly when parent() cannot be resolved from the record", %{project: project} do
       assert {:error, error} = Ash.destroy(project, action: :destroy_reviewed)
       assert Exception.message(error) =~ "parent"
+    end
+
+    test "applies a relationship limit to its only source record", %{project: project} do
+      Task
+      |> Ash.Changeset.for_create(:create, %{id: 4, org_id: 10, project_id: 1})
+      |> Ash.create!()
+
+      assert :ok = Ash.destroy(project, action: :destroy_latest)
+      assert task_ids() == [1, 2, 3]
+    end
+
+    test "fails loudly instead of applying a relationship limit across source records" do
+      Task
+      |> Ash.Changeset.for_create(:create, %{id: 4, org_id: 10, project_id: 1})
+      |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :error, errors: [error | _]} =
+               Ash.bulk_destroy(Project, :destroy_latest, %{},
+                 strategy: :atomic,
+                 return_errors?: true
+               )
+
+      assert Exception.message(error) =~ "limit"
+      assert task_ids() == [1, 2, 3, 4]
     end
   end
 

@@ -1242,10 +1242,10 @@ defmodule Ash.Actions.Read.Relationships do
   @doc false
   # Cascades query a relationship for many source records at once, with no parent
   # binding. This resolves the `parent()` references once for each record, and records
-  # with equal resolved filters share one clause. It returns an error when it cannot
-  # resolve a reference, or when the relationship sorts on `parent()`.
+  # with equal resolved filters share one clause. It returns an error when one query for
+  # all the source records cannot select the same rows as a query for each of them.
   def filter_by_parents(query, relationship, records) do
-    with false <- sort_has_parent_expr?(query),
+    with :ok <- check_one_query_for_all_parents(query, relationship, records),
          {:ok, groups} <- group_by_resolved_filter(query.filter, relationship, records) do
       filter =
         Enum.reduce(groups, false, fn {resolved, group}, acc ->
@@ -1261,16 +1261,41 @@ defmodule Ash.Actions.Read.Relationships do
         |> Ash.Query.set_context(%{data_layer: %{lateral_join_source: nil}})
 
       {:ok, query}
-    else
-      true ->
-        {:error,
-         Ash.Error.to_ash_error(
-           "could not resolve a `parent/1` expression in a relationship sort without a parent binding"
-         )}
-
-      {:error, error} ->
-        {:error, error}
     end
+  end
+
+  # Only the lateral join applies a through path or a manual relationship. A limit, an
+  # offset and a distinct apply to each source record, so they need it too when there is
+  # more than one.
+  defp check_one_query_for_all_parents(query, relationship, records) do
+    cond do
+      is_list(Map.get(relationship, :through)) ->
+        cannot_filter_by_parents("the relationship has a through path")
+
+      Map.get(relationship, :manual) ->
+        cannot_filter_by_parents("the relationship is manual")
+
+      sort_has_parent_expr?(query) ->
+        cannot_filter_by_parents("the relationship sort references `parent/1`")
+
+      match?([_, _ | _], records) and
+          (not is_nil(query.limit) or query.offset not in [nil, 0] or
+             query.distinct not in [nil, []]) ->
+        cannot_filter_by_parents(
+          "the relationship has a limit, offset or distinct, and there is more than one source record"
+        )
+
+      true ->
+        :ok
+    end
+  end
+
+  defp cannot_filter_by_parents(reason) do
+    {:error,
+     Ash.Error.to_ash_error(
+       "could not resolve the `parent/1` expressions of a relationship without a parent binding: " <>
+         reason
+     )}
   end
 
   defp group_by_resolved_filter(filter, relationship, records) do
