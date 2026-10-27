@@ -587,4 +587,45 @@ defmodule Ash.Test.Type.NewTypeTest do
       assert {:ok, nil} = Ash.Type.cast_from_embedded({:array, TaggedString}, nil)
     end
   end
+
+  describe "change hooks" do
+    defmodule Stamp do
+      use Ash.Type.NewType, subtype_of: :utc_datetime_usec
+    end
+
+    defmodule Choice do
+      use Ash.Type.NewType,
+        subtype_of: :union,
+        constraints: [types: [int: [type: :integer]]]
+    end
+
+    defmodule Upcased do
+      use Ash.Type.NewType, subtype_of: :string
+
+      @impl Ash.Type
+      def handle_change(_old_value, new_value, _constraints) do
+        {:ok, new_value && String.upcase(new_value)}
+      end
+    end
+
+    test "a subtype without change hooks gives the new type none, so literals cast atomically" do
+      refute Stamp.handle_change?()
+      refute Stamp.prepare_change?()
+
+      {:ok, constraints} = Ash.Type.init(Stamp, [])
+
+      assert {:ok, ~U[2026-01-01 00:00:00.000001Z]} =
+               Ash.Type.cast_atomic(Stamp, "2026-01-01T00:00:00.000001Z", constraints)
+    end
+
+    test "a subtype with change hooks passes them on" do
+      assert Ash.Type.Union.handle_change?()
+      assert Choice.handle_change?()
+    end
+
+    test "a new type that defines its own change hook keeps it" do
+      assert Upcased.handle_change?()
+      assert {:ok, "LOUD"} = Ash.Type.handle_change(Upcased, nil, "loud", [])
+    end
+  end
 end
