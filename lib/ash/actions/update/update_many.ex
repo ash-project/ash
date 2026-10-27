@@ -240,7 +240,7 @@ defmodule Ash.Actions.Update.UpdateMany do
           )
 
         action_select =
-          if opts[:return_records?] or notify? or has_after_action? or
+          if opts[:return_records?] || notify? || has_after_action? ||
                not Enum.empty?(conditional_after_batch_hooks) do
             action_select(resource, action, opts)
           else
