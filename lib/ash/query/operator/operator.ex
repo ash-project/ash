@@ -546,7 +546,7 @@ defmodule Ash.Query.Operator do
       end
 
       @impl Ash.Query.Operator
-      def new(left, right), do: {:ok, struct(__MODULE__, left: left, right: right)}
+      def new(left, right), do: {:ok, %__MODULE__{left: left, right: right}}
 
       @impl Ash.Query.Operator
       def evaluate_nil_inputs?, do: false
