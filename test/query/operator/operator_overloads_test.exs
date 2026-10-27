@@ -39,6 +39,24 @@ defmodule Ash.Query.Operator.OperatorOverloadsTest do
     end
   end
 
+  defmodule Inverted do
+    use Ash.Type.NewType, subtype_of: :integer
+
+    @impl true
+    def operator_overloads, do: %{:> => %{[__MODULE__, __MODULE__] => __MODULE__}}
+
+    @impl true
+    def evaluate_operator(%Operator.GreaterThan{left: left, right: right}),
+      do: {:known, left < right}
+  end
+
+  defmodule ResolvesToBoolean do
+    use Ash.Type.NewType, subtype_of: :integer
+
+    @impl true
+    def operator_overloads, do: %{:> => %{[__MODULE__, __MODULE__] => Ash.Type.Boolean}}
+  end
+
   defmodule Item do
     use Ash.Resource, domain: nil
 
@@ -91,6 +109,89 @@ defmodule Ash.Query.Operator.OperatorOverloadsTest do
 
       assert {[{MoneyLike, _}, {MoneyLike, _}], {Ash.Type.Boolean, _}} =
                Ash.Expr.determine_types(Operator.LessThan, [price, untyped])
+    end
+  end
+
+  describe "evaluate/1 with overloads" do
+    setup do
+      original = Application.get_env(:ash, :known_types, [])
+      on_exit(fn -> Application.put_env(:ash, :known_types, original) end)
+    end
+
+    test "evaluates through the type an overload resolves to" do
+      Application.put_env(:ash, :known_types, [Inverted])
+
+      assert {:known, true} = Operator.evaluate(%Operator.GreaterThan{left: 1, right: 2})
+      assert {:known, false} = Operator.evaluate(%Operator.GreaterThan{left: 2, right: 1})
+    end
+
+    test "evaluates through the operator when the type an overload resolves to cannot" do
+      Application.put_env(:ash, :known_types, [ResolvesToBoolean])
+      op = %Operator.GreaterThan{left: 1, right: 2}
+
+      assert {Ash.Type.Boolean, _} = Operator.find_overload(op)
+      assert {:known, false} = Operator.evaluate(op)
+    end
+
+    test "follows a change to the known types" do
+      op = %Operator.GreaterThan{left: 1, right: 2}
+
+      Application.put_env(:ash, :known_types, [Inverted])
+      assert {:known, true} = Operator.evaluate(op)
+
+      Application.put_env(:ash, :known_types, [])
+      assert {:known, false} = Operator.evaluate(op)
+
+      Application.put_env(:ash, :known_types, [Inverted])
+      assert {:known, true} = Operator.evaluate(op)
+    end
+
+    test "follows a known type being recompiled" do
+      op = %Operator.GreaterThan{left: 1, right: 2}
+
+      defmodule Recompiled do
+        use Ash.Type.NewType, subtype_of: :integer
+
+        @impl true
+        def operator_overloads, do: %{:> => %{[__MODULE__, __MODULE__] => Ash.Type.Boolean}}
+      end
+
+      Application.put_env(:ash, :known_types, [Recompiled])
+      assert {:known, false} = Operator.evaluate(op)
+
+      defmodule Recompiled do
+        use Ash.Type.NewType, subtype_of: :integer
+
+        @impl true
+        def operator_overloads, do: %{:> => %{[__MODULE__, __MODULE__] => __MODULE__}}
+
+        @impl true
+        def evaluate_operator(%Operator.GreaterThan{left: left, right: right}),
+          do: {:known, left < right}
+      end
+
+      assert {:known, true} = Operator.evaluate(op)
+    end
+
+    test "follows a module an overload resolves to being defined later" do
+      defmodule ResolvesLater do
+        use Ash.Type.NewType, subtype_of: :integer
+
+        @impl true
+        def operator_overloads,
+          do: %{:> => %{[__MODULE__, __MODULE__] => Module.concat(__MODULE__, DefinedLater)}}
+      end
+
+      op = %Operator.GreaterThan{left: 1, right: 2}
+      Application.put_env(:ash, :known_types, [ResolvesLater])
+      assert {:known, false} = Operator.evaluate(op)
+
+      defmodule ResolvesLater.DefinedLater do
+        def evaluate_operator(%Operator.GreaterThan{left: left, right: right}),
+          do: {:known, left < right}
+      end
+
+      assert {:known, true} = Operator.evaluate(op)
     end
   end
 
