@@ -448,6 +448,19 @@ defmodule Ash.Test.SeedTest do
     end
   end
 
+  describe "update!/3" do
+    test "it writes values a stale struct already holds" do
+      author = seed!(Author, %{name: "Ann"})
+      post = seed!(Post, %{title: "seeded", author: author})
+      update!(post, %{title: "changed", contents: "changed", author: seed!(Author, %{})})
+
+      update!(post, %{title: "seeded", contents: nil, author: author})
+
+      assert %Post{title: "seeded", contents: nil} = stored = Ash.get!(Post, post.id)
+      assert stored.author_id == author.id
+    end
+  end
+
   describe "upsert!/2" do
     test "it creates a single record with resource and input" do
       assert %Post{id: id, title: "upsert", contents: "upsert"} =

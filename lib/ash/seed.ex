@@ -326,6 +326,10 @@ defmodule Ash.Seed do
   @doc """
   Usage is the same as `seed!/2`, but it will update an existing record.
 
+  Every attribute in `input`, including the foreign key of a `belongs_to` relationship, is
+  written even when the record already holds that value, so a stale record still updates the
+  stored row.
+
   For multitenant resources, tenant will be extracted from the record if
   not provided in opts.
   """
@@ -400,9 +404,24 @@ defmodule Ash.Seed do
           changeset
 
         attribute ->
-          Ash.Changeset.force_change_attribute(changeset, attribute.name, value)
+          force_write_attribute(changeset, attribute.name, value)
       end
     end)
+  end
+
+  # `force_change_attribute/3` drops a value equal to the one on the record, but the record
+  # may be stale, so that value is written anyway.
+  defp force_write_attribute(changeset, name, value) do
+    changeset = Ash.Changeset.force_change_attribute(changeset, name, value)
+
+    if Ash.Changeset.changing_attribute?(changeset, name) do
+      changeset
+    else
+      %{
+        changeset
+        | attributes: Map.put(changeset.attributes, name, Map.get(changeset.data, name))
+      }
+    end
   end
 
   defp change_relationships(changeset, input) do
@@ -422,10 +441,7 @@ defmodule Ash.Seed do
             related = seed!(destination, value, tenant: changeset.tenant)
 
             changeset
-            |> Ash.Changeset.force_change_attribute(
-              source_attribute,
-              Map.get(related, destination_attribute)
-            )
+            |> force_write_attribute(source_attribute, Map.get(related, destination_attribute))
             |> callback.()
             |> case do
               {:ok, result, changeset, instructions} ->
