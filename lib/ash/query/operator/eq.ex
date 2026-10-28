@@ -20,7 +20,7 @@ defmodule Ash.Query.Operator.Eq do
   alias Crux.Expression
 
   def new(left, right) do
-    {:ok, struct(__MODULE__, left: left, right: right)}
+    {:ok, %__MODULE__{left: left, right: right}}
   end
 
   def evaluate(%{left: nil}), do: {:known, nil}
