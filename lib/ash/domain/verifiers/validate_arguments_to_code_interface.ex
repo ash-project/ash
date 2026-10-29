@@ -30,6 +30,14 @@ defmodule Ash.Domain.Verifiers.ValidateArgumentsToCodeInterface do
           resource
         )
       end
+      for interface <- reference.definitions,
+          match?(%Ash.Resource.CalculationInterface{}, interface) do
+        ValidateArgumentsToCodeInterface.verify_calculation_interface!(
+          interface,
+          reference.resource,
+          reference.resource
+        )
+      end
     end
 
     :ok
