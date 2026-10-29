@@ -156,7 +156,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     @moduledoc false
     use Ash.Resource,
       domain: Domain,
-      data_layer: Ash.DataLayer.Ets
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private?(true)
@@ -170,6 +171,29 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         primary? true
         accept [:title]
       end
+
+      create :with_deferred_validation do
+        accept [:title]
+        argument :refuse?, :boolean, default: false
+
+        change before_transaction(fn changeset, _context ->
+                 if Ash.Changeset.get_argument(changeset, :refuse?) do
+                   Ash.Changeset.add_error(changeset, "transaction guard rejected")
+                 else
+                   Ash.Changeset.force_change_attribute(changeset, :status, "admitted")
+                 end
+               end)
+
+        validate attribute_equals(:status, "admitted"), before_action?: true
+      end
+
+      create :with_deferred_global_validation do
+        accept [:title]
+
+        change before_action(fn changeset, _context ->
+                 Ash.Changeset.force_change_attribute(changeset, :status, "ugly")
+               end)
+      end
     end
 
     changes do
@@ -179,6 +203,12 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     validations do
       validate ValidateStatusPresenceAndNotBad
       validate ValidateStatusNotUgly, before_action?: true
+    end
+
+    policies do
+      policy always() do
+        authorize_if actor_attribute_equals(:allowed?, true)
+      end
     end
 
     attributes do
@@ -2715,6 +2745,60 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                )
 
       assert Exception.message(error) =~ "status cannot be ugly"
+    end
+
+    test "deferred action validation sees before_transaction changes" do
+      assert %Ash.BulkResult{status: :success, records: [%{status: "admitted"}]} =
+               Ash.bulk_create(
+                 [%{title: "good"}],
+                 PostWithBulkValidationOrdering,
+                 :with_deferred_validation,
+                 actor: %{allowed?: true},
+                 authorize?: true,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "deferred global validation sees before_action changes" do
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_create(
+                 [%{title: "good"}],
+                 PostWithBulkValidationOrdering,
+                 :with_deferred_global_validation,
+                 actor: %{allowed?: true},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert Exception.message(error) =~ "status cannot be ugly"
+    end
+
+    test "policy denial precedes deferred validation errors" do
+      assert %Ash.BulkResult{status: :error, errors: [%Ash.Error.Forbidden{}]} =
+               Ash.bulk_create(
+                 [%{title: "good"}],
+                 PostWithBulkValidationOrdering,
+                 :with_deferred_validation,
+                 actor: %{allowed?: false},
+                 authorize?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "before_transaction rejection precedes deferred validation errors" do
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_create(
+                 [%{title: "good", refuse?: true}],
+                 PostWithBulkValidationOrdering,
+                 :with_deferred_validation,
+                 actor: %{allowed?: true},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert Exception.message(error) =~ "transaction guard rejected"
+      refute Exception.message(error) =~ "must equal"
     end
   end
 
