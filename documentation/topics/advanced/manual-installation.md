@@ -154,6 +154,7 @@ Update `config/config.exs`:
 +   redact_sensitive_values_in_errors?: true,
 +   default_string_length_count: :codepoints,
 +   infer_generic_action_reactors?: false,
++   ets_transactions?: true,
 +   many_to_many_destroy_destination_on_match?: true
 + 
   config :spark,
