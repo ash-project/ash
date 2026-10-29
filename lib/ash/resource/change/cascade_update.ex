@@ -261,7 +261,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
           context_opts
         )
 
-      :error ->
+      _failure ->
         read_action_name =
           opts.read_action || opts.relationship.read_action || opts.action.atomic_upgrade_with
 
@@ -342,16 +342,15 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         Ash.Query.new(opts.relationship.source)
       )
       |> elem(1)
-      |> filter_by_keys(opts.relationship, data)
 
     if Ash.Actions.Read.Relationships.has_parent_expr?(
          opts.relationship,
          related_query.context,
          related_query.domain
        ) do
-      :error
+      Ash.Actions.Read.Relationships.filter_by_parents(related_query, opts.relationship, data)
     else
-      {:ok, related_query}
+      {:ok, filter_by_keys(related_query, opts.relationship, data)}
     end
   end
 
