@@ -172,6 +172,27 @@ defmodule Ash.Test.Type.DecimalTest do
              )
     end
 
+    test "a decimal divides by a decimal" do
+      Balance
+      |> Ash.Changeset.for_create(:create, %{@valid_attrs | amount: 2.5})
+      |> Ash.create!()
+
+      [balance] =
+        Balance
+        |> Ash.Query.calculate(:by_column, :decimal, Ash.Expr.expr(amount / positive_amount))
+        |> Ash.Query.calculate(:by_integer, :decimal, Ash.Expr.expr(amount / 2))
+        |> Ash.Query.calculate(
+          :by_literal,
+          :decimal,
+          Ash.Expr.expr(amount / ^Decimal.new("0.5"))
+        )
+        |> Ash.read!()
+
+      assert Comp.equal?(balance.calculations.by_column, Decimal.new("2.5"))
+      assert Comp.equal?(balance.calculations.by_integer, Decimal.new("1.25"))
+      assert Comp.equal?(balance.calculations.by_literal, Decimal.new(5))
+    end
+
     test "a decimal multiplies by a float" do
       assert Comp.equal?(
                Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") * 2.0)),

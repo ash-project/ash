@@ -54,7 +54,7 @@ jobs:
         elixir: ["1.19.3"]
     services:
       pg:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -64,6 +64,9 @@ jobs:
     env:
       ASH_CI: true
       ASH_VERSION: local
+      # must match the `pg` service image; ash_postgres assumes the newest
+      # PostgreSQL when unset and runs migrations the server can't handle
+      PG_VERSION: "18"
       # data layers should be tested against main of `ash_sql`
       ASH_SQL_VERSION: main
     steps:

@@ -154,6 +154,67 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert open.valid_at == @open
       assert [%{name: "early"}] = EtsVersioned |> Ash.Query.as_of(@early.lower) |> Ash.read!()
     end
+
+    test "and loading onto several versions keeps each version's own values" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "early", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
+
+      versions =
+        Enum.flat_map([@early.lower, @open.lower], fn instant ->
+          EtsVersioned |> Ash.Query.as_of(instant) |> Ash.read!()
+        end)
+
+      assert [%{name: "early"}, %{name: "open"}] =
+               Ash.load!(versions, [:name], reuse_values?: true)
+
+      assert [%{shout: "early!"}, %{shout: "open!"}] = Ash.load!(versions, :shout)
+    end
+
+    test "and loading onto several versions reads each one at its own instant" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "early", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
+
+      versions =
+        Enum.flat_map([@early.lower, @open.lower], fn instant ->
+          EtsVersioned |> Ash.Query.select([:id]) |> Ash.Query.as_of(instant) |> Ash.read!()
+        end)
+
+      assert [
+               %{name: "early", whisper: "early...", valid_at: @early},
+               %{name: "open", whisper: "open...", valid_at: @open}
+             ] = Ash.load!(versions, [:name, :whisper])
+    end
+
+    test "and loading onto a version a later write has split sees its instant" do
+      EtsVersioned
+      |> Ash.Changeset.for_create(:create, %{id: 1, name: "early"}, as_of: @early.lower)
+      |> Ash.create!()
+
+      held =
+        EtsVersioned
+        |> Ash.Query.select([:id])
+        |> Ash.Query.as_of(~U[2026-06-01 00:00:00Z])
+        |> Ash.read_one!()
+
+      held
+      |> Ash.Changeset.for_update(:update, %{name: "open"}, as_of: @open.lower)
+      |> Ash.update!()
+
+      assert %{name: "open", shout: "open!", whisper: "open...", valid_at: @open} =
+               Ash.load!(held, [:name, :shout, :whisper])
+    end
+
+    test "and loading a calculation onto a version runs it in the data layer" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
+
+      assert %{whisper: "open..."} = Ash.load!(record, :whisper)
+    end
+
+    test "and the period is selected even when a select leaves it out" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
+
+      assert [%{valid_at: @open}] = EtsVersioned |> Ash.Query.select([:name]) |> Ash.read!()
+    end
   end
 
   describe "an update supersedes the version it acts on" do
@@ -1203,6 +1264,104 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                    return_errors?: true
                  )
       end
+    end
+
+    test "a bulk update of a query whose portion spans two stored versions carves both" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+      portion = %Ash.Range{
+        lower: ~U[2020-09-01 00:00:00Z],
+        upper: ~U[2021-06-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert %Ash.BulkResult{status: :success} =
+               EtsVersioned
+               |> Ash.Query.filter(id == 1)
+               |> Ash.bulk_update(:update, %{name: "third"},
+                 as_of: portion,
+                 strategy: [:atomic],
+                 return_errors?: true
+               )
+
+      assert [
+               {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-09-01 00:00:00Z]},
+               {"third", ~U[2020-09-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]},
+               {"third", ~U[2021-01-01 00:00:00Z], ~U[2021-06-01 00:00:00Z]},
+               {"second", ~U[2021-06-01 00:00:00Z], nil}
+             ] =
+               versions_at([
+                 ~U[2020-06-01 00:00:00Z],
+                 ~U[2020-10-01 00:00:00Z],
+                 ~U[2021-03-01 00:00:00Z],
+                 ~U[2021-09-01 00:00:00Z]
+               ])
+    end
+
+    test "a bulk update of a query whose portion spans two stored versions carves both, though the query reads at now" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+      portion = %Ash.Range{
+        lower: ~U[2020-09-01 00:00:00Z],
+        upper: ~U[2021-06-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      # Prepared for its action with no `as_of`, the query reads at now.
+      query = EtsVersioned |> Ash.Query.for_read(:read) |> Ash.Query.filter(id == 1)
+
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_update(query, :update, %{name: "third"},
+                 as_of: portion,
+                 strategy: [:atomic],
+                 return_errors?: true
+               )
+
+      assert [
+               {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-09-01 00:00:00Z]},
+               {"third", ~U[2020-09-01 00:00:00Z], ~U[2021-01-01 00:00:00Z]},
+               {"third", ~U[2021-01-01 00:00:00Z], ~U[2021-06-01 00:00:00Z]},
+               {"second", ~U[2021-06-01 00:00:00Z], nil}
+             ] =
+               versions_at([
+                 ~U[2020-06-01 00:00:00Z],
+                 ~U[2020-10-01 00:00:00Z],
+                 ~U[2021-03-01 00:00:00Z],
+                 ~U[2021-09-01 00:00:00Z]
+               ])
+    end
+
+    test "a bulk hard destroy of a query whose portion spans two stored versions carves both" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})
+
+      portion = %Ash.Range{
+        lower: ~U[2020-09-01 00:00:00Z],
+        upper: ~U[2021-06-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert %Ash.BulkResult{status: :success} =
+               EtsVersioned
+               |> Ash.Query.filter(id == 1)
+               |> Ash.bulk_destroy(:destroy, %{},
+                 as_of: portion,
+                 strategy: [:atomic],
+                 return_errors?: true
+               )
+
+      assert [
+               {"first", ~U[2020-01-01 00:00:00Z], ~U[2020-09-01 00:00:00Z]},
+               {"second", ~U[2021-06-01 00:00:00Z], nil}
+             ] =
+               versions_at([
+                 ~U[2020-06-01 00:00:00Z],
+                 ~U[2020-10-01 00:00:00Z],
+                 ~U[2021-03-01 00:00:00Z],
+                 ~U[2021-09-01 00:00:00Z]
+               ])
     end
 
     test "an update over a range refuses to load" do

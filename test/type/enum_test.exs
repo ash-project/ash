@@ -19,12 +19,44 @@ defmodule Ash.Test.Type.EnumTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      update :copy_previous_state do
+        require_atomic? true
+        change atomic_update(:state, expr(previous_state))
+      end
+
+      update :copy_previous_status do
+        require_atomic? true
+        change atomic_update(:status, expr(previous_status))
+      end
+
+      update :copy_raw_value do
+        require_atomic? true
+        change atomic_update(:state, expr(raw_value))
+        change atomic_update(:status, expr(raw_value))
+      end
     end
 
     attributes do
       uuid_primary_key :id
 
       attribute :status, Status do
+        public?(true)
+      end
+
+      attribute :previous_status, Status do
+        public?(true)
+      end
+
+      attribute :state, OverriddenEnum do
+        public?(true)
+      end
+
+      attribute :previous_state, OverriddenEnum do
+        public?(true)
+      end
+
+      attribute :raw_value, :string do
         public?(true)
       end
     end
@@ -65,6 +97,65 @@ defmodule Ash.Test.Type.EnumTest do
       Post
       |> Ash.Changeset.for_create(:create, %{status: "what"})
       |> Ash.create!()
+    end
+  end
+
+  describe "atomic updates" do
+    test "copying a valid value" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{state: :active, previous_state: :archived})
+        |> Ash.create!()
+        |> Ash.Changeset.for_update(:copy_previous_state, %{})
+        |> Ash.update!()
+
+      assert post.state == :archived
+    end
+
+    test "copying a nil value" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{state: :active})
+        |> Ash.create!()
+        |> Ash.Changeset.for_update(:copy_previous_state, %{})
+        |> Ash.update!()
+
+      assert is_nil(post.state)
+    end
+
+    test "copying a valid value with mixed case values" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{status: :open, previous_status: :Closed})
+        |> Ash.create!()
+        |> Ash.Changeset.for_update(:copy_previous_status, %{})
+        |> Ash.update!()
+
+      assert post.status == :Closed
+    end
+
+    test "copying a nil value with mixed case values" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{status: :open})
+        |> Ash.create!()
+        |> Ash.Changeset.for_update(:copy_previous_status, %{})
+        |> Ash.update!()
+
+      assert is_nil(post.status)
+    end
+
+    test "copying an invalid value fails" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{raw_value: "nope"})
+        |> Ash.create!()
+
+      assert_raise Ash.Error.Invalid, ~r/must be one of/, fn ->
+        post
+        |> Ash.Changeset.for_update(:copy_raw_value, %{})
+        |> Ash.update!()
+      end
     end
   end
 

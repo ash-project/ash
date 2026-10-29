@@ -55,6 +55,11 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
                )
       end
 
+      destroy :destroy_posts_before do
+        require_atomic? false
+        change cascade_destroy(:posts, after_action?: false)
+      end
+
       destroy :destroy_tags_with_read_action do
         require_atomic? false
 
@@ -92,6 +97,7 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
 
     attributes do
       uuid_primary_key :id
+      attribute :locked, :boolean, default: false, public?: true
     end
 
     actions do
@@ -113,6 +119,8 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
       destroy :destroy do
         primary? true
         require_atomic? false
+
+        validate attribute_equals(:locked, false), message: "is locked"
 
         change before_action(fn changeset, _ ->
                  Agent.update(
@@ -296,6 +304,45 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
 
     assert [] = Post.read!()
     assert [] = Author.read!()
+  end
+
+  describe "when a related record can't be destroyed" do
+    setup do
+      author = Author.create!(%{})
+      Post.create!(%{author_id: author.id, locked: true})
+
+      # ETS has no transactions, so these are left behind
+      on_exit(fn ->
+        Ash.DataLayer.Ets.stop(Post)
+        Ash.DataLayer.Ets.stop(Author)
+      end)
+
+      %{author: author}
+    end
+
+    test "the destroy returns the error", %{author: author} do
+      assert {:error, %Ash.Error.Invalid{} = error} = Author.destroy(author)
+      assert Exception.message(error) =~ "is locked"
+    end
+
+    test "a bulk destroy returns the error", %{author: author} do
+      assert %Ash.BulkResult{status: :error, errors: [error | _]} =
+               Ash.bulk_destroy([author], :destroy, %{}, return_errors?: true)
+
+      assert Exception.message(error) =~ "is locked"
+    end
+
+    test "the destroy returns the error when destroying related records first", %{
+      author: author
+    } do
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               author
+               |> Ash.Changeset.for_destroy(:destroy_posts_before)
+               |> Ash.destroy()
+
+      assert Exception.message(error) =~ "is locked"
+      assert [_] = Author.read!()
+    end
   end
 
   test "destroyed records are notified" do

@@ -18,7 +18,7 @@ defmodule Ash.Query.UpsertConflict do
   See the [create actions guide](https://hexdocs.pm/ash/create-actions.html#upserts) for more.
   """
 
-  defstruct [:attribute]
+  defstruct [:attribute, :resource]
 
   def new(attribute) when is_atom(attribute) do
     %__MODULE__{attribute: attribute}

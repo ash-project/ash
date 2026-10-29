@@ -95,6 +95,9 @@ Prefer to use the `strict?` option when loading to only load necessary fields on
 ```elixir
 MyApp.Post
 |> Ash.Query.load([comments: [:title]], strict?: true)
+
+# Create, update and destroy actions accept it alongside `load` as well
+Ash.create!(MyApp.Comment, %{body: "Nice"}, load: [post: [:title]], strict?: true)
 ```
 
 ## Managing Relationships

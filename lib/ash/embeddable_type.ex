@@ -569,9 +569,13 @@ defmodule Ash.EmbeddableType do
           :destroy_action,
           :update_action,
           :domain,
-          :skip_unknown_inputs,
           :__source__
         ])
+        |> Keyword.put(:skip_unknown_inputs,
+          type: {:wrap_list, {:or, [:atom, :string]}},
+          doc:
+            "A list of unknown inputs to skip when casting the embed, or `:*` to skip all unknown inputs. For a list of embeds, set it in the `items` constraints."
+        )
         |> Keyword.put(:on_update,
           type: {:one_of, [:update, :replace, :update_on_match]},
           default: :update_on_match,

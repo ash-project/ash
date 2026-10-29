@@ -688,6 +688,25 @@ defmodule Ash.Test.Actions.CreateTest do
       assert tag == "garbage"
     end
 
+    test "an upsert_condition passed when creating is applied" do
+      Ash.create!(Post, %{title: "foo", contents: "original"})
+
+      upsert_opts = [
+        upsert?: true,
+        upsert_identity: :unique_title,
+        upsert_fields: [:contents],
+        upsert_condition: expr(false)
+      ]
+
+      Ash.create(Post, %{title: "foo", contents: "overwritten"}, upsert_opts)
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "overwritten"})
+      |> Ash.create(upsert_opts)
+
+      assert [%{contents: "original"}] = Ash.read!(Post)
+    end
+
     test "skips upsert when condition doesn't match" do
       assert %Post{id: id, title: "foo", updated_at: updated_at} =
                Post

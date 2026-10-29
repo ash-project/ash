@@ -833,33 +833,20 @@ defmodule Ash.Policy.Policy do
       Code.ensure_loaded!(check)
     end
 
-    expression =
-      for {check, _} = left <- unique_variables,
-          right <- unique_variables,
-          left != right,
-          reduce: expression do
-        acc ->
-          cond do
-            not function_exported?(check, :implies?, 3) ->
-              acc
-
-            Ash.Policy.Check.implies?(check, left, right, check_context) ->
-              b(acc and implies(left, right))
-
-            true ->
-              acc
-          end
-      end
-
     for {check, _} = left <- unique_variables,
         right <- unique_variables,
         left != right,
         reduce: expression do
       acc ->
         cond do
-          not function_exported?(check, :conflict?, 3) -> acc
-          check.conflict?(left, right, check_context) -> b(acc and nand(left, right))
-          true -> acc
+          not function_exported?(check, :implies?, 3) ->
+            acc
+
+          Ash.Policy.Check.implies?(check, left, right, check_context) ->
+            b(acc and implies(left, right))
+
+          true ->
+            acc
         end
     end
   end

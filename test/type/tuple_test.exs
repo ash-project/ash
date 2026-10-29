@@ -160,6 +160,63 @@ defmodule Ash.Type.TupleTest do
            ] = changeset.errors
   end
 
+  describe "casting a map keyed by field name" do
+    test "casts into a tuple in field order" do
+      changeset =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          metadata: %{"integer_min_0" => "2", "foo" => "bar"},
+          metadata_type: %{foo: "baz"}
+        })
+
+      assert changeset.valid?
+
+      assert changeset.attributes == %{
+               metadata: {"bar", 2},
+               metadata_type: {"baz"}
+             }
+    end
+
+    test "a missing field takes nil in its position" do
+      changeset =
+        Post
+        |> Ash.Changeset.for_create(:create, %{metadata: %{"foo" => "bar"}})
+
+      assert changeset.valid?
+      assert changeset.attributes == %{metadata: {"bar", nil}}
+    end
+
+    test "a missing field that does not allow nil is rejected" do
+      changeset =
+        Post
+        |> Ash.Changeset.for_create(:create, %{metadata: %{"integer_min_0" => 1}})
+
+      refute changeset.valid?
+
+      assert [
+               %Ash.Error.Changes.InvalidAttribute{
+                 field: :foo,
+                 message: "value must not be nil",
+                 path: [:metadata]
+               }
+             ] = changeset.errors
+    end
+
+    test "undeclared keys are ignored" do
+      assert {:ok, {"bar", nil}} =
+               Ash.Type.cast_input(
+                 Ash.Type.Tuple,
+                 %{"foo" => "bar", "other" => 1},
+                 fields: [foo: [type: :string], integer_min_0: [type: :integer]]
+               )
+    end
+
+    test "structs are not cast" do
+      assert {:error, _} =
+               Ash.Type.cast_input(Ash.Type.Tuple, ~D[2024-01-01], fields: [foo: [type: :string]])
+    end
+  end
+
   describe "dump_to_native" do
     test "recursively dumps field types" do
       {:ok, constraints} =

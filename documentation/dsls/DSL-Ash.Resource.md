@@ -1137,7 +1137,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 
@@ -1411,7 +1411,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 
@@ -1807,7 +1807,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 
@@ -2120,7 +2120,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 
@@ -2485,7 +2485,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 

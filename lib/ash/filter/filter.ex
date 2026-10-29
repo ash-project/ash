@@ -1261,7 +1261,9 @@ defmodule Ash.Filter do
           )
         end)
       else
-        case Ash.can(aggregate_query, actor,
+        # The result is shared by every unrelated aggregate over this resource and action, so it
+        # can only hold the authorization filter, not this aggregate's own filter.
+        case Ash.can(Map.put(aggregate_query, :filter, nil), actor,
                run_queries?: false,
                pre_flight?: false,
                alter_source?: true,
@@ -1569,13 +1571,25 @@ defmodule Ash.Filter do
     if query.__validated_for_action__ == action do
       query
     else
-      Ash.Query.for_read(query, action, relationship_read_action_arguments(relationship),
+      Ash.Query.for_read(
+        query,
+        action,
+        relationship_query_arguments(relationship, base_query, action),
         actor: actor,
         authorize?: true,
         tenant: tenant,
         domain: domain,
         context: source_context
       )
+    end
+  end
+
+  # The base query's arguments are for its own action, so they only apply when that action is read
+  defp relationship_query_arguments(relationship, base_query, action) do
+    if base_query.action && base_query.action.name == action do
+      Map.merge(base_query.arguments || %{}, relationship_read_action_arguments(relationship))
+    else
+      relationship_read_action_arguments(relationship)
     end
   end
 
@@ -2480,6 +2494,15 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(
+         %Ash.CustomExpression{expression: expression},
+         include_exists?,
+         with_refs?,
+         expand_aggregates?
+       ) do
+    do_relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?)
+  end
+
+  defp do_relationship_paths(
          %Ash.Query.Exists{at_path: at_path, related?: related?, expr: expression},
          false,
          with_refs?,
@@ -2675,6 +2698,7 @@ defmodule Ash.Filter do
              uniq?: aggregate.uniq?,
              read_action: read_action,
              authorize?: aggregate.authorize?,
+             multitenancy: aggregate.multitenancy,
              join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
            ) do
         {:ok, query_aggregate} ->
@@ -3447,6 +3471,7 @@ defmodule Ash.Filter do
                      uniq?: aggregate.uniq?,
                      read_action: read_action,
                      authorize?: aggregate.authorize?,
+                     multitenancy: aggregate.multitenancy,
                      join_filters:
                        Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                    ] ++ aggregate_opts
@@ -4075,6 +4100,8 @@ defmodule Ash.Filter do
       |> Keyword.take([
         :query,
         :field,
+        :expr,
+        :expr_type,
         :default,
         :filterable?,
         :type,
@@ -4416,6 +4443,7 @@ defmodule Ash.Filter do
                          uniq?: aggregate.uniq?,
                          read_action: aggregate.read_action,
                          authorize?: aggregate.authorize?,
+                         multitenancy: aggregate.multitenancy,
                          join_filters:
                            Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                        ] ++ aggregate_opts
@@ -4712,8 +4740,8 @@ defmodule Ash.Filter do
     end
   end
 
-  def do_hydrate_refs(%Ash.Query.UpsertConflict{} = this, _context),
-    do: {:ok, this}
+  def do_hydrate_refs(%Ash.Query.UpsertConflict{} = this, context),
+    do: {:ok, %{this | resource: this.resource || context[:resource]}}
 
   def do_hydrate_refs(
         %Ash.Query.Exists{related?: false, resource: nil} = exists,

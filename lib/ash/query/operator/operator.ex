@@ -77,7 +77,7 @@ defmodule Ash.Query.Operator do
   end
 
   defp do_evaluate(%mod{} = op) do
-    case find_overload(op) do
+    case find_evaluating_overload(op) do
       {type_mod, _overload_types} ->
         if function_exported?(type_mod, :evaluate_operator, 1) do
           case type_mod.evaluate_operator(op) do
@@ -93,6 +93,39 @@ defmodule Ash.Query.Operator do
 
       nil ->
         mod.evaluate(op)
+    end
+  end
+
+  # Only a type that defines `evaluate_operator/1` can change the result.
+  defp find_evaluating_overload(%mod{} = op) do
+    if Enum.any?(overload_type_mods(mod.operator()), &may_evaluate?/1) do
+      find_overload(op)
+    end
+  end
+
+  defp may_evaluate?(type_mod) when is_atom(type_mod),
+    do: not Code.loaded?(type_mod) or function_exported?(type_mod, :evaluate_operator, 1)
+
+  defp may_evaluate?(_type_mods), do: true
+
+  # Keyed by the known types and their md5, so a recompiled one is picked up.
+  defp overload_type_mods(operator) do
+    key =
+      {__MODULE__, operator,
+       :ash
+       |> Application.get_env(:known_types, [])
+       |> List.wrap()
+       |> Enum.map(&{&1, &1.module_info(:md5)})}
+
+    with nil <- :persistent_term.get(key, nil) do
+      operator
+      |> operator_overloads()
+      |> Enum.map(fn
+        {_overload_types, {_cast_types, type_mod}} -> type_mod
+        {_overload_types, type_mod} -> type_mod
+      end)
+      |> Enum.uniq()
+      |> tap(&:persistent_term.put(key, &1))
     end
   end
 
@@ -195,18 +228,32 @@ defmodule Ash.Query.Operator do
 
   @doc "Get type overloads for the given operator"
   def operator_overloads(operator) do
+    operator
+    |> operator_overloads_by_type()
+    |> Enum.reduce(%{}, fn {_type, overloads}, acc ->
+      Map.merge(acc, overloads, fn _, left, right ->
+        List.wrap(left) ++ List.wrap(right)
+      end)
+    end)
+  end
+
+  @doc false
+  # The overloads for the given operator, alongside the known type that declares them.
+  def operator_overloads_by_type(operator) do
     :ash
     |> Application.get_env(:known_types, [])
     |> List.wrap()
-    |> Enum.reduce(%{}, fn type, acc ->
+    |> Enum.uniq()
+    |> Enum.flat_map(fn type ->
       Code.ensure_compiled!(type)
 
       if function_exported?(type, :operator_overloads, 0) do
-        Map.merge(acc, type.operator_overloads()[operator] || %{}, fn _, left, right ->
-          List.wrap(left) ++ List.wrap(right)
-        end)
+        case type.operator_overloads()[operator] do
+          overloads when overloads in [nil, %{}] -> []
+          overloads -> [{type, overloads}]
+        end
       else
-        acc
+        []
       end
     end)
   end
@@ -237,8 +284,14 @@ defmodule Ash.Query.Operator do
 
   @doc false
   def try_cast_with_ref(mod, left, right) do
-    Enum.find_value(mod.types(), fn type ->
-      try_cast(left, right, type)
+    # A value that can't be cast to one signature may still cast to a later one
+    mod.types()
+    |> Enum.reduce_while(nil, fn type, first_error ->
+      case try_cast(left, right, type) do
+        {:ok, _, _} = ok -> {:halt, ok}
+        {:error, _} = error -> {:cont, first_error || error}
+        nil -> {:cont, first_error}
+      end
     end)
     |> case do
       nil ->
@@ -493,7 +546,7 @@ defmodule Ash.Query.Operator do
       end
 
       @impl Ash.Query.Operator
-      def new(left, right), do: {:ok, struct(__MODULE__, left: left, right: right)}
+      def new(left, right), do: {:ok, %__MODULE__{left: left, right: right}}
 
       @impl Ash.Query.Operator
       def evaluate_nil_inputs?, do: false

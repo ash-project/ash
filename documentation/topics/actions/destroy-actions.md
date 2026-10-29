@@ -66,6 +66,10 @@ Ash.destroy!(ticket, return_destroyed?: true)
 
 There are three strategies for bulk destroying data. They are, in order of preference: `:atomic`, `:atomic_batches`, and `:stream`. When calling `Ash.bulk_destroy/4`, you can provide a strategy or strategies that can be used, and Ash will choose the best one available. The capabilities of the data layer determine what strategies can be used.
 
+> ### Loading in bulk destroys {: .warning}
+>
+> Like `Ash.destroy/2`, the `:stream` strategy loads the `load` option and any notifier loads (like a PubSub publication's `load`) before destroying each record. The `:atomic` and `:atomic_batches` strategies never read the records first, so they load after the records are destroyed, with the caveats above: aggregates won't be loaded, and Ash logs a warning when you ask for them.
+
 ## Atomic
 
 Atomic bulk destroys are used when the subject of the bulk destroy is a query and the data layer supports destroying a query. They map to a single statement to the data layer to destroy all matching records.

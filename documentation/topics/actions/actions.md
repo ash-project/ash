@@ -306,6 +306,8 @@ create :create do
 end
 ```
 
+Within a single pipeline, all `change` entities (or `prepare` entities, for read and generic actions) come before all `validate` entities, regardless of the order they are declared in the pipeline.
+
 When referencing multiple pipelines in a single `pipe_through`, their entities are appended in the order listed:
 
 ```elixir

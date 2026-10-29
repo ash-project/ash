@@ -210,6 +210,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
       calculate :campaign_upcase, :string, Ash.Test.Actions.LoadTest.UpcaseName
       calculate :tracked_campaign_upcase, :string, Ash.Test.Actions.LoadTest.TrackedUpcaseName
+      calculate :exclaim_name, :string, Ash.Test.Actions.LoadTest.ExclaimName
 
       calculate :posts_calc, :struct, PostsWithACalc do
         constraints instance_of: Ash.Test.Actions.LoadTest.Post
@@ -274,6 +275,14 @@ defmodule Ash.Test.Actions.LoadTest do
         |> String.upcase()
       end)
     end
+  end
+
+  defmodule ExclaimName do
+    @moduledoc "An expression-only calculation, with no `calculate/3`."
+    use Ash.Resource.Calculation
+
+    @impl true
+    def expression(_, _), do: expr(name <> "!")
   end
 
   defmodule PostsInSameCategory do
@@ -721,6 +730,12 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.create!()
 
       assert {:ok, [%Post{title: "post1"}]} = Ash.load({:ok, [post]}, [])
+    end
+
+    test "expression calculations on a record missing from the data layer are evaluated in memory" do
+      author = %Author{id: Ash.UUID.generate(), name: "zach"}
+
+      assert %{exclaim_name: "zach!"} = Ash.load!(author, :exclaim_name, authorize?: false)
     end
 
     test "it allows loading manual relationships" do
@@ -1509,6 +1524,20 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.read!()
 
       assert author.latest_post.id == post2.id
+    end
+
+    test "a has_one with a sort loaded with a limit of 0 is nil" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post1"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      assert is_nil(Ash.load!(author, latest_post: Ash.Query.limit(Post, 0)).latest_post)
     end
 
     test "it throws an error when passing it an Ash.Query" do
@@ -2519,6 +2548,110 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
+  describe "strict?: true on write actions" do
+    setup do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post", author_id: author.id})
+        |> Ash.create!()
+
+      %{author: author, post: post}
+    end
+
+    defp assert_strict_author(post) do
+      assert post.author.name == "a"
+      assert %Ash.NotLoaded{} = post.author.bio
+    end
+
+    test "create only loads specified fields on related resource", %{author: author} do
+      Post
+      |> Ash.create!(%{title: "new", author_id: author.id},
+        load: [author: [:name]],
+        strict?: true
+      )
+      |> assert_strict_author()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "new", author_id: author.id})
+      |> Ash.create!(load: [author: [:name]], strict?: true)
+      |> assert_strict_author()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "new", author_id: author.id})
+      |> Ash.Changeset.load([author: [:name]], strict?: true)
+      |> Ash.create!()
+      |> assert_strict_author()
+    end
+
+    test "loads all fields on related resource without strict?", %{author: author} do
+      post =
+        Ash.create!(Post, %{title: "new", author_id: author.id}, load: [author: [:name]])
+
+      assert post.author.name == "a"
+      refute match?(%Ash.NotLoaded{}, post.author.bio)
+    end
+
+    test "update only loads specified fields on related resource", %{post: post} do
+      post
+      |> Ash.update!(%{title: "updated"}, load: [author: [:name]], strict?: true)
+      |> assert_strict_author()
+    end
+
+    test "destroy only loads specified fields on related resource", %{post: post} do
+      post
+      |> Ash.destroy!(return_destroyed?: true, load: [author: [:name]], strict?: true)
+      |> assert_strict_author()
+    end
+
+    test "bulk_create only loads specified fields on related resource", %{author: author} do
+      assert %Ash.BulkResult{records: [post]} =
+               Ash.bulk_create!([%{title: "new", author_id: author.id}], Post, :create,
+                 return_records?: true,
+                 load: [author: [:name]],
+                 strict?: true
+               )
+
+      assert_strict_author(post)
+    end
+
+    for strategy <- [:atomic, :stream] do
+      test "bulk_update with the #{strategy} strategy only loads specified fields on related resource",
+           %{post: post} do
+        assert %Ash.BulkResult{records: [post]} =
+                 Post
+                 |> Ash.Query.filter(id == ^post.id)
+                 |> Ash.bulk_update!(:update, %{title: "updated"},
+                   strategy: unquote(strategy),
+                   return_records?: true,
+                   load: [author: [:name]],
+                   strict?: true
+                 )
+
+        assert_strict_author(post)
+      end
+
+      test "bulk_destroy with the #{strategy} strategy only loads specified fields on related resource",
+           %{post: post} do
+        assert %Ash.BulkResult{records: [post]} =
+                 Post
+                 |> Ash.Query.filter(id == ^post.id)
+                 |> Ash.bulk_destroy!(:destroy, %{},
+                   strategy: unquote(strategy),
+                   return_records?: true,
+                   load: [author: [:name]],
+                   strict?: true
+                 )
+
+        assert_strict_author(post)
+      end
+    end
+  end
+
   test "read action loads are ignored with `Ash.load`" do
     author =
       Author
@@ -2630,6 +2763,39 @@ defmodule Ash.Test.Actions.LoadTest do
       # The top 3 categories should be A, B, C (priorities 100, 90, 80)
       top_category_names = post_with_top.top_categories |> Enum.map(& &1.name) |> Enum.sort()
       assert top_category_names == ["A", "B", "C"]
+    end
+
+    test "a smaller limit on the related query applies to a relationship with a limit" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      for priority <- [100, 90, 80, 70] do
+        category =
+          Category
+          |> Ash.Changeset.for_create(:create, %{name: "#{priority}"})
+          |> Ash.create!()
+
+        PostCategory
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          category_id: category.id,
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      priorities = fn limit ->
+        post
+        |> Ash.load!(top_post_categories: Ash.Query.limit(PostCategory, limit))
+        |> Map.get(:top_post_categories)
+        |> Enum.map(& &1.priority)
+      end
+
+      assert priorities.(2) == [100, 90]
+      assert priorities.(0) == []
+      assert priorities.(10) == [100, 90, 80]
     end
   end
 

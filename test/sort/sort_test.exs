@@ -60,6 +60,7 @@ defmodule Ash.Test.Sort.SortTest do
 
       attribute :unsortable_title, :string, public?: true, sortable?: false
       attribute :points, :integer
+      attribute :score, :decimal
     end
 
     aggregates do
@@ -125,6 +126,30 @@ defmodule Ash.Test.Sort.SortTest do
       belongs_to :post, Ash.Test.Sort.SortTest.Author do
         public? true
       end
+    end
+  end
+
+  defmodule ArgumentPost do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:create]
+
+      read :read do
+        primary? true
+        argument :since, :integer, allow_nil?: false
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true
     end
   end
 
@@ -511,6 +536,76 @@ defmodule Ash.Test.Sort.SortTest do
 
       assert [^b, ^a] =
                Ash.Actions.Sort.runtime_sort([a, b], [title: :asc], resource: Post)
+    end
+  end
+
+  describe "runtime_sort/3 loading attributes" do
+    test "sorts by the values the records hold" do
+      posts =
+        for title <- ["a", "b", "c"] do
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: title})
+          |> Ash.create!()
+        end
+
+      held =
+        posts
+        |> Enum.zip(["c", "b", "a"])
+        |> Enum.map(fn {post, title} -> %{post | title: title} end)
+
+      assert Enum.map(Enum.reverse(posts), & &1.id) ==
+               held
+               |> Ash.Actions.Sort.runtime_sort([title: :asc], domain: Domain)
+               |> Enum.map(& &1.id)
+    end
+
+    test "sorts by an attribute the records hold without reading them again" do
+      posts =
+        for title <- ["b", "a"] do
+          ArgumentPost
+          |> Ash.Changeset.for_create(:create, %{title: title})
+          |> Ash.create!()
+        end
+
+      assert ["a", "b"] ==
+               posts
+               |> Ash.Actions.Sort.runtime_sort([title: :asc], domain: Domain)
+               |> Enum.map(& &1.title)
+    end
+
+    test "sorts records that can only be enumerated once" do
+      {:ok, agent} =
+        Agent.start_link(fn ->
+          for {id, title} <- [{"1", "b"}, {"2", "c"}, {"3", "a"}], do: %Post{id: id, title: title}
+        end)
+
+      once =
+        fn -> Agent.get_and_update(agent, &Enum.split(&1, 1)) end
+        |> Stream.repeatedly()
+        |> Stream.take_while(&(&1 != []))
+        |> Stream.concat()
+
+      assert ["a", "b", "c"] ==
+               once
+               |> Ash.Actions.Sort.runtime_sort([title: :asc], resource: Post, domain: Domain)
+               |> Enum.map(& &1.title)
+    end
+
+    test "loads an attribute the records do not hold" do
+      posts =
+        for title <- ["b", "c", "a"] do
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: title})
+          |> Ash.create!()
+        end
+
+      not_loaded =
+        Enum.map(posts, &%{&1 | title: %Ash.NotLoaded{field: :title, type: :attribute}})
+
+      assert Enum.map([Enum.at(posts, 1), hd(posts), Enum.at(posts, 2)], & &1.id) ==
+               not_loaded
+               |> Ash.Actions.Sort.runtime_sort([title: :desc], domain: Domain)
+               |> Enum.map(& &1.id)
     end
   end
 end

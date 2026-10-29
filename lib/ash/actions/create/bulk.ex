@@ -122,12 +122,12 @@ defmodule Ash.Actions.Create.Bulk do
                   opts
                 )
             end
-          rescue
-            error ->
+          catch
+            kind, reason ->
               if notify?,
                 do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
 
-              reraise error, __STACKTRACE__
+              :erlang.raise(kind, reason, __STACKTRACE__)
           after
             if notify? do
               Process.delete(:ash_started_transaction?)
@@ -763,10 +763,10 @@ defmodule Ash.Actions.Create.Bulk do
               end
             end)
         end
-      rescue
-        error ->
+      catch
+        kind, reason ->
           if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
-          reraise error, __STACKTRACE__
+          :erlang.raise(kind, reason, __STACKTRACE__)
       after
         if notify? do
           notifications = Ash.Actions.Helpers.take_queued_notifications()
@@ -903,6 +903,7 @@ defmodule Ash.Actions.Create.Bulk do
       |> set_lazy_non_matching_defaults()
       |> set_lazy_matching_defaults(lazy_matching_default_values)
       |> set_tenant(action)
+      |> filter_upsert_by_tenant()
 
     case opts[:transform_changeset] do
       nil -> changeset
@@ -919,6 +920,14 @@ defmodule Ash.Actions.Create.Bulk do
         Ash.Changeset.set_context(changeset, %{
           shared: %{private: %{multitenancy: :bypass_all}}
         })
+    end
+  end
+
+  defp filter_upsert_by_tenant(changeset) do
+    if changeset.context.private[:upsert?] do
+      Ash.Changeset.filter(changeset, Ash.Actions.Helpers.upsert_tenant_filter(changeset))
+    else
+      changeset
     end
   end
 
@@ -1197,8 +1206,7 @@ defmodule Ash.Actions.Create.Bulk do
           |> Ash.Changeset.handle_allow_nil_atomics(opts[:actor])
           |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
 
-        new_notifications =
-          Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
+        Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
 
         {changeset, manage_notifications} =
           if changeset.valid? do
@@ -1210,7 +1218,7 @@ defmodule Ash.Actions.Create.Bulk do
                    tenant: opts[:tenant]
                  ) do
               {:error, error} ->
-                {Ash.Changeset.add_error(changeset, error), new_notifications}
+                {Ash.Changeset.add_error(changeset, error), []}
 
               {changeset, manage_instructions} ->
                 {changeset, _} =
@@ -1435,10 +1443,10 @@ defmodule Ash.Actions.Create.Bulk do
                              ]}
 
                           _ ->
-                            []
+                            {:ok, []}
                         end
                       else
-                        []
+                        {:ok, []}
                       end
 
                     {:ok, %{__metadata__: %{upsert_skipped: true}} = record} ->
@@ -1450,7 +1458,7 @@ defmodule Ash.Actions.Create.Bulk do
                            })
                          ]}
                       else
-                        []
+                        {:ok, []}
                       end
 
                     {:ok, result} ->
@@ -1796,7 +1804,7 @@ defmodule Ash.Actions.Create.Bulk do
           {:ok, records} ->
             load_query =
               resource
-              |> Ash.Query.load(List.wrap(opts[:load]))
+              |> Ash.Query.load(List.wrap(opts[:load]), Keyword.take(opts, [:strict?]))
               |> Ash.Actions.Helpers.merge_notifier_calculations(
                 Ash.Notifier.notifier_calculation_query(resource, action)
               )

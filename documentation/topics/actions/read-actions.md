@@ -89,6 +89,8 @@ Ash provides built-in support for pagination when reading resources and their re
 >
 > The default read action supports keyset pagination automatically. You need to explicitly enable pagination strategies you want to support when defining your own read actions.
 
+When your own code needs every record an action matches, like for an export, `Ash.unpaginated_read/2` runs the action without its pagination, even if pagination is required. It's not for getting around pagination an action requires of its clients, so API extensions shouldn't use it for that.
+
 ## What happens when you call Ash.Query.for_read/4
 
 The following steps are performed when you call `Ash.Query.for_read/4`.

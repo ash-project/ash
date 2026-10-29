@@ -240,7 +240,7 @@ defmodule Ash.Actions.Update.UpdateMany do
           )
 
         action_select =
-          if opts[:return_records?] or notify? or has_after_action? or
+          if opts[:return_records?] || notify? || has_after_action? ||
                not Enum.empty?(conditional_after_batch_hooks) do
             action_select(resource, action, opts)
           else
@@ -273,21 +273,24 @@ defmodule Ash.Actions.Update.UpdateMany do
               Ash.DataLayer.rollback(resource, Ash.Error.to_ash_error(error))
           end
 
+        # Rows an after_batch hook fails were still written, so they aren't missing.
+        seen = Enum.reduce(written, seen, &MapSet.put(&2, Map.take(&1, pkey)))
+
+        changeset_by_pkey = Map.new(targets, &{&1.pkey, &1.changeset})
+
         # after_batch change callbacks, run the same way an atomic bulk update runs them.
-        {written, after_batch_notifications} =
+        {written, after_batch_errors, after_batch_notifications} =
           if Enum.empty?(conditional_after_batch_hooks) do
-            {written, []}
+            {written, [], []}
           else
-            Ash.Actions.Update.Bulk.run_atomic_after_batch_hooks(
-              written,
-              representative,
+            written
+            |> Enum.map(&{Map.get(changeset_by_pkey, Map.take(&1, pkey), representative), &1})
+            |> Ash.Actions.Update.Bulk.run_after_batch_hooks(
               all_changes,
               conditional_after_batch_hooks,
               context
             )
           end
-
-        changeset_by_pkey = Map.new(targets, &{&1.pkey, &1.changeset})
 
         # Run after_action hooks per row with that row's own changeset — the same hooks atomic bulk
         # updates run after their write. The MERGE already happened, so a hook failure is a per-row
@@ -322,7 +325,10 @@ defmodule Ash.Actions.Update.UpdateMany do
             do: after_batch_notifications ++ group_notifications,
             else: group_notifications
 
-        {records_acc ++ Enum.reverse(group_records), errors_acc ++ Enum.reverse(group_errors),
+        group_errors =
+          Enum.map(after_batch_errors, &Ash.Error.to_ash_error/1) ++ Enum.reverse(group_errors)
+
+        {records_acc ++ Enum.reverse(group_records), errors_acc ++ group_errors,
          notifications_acc ++ group_notifications, seen}
       end)
 

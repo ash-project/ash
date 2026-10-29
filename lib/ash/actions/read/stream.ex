@@ -6,6 +6,12 @@ defmodule Ash.Actions.Read.Stream do
   @moduledoc false
 
   def run!(domain, query, opts) do
+    run(domain, query, opts, :raise)
+  end
+
+  # Like `run!/3`, but when a read fails, the stream emits whatever `on_error` returns for the
+  # error and then ends, instead of raising. `:raise` raises, as `run!/3` does.
+  def run(domain, query, opts, on_error) do
     query = Ash.Query.new(query)
 
     {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
@@ -24,10 +30,15 @@ defmodule Ash.Actions.Read.Stream do
 
     query
     |> stream_strategy!(opts[:stream_with], opts[:allow_stream_with])
-    |> do_stream(query, domain, Keyword.drop(opts, [:stream_with, :allow_stream_with]))
+    |> do_stream(
+      query,
+      domain,
+      Keyword.drop(opts, [:stream_with, :allow_stream_with]),
+      on_error
+    )
   end
 
-  defp do_stream(:keyset, query, domain, opts) do
+  defp do_stream(:keyset, query, domain, opts, on_error) do
     {batch_size, opts} =
       Keyword.pop(
         opts,
@@ -52,12 +63,15 @@ defmodule Ash.Actions.Read.Stream do
           opts =
             Keyword.merge(opts, page: page_opts, domain: domain)
 
-          case Ash.read!(query, opts) do
-            %{more?: true, results: results} ->
+          case read(query, opts, on_error) do
+            {:ok, %{more?: true, results: results}} ->
               {results, List.last(results).__metadata__.keyset}
 
-            %{results: results} ->
+            {:ok, %{results: results}} ->
               {results, false}
+
+            {:error, elements} ->
+              {elements, false}
           end
       end,
       & &1
@@ -65,15 +79,15 @@ defmodule Ash.Actions.Read.Stream do
     |> take_query_limit(query)
   end
 
-  defp do_stream(:offset, query, domain, opts) do
+  defp do_stream(:offset, query, domain, opts, on_error) do
     if can_pagination_offset?(query) do
-      stream_with_offset_pagination(query, domain, opts)
+      stream_with_offset_pagination(query, domain, opts, on_error)
     else
-      stream_with_limit_offset(query, domain, opts)
+      stream_with_limit_offset(query, domain, opts, on_error)
     end
   end
 
-  defp do_stream(:full_read, query, domain, opts) do
+  defp do_stream(:full_read, query, domain, opts, on_error) do
     opts = Keyword.drop(opts, [:batch_size])
 
     Stream.resource(
@@ -83,13 +97,16 @@ defmodule Ash.Actions.Read.Stream do
           {:halt, false}
 
         true ->
-          {Ash.read!(query, Keyword.put(opts, :domain, domain)), false}
+          case read(query, Keyword.put(opts, :domain, domain), on_error) do
+            {:ok, results} -> {results, false}
+            {:error, elements} -> {elements, false}
+          end
       end,
       & &1
     )
   end
 
-  defp stream_with_offset_pagination(query, domain, opts) do
+  defp stream_with_offset_pagination(query, domain, opts, on_error) do
     {limit, opts} =
       Keyword.pop(
         opts,
@@ -113,12 +130,15 @@ defmodule Ash.Actions.Read.Stream do
           opts =
             Keyword.put(opts, :page, page_opts)
 
-          case Ash.read!(query, Keyword.put(opts, :domain, domain)) do
-            %{more?: true, results: results} ->
+          case read(query, Keyword.put(opts, :domain, domain), on_error) do
+            {:ok, %{more?: true, results: results}} ->
               {results, offset + limit}
 
-            %{results: results} ->
+            {:ok, %{results: results}} ->
               {results, false}
+
+            {:error, elements} ->
+              {elements, false}
           end
       end,
       & &1
@@ -126,7 +146,7 @@ defmodule Ash.Actions.Read.Stream do
     |> take_query_limit(query)
   end
 
-  defp stream_with_limit_offset(query, domain, opts) do
+  defp stream_with_limit_offset(query, domain, opts, on_error) do
     {limit, opts} =
       Keyword.pop(
         opts,
@@ -152,17 +172,29 @@ defmodule Ash.Actions.Read.Stream do
             |> Ash.Query.limit(limit)
             |> Ash.Query.offset(offset)
 
-          results = Ash.read!(query, Keyword.put(opts, :domain, domain))
+          case read(query, Keyword.put(opts, :domain, domain), on_error) do
+            {:ok, results} when length(results) < limit ->
+              {results, false}
 
-          if Enum.count(results) < limit do
-            {results, false}
-          else
-            {results, offset + limit}
+            {:ok, results} ->
+              {results, offset + limit}
+
+            {:error, elements} ->
+              {elements, false}
           end
       end,
       & &1
     )
     |> take_query_limit(query)
+  end
+
+  defp read(query, opts, :raise), do: {:ok, Ash.read!(query, opts)}
+
+  defp read(query, opts, on_error) do
+    case Ash.read(query, opts) do
+      {:ok, results} -> {:ok, results}
+      {:error, error} -> {:error, on_error.(error)}
+    end
   end
 
   @doc false

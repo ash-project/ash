@@ -67,6 +67,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
         destination_attribute: :author_id,
         public?: true
     end
+
+    aggregates do
+      count :post_count, :posts, public?: true
+    end
+
+    calculations do
+      calculate :has_posts?, :boolean, expr(exists(posts, true)), public?: true
+    end
   end
 
   defmodule PostLink do
@@ -99,6 +107,19 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
         allow_nil?: false,
         public?: true
     end
+  end
+
+  defmodule TitleIsLocked do
+    @moduledoc false
+    use Ash.Policy.SimpleCheck
+
+    def describe(_opts), do: "the title is locked"
+    def requires_original_data?(_authorizer, _opts), do: true
+
+    def match?(_actor, %{changeset: %Ash.Changeset{data: post}}, _opts),
+      do: post.title == "locked"
+
+    def match?(_actor, _context, _opts), do: false
   end
 
   defmodule AtomicOnlyValidation do
@@ -198,6 +219,18 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       read :read do
         primary? true
         pagination keyset?: true, required?: false
+      end
+
+      read :read_with_before_action do
+        pagination keyset?: true, required?: false
+        prepare fn query, _context -> Ash.Query.before_action(query, & &1) end
+      end
+
+      destroy :destroy_unless_locked
+
+      destroy :archive_unless_locked do
+        soft? true
+        change set_attribute(:title2, "archived")
       end
 
       destroy :destroy_with_change do
@@ -348,6 +381,11 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
         authorize_if context_equals(:authorize?, true)
       end
 
+      policy action([:destroy_unless_locked, :archive_unless_locked]) do
+        forbid_if TitleIsLocked
+        authorize_if always()
+      end
+
       policy action(:read) do
         authorize_if always()
       end
@@ -487,6 +525,30 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              )
 
     assert [] = Ash.read!(Post)
+  end
+
+  test "the `filter` option skips records that no longer match it with the stream strategy" do
+    [unchanged, changed] =
+      Ash.bulk_create!([%{title: "title"}, %{title: "title"}], Post, :create,
+        return_records?: true,
+        authorize?: false
+      ).records
+
+    Ash.update!(changed, %{title: "changed"}, authorize?: false)
+
+    assert %Ash.BulkResult{records: [%{id: id}]} =
+             Ash.bulk_destroy!([unchanged, changed], :destroy, %{},
+               resource: Post,
+               strategy: :stream,
+               filter: [title: "title"],
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert id == unchanged.id
+    assert [%{id: remaining_id}] = Ash.read!(Post, authorize?: false)
+    assert remaining_id == changed.id
   end
 
   for strategy <- [:atomic, :stream] do
@@ -872,6 +934,42 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   end
 
   describe "authorization" do
+    test "a policy requiring the original data is checked against each record given" do
+      %Ash.BulkResult{records: [unlocked, locked]} =
+        Ash.bulk_create!([%{title: "unlocked"}, %{title: "locked"}], Post, :create,
+          return_records?: true,
+          sorted?: true
+        )
+
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_destroy([unlocked], :destroy_unless_locked, %{},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert %Ash.BulkResult{status: :error, errors: [%Ash.Error.Forbidden{}]} =
+               Ash.bulk_destroy([locked], :destroy_unless_locked, %{},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert [%{title: "locked"}] = Ash.read!(Post, authorize?: false)
+    end
+
+    test "a soft destroy with a policy requiring the original data streams the query" do
+      Ash.bulk_create!([%{title: "unlocked"}], Post, :create)
+
+      assert %Ash.BulkResult{status: :success, records: [%{title2: "archived"}]} =
+               Post
+               |> Ash.Query.filter(title == "unlocked")
+               |> Ash.bulk_destroy(:archive_unless_locked, %{},
+                 strategy: [:atomic, :atomic_batches, :stream],
+                 authorize?: true,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+
     test "policy success results in successes" do
       assert %Ash.BulkResult{records: [_, _], errors: []} =
                Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -1082,6 +1180,44 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                )
 
       assert [%Post{title: "Related 1"}, %Post{title: "Related 2"}] = post.related_posts
+    end
+
+    test "loads aggregates and calculations before destroying when streaming" do
+      post = Ash.create!(Post, %{title: "Post"})
+
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "Author"})
+        |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{records: [author]} =
+               Ash.bulk_destroy!([author], :destroy, %{},
+                 resource: Author,
+                 strategy: :stream,
+                 return_records?: true,
+                 load: [:post_count, :has_posts?]
+               )
+
+      assert author.post_count == 1
+      assert author.has_posts?
+    end
+
+    test "warns when loading aggregates with an atomic strategy" do
+      for strategy <- [:atomic, :atomic_batches] do
+        Ash.create!(Author, %{name: "Author"})
+
+        log =
+          capture_log(fn ->
+            Ash.bulk_destroy!(Author, :destroy, %{},
+              strategy: strategy,
+              return_records?: true,
+              load: [:post_count]
+            )
+          end)
+
+        assert log =~ ":post_count"
+      end
     end
   end
 
@@ -1590,6 +1726,31 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                  authorize?: true,
                  return_errors?: true
                )
+    end
+
+    test "streams instead of using atomic batches when the read action adds hooks" do
+      Ash.bulk_create!([%{title: "soft"}, %{title: "hard"}], Post, :create)
+
+      assert %Ash.BulkResult{status: :success, records: [%{title2: "archived"}]} =
+               Post
+               |> Ash.Query.filter(title == "soft")
+               |> Ash.bulk_destroy(:archive_unless_locked, %{},
+                 read_action: :read_with_before_action,
+                 strategy: [:atomic, :atomic_batches, :stream],
+                 return_records?: true,
+                 return_errors?: true
+               )
+
+      assert %Ash.BulkResult{status: :success} =
+               Post
+               |> Ash.Query.filter(title == "hard")
+               |> Ash.bulk_destroy(:destroy, %{},
+                 read_action: :read_with_before_action,
+                 strategy: [:atomic, :atomic_batches, :stream],
+                 return_errors?: true
+               )
+
+      assert [%{title: "soft"}] = Ash.read!(Post)
     end
 
     test "bulk_destroy fails when read_action is not specified and primary read is forbidden" do
