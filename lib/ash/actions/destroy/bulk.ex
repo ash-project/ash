@@ -1255,7 +1255,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
           try do
             batch
-            |> Stream.map(
+            |> Enum.map(
               &setup_changeset(
                 &1,
                 action,

@@ -41,6 +41,13 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
   end
 
+  defmodule ListOnlyBatchChange do
+    use Ash.Resource.Change
+
+    def batch_change([], _, _), do: []
+    def batch_change([_ | _] = changesets, _, _), do: changesets
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -265,6 +272,11 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       destroy :destroy_with_after_batch do
         require_atomic? false
         change AddAfterToTitle
+      end
+
+      destroy :destroy_with_list_only_batch_change do
+        require_atomic? false
+        change ListOnlyBatchChange
       end
 
       destroy :destroy_with_after_transaction do
@@ -519,6 +531,19 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
              |> Ash.bulk_destroy!(:destroy, %{},
                resource: Post,
+               strategy: :stream,
+               return_records?: true,
+               return_errors?: true
+             )
+
+    assert [] = Ash.read!(Post)
+  end
+
+  test "passes batch_change/3 a list with the stream strategy" do
+    Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create)
+
+    assert %Ash.BulkResult{status: :success, records: [_, _]} =
+             Ash.bulk_destroy!(Post, :destroy_with_list_only_batch_change, %{},
                strategy: :stream,
                return_records?: true,
                return_errors?: true
