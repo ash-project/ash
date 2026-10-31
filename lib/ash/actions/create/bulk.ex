@@ -1919,94 +1919,12 @@ defmodule Ash.Actions.Create.Bulk do
               )
             else
               Enum.map(batch, fn changeset ->
-                cond do
-                  !module.has_validate?() ->
-                    Ash.Changeset.add_error(
-                      changeset,
-                      Ash.Error.Framework.CanNotBeAtomic.exception(
-                        resource: changeset.resource,
-                        change: module,
-                        reason: "Create actions cannot be made atomic"
-                      )
-                    )
-
-                  invalid =
-                      Enum.find(validation.where, fn {where_mod, _} ->
-                        !where_mod.has_validate?()
-                      end) ->
-                    {invalid_mod, _} = invalid
-
-                    Ash.Changeset.add_error(
-                      changeset,
-                      Ash.Error.Framework.CanNotBeAtomic.exception(
-                        resource: changeset.resource,
-                        change: invalid_mod,
-                        reason: "Create actions cannot be made atomic"
-                      )
-                    )
-
-                  validation.only_when_valid? && !changeset.valid? ->
-                    changeset
-
-                  Enum.all?(validation.where || [], fn {where_mod, where_opts} ->
-                    where_opts =
-                        templated_opts(
-                          where_opts,
-                          actor,
-                          changeset.to_tenant,
-                          changeset.arguments,
-                          changeset.context,
-                          changeset
-                        )
-
-                    {:ok, where_opts} = Ash.Resource.Validation.init(where_mod, where_opts)
-
-                    Ash.Resource.Validation.validate(
-                      where_mod,
-                      changeset,
-                      where_opts,
-                      struct(Ash.Resource.Validation.Context, context)
-                    ) == :ok
-                  end) ->
-                    opts =
-                      templated_opts(
-                        opts,
-                        actor,
-                        changeset.to_tenant,
-                        changeset.arguments,
-                        changeset.context,
-                        changeset
-                      )
-
-                    {:ok, opts} = Ash.Resource.Validation.init(module, opts)
-
-                    case Ash.Resource.Validation.validate(
-                           module,
-                           changeset,
-                           opts,
-                           struct(
-                             Ash.Resource.Validation.Context,
-                             Map.put(context, :message, validation.message)
-                           )
-                         ) do
-                      :ok ->
-                        changeset
-
-                      {:error, error} ->
-                        error = Ash.Error.to_ash_error(error)
-
-                        if validation.message do
-                          error =
-                            Ash.Error.override_validation_message(error, validation.message)
-
-                          Ash.Changeset.add_error(changeset, error)
-                        else
-                          Ash.Changeset.add_error(changeset, error)
-                        end
-                    end
-
-                  true ->
-                    changeset
+                if validation.before_action? do
+                  Ash.Changeset.before_action(changeset, fn changeset ->
+                    validate_changeset(changeset, validation, actor, context)
+                  end)
+                else
+                  validate_changeset(changeset, validation, actor, context)
                 end
               end)
             end
@@ -2242,5 +2160,97 @@ defmodule Ash.Actions.Create.Bulk do
           changeset
       end
     end)
+  end
+
+  defp validate_changeset(changeset, %{validation: {module, opts}} = validation, actor, context) do
+    cond do
+      !module.has_validate?() ->
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Framework.CanNotBeAtomic.exception(
+            resource: changeset.resource,
+            change: module,
+            reason: "Create actions cannot be made atomic"
+          )
+        )
+
+      invalid =
+          Enum.find(validation.where, fn {where_mod, _} ->
+            !where_mod.has_validate?()
+          end) ->
+        {invalid_mod, _} = invalid
+
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Framework.CanNotBeAtomic.exception(
+            resource: changeset.resource,
+            change: invalid_mod,
+            reason: "Create actions cannot be made atomic"
+          )
+        )
+
+      validation.only_when_valid? && !changeset.valid? ->
+        changeset
+
+      Enum.all?(validation.where || [], fn {where_mod, where_opts} ->
+        where_opts =
+            templated_opts(
+              where_opts,
+              actor,
+              changeset.to_tenant,
+              changeset.arguments,
+              changeset.context,
+              changeset
+            )
+
+        {:ok, where_opts} = Ash.Resource.Validation.init(where_mod, where_opts)
+
+        Ash.Resource.Validation.validate(
+          where_mod,
+          changeset,
+          where_opts,
+          struct(Ash.Resource.Validation.Context, context)
+        ) == :ok
+      end) ->
+        opts =
+          templated_opts(
+            opts,
+            actor,
+            changeset.to_tenant,
+            changeset.arguments,
+            changeset.context,
+            changeset
+          )
+
+        {:ok, opts} = Ash.Resource.Validation.init(module, opts)
+
+        case Ash.Resource.Validation.validate(
+               module,
+               changeset,
+               opts,
+               struct(
+                 Ash.Resource.Validation.Context,
+                 Map.put(context, :message, validation.message)
+               )
+             ) do
+          :ok ->
+            changeset
+
+          {:error, error} ->
+            error = Ash.Error.to_ash_error(error)
+
+            if validation.message do
+              error =
+                Ash.Error.override_validation_message(error, validation.message)
+
+              Ash.Changeset.add_error(changeset, error)
+            else
+              Ash.Changeset.add_error(changeset, error)
+            end
+        end
+
+      true ->
+        changeset
+    end
   end
 end

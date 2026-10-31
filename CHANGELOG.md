@@ -8,6 +8,12 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## Unreleased
+
+### Bug Fixes:
+
+* Restore `before_action?` deferral for per-record validations in bulk creates, including their conditions.
+
 ## [v3.37.2](https://github.com/ash-project/ash/compare/v3.37.1...v3.37.2) (2026-10-26)
 
 
