@@ -142,7 +142,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.repository_owner == 'ash-project'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: erlef/mix-dependency-submission@257b2df58056895d7a0f3f7dba5b0520d71d9a46 # v1.3.4
+      - uses: erlef/mix-dependency-submission@c5bd30a0e18822272a914adb7fb153866d491baf # v1.3.5
     permissions:
       # Give the default GITHUB_TOKEN write permission to call the dependencies API
       contents: write
@@ -581,7 +581,7 @@ jobs:
         with:
           task: credo --format sarif > results.sarif
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: results.sarif
           category: credo
@@ -668,7 +668,7 @@ jobs:
           task: igniter.upgrade --git-ci --yes --all
         if: github.event.pull_request.user.login == 'dependabot[bot]'
       - name: Commit Changes
-        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
+        uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c # v7.2.1
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
           commit_message: "[dependabot skip] Apply Igniter Upgrades"
@@ -876,7 +876,7 @@ jobs:
             echo "Checking:"; echo "$dirs"
           fi
           { echo "dirs<<EOF"; echo "$dirs"; echo "EOF"; } >> "$GITHUB_OUTPUT"
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           prefix-key: v0-rust-check
           workspaces: ${{ steps.crates.outputs.dirs }}
@@ -993,7 +993,7 @@ jobs:
         shell: bash
         run: |
           rustup target add ${{ matrix.job.target }}
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           prefix-key: v0-precomp
           shared-key: ${{ matrix.job.target }}-${{ matrix.nif }}
@@ -1013,7 +1013,7 @@ jobs:
           cargo-args: ${{ matrix.job.cargo-args }}
 
       - name: Artifact upload
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ steps.build-crate.outputs.file-name }}
           path: ${{ steps.build-crate.outputs.file-path }}
