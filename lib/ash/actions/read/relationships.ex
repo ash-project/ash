@@ -2258,50 +2258,47 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
+  # `depth` is how many scopes (`exists` or aggregates) deep we are. `parent/1` at depth 0 refers
+  # to the source of the relationship, while deeper ones only do so when nested deeply enough.
   @doc false
-  def do_has_parent_expr?(filter, depth \\ 0) do
-    not is_nil(
-      Ash.Filter.find(
-        filter,
-        fn
-          %Ash.Query.Call{name: :parent, args: [expr]} ->
-            if depth == 0 do
-              true
-            else
-              do_has_parent_expr?(expr, depth - 1)
-            end
+  def do_has_parent_expr?(expr, depth \\ 0)
 
-          %Ash.Query.Exists{expr: expr} ->
-            do_has_parent_expr?(expr, depth + 1)
+  def do_has_parent_expr?(%Ash.Query.Parent{expr: expr}, depth),
+    do: depth == 0 || do_has_parent_expr?(expr, depth - 1)
 
-          %Ash.Query.Parent{expr: expr} ->
-            if depth == 0 do
-              true
-            else
-              do_has_parent_expr?(expr, depth - 1)
-            end
+  def do_has_parent_expr?(%Ash.Query.Call{name: :parent, args: [expr]}, depth),
+    do: depth == 0 || do_has_parent_expr?(expr, depth - 1)
 
-          %Ash.Query.Ref{
-            attribute: %Ash.Query.Aggregate{
-              field: %Ash.Query.Calculation{module: module, opts: opts, context: context}
-            }
-          } ->
-            if Ash.Resource.Calculation.has_expression?(module) do
-              Ash.Resource.Calculation.expression(module, opts, context)
-              |> do_has_parent_expr?(depth + 1)
-            else
-              false
-            end
+  def do_has_parent_expr?(%Ash.Query.Exists{expr: expr}, depth),
+    do: do_has_parent_expr?(expr, depth + 1)
 
-          _other ->
-            false
-        end,
-        true,
-        true,
-        true
-      )
-    )
+  def do_has_parent_expr?(%Ash.Query.Aggregate{field: field} = aggregate, depth) do
+    field_expression_has_parent_expr? =
+      case field do
+        %Ash.Query.Calculation{module: module, opts: opts, context: context} ->
+          Ash.Resource.Calculation.has_expression?(module) &&
+            module
+            |> Ash.Resource.Calculation.expression(opts, context)
+            |> do_has_parent_expr?(depth + 1)
+
+        _ ->
+          false
+      end
+
+    field_expression_has_parent_expr? ||
+      aggregate |> Map.from_struct() |> do_has_parent_expr?(depth + 1)
   end
+
+  def do_has_parent_expr?(list, depth) when is_list(list),
+    do: Enum.any?(list, &do_has_parent_expr?(&1, depth))
+
+  def do_has_parent_expr?(tuple, depth) when is_tuple(tuple),
+    do: tuple |> Tuple.to_list() |> do_has_parent_expr?(depth)
+
+  def do_has_parent_expr?(map, depth) when is_map(map),
+    do: map |> Map.to_list() |> do_has_parent_expr?(depth)
+
+  def do_has_parent_expr?(_other, _depth), do: false
 
   defp apply_relationship_offset(query, relationship) do
     if Map.get(relationship, :offset) do

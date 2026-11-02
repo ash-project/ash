@@ -348,6 +348,24 @@ defmodule Ash.Test.Actions.HasManyTest do
         # `parent` here refers to the post, not the user
         filter expr(exists(comments, priority > parent(likes)))
       end
+
+      has_many :posts_with_comments_named_after_user, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        # `parent(parent(...))` here refers to the user
+        filter expr(exists(comments, content == parent(parent(name))))
+      end
+
+      has_many :posts_with_popular_comment_count, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        # `parent` here refers to the post, not the user
+        filter expr(count(comments, query: [filter: expr(priority > parent(likes))]) > 0)
+      end
     end
   end
 
@@ -823,6 +841,18 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     test "a parent reference inside an exists does not refer to the source" do
       relationship = Ash.Resource.Info.relationship(User, :posts_with_popular_comments)
+
+      refute Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "a nested parent reference inside an exists can refer to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :posts_with_comments_named_after_user)
+
+      assert Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "a parent reference inside an aggregate's filter does not refer to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :posts_with_popular_comment_count)
 
       refute Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
     end
