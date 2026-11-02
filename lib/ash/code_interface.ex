@@ -1238,7 +1238,7 @@ defmodule Ash.CodeInterface do
           interface_env,
           quote location: :keep, generated: true do
             def unquote(can_fn)(
-                  actor,
+                  actor_or_scope,
                   unquote_splicing(common_args),
                   params_or_opts \\ %{},
                   opts \\ []
@@ -1254,14 +1254,19 @@ defmodule Ash.CodeInterface do
                   unquote(Enum.count(interface.args || []) + 2),
                   unquote(custom_inputs),
                   unquote(interface_options),
-                  actor
+                  actor_or_scope
                 )
 
+              actor = opts[:actor]
+              shared_opts = Keyword.take(opts, [:tenant, :as_of, :context])
+
+              # Subject resolution removes these shared options from `opts`. Atomic
+              # authorization still needs them to build its query and changeset.
               unquote(resolve_subject)
 
               Ash.CodeInterface.can(
                 params,
-                opts,
+                Keyword.merge(shared_opts, opts),
                 actor,
                 unquote(subject),
                 unquote(action.name),
@@ -1296,7 +1301,7 @@ defmodule Ash.CodeInterface do
           interface_env,
           quote location: :keep, generated: true do
             def unquote(can_question_fn)(
-                  actor,
+                  actor_or_scope,
                   unquote_splicing(common_args),
                   params_or_opts \\ %{},
                   opts \\ []
@@ -1312,14 +1317,19 @@ defmodule Ash.CodeInterface do
                   unquote(Enum.count(interface.args || []) + 2),
                   unquote(custom_inputs),
                   unquote(interface_options),
-                  actor
+                  actor_or_scope
                 )
 
+              actor = opts[:actor]
+              shared_opts = Keyword.take(opts, [:tenant, :as_of, :context])
+
+              # Subject resolution removes these shared options from `opts`. Atomic
+              # authorization still needs them to build its query and changeset.
               unquote(resolve_subject)
 
               Ash.CodeInterface.can?(
                 params,
-                opts,
+                Keyword.merge(shared_opts, opts),
                 actor,
                 unquote(subject),
                 unquote(action.name),
@@ -2233,6 +2243,7 @@ defmodule Ash.CodeInterface do
         :authorize?,
         :tracer,
         :scope,
+        :context,
         :private_arguments
       ])
 
@@ -3170,6 +3181,8 @@ defmodule Ash.CodeInterface do
     """
     Runs authorization checks for `#{inspect(resource)}.#{action.name}`
 
+    Accepts an actor or a scope as the first argument.
+
     See `Ash.can/3` for more information
 
     ## Options
@@ -3183,6 +3196,8 @@ defmodule Ash.CodeInterface do
   def docs_can?(resource, action) do
     """
     Runs authorization checks for `#{inspect(resource)}.#{action.name}`, returning a boolean.
+
+    Accepts an actor or a scope as the first argument.
 
     See `Ash.can?/3` for more information
 
@@ -3204,14 +3219,21 @@ defmodule Ash.CodeInterface do
         arity,
         custom_inputs,
         interface_options,
-        actor
+        actor_or_scope
       ) do
     {params, opts} =
       Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
         opts
         |> Ash.Resource.Interface.CanOpts.validate!()
         |> interface_options.to_options()
-        |> Keyword.put(:actor, actor)
+        |> then(fn opts ->
+          if is_struct(actor_or_scope) and Ash.Scope.ToOpts.impl_for(actor_or_scope) do
+            Keyword.put(opts, :scope, actor_or_scope)
+          else
+            Keyword.put(opts, :actor, actor_or_scope)
+          end
+        end)
+        |> Ash.Actions.Helpers.apply_scope_to_opts()
       end)
 
     params =
