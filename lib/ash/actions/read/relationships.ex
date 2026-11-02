@@ -2195,13 +2195,14 @@ defmodule Ash.Actions.Read.Relationships do
         context,
         domain
       ) do
-    case Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
-      {:ok, sort} ->
-        sort
+    sort =
+      case Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
+        {:ok, sort} ->
+          sort
 
-      _ ->
-        nil
-    end
+        _ ->
+          nil
+      end
 
     parent_stack = [source | Ash.Actions.Read.parent_stack_from_context(context)]
 

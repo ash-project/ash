@@ -182,6 +182,10 @@ defmodule Ash.Test.Actions.HasManyTest do
       create_timestamp :inserted_at, public?: true
     end
 
+    calculations do
+      calculate :titled_after_parent?, :boolean, expr(title == parent(name))
+    end
+
     relationships do
       has_many :comments, Comment do
         destination_attribute :post_id
@@ -365,6 +369,15 @@ defmodule Ash.Test.Actions.HasManyTest do
 
         # `parent` here refers to the post, not the user
         filter expr(count(comments, query: [filter: expr(priority > parent(likes))]) > 0)
+      end
+
+      has_many :posts_titled_after_user_first, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        # `parent` in the calculation refers to the user
+        sort titled_after_parent?: :desc, title: :asc
       end
     end
   end
@@ -855,6 +868,12 @@ defmodule Ash.Test.Actions.HasManyTest do
       relationship = Ash.Resource.Info.relationship(User, :posts_with_popular_comment_count)
 
       refute Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "a parent reference in a calculation that the relationship sorts on refers to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :posts_titled_after_user_first)
+
+      assert Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
     end
   end
 end
