@@ -339,6 +339,15 @@ defmodule Ash.Test.Actions.HasManyTest do
         # This is evenn't
         filter expr(id != parent(post_view.last_post.id))
       end
+
+      has_many :posts_with_popular_comments, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        # `parent` here refers to the post, not the user
+        filter expr(exists(comments, priority > parent(likes)))
+      end
     end
   end
 
@@ -802,6 +811,20 @@ defmodule Ash.Test.Actions.HasManyTest do
       priorities = Enum.map(post.comments_after_top, & &1.priority)
       # Sorted desc: [100, 90, 80, 70, 60], offset 1 => [90, 80, 70, 60], limit 2 => [90, 80]
       assert priorities == [90, 80]
+    end
+  end
+
+  describe "parent expression detection" do
+    test "a parent reference in the relationship filter refers to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :unread_posts)
+
+      assert Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "a parent reference inside an exists does not refer to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :posts_with_popular_comments)
+
+      refute Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
     end
   end
 end
