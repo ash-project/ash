@@ -6,6 +6,7 @@ defmodule Ash.Test.Actions.HasManyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Expr
   require Ash.Query
 
   defmodule Comment do
@@ -874,6 +875,18 @@ defmodule Ash.Test.Actions.HasManyTest do
       relationship = Ash.Resource.Info.relationship(User, :posts_titled_after_user_first)
 
       assert Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "execution context is not searched for parent expressions" do
+      context = %{actor: %{saved_expression: Ash.Expr.expr(parent(parent(name)))}}
+
+      for expression <- [
+            %Ash.Query{context: context},
+            %Ash.Query.Aggregate{context: context},
+            %Ash.Query.Calculation{context: context}
+          ] do
+        refute Ash.Actions.Read.Relationships.do_has_parent_expr?(expression)
+      end
     end
   end
 end

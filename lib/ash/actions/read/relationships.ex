@@ -2287,7 +2287,19 @@ defmodule Ash.Actions.Read.Relationships do
       end
 
     field_expression_has_parent_expr? ||
-      aggregate |> Map.from_struct() |> do_has_parent_expr?(depth + 1)
+      aggregate
+      |> Map.from_struct()
+      |> Map.delete(:context)
+      |> do_has_parent_expr?(depth + 1)
+  end
+
+  # Context is used to build expressions, but is not itself an expression.
+  def do_has_parent_expr?(%struct{} = expr, depth)
+      when struct in [Ash.Query, Ash.Query.Calculation] do
+    expr
+    |> Map.from_struct()
+    |> Map.delete(:context)
+    |> do_has_parent_expr?(depth)
   end
 
   def do_has_parent_expr?(list, depth) when is_list(list),
