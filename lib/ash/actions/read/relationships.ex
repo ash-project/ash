@@ -2273,22 +2273,54 @@ defmodule Ash.Actions.Read.Relationships do
   def do_has_parent_expr?(%Ash.Query.Exists{expr: expr}, depth),
     do: do_has_parent_expr?(expr, depth + 1)
 
-  def do_has_parent_expr?(%Ash.Query.Aggregate{field: field} = aggregate, depth) do
-    field_expression_has_parent_expr? =
-      case field do
-        %Ash.Query.Calculation{module: module, opts: opts, context: context} ->
-          Ash.Resource.Calculation.has_expression?(module) &&
-            module
-            |> Ash.Resource.Calculation.expression(opts, context)
-            |> do_has_parent_expr?(depth + 1)
+  def do_has_parent_expr?(%Ash.Query.Ref{attribute: attribute}, depth),
+    do: do_has_parent_expr?(attribute, depth)
 
-        _ ->
-          false
+  def do_has_parent_expr?(%Ash.Query.Aggregate{} = aggregate, depth) do
+    query_has_parent_expr? =
+      case aggregate.query do
+        %Ash.Query{filter: filter, sort: sort} -> do_has_parent_expr?([filter, sort], depth + 1)
+        _ -> false
       end
 
-    field_expression_has_parent_expr? ||
-      aggregate |> Map.from_struct() |> do_has_parent_expr?(depth + 1)
+    query_has_parent_expr? ||
+      do_has_parent_expr?(aggregate.field, depth + 1) ||
+      do_has_parent_expr?(Map.values(aggregate.join_filters || %{}), depth + 1)
   end
+
+  def do_has_parent_expr?(
+        %Ash.Query.Calculation{module: module, opts: opts, context: context},
+        depth
+      ) do
+    Ash.Resource.Calculation.has_expression?(module) &&
+      module
+      |> Ash.Resource.Calculation.expression(opts, context)
+      |> do_has_parent_expr?(depth)
+  end
+
+  def do_has_parent_expr?(%Ash.Filter{expression: expression}, depth),
+    do: do_has_parent_expr?(expression, depth)
+
+  def do_has_parent_expr?(%Ash.Query.BooleanExpression{left: left, right: right}, depth),
+    do: do_has_parent_expr?(left, depth) || do_has_parent_expr?(right, depth)
+
+  def do_has_parent_expr?(%Ash.Query.Not{expression: expression}, depth),
+    do: do_has_parent_expr?(expression, depth)
+
+  def do_has_parent_expr?(
+        %Ash.CustomExpression{expression: expression, simple_expression: simple_expression},
+        depth
+      ),
+      do: do_has_parent_expr?(expression, depth) || do_has_parent_expr?(simple_expression, depth)
+
+  def do_has_parent_expr?(%Ash.Query.Call{args: args}, depth),
+    do: do_has_parent_expr?(args, depth)
+
+  def do_has_parent_expr?(%{__operator__?: true, left: left, right: right}, depth),
+    do: do_has_parent_expr?(left, depth) || do_has_parent_expr?(right, depth)
+
+  def do_has_parent_expr?(%{__function__?: true, arguments: arguments}, depth),
+    do: do_has_parent_expr?(arguments, depth)
 
   def do_has_parent_expr?(list, depth) when is_list(list),
     do: Enum.any?(list, &do_has_parent_expr?(&1, depth))
@@ -2296,7 +2328,8 @@ defmodule Ash.Actions.Read.Relationships do
   def do_has_parent_expr?(tuple, depth) when is_tuple(tuple),
     do: tuple |> Tuple.to_list() |> do_has_parent_expr?(depth)
 
-  def do_has_parent_expr?(map, depth) when is_map(map),
+  # Map literals are expressions, but other structs (queries, contexts, actors, records) are not.
+  def do_has_parent_expr?(map, depth) when is_map(map) and not is_struct(map),
     do: map |> Map.to_list() |> do_has_parent_expr?(depth)
 
   def do_has_parent_expr?(_other, _depth), do: false

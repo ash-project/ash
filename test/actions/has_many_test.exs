@@ -6,6 +6,7 @@ defmodule Ash.Test.Actions.HasManyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Expr
   require Ash.Query
 
   defmodule Comment do
@@ -184,6 +185,7 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     calculations do
       calculate :titled_after_parent?, :boolean, expr(title == parent(name))
+      calculate :popular?, :boolean, expr(likes > 10)
     end
 
     relationships do
@@ -369,6 +371,14 @@ defmodule Ash.Test.Actions.HasManyTest do
 
         # `parent` here refers to the post, not the user
         filter expr(count(comments, query: [filter: expr(priority > parent(likes))]) > 0)
+      end
+
+      has_many :popular_posts, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        filter expr(popular?)
       end
 
       has_many :posts_titled_after_user_first, Post do
@@ -874,6 +884,18 @@ defmodule Ash.Test.Actions.HasManyTest do
       relationship = Ash.Resource.Info.relationship(User, :posts_titled_after_user_first)
 
       assert Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "parent expressions in the actor are not mistaken for ones in aggregates or calculations" do
+      context = %{
+        private: %{actor: %{saved_expression: Ash.Expr.expr(parent(parent(name)))}}
+      }
+
+      for name <- [:posts_with_popular_comment_count, :popular_posts] do
+        relationship = Ash.Resource.Info.relationship(User, name)
+
+        refute Ash.Actions.Read.Relationships.has_parent_expr?(relationship, context, Domain)
+      end
     end
   end
 end
