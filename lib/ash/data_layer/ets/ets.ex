@@ -2343,7 +2343,8 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  # A range reaches every version it overlaps. An instant closes only the version given.
+  # A range reaches every version it overlaps. An instant closes the version holding it and
+  # removes later versions up to the first gap in validity.
   defp retire(table, _pkey, resource, record, {period, %Ash.Range{} = written}, true) do
     with {:ok, periods} <- stored_periods(table, resource, record) do
       primary_key = primary_key(resource, record)
@@ -2364,7 +2365,10 @@ defmodule Ash.DataLayer.Ets do
   defp retire(table, pkey, resource, supersede) do
     case {supersede, ETS.Set.get(table, pkey)} do
       {{period, %Ash.Range{} = written}, {:ok, {_key, stored}}} when is_map(stored) ->
-        close_version(table, pkey, stored, resource, period, written)
+        with {:ok, later} <- later_versions(table, pkey, period),
+             :ok <- close_version(table, pkey, stored, resource, period, written) do
+          delete_versions(table, pkey, period, later)
+        end
 
       # No version holds the instant, so there is none for it to end.
       {{period, %Ash.Range{}}, {:ok, _}} ->
@@ -2373,6 +2377,15 @@ defmodule Ash.DataLayer.Ets do
       _ ->
         with {:ok, _} <- ETS.Set.delete(table, pkey), do: :ok
     end
+  end
+
+  defp delete_versions(table, pkey, period, versions) do
+    Enum.reduce_while(versions, :ok, fn {range, _stored}, :ok ->
+      case ETS.Set.delete(table, %{pkey | period => range}) do
+        {:ok, _table} -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
   end
 
   defp close_versions(table, resource, primary_key, period, versions, written) do
@@ -2579,7 +2592,8 @@ defmodule Ash.DataLayer.Ets do
              changeset.tenant,
              resource,
              changeset.context[:private][:actor],
-             supersede
+             supersede,
+             range?
            ),
          {:ok, record} <- cast_record(record, resource),
          record <- retain_fields(record, changeset) do
@@ -2701,7 +2715,8 @@ defmodule Ash.DataLayer.Ets do
          tenant,
          resource,
          actor,
-         supersede
+         supersede,
+         range?
        ) do
     attributes = resource |> Ash.Resource.Info.attributes()
 
@@ -2716,13 +2731,13 @@ defmodule Ash.DataLayer.Ets do
                 empty when empty in [nil, []] ->
                   data = Map.merge(record, casted)
 
-                  write_version(table, pkey, record, data, resource, supersede)
+                  write_version(table, pkey, record, data, resource, supersede, range?)
 
                 atomics ->
                   with {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_record),
                        {:ok, dumped_atomics} <- dump_atomics(atomics, attributes) do
                     data = record |> Map.merge(casted) |> Map.merge(dumped_atomics)
-                    write_version(table, pkey, record, data, resource, supersede)
+                    write_version(table, pkey, record, data, resource, supersede, range?)
                   end
               end
             else
@@ -2753,11 +2768,12 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp write_version(table, pkey, _prior, data, _resource, nil), do: put_data(table, pkey, data)
+  defp write_version(table, pkey, _prior, data, _resource, nil, _range?),
+    do: put_data(table, pkey, data)
 
   # No transaction here, so the delete goes first: a reader sees the record absent, never
   # twice.
-  defp write_version(table, pkey, prior_data, data, resource, {period, written}) do
+  defp write_version(table, pkey, prior_data, data, resource, {period, written}, range?) do
     prior = Map.get(pkey, period)
     written = clip_to_prior(prior, written)
 
@@ -2767,10 +2783,110 @@ defmodule Ash.DataLayer.Ets do
          {:ok, {_key, opened_data} = opened} <-
            version(resource, pkey, period, data, opening),
          {:ok, kept} <- carved(resource, pkey, period, prior_data, [closed, resumed]),
+         {:ok, carried} <-
+           carried_versions(table, pkey, prior_data, data, resource, period, range?),
          {:ok, table} <- ETS.Set.delete(table, pkey),
-         {:ok, _table} <- put_versions(table, kept ++ [opened]) do
+         {:ok, _table} <- put_versions(table, kept ++ [opened | carried]) do
       {:ok, opened_data}
     end
+  end
+
+  defp carried_versions(_table, _pkey, _prior_data, _data, _resource, _period, true),
+    do: {:ok, []}
+
+  defp carried_versions(table, pkey, prior_data, data, resource, period, false) do
+    changed =
+      resource
+      |> carry_attributes(period)
+      |> Enum.filter(&(Map.get(data, &1) != Map.get(prior_data, &1)))
+
+    case changed do
+      [] ->
+        {:ok, []}
+
+      changed ->
+        with {:ok, later} <- later_versions(table, pkey, period) do
+          {:ok, carry_across_versions(later, pkey, period, prior_data, data, changed)}
+        end
+    end
+  end
+
+  defp carry_across_versions(later, pkey, period, prior_data, data, changed) do
+    later
+    |> Enum.reduce_while({[], prior_data, changed}, fn {range, stored}, {acc, prev, carrying} ->
+      case Enum.filter(carrying, &(Map.get(stored, &1) == Map.get(prev, &1))) do
+        [] ->
+          {:halt, {acc, stored, []}}
+
+        carrying ->
+          updated = Map.merge(stored, Map.take(data, carrying))
+          {:cont, {[{%{pkey | period => range}, updated} | acc], stored, carrying}}
+      end
+    end)
+    |> elem(0)
+    |> Enum.reverse()
+  end
+
+  defp carry_attributes(resource, period) do
+    primary_key = Ash.Resource.Info.primary_key(resource)
+    recorded_at = Ash.Resource.Info.temporal_recorded_at(resource)
+    excluded = [period, recorded_at | primary_key]
+
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.reject(&(&1.name in excluded or update_timestamp?(&1)))
+    |> Enum.map(& &1.name)
+  end
+
+  defp update_timestamp?(%{writable?: false, update_default: update_default})
+       when is_function(update_default, 0),
+       do: update_default == (&DateTime.utc_now/0)
+
+  defp update_timestamp?(_attribute), do: false
+
+  # Versions of this record following `pkey`'s period, in order, stopping at the first gap.
+  defp later_versions(table, pkey, period) do
+    case Map.get(pkey, period) do
+      %Ash.Range{upper: upper} = prior when not is_nil(upper) ->
+        primary_key = Map.drop(pkey, [period])
+
+        with {:ok, versions} <-
+               ETS.Set.select(table, [
+                 {{Map.put(primary_key, period, :"$1"), :"$2"}, [], [{{:"$1", :"$2"}}]}
+               ]) do
+          later =
+            versions
+            |> Enum.filter(fn {range, _stored} ->
+              match?(%Ash.Range{lower: lower} when not is_nil(lower), range) and
+                range != prior and Comp.greater_or_equal?(range.lower, upper)
+            end)
+            |> Enum.sort_by(&elem(&1, 0).lower, &Comp.less_or_equal?/2)
+            |> contiguous_versions(upper)
+
+          {:ok, later}
+        end
+
+      _ ->
+        {:ok, []}
+    end
+  end
+
+  defp contiguous_versions(versions, cursor) do
+    versions
+    |> Enum.reduce_while({[], cursor}, fn
+      {%Ash.Range{lower: lower, upper: upper} = range, stored}, {acc, cursor}
+      when not is_nil(cursor) ->
+        if Comp.equal?(lower, cursor) do
+          {:cont, {[{range, stored} | acc], upper}}
+        else
+          {:halt, {acc, cursor}}
+        end
+
+      _version, acc ->
+        {:halt, acc}
+    end)
+    |> elem(0)
+    |> Enum.reverse()
   end
 
   # A primary-key-only match reaches every version; one the portion misses is left as it was.

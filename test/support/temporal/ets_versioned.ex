@@ -38,16 +38,20 @@ defmodule Ash.Test.Temporal.EtsVersioned do
 
     create :create do
       primary? true
-      accept [:id, :name]
+      accept [:id, :name, :seats]
     end
 
     update :update do
       primary? true
-      accept [:name]
+      accept [:name, :seats]
+    end
+
+    update :add_seat do
+      change atomic_update(:seats, expr(seats + 1))
     end
 
     update :update_in_memory do
-      accept [:name]
+      accept [:name, :seats]
       require_atomic? false
       atomic_upgrade? false
     end
@@ -63,7 +67,7 @@ defmodule Ash.Test.Temporal.EtsVersioned do
     end
 
     create :upsert do
-      accept [:id, :name]
+      accept [:id, :name, :seats]
       upsert? true
     end
 
@@ -81,6 +85,7 @@ defmodule Ash.Test.Temporal.EtsVersioned do
   attributes do
     attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
     attribute :name, :string, public?: true
+    attribute :seats, :integer, public?: true
 
     attribute :valid_at, Ash.Type.Range,
       allow_nil?: false,

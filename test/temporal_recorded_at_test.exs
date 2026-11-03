@@ -158,6 +158,32 @@ defmodule Ash.TemporalRecordedAtTest do
       assert updated.touched_at == @later
       assert DateTime.compare(updated.recorded_at, before) in [:eq, :gt]
     end
+
+    test "carrying an update into a later version keeps that version's updated_at and recorded_at" do
+      created = Ash.create!(Recorded, %{id: 1, name: "a"}, as_of: @past)
+
+      stamped =
+        created
+        |> Ash.Changeset.for_update(:stamp, %{}, as_of: @later)
+        |> Ash.update!()
+
+      mid = ~U[2021-01-01 00:00:00.000000Z]
+
+      created
+      |> Ash.Changeset.for_update(:update, %{name: "b"}, as_of: mid)
+      |> Ash.update!()
+
+      assert %{name: "b", updated_at: ^mid} = Ash.get!(Recorded, 1, as_of: mid)
+
+      assert %{
+               name: "b",
+               touched_at: @later,
+               updated_at: @later,
+               recorded_at: later_recorded_at
+             } = Ash.get!(Recorded, 1, as_of: @later)
+
+      assert later_recorded_at == stamped.recorded_at
+    end
   end
 
   describe "a resource that declares its own recorded_at attribute" do

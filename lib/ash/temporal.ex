@@ -15,7 +15,7 @@ defmodule Ash.Temporal do
   Ash.Temporal.resolve_read_as_of(query.as_of)
 
   # a write resolves a period beginning at the point,
-  # and extending forever unless a later write closes it
+  # and extending to the end of time
   {:ok, instant} = Ash.Temporal.write_instant(resource, :now)
   {:ok, period} = Ash.Temporal.write_period(resource, :now)
   ```
@@ -26,6 +26,21 @@ defmodule Ash.Temporal do
   A write that provides no `as_of` takes effect now. Ash resolves it once for the whole write,
   before the data layer is called, so a data layer receives a temporal write's `as_of` as an
   instant or a range, never `nil` or `:now`.
+
+  As of an instant `t`, a data layer writes from `t` onward:
+
+  - A **create** opens a version valid over `[t, ∞)`.
+  - An **update** (or matched upsert) splits the version holding `t` into `[lower, t)` and
+    `[t, upper)` (or updates `[t, upper)` in place when `lower == t`), and carries each changed
+    attribute forward into contiguous later versions until the first later version whose value for
+    that attribute differs from the version before it, or until a gap in validity.
+    `update_timestamp` attributes and `recorded_at` belong to the version they were written on and
+    do not carry.
+  - A **destroy** closes the version holding `t` to `[lower, t)` (or deletes it when
+    `lower == t`) and deletes contiguous later versions up to the first gap in validity.
+
+  As of a range, a write acts only over that range, without carrying into or deleting versions
+  beyond it.
   """
 
   @temporal_safe_modules Application.compile_env(:ash, :temporal_safe_modules, [])
@@ -223,8 +238,9 @@ defmodule Ash.Temporal do
   @doc """
   Resolves the period a write is valid for.
 
-  The value comes back cast to the resource's period. It begins where the write takes effect
-  and extends forever unless a later write closes it.
+  The value comes back cast to the resource's period. A range is cast with its bounds resolved;
+  an instant becomes `[instant, ∞)`, the period a create opens and the unbounded span from
+  `instant` onward that an update or destroy acts from.
   """
   @spec write_period(Ash.Resource.t(), as_of()) :: {:ok, Ash.Range.t()} | :error
   def write_period(resource, %Ash.Range{} = as_of) do
@@ -260,7 +276,8 @@ defmodule Ash.Temporal do
   """
   @spec write_instant(Ash.Resource.t(), as_of()) :: {:ok, DateTime.t()} | :error
   def write_instant(resource, as_of) do
-    with inner_type when not is_nil(inner_type) <- Ash.Resource.Info.temporal_inner_type(resource),
+    with inner_type when not is_nil(inner_type) <-
+           Ash.Resource.Info.temporal_inner_type(resource),
          {:ok, raw} <- raw_instant(as_of),
          {:ok, instant} <-
            Ash.Type.cast_input(
