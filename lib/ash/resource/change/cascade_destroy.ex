@@ -320,10 +320,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         |> Ash.bulk_destroy(action.name, %{}, destroy_opts)
         |> handle_bulk_result()
 
-      :error ->
+      failure ->
         if changeset.phase == :after_action and changeset.action_type == :destroy do
-          {:error,
-           "Unable to cascade destroy for #{relationship.name} relationship in after_action"}
+          {:error, after_action_error(relationship, failure)}
         else
           read_action_name =
             opts.read_action || opts.relationship.read_action || opts.action.atomic_upgrade_with
@@ -431,17 +430,25 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         Ash.Query.new(opts.relationship.source)
       )
       |> elem(1)
-      |> filter_by_keys(opts.relationship, records)
 
     if Ash.Actions.Read.Relationships.has_parent_expr?(
          opts.relationship,
          related_query.context,
          related_query.domain
        ) do
-      :error
+      Ash.Actions.Read.Relationships.filter_by_parents(related_query, opts.relationship, records)
     else
-      {:ok, related_query}
+      {:ok, filter_by_keys(related_query, opts.relationship, records)}
     end
+  end
+
+  defp after_action_error(relationship, {:error, error}) do
+    "Unable to cascade destroy for #{relationship.name} relationship in after_action: " <>
+      Exception.message(error)
+  end
+
+  defp after_action_error(relationship, :error) do
+    "Unable to cascade destroy for #{relationship.name} relationship in after_action"
   end
 
   defp filter_by_keys(query, %{no_attributes?: true}, _records) do
