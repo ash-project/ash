@@ -1161,6 +1161,27 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                ])
     end
 
+    test "an update over a range does not carry into later versions" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "bronze", seats: 5, valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "gold", seats: 5, valid_at: @open})
+
+      record
+      |> Ash.Changeset.for_update(:update, %{seats: 10}, as_of: @portion)
+      |> Ash.update!()
+
+      assert %{name: "bronze", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      assert %{name: "bronze", seats: 10} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-07-01 00:00:00Z])
+
+      assert %{name: "bronze", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-10-01 00:00:00Z])
+
+      assert %{name: "gold", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2021-06-01 00:00:00Z])
+    end
+
     test "an update whose portion spans two stored versions returns the first it wrote" do
       Ash.Seed.seed!(%EtsVersioned{id: 1, name: "first", valid_at: @early})
       Ash.Seed.seed!(%EtsVersioned{id: 1, name: "second", valid_at: @open})

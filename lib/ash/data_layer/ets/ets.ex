@@ -2805,13 +2805,16 @@ defmodule Ash.DataLayer.Ets do
         {:ok, []}
 
       changed ->
+        recorded_at = Ash.Resource.Info.temporal_recorded_at(resource)
+
         with {:ok, later} <- later_versions(table, pkey, period) do
-          {:ok, carry_across_versions(later, pkey, period, prior_data, data, changed)}
+          {:ok,
+           carry_across_versions(later, pkey, period, prior_data, data, changed, recorded_at)}
         end
     end
   end
 
-  defp carry_across_versions(later, pkey, period, prior_data, data, changed) do
+  defp carry_across_versions(later, pkey, period, prior_data, data, changed, recorded_at) do
     later
     |> Enum.reduce_while({[], prior_data, changed}, fn {range, stored}, {acc, prev, carrying} ->
       case Enum.filter(carrying, &(Map.get(stored, &1) == Map.get(prev, &1))) do
@@ -2819,7 +2822,8 @@ defmodule Ash.DataLayer.Ets do
           {:halt, {acc, stored, []}}
 
         carrying ->
-          updated = Map.merge(stored, Map.take(data, carrying))
+          take_keys = if recorded_at, do: [recorded_at | carrying], else: carrying
+          updated = Map.merge(stored, Map.take(data, take_keys))
           {:cont, {[{%{pkey | period => range}, updated} | acc], stored, carrying}}
       end
     end)
@@ -2834,15 +2838,18 @@ defmodule Ash.DataLayer.Ets do
 
     resource
     |> Ash.Resource.Info.attributes()
-    |> Enum.reject(&(&1.name in excluded or update_timestamp?(&1)))
+    |> Enum.reject(&(&1.name in excluded or non_writable_generated_or_update_default?(&1)))
     |> Enum.map(& &1.name)
   end
 
-  defp update_timestamp?(%{writable?: false, update_default: update_default})
-       when is_function(update_default, 0),
-       do: update_default == (&DateTime.utc_now/0)
+  defp non_writable_generated_or_update_default?(%{
+         writable?: false,
+         generated?: generated?,
+         update_default: update_default
+       }),
+       do: generated? or not is_nil(update_default)
 
-  defp update_timestamp?(_attribute), do: false
+  defp non_writable_generated_or_update_default?(_attribute), do: false
 
   # Versions of this record following `pkey`'s period, in order, stopping at the first gap.
   defp later_versions(table, pkey, period) do

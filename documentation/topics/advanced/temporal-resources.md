@@ -140,11 +140,13 @@ As of an instant, a temporal write makes something true *from `as_of` onward*. T
   to wherever the old version ended, and carries each changed attribute into later versions
   until the first version whose value for that attribute differs from the version before it, or
   until a gap in validity. Split at the exact instant a version began, and there's nothing left
-  before it, so that version is updated in place.
+  before it, so that version is updated in place. Only a write as of an instant carries; an
+  update as of a range writes over that range only.
 - **A destroy ends validity. It doesn't delete history before `as_of`.** Destroying as of an
   instant cuts the currently valid version down to `[lower, as_of)` (or removes it when
   `lower == as_of`) and removes later versions up to the first gap in validity. The record is
   gone from that instant on, untouched before it, and any re-creation after a gap is left alone.
+  A destroy as of a range removes validity over that range only.
 - **A record's own instant is for loading, not writing.** A record keeps the instant it was
   read or written at, so loading on it or reloading it sees that same moment. Writes don't use
   it. Update or destroy a record without `as_of`, and the write happens now, on the version

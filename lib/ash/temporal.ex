@@ -14,8 +14,8 @@ defmodule Ash.Temporal do
   # a read resolves as_of a point in time
   Ash.Temporal.resolve_read_as_of(query.as_of)
 
-  # a write resolves a period beginning at the point,
-  # and extending to the end of time
+  # a write resolves the instant it takes effect at, or the period it writes
+  # (`[instant, ∞)` for an instant, or the range itself for a range)
   {:ok, instant} = Ash.Temporal.write_instant(resource, :now)
   {:ok, period} = Ash.Temporal.write_period(resource, :now)
   ```
@@ -33,9 +33,10 @@ defmodule Ash.Temporal do
   - An **update** (or matched upsert) splits the version holding `t` into `[lower, t)` and
     `[t, upper)` (or updates `[t, upper)` in place when `lower == t`), and carries each changed
     attribute forward into contiguous later versions until the first later version whose value for
-    that attribute differs from the version before it, or until a gap in validity.
-    `update_timestamp` attributes and `recorded_at` belong to the version they were written on and
-    do not carry.
+    that attribute differs from the version before it, or until a gap in validity. Each carried
+    version has its `recorded_at` restamped to the write's `recorded_at`, while non-writable
+    attributes that are generated or declare an `update_default` (such as `update_timestamp`)
+    belong to the version they were written on and do not carry.
   - A **destroy** closes the version holding `t` to `[lower, t)` (or deletes it when
     `lower == t`) and deletes contiguous later versions up to the first gap in validity.
 
@@ -238,9 +239,10 @@ defmodule Ash.Temporal do
   @doc """
   Resolves the period a write is valid for.
 
-  The value comes back cast to the resource's period. A range is cast with its bounds resolved;
-  an instant becomes `[instant, ∞)`, the period a create opens and the unbounded span from
-  `instant` onward that an update or destroy acts from.
+  The value comes back cast to the resource's period. A range has its bounds resolved and is
+  cast to that period, applying over that range only; an instant becomes `[instant, ∞)`, the
+  period a create opens and the span from `instant` onward within which an instant update or
+  destroy takes effect (stopping where its carry stops or at the first gap in validity).
   """
   @spec write_period(Ash.Resource.t(), as_of()) :: {:ok, Ash.Range.t()} | :error
   def write_period(resource, %Ash.Range{} = as_of) do

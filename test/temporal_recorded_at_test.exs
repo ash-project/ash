@@ -41,6 +41,13 @@ defmodule Ash.TemporalRecordedAtTest do
       attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
       attribute :name, :string, public?: true
       attribute :touched_at, :utc_datetime_usec
+
+      attribute :stamped_by, :string,
+        writable?: false,
+        public?: true,
+        default: "initial",
+        update_default: fn -> Process.get(:stamped_by, "initial") end
+
       create_timestamp :inserted_at
       update_timestamp :updated_at
     end
@@ -159,19 +166,20 @@ defmodule Ash.TemporalRecordedAtTest do
       assert DateTime.compare(updated.recorded_at, before) in [:eq, :gt]
     end
 
-    test "carrying an update into a later version keeps that version's updated_at and recorded_at" do
+    test "carrying an update into a later version keeps that version's updated_at and restamps recorded_at" do
       created = Ash.create!(Recorded, %{id: 1, name: "a"}, as_of: @past)
 
-      stamped =
+      _stamped =
         created
         |> Ash.Changeset.for_update(:stamp, %{}, as_of: @later)
         |> Ash.update!()
 
       mid = ~U[2021-01-01 00:00:00.000000Z]
 
-      created
-      |> Ash.Changeset.for_update(:update, %{name: "b"}, as_of: mid)
-      |> Ash.update!()
+      updated =
+        created
+        |> Ash.Changeset.for_update(:update, %{name: "b"}, as_of: mid)
+        |> Ash.update!()
 
       assert %{name: "b", updated_at: ^mid} = Ash.get!(Recorded, 1, as_of: mid)
 
@@ -182,7 +190,33 @@ defmodule Ash.TemporalRecordedAtTest do
                recorded_at: later_recorded_at
              } = Ash.get!(Recorded, 1, as_of: @later)
 
-      assert later_recorded_at == stamped.recorded_at
+      assert later_recorded_at == updated.recorded_at
+    end
+
+    test "a non-writable attribute with a non-utc_now update_default does not carry into later versions" do
+      created = Ash.create!(Recorded, %{id: 1, name: "a"}, as_of: @past)
+
+      created
+      |> Ash.Changeset.for_update(:stamp, %{}, as_of: @later)
+      |> Ash.update!()
+
+      mid = ~U[2021-01-01 00:00:00.000000Z]
+      Process.put(:stamped_by, "backdated")
+
+      updated =
+        created
+        |> Ash.Changeset.for_update(:update, %{name: "b"}, as_of: mid)
+        |> Ash.update!()
+
+      assert updated.stamped_by == "backdated"
+
+      assert %{
+               name: "b",
+               stamped_by: "initial",
+               recorded_at: later_recorded_at
+             } = Ash.get!(Recorded, 1, as_of: @later)
+
+      assert later_recorded_at == updated.recorded_at
     end
   end
 
