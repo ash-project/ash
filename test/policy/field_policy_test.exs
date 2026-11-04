@@ -113,6 +113,99 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     end
   end
 
+  describe "loading a record whose embedded field is forbidden (#3109)" do
+    defmodule ShopSettings do
+      @moduledoc false
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :theme, :string, public?: true
+      end
+    end
+
+    defmodule Shop do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.Domain,
+        data_layer: Ash.DataLayer.Ets,
+        authorizers: [Ash.Policy.Authorizer]
+
+      ets do
+        private? true
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+        attribute :settings, ShopSettings, public?: true
+      end
+
+      actions do
+        defaults [:read, :destroy, create: [:name, :settings], update: [:name]]
+      end
+
+      policies do
+        policy always() do
+          authorize_if always()
+        end
+      end
+
+      field_policies do
+        field_policy :settings do
+          authorize_if actor_present()
+        end
+
+        field_policy :* do
+          authorize_if always()
+        end
+      end
+    end
+
+    # Read without an actor, `settings` is %Ash.ForbiddenField{}. Loading the record again
+    # must leave it alone the way it leaves `nil` alone.
+    setup do
+      shop =
+        Shop
+        |> Ash.Changeset.for_create(:create, %{name: "shop", settings: %{theme: "dark"}})
+        |> Ash.create!(authorize?: false)
+
+      shop = Ash.get!(Shop, shop.id, authorize?: true)
+      assert %Ash.ForbiddenField{field: :settings} = shop.settings
+
+      [shop: shop]
+    end
+
+    test "an update that changes nothing", %{shop: shop} do
+      assert {:ok, %{settings: %Ash.ForbiddenField{field: :settings}}} =
+               shop
+               |> Ash.Changeset.for_update(:update, %{})
+               |> Ash.update(authorize?: true)
+    end
+
+    test "a streamed bulk update", %{shop: shop} do
+      assert %Ash.BulkResult{
+               status: :success,
+               records: [%{settings: %Ash.ForbiddenField{field: :settings}}]
+             } =
+               Ash.bulk_update([shop], :update, %{},
+                 authorize?: true,
+                 strategy: :stream,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "a destroy returning the record", %{shop: shop} do
+      assert {:ok, %{settings: %Ash.ForbiddenField{field: :settings}}} =
+               Ash.destroy(shop, return_destroyed?: true, authorize?: true)
+    end
+
+    test "loading onto the record", %{shop: shop} do
+      assert {:ok, %{settings: %Ash.ForbiddenField{field: :settings}}} =
+               Ash.load(shop, [:name], reuse_values?: true, authorize?: true)
+    end
+  end
+
   describe "rendering fields" do
     test "when creating as a user that cannot see the field, its value is not displayed", %{
       representative: rep,

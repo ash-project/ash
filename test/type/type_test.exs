@@ -122,6 +122,23 @@ defmodule Ash.Test.Type.TypeTest do
     assert ^forbidden = Ash.Type.rewrite({:array, :string}, forbidden, [], [])
   end
 
+  test "load/5 passes %Ash.ForbiddenField{} and %Ash.NotLoaded{} in a list of values through" do
+    # Regression test for #3109. A lone ForbiddenField was passed through, but one inside the
+    # list of values reached the embedded type's load/4, which called Ash.load/3 on it.
+    note = Ash.Test.Support.PolicyField.AdminNote
+    forbidden = %Ash.ForbiddenField{type: :attribute, field: :admin_note}
+    not_loaded = %Ash.NotLoaded{type: :attribute, field: :admin_note}
+
+    assert {:ok, [^forbidden, nil, %{__struct__: ^note, body: "note"}, ^not_loaded]} =
+             Ash.Type.load(
+               note,
+               [forbidden, nil, struct(note, body: "note"), not_loaded],
+               [],
+               [],
+               %{domain: Domain, actor: nil, tenant: nil, tracer: nil, authorize?: false}
+             )
+  end
+
   test "returns error for invalid keys" do
     foo = {:foo, [type: :string]}
     bar = {:bar, [type: :integer]}
