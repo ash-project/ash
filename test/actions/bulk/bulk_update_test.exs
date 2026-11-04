@@ -1034,6 +1034,35 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              )
   end
 
+  # Ets has no transactions and Mnesia has no `update_query`, so no data layer
+  # here runs an atomic bulk update inside a transaction. A queued notification
+  # of a Mnesia resource gets the same result: it cannot be sent inside the
+  # Mnesia transaction, so the atomic update reports it as missed.
+  test "an atomic bulk update given the action's name can report missed notifications" do
+    post = Ash.create!(Post, %{title: "title1"}, authorize?: false)
+
+    missed = %Ash.Notifier.Notification{resource: MnesiaPost, domain: Domain, for: []}
+
+    log =
+      capture_log(fn ->
+        assert {:atomic, %Ash.BulkResult{status: :success}} =
+                 :mnesia.transaction(fn ->
+                   Ash.Actions.Helpers.queue_notifications([missed])
+
+                   Post
+                   |> Ash.Query.filter(id == ^post.id)
+                   |> Ash.bulk_update(:update, %{title2: "updated value"},
+                     strategy: :atomic,
+                     notify?: true,
+                     authorize?: false
+                   )
+                 end)
+      end)
+
+    assert log =~ "Missed 1 notifications in action"
+    assert log =~ "BulkUpdateTest.Post.update"
+  end
+
   test "context provided in opts is set on changesets, query context is not" do
     Ash.bulk_create!([%{title: "title1"}], Post, :create)
 

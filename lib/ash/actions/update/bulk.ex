@@ -455,7 +455,12 @@ defmodule Ash.Actions.Update.Bulk do
                       %{result | errors: errors, error_count: error_count}
                   end
               end
-              |> handle_atomic_notifications(atomic_changeset.resource, action, notify?, opts)
+              |> handle_atomic_notifications(
+                atomic_changeset.resource,
+                atomic_changeset.action,
+                notify?,
+                opts
+              )
             catch
               kind, reason ->
                 if notify?,
