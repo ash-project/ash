@@ -710,6 +710,84 @@ defmodule Ash.Filter do
     do_find(expr, pred, false, ors?, ands?, structures?)
   end
 
+  @doc """
+  Returns true if the expression uses `parent/1` to reference the scope outside of it.
+
+  `exists` and aggregates are scopes of their own, so a `parent/1` inside of them only counts
+  if it is nested deeply enough to escape them, i.e `exists(posts, parent(parent(id)) == author_id)`.
+  Expressions of calculations and aggregates referenced by the expression are checked as well.
+  """
+  @spec has_parent_expr?(term) :: boolean
+  def has_parent_expr?(expr), do: do_has_parent_expr?(expr, 0)
+
+  # `depth` is how many scopes (`exists` or aggregates) deep we are.
+  defp do_has_parent_expr?(%Ash.Query.Parent{expr: expr}, depth),
+    do: depth == 0 || do_has_parent_expr?(expr, depth - 1)
+
+  defp do_has_parent_expr?(%Call{name: :parent, args: [expr]}, depth),
+    do: depth == 0 || do_has_parent_expr?(expr, depth - 1)
+
+  defp do_has_parent_expr?(%Ash.Query.Exists{expr: expr}, depth),
+    do: do_has_parent_expr?(expr, depth + 1)
+
+  defp do_has_parent_expr?(%Ref{attribute: attribute}, depth),
+    do: do_has_parent_expr?(attribute, depth)
+
+  defp do_has_parent_expr?(%Aggregate{} = aggregate, depth) do
+    query_has_parent_expr? =
+      case aggregate.query do
+        %Ash.Query{filter: filter, sort: sort} -> do_has_parent_expr?([filter, sort], depth + 1)
+        _ -> false
+      end
+
+    query_has_parent_expr? ||
+      do_has_parent_expr?(aggregate.field, depth + 1) ||
+      do_has_parent_expr?(Map.values(aggregate.join_filters || %{}), depth + 1)
+  end
+
+  defp do_has_parent_expr?(%Calculation{module: module, opts: opts, context: context}, depth) do
+    Ash.Resource.Calculation.has_expression?(module) &&
+      module
+      |> Ash.Resource.Calculation.expression(opts, context)
+      |> do_has_parent_expr?(depth)
+  end
+
+  defp do_has_parent_expr?(%__MODULE__{expression: expression}, depth),
+    do: do_has_parent_expr?(expression, depth)
+
+  defp do_has_parent_expr?(%BooleanExpression{left: left, right: right}, depth),
+    do: do_has_parent_expr?(left, depth) || do_has_parent_expr?(right, depth)
+
+  defp do_has_parent_expr?(%Not{expression: expression}, depth),
+    do: do_has_parent_expr?(expression, depth)
+
+  defp do_has_parent_expr?(
+         %Ash.CustomExpression{expression: expression, simple_expression: simple_expression},
+         depth
+       ),
+       do: do_has_parent_expr?(expression, depth) || do_has_parent_expr?(simple_expression, depth)
+
+  defp do_has_parent_expr?(%Call{args: args}, depth),
+    do: do_has_parent_expr?(args, depth)
+
+  defp do_has_parent_expr?(%{__operator__?: true, left: left, right: right}, depth),
+    do: do_has_parent_expr?(left, depth) || do_has_parent_expr?(right, depth)
+
+  defp do_has_parent_expr?(%{__function__?: true, arguments: arguments}, depth),
+    do: do_has_parent_expr?(arguments, depth)
+
+  defp do_has_parent_expr?(list, depth) when is_list(list),
+    do: Enum.any?(list, &do_has_parent_expr?(&1, depth))
+
+  defp do_has_parent_expr?(tuple, depth) when is_tuple(tuple),
+    do: tuple |> Tuple.to_list() |> do_has_parent_expr?(depth)
+
+  # Map literals are expressions, but other structs (queries, contexts, actors, records) are not.
+  defp do_has_parent_expr?(map, depth) when is_map(map) and not is_struct(map),
+    do: map |> Map.to_list() |> do_has_parent_expr?(depth)
+
+  defp do_has_parent_expr?(_other, _depth), do: false
+
   defp do_find(expr, pred, value?, ors?, ands?, structures?) do
     if value = pred.(expr) do
       if value? do

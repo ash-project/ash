@@ -2020,7 +2020,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
   defp sort_and_filter(query, relationship) do
     query =
-      if Ash.Actions.Read.Relationships.do_has_parent_expr?(relationship.filter) do
+      if Ash.Filter.has_parent_expr?(relationship.filter) do
         Ash.Query.add_error(
           query,
           Ash.Error.Changes.InvalidRelationship.exception(

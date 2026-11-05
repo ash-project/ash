@@ -384,7 +384,7 @@ defmodule Ash.Actions.Read.Relationships do
         # `parent/1` in this filter refers to the record the destination is reached from, not
         # the source record, so such a filter gets a step of its own in the lateral join.
         if last_through_relationship &&
-             !do_has_parent_expr?(last_through_relationship.filter) do
+             !Ash.Filter.has_parent_expr?(last_through_relationship.filter) do
           Ash.Query.do_filter(
             related_query,
             RelatedAuthorization.trusted_filter(
@@ -616,7 +616,7 @@ defmodule Ash.Actions.Read.Relationships do
   defp through_destination_steps(relationship, source_query, related_query) do
     last = last_through_relationship(relationship)
 
-    if do_has_parent_expr?(last.filter) || relationship_limit(last) ||
+    if Ash.Filter.has_parent_expr?(last.filter) || relationship_limit(last) ||
          Map.get(last, :offset) do
       case Ash.Resource.Info.primary_key(last.destination) do
         [primary_key] ->
@@ -2126,7 +2126,7 @@ defmodule Ash.Actions.Read.Relationships do
       %{type: :many_to_many} ->
         # `parent/1` in a many_to_many's filter refers to its source record, which is two
         # steps back once the join resource is a step of its own.
-        if do_has_parent_expr?(relationship.filter) do
+        if Ash.Filter.has_parent_expr?(relationship.filter) do
           raise ArgumentError,
                 "The filter of many_to_many relationship `#{relationship.name}` on " <>
                   "#{inspect(resource)} uses `parent/1`, so it can't be a step in a through path."
@@ -2180,7 +2180,7 @@ defmodule Ash.Actions.Read.Relationships do
       end
 
     has_parent_expr_in_sort?(sort) ||
-      do_has_parent_expr?(filter)
+      Ash.Filter.has_parent_expr?(filter)
   end
 
   @doc false
@@ -2224,7 +2224,7 @@ defmodule Ash.Actions.Read.Relationships do
         parent_stack: parent_stack,
         source_context: context
       )
-      |> do_has_parent_expr?()
+      |> Ash.Filter.has_parent_expr?()
   end
 
   defp has_parent_expr_in_sort?(sort) do
@@ -2245,7 +2245,7 @@ defmodule Ash.Actions.Read.Relationships do
             calculation.context
           )
 
-        do_has_parent_expr?(expression)
+        Ash.Filter.has_parent_expr?(expression)
 
       {%Ash.Query.Calculation{} = calculation, _} ->
         expression =
@@ -2255,84 +2255,9 @@ defmodule Ash.Actions.Read.Relationships do
             calculation.context
           )
 
-        do_has_parent_expr?(expression)
+        Ash.Filter.has_parent_expr?(expression)
     end)
   end
-
-  # `depth` is how many scopes (`exists` or aggregates) deep we are. `parent/1` at depth 0 refers
-  # to the source of the relationship, while deeper ones only do so when nested deeply enough.
-  @doc false
-  def do_has_parent_expr?(expr, depth \\ 0)
-
-  def do_has_parent_expr?(%Ash.Query.Parent{expr: expr}, depth),
-    do: depth == 0 || do_has_parent_expr?(expr, depth - 1)
-
-  def do_has_parent_expr?(%Ash.Query.Call{name: :parent, args: [expr]}, depth),
-    do: depth == 0 || do_has_parent_expr?(expr, depth - 1)
-
-  def do_has_parent_expr?(%Ash.Query.Exists{expr: expr}, depth),
-    do: do_has_parent_expr?(expr, depth + 1)
-
-  def do_has_parent_expr?(%Ash.Query.Ref{attribute: attribute}, depth),
-    do: do_has_parent_expr?(attribute, depth)
-
-  def do_has_parent_expr?(%Ash.Query.Aggregate{} = aggregate, depth) do
-    query_has_parent_expr? =
-      case aggregate.query do
-        %Ash.Query{filter: filter, sort: sort} -> do_has_parent_expr?([filter, sort], depth + 1)
-        _ -> false
-      end
-
-    query_has_parent_expr? ||
-      do_has_parent_expr?(aggregate.field, depth + 1) ||
-      do_has_parent_expr?(Map.values(aggregate.join_filters || %{}), depth + 1)
-  end
-
-  def do_has_parent_expr?(
-        %Ash.Query.Calculation{module: module, opts: opts, context: context},
-        depth
-      ) do
-    Ash.Resource.Calculation.has_expression?(module) &&
-      module
-      |> Ash.Resource.Calculation.expression(opts, context)
-      |> do_has_parent_expr?(depth)
-  end
-
-  def do_has_parent_expr?(%Ash.Filter{expression: expression}, depth),
-    do: do_has_parent_expr?(expression, depth)
-
-  def do_has_parent_expr?(%Ash.Query.BooleanExpression{left: left, right: right}, depth),
-    do: do_has_parent_expr?(left, depth) || do_has_parent_expr?(right, depth)
-
-  def do_has_parent_expr?(%Ash.Query.Not{expression: expression}, depth),
-    do: do_has_parent_expr?(expression, depth)
-
-  def do_has_parent_expr?(
-        %Ash.CustomExpression{expression: expression, simple_expression: simple_expression},
-        depth
-      ),
-      do: do_has_parent_expr?(expression, depth) || do_has_parent_expr?(simple_expression, depth)
-
-  def do_has_parent_expr?(%Ash.Query.Call{args: args}, depth),
-    do: do_has_parent_expr?(args, depth)
-
-  def do_has_parent_expr?(%{__operator__?: true, left: left, right: right}, depth),
-    do: do_has_parent_expr?(left, depth) || do_has_parent_expr?(right, depth)
-
-  def do_has_parent_expr?(%{__function__?: true, arguments: arguments}, depth),
-    do: do_has_parent_expr?(arguments, depth)
-
-  def do_has_parent_expr?(list, depth) when is_list(list),
-    do: Enum.any?(list, &do_has_parent_expr?(&1, depth))
-
-  def do_has_parent_expr?(tuple, depth) when is_tuple(tuple),
-    do: tuple |> Tuple.to_list() |> do_has_parent_expr?(depth)
-
-  # Map literals are expressions, but other structs (queries, contexts, actors, records) are not.
-  def do_has_parent_expr?(map, depth) when is_map(map) and not is_struct(map),
-    do: map |> Map.to_list() |> do_has_parent_expr?(depth)
-
-  def do_has_parent_expr?(_other, _depth), do: false
 
   defp apply_relationship_offset(query, relationship) do
     if Map.get(relationship, :offset) do

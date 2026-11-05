@@ -1377,7 +1377,8 @@ defmodule Ash.Changeset do
          {:atomic, condition} <-
            atomic_condition(where, changeset, context),
          {{:atomic, modified_changeset?, new_changeset, atomic_changes, validations,
-           create_atomics}, condition} <-
+           create_atomics},
+          condition} <-
            {atomic_with_changeset(
               Ash.Resource.Change.atomic(
                 module,
@@ -5413,7 +5414,8 @@ defmodule Ash.Changeset do
           {:ok, new_result, new_notifications} ->
             all_notifications =
               Enum.map(
-                List.wrap(notifications) ++ Ash.Notifier.Notification.normalize(new_notifications),
+                List.wrap(notifications) ++
+                  Ash.Notifier.Notification.normalize(new_notifications),
                 fn notification ->
                   %{
                     notification
