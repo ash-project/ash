@@ -351,6 +351,29 @@ that the action has an argument for each of the Reactor's inputs.
 `reactor/2` works with either setting, so you can migrate
 before enabling it.
 
+## ets_transactions?
+
+```elixir
+config :ash, ets_transactions?: true
+```
+
+### Old Behavior
+
+`Ash.DataLayer.Ets` had no transactions. An action's hooks and its write ran with
+nothing between them and another action's, so, for example, simultaneous creates
+of one value of a pre-checked identity could all succeed.
+
+### New Behavior
+
+Actions on an ETS table that is not `private?` run in a transaction. A transaction
+holds a lock on each table it touches: those of the action's resource and its
+`touches_resources` are taken before the action runs, in one order, and waited for.
+A rollback or an exception puts back what the transaction changed. Everything Ash
+does for a data layer that transacts then applies to these resources: hooks run in
+the transaction and roll back with it, filter policies on create actions are
+checked after the insert, and an action's timeout is enforced. Private tables, each
+held by one process, have no transactions with either setting.
+
 ## keyset_signing_secret
 
 ```elixir
