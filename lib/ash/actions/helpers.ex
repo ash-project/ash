@@ -249,6 +249,8 @@ defmodule Ash.Actions.Helpers do
   end
 
   def set_context_and_get_opts(domain, query_or_changeset, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
+
     opts = apply_scope_to_opts(opts)
 
     opts = set_skip_unknown_opts(opts, query_or_changeset)
