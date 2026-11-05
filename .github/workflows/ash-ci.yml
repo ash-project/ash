@@ -530,7 +530,7 @@ jobs:
         if: ${{inputs.sobelow}}
         with:
           mix-env: test
-          task: sobelow
+          task: sobelow --skip --exit low
   doctor:
     name: mix doctor --full --raise
     runs-on: ubuntu-latest
