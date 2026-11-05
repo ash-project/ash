@@ -520,6 +520,31 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end)
   end
 
+  test "an atomic bulk destroy does not report a notification for no notifiers as missed" do
+    post = Ash.create!(Post, %{title: "title1"}, authorize?: false)
+
+    for_no_notifiers = %Ash.Notifier.Notification{resource: MnesiaPost, domain: Domain, for: []}
+    missed = %{for_no_notifiers | for: [Notifier]}
+
+    log =
+      capture_log(fn ->
+        assert {:atomic, %Ash.BulkResult{status: :success, notifications: [^missed]}} =
+                 :mnesia.transaction(fn ->
+                   Ash.Actions.Helpers.queue_notifications([for_no_notifiers, missed])
+
+                   Post
+                   |> Ash.Query.filter(id == ^post.id)
+                   |> Ash.bulk_destroy(:destroy, %{},
+                     strategy: :atomic,
+                     notify?: true,
+                     authorize?: false
+                   )
+                 end)
+      end)
+
+    assert log =~ "Missed 1 notifications in action"
+  end
+
   test "returns destroyed records" do
     assert %Ash.BulkResult{records: [%{}, %{}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
