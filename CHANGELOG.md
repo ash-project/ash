@@ -8,6 +8,49 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.3](https://github.com/ash-project/ash/compare/v3.37.2...v3.37.3) (2026-11-05)
+
+
+
+
+### Improvements:
+
+* speed up runtime filtering and sorting (#3092) by [@etareduction](https://github.com/etareduction) [(#3092)](https://github.com/ash-project/ash/pull/3092)
+
+* render more consolidated signals mermaid by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* give warn_missed! the action in atomic bulk updates (#3111) by Stefan Luptak [(#3111)](https://github.com/ash-project/ash/pull/3111)
+
+* pass forbidden and not loaded values through Ash.Type.load/5 lists by [@zachdaniel](https://github.com/zachdaniel)
+
+* avoid traversing execution context in parent expression checks (#3108) by Jechol Lee [(#3108)](https://github.com/ash-project/ash/pull/3108)
+
+* detect `parent/1` in calculations that a relationship sorts on by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't treat `parent/1` inside `exists` or aggregates as referencing the relationship source by [@zachdaniel](https://github.com/zachdaniel)
+
+* accept scopes in generated can_* code interface helpers (#3106) by [@barnabasJ](https://github.com/barnabasJ) [(#3106)](https://github.com/ash-project/ash/pull/3106)
+
+* validate generic action loads against the returns type (#3101) by [@Torkan](https://github.com/Torkan) [(#3101)](https://github.com/ash-project/ash/pull/3101)
+
+* defer per-record validations in bulk creates (#3098) by jeffhuen [(#3098)](https://github.com/ash-project/ash/pull/3098)
+
+* pass batch_change/3 a list in streamed bulk destroys (#3100) by leonqadirie [(#3100)](https://github.com/ash-project/ash/pull/3100)
+
+* only give a new type the change hooks its subtype has (#3096) by jeroen11dijk [(#3096)](https://github.com/ash-project/ash/pull/3096)
+
+* don't crash update_many when return_records? isn't given (#3094) by jeroen11dijk [(#3094)](https://github.com/ash-project/ash/pull/3094)
+
+* give update_many's after_batch hooks each row's own changeset (#3095) by jeroen11dijk [(#3095)](https://github.com/ash-project/ash/pull/3095)
+
+* drop inactive policy conflict expansion (#3093) by leonqadirie [(#3093)](https://github.com/ash-project/ash/pull/3093)
+
+* load mixed records by their start instance by [@zachdaniel](https://github.com/zachdaniel)
+
+* give query around_transaction hooks their two-argument type (#3088) by [@etareduction](https://github.com/etareduction) [(#3088)](https://github.com/ash-project/ash/pull/3088)
+
 ## Unreleased
 
 ### Bug Fixes:
