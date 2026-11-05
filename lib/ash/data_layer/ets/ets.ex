@@ -94,6 +94,7 @@ defmodule Ash.DataLayer.Ets do
       end
     end
 
+    # sobelow_skip ["DOS.ModuleConcat"]
     defp start_table(resource, table, true) do
       if Ash.DataLayer.Ets.Info.private?(resource) do
         do_wrap_existing(resource, table)
@@ -168,7 +169,7 @@ defmodule Ash.DataLayer.Ets do
   # collected, so we only intern a new table name when we are actually going to create
   # the table. Otherwise we look the atom up, and treat a name that was never interned
   # the same as a table that doesn't exist.
-  # sobelow_skip ["DOS.StringToAtom"]
+  # sobelow_skip ["DOS.StringToAtom", "DOS.ModuleConcat"]
   def table_name(resource, tenant, create?) do
     table = Ash.DataLayer.Ets.Info.table(resource)
 
@@ -188,6 +189,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
+  # sobelow_skip ["DOS.ModuleConcat"]
   def stop(resource, tenant \\ nil) do
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do

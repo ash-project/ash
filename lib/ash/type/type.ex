@@ -1055,6 +1055,7 @@ defmodule Ash.Type do
     def ecto_type(unquote(name)), do: ecto_type(unquote(mod))
   end
 
+  # sobelow_skip ["DOS.ModuleConcat"]
   def ecto_type(type) do
     if Ash.Resource.Info.resource?(type) do
       Module.concat(type, EctoType)

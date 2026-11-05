@@ -9,6 +9,7 @@ defmodule Ash.Error.Forbidden.Placeholder do
   # `Ash.Can` passes the authorizer as a string so that it survives data layers
   # that serialize the `error/2` input. Data layers that evaluate `error/2` in
   # Elixir build this exception from that string directly.
+  # sobelow_skip ["DOS.ModuleConcat"]
   def exception(opts) do
     opts =
       case opts[:authorizer] do

@@ -424,6 +424,7 @@ defmodule Ash.CodeInterface do
           %{atom() => [struct()]},
           Macro.Env.t()
         ) :: :ok
+  # sobelow_skip ["DOS.ModuleConcat"]
   def create_namespace_modules(host, domain, resource, by_namespace, env) do
     Enum.each(by_namespace, fn {namespace_short, definitions} ->
       target = Module.concat(host, namespace_short)
