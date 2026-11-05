@@ -419,7 +419,8 @@ defmodule Ash.ActionInput do
   @spec load(t(), term()) :: t()
   def load(input, load) do
     query =
-      input.resource
+      input
+      |> load_resource()
       |> Ash.Query.new()
       |> Map.put(:errors, [])
       |> Ash.Query.load(input.load)
@@ -432,6 +433,27 @@ defmodule Ash.ActionInput do
 
     Enum.reduce(query.errors, input, &add_error(&2, &1))
   end
+
+  # The load is applied to the action's return value (see `Ash.Actions.Action`),
+  # so validate it against the resource the `returns` type loads into, if any.
+  defp load_resource(%{action: %{returns: returns, constraints: constraints}} = input)
+       when not is_nil(returns) do
+    {type, constraints} =
+      case returns do
+        {:array, type} -> {type, Keyword.get(constraints || [], :items, [])}
+        type -> {type, constraints || []}
+      end
+
+    base_type = type |> Ash.Type.get_type() |> Ash.Type.NewType.subtype_of()
+
+    if base_type == Ash.Type.Struct and Ash.Type.can_load?(type, constraints) do
+      constraints[:instance_of]
+    else
+      input.resource
+    end
+  end
+
+  defp load_resource(input), do: input.resource
 
   @doc """
   Returns true if the field/relationship or path to field/relationship is being loaded at the very end of the action.

@@ -83,6 +83,21 @@ mix archive.install hex igniter_new
 mix igniter.new helpdesk --install ash,ash_phoenix --with phx.new && cd helpdesk
 ```
 
+> ### PostgreSQL setup {: .info}
+>
+> By default, `phx.new` configures Ecto to use PostgreSQL. If PostgreSQL
+> is not running and configured, starting the generated application may
+> produce `Postgrex.Protocol` connection errors.
+>
+> If you don't need Ecto for this tutorial, you can disable it by passing
+> `--no-ecto` to `phx.new` using Igniter's `--with-args` option:
+>
+> ```bash
+> mix igniter.new helpdesk --install ash,ash_phoenix --with phx.new --with-args="--no-ecto"
+> ```
+>
+> Otherwise, make sure PostgreSQL is running before starting the application.
+
 ### Existing Project
 
 You can use igniter to add Ash to your existing project as well.

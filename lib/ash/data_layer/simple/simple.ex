@@ -93,7 +93,7 @@ defmodule Ash.DataLayer.Simple do
       {:ok, results} ->
         {:ok,
          results
-         |> Ash.Actions.Sort.runtime_sort(sort, domain: domain)
+         |> Ash.Actions.Sort.runtime_sort(sort, domain: domain, tenant: tenant)
          |> then(fn data ->
            if offset && offset != 0 do
              Enum.drop(data, offset)

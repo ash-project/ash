@@ -77,6 +77,7 @@ defmodule Ash.Actions.Sort do
   Opts
 
   * `:domain` - The domain to use if data needs to be loaded
+  * `:tenant` - The tenant to use if data needs to be loaded
   * `:lazy?` - Whether to use already loaded values or to re-load them when necessary. Defaults to `false`
   * `:resource` - The resource being sorted.
   """
@@ -239,19 +240,20 @@ defmodule Ash.Actions.Sort do
   end
 
   defp load_field(records, field, resource, opts) do
-    query =
-      resource
-      |> Ash.Query.select([])
-      |> Ash.Query.load(field)
-      |> Ash.Query.set_context(%{private: %{internal?: true}})
-
-    if is_nil(opts[:domain]) do
+    if is_nil(opts[:domain]) or holds_attribute?(records, field, resource) do
       records
     else
+      query =
+        resource
+        |> Ash.Query.select([])
+        |> Ash.Query.load(field)
+        |> Ash.Query.set_context(%{private: %{internal?: true}})
+
       if opts[:maybe_not_distinct?] do
         Enum.map(records, fn record ->
           Ash.load!(record, query,
             domain: opts[:domain],
+            tenant: opts[:tenant],
             reuse_values?: true,
             authorize?: false,
             lazy?: opts[:lazy?] || false
@@ -263,6 +265,7 @@ defmodule Ash.Actions.Sort do
         |> Stream.flat_map(fn batch ->
           Ash.load!(batch, query,
             domain: opts[:domain],
+            tenant: opts[:tenant],
             reuse_values?: true,
             authorize?: false,
             lazy?: opts[:lazy?] || false
@@ -270,6 +273,12 @@ defmodule Ash.Actions.Sort do
         end)
       end
     end
+  end
+
+  defp holds_attribute?(records, field, resource) do
+    is_list(records) and is_atom(field) and
+      not is_nil(Ash.Resource.Info.attribute(resource, field)) and
+      not Enum.any?(records, &match?(%Ash.NotLoaded{}, Map.get(&1, field)))
   end
 
   defp resolve_field(record, %{__struct__: struct} = agg)

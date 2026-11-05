@@ -1174,6 +1174,44 @@ defmodule Ash.Actions.PaginationTest do
     end
   end
 
+  describe "Ash.unpaginated_read/2" do
+    setup do
+      for i <- 0..9 do
+        Ash.create!(Ash.Changeset.for_create(User, :create, %{name: "#{i}"}))
+      end
+
+      :ok
+    end
+
+    test "reads every record from an action that requires pagination" do
+      assert {:ok, users} = Ash.unpaginated_read(User, action: :offset)
+      assert length(users) == 10
+    end
+
+    test "doesn't apply the action's default limit" do
+      assert length(Ash.unpaginated_read!(User, action: :paginate_by_default)) == 10
+    end
+
+    test "ignores page options on the query, but not its limit" do
+      assert length(
+               User
+               |> Ash.Query.page(limit: 2)
+               |> Ash.unpaginated_read!(action: :offset)
+             ) == 10
+
+      assert length(
+               User
+               |> Ash.Query.limit(4)
+               |> Ash.unpaginated_read!(action: :offset)
+             ) == 4
+    end
+
+    test "doesn't accept page options" do
+      assert {:error, error} = Ash.unpaginated_read(User, action: :offset, page: [limit: 2])
+      assert Exception.message(error) =~ "unknown options [:page]"
+    end
+  end
+
   describe "loading with pagination" do
     test "it does not paginate loads" do
       user = Ash.create!(Ash.Changeset.for_create(User, :create, %{name: "user"}))

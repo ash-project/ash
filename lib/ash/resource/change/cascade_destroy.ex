@@ -110,9 +110,11 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       if not opts.after_action? and
            opts.relationship.type in [:many_to_many, :has_many, :has_one] do
         Ash.Changeset.before_action(changeset, fn changeset ->
-          # can't produce `{:error, error}` because `changeset.phase` is before_action
           case {destroy_related([changeset.data], opts, context, changeset),
                 opts.return_notifications?} do
+            {{:error, error}, _} ->
+              Ash.Changeset.add_error(changeset, error)
+
             {_, false} ->
               changeset
 
@@ -314,12 +316,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
     case related_query(data, opts, context_opts) do
       {:ok, query} ->
-        Ash.bulk_destroy!(
-          query,
-          action.name,
-          %{},
-          destroy_opts
-        )
+        query
+        |> Ash.bulk_destroy(action.name, %{}, destroy_opts)
+        |> handle_bulk_result()
 
       :error ->
         if changeset.phase == :after_action and changeset.action_type == :destroy do
@@ -350,28 +349,38 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
           data
           |> List.wrap()
-          |> Ash.load!(
-            [{relationship.name, load_query}],
-            scope: context
-          )
-          |> Enum.flat_map(fn record ->
-            record
-            |> Map.get(relationship.name)
-            |> List.wrap()
-          end)
-          |> Ash.bulk_destroy!(
-            action.name,
-            %{},
-            Keyword.update(
-              destroy_opts,
-              :context,
-              action_context,
-              &Map.merge(&1, action_context)
-            )
-          )
+          |> Ash.load([{relationship.name, load_query}], scope: context)
+          |> case do
+            {:ok, data} ->
+              data
+              |> Enum.flat_map(fn record ->
+                record
+                |> Map.get(relationship.name)
+                |> List.wrap()
+              end)
+              |> Ash.bulk_destroy(
+                action.name,
+                %{},
+                Keyword.update(
+                  destroy_opts,
+                  :context,
+                  action_context,
+                  &Map.merge(&1, action_context)
+                )
+              )
+              |> handle_bulk_result()
+
+            {:error, error} ->
+              {:error, error}
+          end
         end
     end
   end
+
+  defp handle_bulk_result(%Ash.BulkResult{status: :success} = result), do: result
+
+  defp handle_bulk_result(%Ash.BulkResult{errors: errors}),
+    do: {:error, Ash.Error.to_error_class(errors || [])}
 
   # The destroys carry the changeset's own `as_of`, which may be a range or set after the
   # change ran; the read that finds them does not.

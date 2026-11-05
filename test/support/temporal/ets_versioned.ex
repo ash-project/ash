@@ -2,6 +2,16 @@
 #
 # SPDX-License-Identifier: MIT
 
+defmodule Ash.Test.Temporal.EtsVersioned.Whisper do
+  @moduledoc """
+  An expression-only calculation. It has no `calculate/3`, so only the data layer can run it.
+  """
+  use Ash.Resource.Calculation
+
+  @impl true
+  def expression(_opts, _context), do: expr(name <> "...")
+end
+
 defmodule Ash.Test.Temporal.EtsVersioned do
   @moduledoc """
   A temporal resource on the ETS data layer.
@@ -65,6 +75,7 @@ defmodule Ash.Test.Temporal.EtsVersioned do
 
   calculations do
     calculate :shout, :string, expr(name <> "!"), public?: true
+    calculate :whisper, :string, Ash.Test.Temporal.EtsVersioned.Whisper, public?: true
   end
 
   attributes do

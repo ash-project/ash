@@ -677,27 +677,43 @@ defmodule Ash.Changeset do
       iex> changeset.load
       [:author, :comments]
 
+      # Only select the listed fields on a related record
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create, %{title: "My Post"})
+      iex> changeset = Ash.Changeset.load(changeset, [author: [:name]], strict?: true)
+
+  ## Options
+
+  - `strict?` - If set to true, only the fields listed for a relationship are loaded on it,
+    as with `Ash.Query.load/3`. Defaults to `false`.
+
   ## See also
 
   - `select/3` for controlling which attributes are returned
   - `loading?/2` for checking if something is being loaded
-  - `Ash.Query.load/2` for loading in queries
+  - `Ash.Query.load/3` for loading in queries
   - `Ash.ActionInput.load/2` for loading in generic actions
   """
-  @spec load(t(), term()) :: t()
-  def load(changeset, load) do
+  @spec load(t(), term(), Keyword.t()) :: t()
+  def load(changeset, load, opts \\ []) do
     query =
       changeset.resource
       |> Ash.Query.new()
       |> Map.put(:errors, [])
       |> Ash.Query.load(changeset.load)
-      |> Ash.Query.load(load)
+      |> Ash.Query.load(load, opts)
 
     # As in `Ash.Query.load/2`, loading a plain attribute just ensures it is selected.
     {attributes, load} =
       load
       |> List.wrap()
       |> Enum.split_with(&(is_atom(&1) && Ash.Resource.Info.attribute(changeset.resource, &1)))
+
+    load =
+      if opts[:strict?] do
+        Enum.map(load, &strict_load(changeset.resource, &1))
+      else
+        load
+      end
 
     changeset =
       if attributes == [] do
@@ -710,6 +726,18 @@ defmodule Ash.Changeset do
 
     Enum.reduce(query.errors, changeset, &add_error(&2, &1))
   end
+
+  # The changeset holds a load statement rather than a query, so a relationship loaded
+  # strictly is stored as the related query that a strict `Ash.Query.load/3` builds for it.
+  defp strict_load(resource, {name, _statement} = load) when is_atom(name) do
+    if Ash.Resource.Info.relationship(resource, name) do
+      {name, Keyword.fetch!(Ash.Query.load(resource, [load], strict?: true).load, name)}
+    else
+      load
+    end
+  end
+
+  defp strict_load(_resource, load), do: load
 
   @doc """
   Ensures that the given attributes are selected.
@@ -855,7 +883,7 @@ defmodule Ash.Changeset do
 
       changeset = set_phase(changeset, :atomic)
 
-      with :ok <- verify_notifiers_support_atomic(resource, action),
+      with :ok <- verify_notifiers_support_atomic(resource, action, opts),
            %Ash.Changeset{} = changeset <-
              atomic_params(changeset, action, params, opts),
            %Ash.Changeset{} = changeset <- set_argument_defaults(changeset, action),
@@ -1030,7 +1058,7 @@ defmodule Ash.Changeset do
       if opts[:reference_changes_via_conflict?] do
         changeset.atomics ++
           Enum.map(changeset.attributes, fn {attr, _value} ->
-            {attr, %Ash.Query.UpsertConflict{attribute: attr}}
+            {attr, %Ash.Query.UpsertConflict{attribute: attr, resource: changeset.resource}}
           end)
       else
         changeset.atomics ++ Map.to_list(changeset.attributes)
@@ -1097,19 +1125,24 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp verify_notifiers_support_atomic(resource, action) do
-    resource
-    |> Ash.Resource.Info.notifiers()
-    |> Enum.filter(fn notifier ->
-      Ash.Notifier.requires_original_data?(notifier, resource, action)
-    end)
-    |> case do
-      [] ->
-        :ok
+  defp verify_notifiers_support_atomic(resource, action, opts) do
+    # Original data is only needed to build notifications, so skip the check when there won't be any
+    if opts[:notify?] == false and !opts[:return_notifications?] do
+      :ok
+    else
+      resource
+      |> Ash.Resource.Info.notifiers()
+      |> Enum.filter(fn notifier ->
+        Ash.Notifier.requires_original_data?(notifier, resource, action)
+      end)
+      |> case do
+        [] ->
+          :ok
 
-      notifiers ->
-        {:not_atomic,
-         "notifiers #{inspect(notifiers)} require original data for #{inspect(resource)}.#{action.name}"}
+        notifiers ->
+          {:not_atomic,
+           "notifiers #{inspect(notifiers)} require original data for #{inspect(resource)}.#{action.name}"}
+      end
     end
   end
 
@@ -2024,6 +2057,14 @@ defmodule Ash.Changeset do
       type: :any,
       doc: "Data to load on the result after running the action."
     ],
+    strict?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If set to true, only the fields listed for a relationship in `load` are loaded on it.
+      See `load/3`.
+      """
+    ],
     context: [
       type: :map,
       doc: "Context to set on the query, changeset, or input"
@@ -2401,7 +2442,7 @@ defmodule Ash.Changeset do
               |> set_actor(opts)
               |> set_authorize(opts)
               |> set_tracer(opts)
-              |> load(opts[:load])
+              |> load(opts[:load], Keyword.take(opts, [:strict?]))
               |> set_tenant(opts[:tenant] || changeset.tenant)
               |> cast_params(action, params, opts)
               |> set_argument_defaults(action)
@@ -3228,7 +3269,7 @@ defmodule Ash.Changeset do
     |> set_actor(opts)
     |> set_authorize(opts)
     |> set_tracer(opts)
-    |> load(opts[:load])
+    |> load(opts[:load], Keyword.take(opts, [:strict?]))
     |> timeout(changeset.timeout || opts[:timeout])
     |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
     |> maybe_set_as_of(opts[:as_of] || changeset.as_of)
@@ -4851,10 +4892,10 @@ defmodule Ash.Changeset do
               Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
               {:error, error}
           end
-        rescue
-          error ->
+        catch
+          kind, reason ->
             if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
-            reraise error, __STACKTRACE__
+            :erlang.raise(kind, reason, __STACKTRACE__)
         after
           if notify? do
             Process.delete(:ash_started_transaction?)
@@ -5372,7 +5413,8 @@ defmodule Ash.Changeset do
           {:ok, new_result, new_notifications} ->
             all_notifications =
               Enum.map(
-                List.wrap(notifications) ++ Ash.Notifier.Notification.normalize(new_notifications),
+                List.wrap(notifications) ++
+                  Ash.Notifier.Notification.normalize(new_notifications),
                 fn notification ->
                   %{
                     notification

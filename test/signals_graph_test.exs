@@ -6,7 +6,7 @@ defmodule Ash.Test.SignalsGraphTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.SignalsGraphTest.{Account, Order, Receipt, Shipment, Signals}
+  alias Ash.Test.SignalsGraphTest.{Account, Cart, Order, Receipt, Shipment, Signals}
 
   defmodule Signals do
     @moduledoc false
@@ -81,6 +81,32 @@ defmodule Ash.Test.SignalsGraphTest do
           phase: :after_transaction,
           fields: [order_id: :id],
           where: [changing(:status)]
+      end
+    end
+  end
+
+  # emits like `Order.place`, from more than one action
+  defmodule Cart do
+    @moduledoc false
+    use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:read]
+
+      create :check_out do
+        emit Ash.Test.SignalsGraphTest.Signals, :order_placed, fields: [order_id: :id]
+      end
+
+      create :reorder do
+        emit Ash.Test.SignalsGraphTest.Signals, :order_placed, fields: [order_id: :id]
       end
     end
   end
@@ -285,6 +311,44 @@ defmodule Ash.Test.SignalsGraphTest do
                s1 --> a5
                a0 --> s2
                s2 -->|"notify_customer"| a5
+             """
+    end
+
+    test "renders the actions of a resource with the same edges as one node" do
+      assert Ash.Signals.Graph.mermaid(build(resources: [Cart, Order])) == """
+             flowchart LR
+               subgraph r0["Ash.Test.SignalsGraphTest.Account"]
+                 a0["award_points"]
+               end
+               subgraph r1["Ash.Test.SignalsGraphTest.Cart"]
+                 a1["check_out<br/>reorder"]
+               end
+               subgraph r2["Ash.Test.SignalsGraphTest.Order"]
+                 a2["import"]
+                 a3["place"]
+                 a4["ship"]
+               end
+               subgraph r3["Ash.Test.SignalsGraphTest.Receipt"]
+                 a5["create"]
+               end
+               subgraph r4["Ash.Test.SignalsGraphTest.Shipment"]
+                 a6["track"]
+               end
+               subgraph m0["Ash.Test.SignalsGraphTest.Signals"]
+                 s0{{"order_placed"}}
+                 s1{{"order_shipped<br/>(after_transaction)"}}
+                 s2{{"points_awarded"}}
+                 s3{{"unused"}}
+               end
+               a1 --> s0
+               a3 --> s0
+               a2 -->|"dynamic"| s0
+               s0 --> a0
+               s0 -.->|"send_receipt via Ash.Test.SignalsGraphTest.JobDelivery"| a5
+               a4 -->|"conditional"| s1
+               s1 --> a6
+               a0 --> s2
+               s2 -->|"notify_customer"| a6
              """
     end
   end

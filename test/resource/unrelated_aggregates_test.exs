@@ -371,6 +371,20 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
       assert jane.total_active_profiles == 3
     end
 
+    test "unrelated aggregates on the same resource keep their own filters when authorized",
+         %{user1: user1} do
+      Ash.create!(Profile, %{name: "John", age: 40, active: false})
+
+      user =
+        User
+        |> Ash.Query.filter(id == ^user1.id)
+        |> Ash.Query.load([:matching_name_profiles_count, :total_active_profiles])
+        |> Ash.read_one!(authorize?: true)
+
+      assert user.matching_name_profiles_count == 3
+      assert user.total_active_profiles == 3
+    end
+
     test "can load first unrelated aggregates", %{user1: user1} do
       user =
         User

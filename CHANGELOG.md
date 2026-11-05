@@ -8,6 +8,228 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.3](https://github.com/ash-project/ash/compare/v3.37.2...v3.37.3) (2026-11-05)
+
+
+
+
+### Improvements:
+
+* speed up runtime filtering and sorting (#3092) by [@etareduction](https://github.com/etareduction) [(#3092)](https://github.com/ash-project/ash/pull/3092)
+
+* render more consolidated signals mermaid by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* give warn_missed! the action in atomic bulk updates (#3111) by Stefan Luptak [(#3111)](https://github.com/ash-project/ash/pull/3111)
+
+* pass forbidden and not loaded values through Ash.Type.load/5 lists by [@zachdaniel](https://github.com/zachdaniel)
+
+* avoid traversing execution context in parent expression checks (#3108) by Jechol Lee [(#3108)](https://github.com/ash-project/ash/pull/3108)
+
+* detect `parent/1` in calculations that a relationship sorts on by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't treat `parent/1` inside `exists` or aggregates as referencing the relationship source by [@zachdaniel](https://github.com/zachdaniel)
+
+* accept scopes in generated can_* code interface helpers (#3106) by [@barnabasJ](https://github.com/barnabasJ) [(#3106)](https://github.com/ash-project/ash/pull/3106)
+
+* validate generic action loads against the returns type (#3101) by [@Torkan](https://github.com/Torkan) [(#3101)](https://github.com/ash-project/ash/pull/3101)
+
+* defer per-record validations in bulk creates (#3098) by jeffhuen [(#3098)](https://github.com/ash-project/ash/pull/3098)
+
+* pass batch_change/3 a list in streamed bulk destroys (#3100) by leonqadirie [(#3100)](https://github.com/ash-project/ash/pull/3100)
+
+* only give a new type the change hooks its subtype has (#3096) by jeroen11dijk [(#3096)](https://github.com/ash-project/ash/pull/3096)
+
+* don't crash update_many when return_records? isn't given (#3094) by jeroen11dijk [(#3094)](https://github.com/ash-project/ash/pull/3094)
+
+* give update_many's after_batch hooks each row's own changeset (#3095) by jeroen11dijk [(#3095)](https://github.com/ash-project/ash/pull/3095)
+
+* drop inactive policy conflict expansion (#3093) by leonqadirie [(#3093)](https://github.com/ash-project/ash/pull/3093)
+
+* load mixed records by their start instance by [@zachdaniel](https://github.com/zachdaniel)
+
+* give query around_transaction hooks their two-argument type (#3088) by [@etareduction](https://github.com/etareduction) [(#3088)](https://github.com/ash-project/ash/pull/3088)
+
+## Unreleased
+
+### Bug Fixes:
+
+* Restore `before_action?` deferral for per-record validations in bulk creates, including their conditions.
+
+## [v3.37.2](https://github.com/ash-project/ash/compare/v3.37.1...v3.37.2) (2026-10-26)
+
+
+
+
+### Bug Fixes:
+
+* don't crash a bulk create when an upsert it runs singly is skipped by [@zachdaniel](https://github.com/zachdaniel)
+
+* [security] scope upserts to the tenant under attribute multitenancy ([CVE-2026-96581](https://cna.erlef.org/cves/CVE-2026-96581.html), [GHSA-vw7c-67pf-gh96](https://github.com/ash-project/ash/security/advisories/GHSA-vw7c-67pf-gh96)) by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.37.1](https://github.com/ash-project/ash/compare/v3.37.0...v3.37.1) (2026-10-25)
+
+
+
+
+### Improvements:
+
+* support maps as tuple inputs by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `Ash.unpaginated_read` by [@zachdaniel](https://github.com/zachdaniel)
+
+* support `strict?: true` on changesets for strict loading by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* wait for an ETS table manager to exit when stopping its table by [@zachdaniel](https://github.com/zachdaniel)
+
+* let a contended Mnesia transaction wait instead of failing (#3084) by Aaron Paterson [(#3084)](https://github.com/ash-project/ash/pull/3084)
+
+* wait for an ETS table's manager to create the table (#3083) by Aaron Paterson [(#3083)](https://github.com/ash-project/ash/pull/3083)
+
+* return the results of a Mnesia aggregate query (#3085) by Aaron Paterson [(#3085)](https://github.com/ash-project/ash/pull/3085)
+
+* load before destroying records in streaming bulk destroys by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't require original data for atomic bulk actions that won't notify by [@zachdaniel](https://github.com/zachdaniel)
+
+* apply an upsert_condition passed to Ash.create by [@zachdaniel](https://github.com/zachdaniel)
+
+* keep an aggregate query's arguments when authorizing its relationship path by [@zachdaniel](https://github.com/zachdaniel)
+
+* try every operator signature before reporting a cast error by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't store :ok as a notification when a managed belongs_to fails in bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
+* return errors from cascade_destroy and after_batch hooks instead of raising by [@zachdaniel](https://github.com/zachdaniel)
+
+* apply the smaller of a relationship's limit and its query's limit by [@zachdaniel](https://github.com/zachdaniel)
+
+* honor requested strategies when bulk update authorization needs initial data by [@zachdaniel](https://github.com/zachdaniel)
+
+* [security] always lateral join through relationships ([CVE-2026-114214](https://cna.erlef.org/cves/CVE-2026-114214.html), [GHSA-g2h4-xp57-q863](https://github.com/ash-project/ash/security/advisories/GHSA-g2h4-xp57-q863)) by [@zachdaniel](https://github.com/zachdaniel)
+
+* do not choose `atomic_batches` strategy incorrectly by [@zachdaniel](https://github.com/zachdaniel)
+
+* honor `skip_unknown_inputs` constraint on embeddable types by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle expression calculations in simulating calculation loading by [@zachdaniel](https://github.com/zachdaniel)
+
+* make the lack of support for `path` option explicit in `Ash.aggregate` by [@zachdaniel](https://github.com/zachdaniel)
+
+* include expr & expr_type in unique name for inline aggregates by [@zachdaniel](https://github.com/zachdaniel)
+
+* always select temporal period as its needed for loading by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that changeset.tenant is set on upgraded changesets by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't raise on a non-bang `get_by` call by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure multiple unrelated aggregate authorizations don't conflate by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure aggregate multitenancy is passed everywhere by [@zachdaniel](https://github.com/zachdaniel)
+
+* apply operator overloads more strictly only on known matches by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that upsert_conflict/1 expression is properly typed by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure stream bulk actions apply changeset filter by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure atomic upgrade uses same transaction semantics as normal update by [@zachdaniel](https://github.com/zachdaniel)
+
+* read each step of a through relationship the way its relationship reads by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle sigils in expressions more gracefully by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.37.0](https://github.com/ash-project/ash/compare/v3.36.1...v3.37.0) (2026-10-22)
+
+
+
+
+### Features:
+
+* allow annotating calculations as `authorize? true` by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* sign keyset pagination cursors (#3038) by Ahatch3 [(#3038)](https://github.com/ash-project/ash/pull/3038)
+
+* document loading the same relationship and its effects (#3034) by Mckay Hinds [(#3034)](https://github.com/ash-project/ash/pull/3034)
+
+### Bug Fixes:
+
+* discard queued notifications when a transaction ends in a throw or exit (#3054) by [@Torkan](https://github.com/Torkan) [(#3054)](https://github.com/ash-project/ash/pull/3054)
+
+* don't produce "not in allowed" error for `nil` enum value in atomics by [@zachdaniel](https://github.com/zachdaniel)
+
+* get relationship paths from custom expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* honor `as_of` range in temporal bulk updates and destroys (#3051) by [@yosalama](https://github.com/yosalama) [(#3051)](https://github.com/ash-project/ash/pull/3051)
+
+* keep each version's values when loading onto temporal records (#3052) by [@yosalama](https://github.com/yosalama) [(#3052)](https://github.com/ash-project/ash/pull/3052)
+
+* ensure that `authorize?` option doesn't conflict on calc dep loads by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure reread uses `as_of` instead of producing stale error (#3048) by [@manuganji](https://github.com/manuganji) [(#3048)](https://github.com/ash-project/ash/pull/3048)
+
+* preserve compiler environment for namespaced interfaces (#3047) by jeffhuen [(#3047)](https://github.com/ash-project/ash/pull/3047)
+
+* don't reuse the stored timestamp for a record for destroying by [@zachdaniel](https://github.com/zachdaniel)
+
+* enable composite types to act as maps in queries and calculations (#3045) by Nöl [(#3045)](https://github.com/ash-project/ash/pull/3045)
+
+* allow present at_least/at_most validations on atomic updates (#3044) by BBopsCode [(#3044)](https://github.com/ash-project/ash/pull/3044)
+
+* don't use read action to find parent() referenced rows in ets by [@zachdaniel](https://github.com/zachdaniel)
+
+* select "selected by default" attributes for bulk destroy by [@zachdaniel](https://github.com/zachdaniel)
+
+* declare boolean return types for contains/2 (#3042) by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* retry failed NewType array item casts as nil for empty strings by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* keep tuple field positions when loading stored values by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* return an error when loading undeclared composite fields by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* leave composite values unchanged when they lack a loaded field by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* reject duplicate and non-list fields in composite type init by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* check tuple size and report every invalid field in tuple constraints by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* collect exception errors from every invalid struct field by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* name the failing field in Map, Keyword and Tuple cast errors by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* format composite constraint errors like cast errors by leonqadirie [(#3042)](https://github.com/ash-project/ash/pull/3042)
+
+* include return_query? tuples and error returns in read, page and apply_to specs (#3041) by Łukasz Samson [(#3041)](https://github.com/ash-project/ash/pull/3041)
+
+* correct specs for page_opts, load, refute_has_error and Policy.solve (#3040) by Łukasz Samson [(#3040)](https://github.com/ash-project/ash/pull/3040)
+
+* various issues with sort + aggregate type determination by [@zachdaniel](https://github.com/zachdaniel)
+
+* preserve related records when loading forbidden relationships (#3039) by MiGoYAm [(#3039)](https://github.com/ash-project/ash/pull/3039)
+
+* move elixir version requirement to 1.17 by [@zachdaniel](https://github.com/zachdaniel)
+
+* drain pending calculations before returning an error (#3035) by Jake Schurch [(#3035)](https://github.com/ash-project/ash/pull/3035)
+
+* validate calculation arguments once and preserve input errors (#3031) by Barnabas Jovanovics [(#3031)](https://github.com/ash-project/ash/pull/3031)
+
+* properly set tenant on all action results by [@zachdaniel](https://github.com/zachdaniel)
+
+* fail atomic changes with their errors instead of crashing (#3033) by [@Torkan](https://github.com/Torkan) [(#3033)](https://github.com/ash-project/ash/pull/3033)
+
+### Performance Improvements:
+
+* further optimize expression caching by [@zachdaniel](https://github.com/zachdaniel)
+
+* policy: specialize fallback expressions for known actions (#3036) by Jake Schurch [(#3036)](https://github.com/ash-project/ash/pull/3036)
+
 ## [v3.36.1](https://github.com/ash-project/ash/compare/v3.36.0...v3.36.1) (2026-10-15)
 
 

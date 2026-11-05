@@ -228,7 +228,9 @@ defmodule Ash.Actions.Update do
                    authorize_query?: false,
                    return_records?: true,
                    atomic_changeset: atomic_changeset,
-                   authorize_changeset_with: authorize_changeset_with
+                   authorize_changeset_with: authorize_changeset_with,
+                   transaction:
+                     Keyword.get(opts, :transaction?, true) && action.transaction? && :batch
                  )
                ) do
             %Ash.BulkResult{status: :success, records: [record], notifications: notifications} ->
@@ -624,6 +626,7 @@ defmodule Ash.Actions.Update do
                               Ash.Filter.get_filter(changeset.resource, changeset.data)
 
                             changeset.resource
+                            |> Ash.Query.set_tenant(changeset.tenant)
                             |> Ash.Query.do_filter(changeset.filter)
                             |> Ash.Query.do_filter(record_filter)
                             |> Ash.Query.as_of(Ash.Temporal.resolve_write_as_of(changeset.as_of))

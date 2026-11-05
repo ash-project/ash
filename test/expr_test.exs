@@ -20,6 +20,7 @@ defmodule Ash.Test.ExprTest do
     attributes do
       uuid_primary_key :id
       attribute :roles, {:array, Role}
+      attribute :on_hand, :integer, constraints: [min: 0]
     end
   end
 
@@ -49,6 +50,28 @@ defmodule Ash.Test.ExprTest do
 
       assert_raise RuntimeError, fn ->
         Code.eval_quoted(injection_ast)
+      end
+    end
+  end
+
+  describe "sigils" do
+    test "are literal values" do
+      assert expr(~D[2024-01-01]) == ~D[2024-01-01]
+      assert expr(~U[2024-01-01 00:00:00Z]) == ~U[2024-01-01 00:00:00Z]
+      assert expr(~w(a b)a) == [:a, :b]
+      assert expr(~SQL"foo") == "foo"
+      assert expr(~i"Foo") == Ash.CiString.new("Foo")
+    end
+
+    test "with interpolation are rejected" do
+      assert_raise ArgumentError, ~r/sigils with interpolation/, fn ->
+        Code.eval_quoted(
+          quote do
+            import Ash.Expr
+
+            expr(~s"#{name}")
+          end
+        )
       end
     end
   end
@@ -158,6 +181,15 @@ defmodule Ash.Test.ExprTest do
 
       assert {:ok, {Ash.Type.Integer, []}} = result
       assert microseconds < 1_000_000
+    end
+
+    test "upsert_conflict/1 has the type of the attribute it refers to" do
+      {:ok, conflict} =
+        expr(upsert_conflict(:on_hand))
+        |> Ash.Filter.hydrate_refs(%{resource: Resource})
+
+      assert {:ok, {Ash.Type.Integer, constraints}} = Ash.Expr.determine_type(conflict)
+      assert constraints[:min] == 0
     end
   end
 

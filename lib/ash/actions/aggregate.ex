@@ -301,34 +301,56 @@ defmodule Ash.Actions.Aggregate do
     |> case do
       {:ok, aggregates} ->
         Enum.reduce_while(aggregates, {:ok, []}, fn aggregate, {:ok, aggregates} ->
-          if Ash.DataLayer.data_layer_can?(aggregate.resource, {:query_aggregate, aggregate.kind}) do
-            aggregate =
-              Ash.Actions.Read.add_calc_context(
-                aggregate,
-                opts[:actor],
-                opts[:authorize?],
-                opts[:tenant],
-                opts[:tracer],
-                query.domain,
-                query.resource,
-                source_context: query.context
-              )
+          cond do
+            aggregate.relationship_path not in [nil, []] ->
+              {:halt, {:error, path_not_supported(query, aggregate)}}
 
-            {:cont, {:ok, [aggregate | aggregates]}}
-          else
-            {:halt,
-             {:error,
-              Ash.Error.Query.AggregatesNotSupported.exception(
-                resource: aggregate.resource,
-                feature: "using",
-                type: :query_aggregate
-              )}}
+            Ash.DataLayer.data_layer_can?(aggregate.resource, {:query_aggregate, aggregate.kind}) ->
+              aggregate =
+                Ash.Actions.Read.add_calc_context(
+                  aggregate,
+                  opts[:actor],
+                  opts[:authorize?],
+                  opts[:tenant],
+                  opts[:tracer],
+                  query.domain,
+                  query.resource,
+                  source_context: query.context
+                )
+
+              {:cont, {:ok, [aggregate | aggregates]}}
+
+            true ->
+              {:halt,
+               {:error,
+                Ash.Error.Query.AggregatesNotSupported.exception(
+                  resource: aggregate.resource,
+                  feature: "using",
+                  type: :query_aggregate
+                )}}
           end
         end)
 
       other ->
         other
     end
+  end
+
+  defp path_not_supported(query, aggregate) do
+    related =
+      case Ash.Resource.Info.related(query.resource, aggregate.relationship_path) do
+        nil -> "the related resource"
+        related -> inspect(related)
+      end
+
+    Ash.Error.Query.InvalidQuery.exception(
+      field: :path,
+      value: aggregate.relationship_path,
+      message:
+        "aggregate #{inspect(aggregate.name)} has a `path`, which is only supported for aggregates loaded on records. " <>
+          "To aggregate related records, run the aggregate against #{related}, " <>
+          "filtered to the records you want."
+    )
   end
 
   defp set_opts(query, specified, others) do

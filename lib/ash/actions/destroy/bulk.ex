@@ -6,6 +6,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   @moduledoc false
   require Ash.Query
   require Ash.Tracer
+  require Logger
 
   @spec run(Ash.Domain.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           Ash.BulkResult.t()
@@ -183,7 +184,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
               |> Keyword.put(:domain, domain)
-              |> Keyword.delete(:load)
+              |> Keyword.drop([:load, :strict?])
 
             query =
               Ash.Query.do_filter(query, opts[:filter])
@@ -238,18 +239,9 @@ defmodule Ash.Actions.Destroy.Bulk do
                 _ ->
                   read_opts = Keyword.take(read_opts, Ash.stream_opt_keys())
 
-                  # We need to figure out a way to capture errors raised by the stream when picking items off somehow
-                  # for now, we only go this route if there are potentially more records in the result set than
-                  # in the batch size, to solve this problem for atomic upgrades.
-                  # we can likely make the stream throw something instead of raising something
-                  # like `{:stream_error, ...}` if a specific option is passed in.
-                  # once we figure this out, we may be able to remove the branch above
                   run(
                     domain,
-                    Ash.stream!(
-                      query,
-                      read_opts
-                    ),
+                    Ash.Actions.Helpers.Bulk.stream_query(domain, query, read_opts),
                     action,
                     input,
                     Keyword.merge(opts,
@@ -283,6 +275,11 @@ defmodule Ash.Actions.Destroy.Bulk do
             end
 
           atomic_changeset ->
+            # `atomic_batches` passes its changeset in for each batch, and warns once itself
+            if !opts[:atomic_changeset] do
+              warn_on_aggregates_loaded_after_destroy(query.resource, action, :atomic, opts)
+            end
+
             {atomic_changeset, opts} =
               Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
 
@@ -460,12 +457,12 @@ defmodule Ash.Actions.Destroy.Bulk do
                   end
               end
               |> handle_atomic_notifications(atomic_changeset.resource, action, notify?, opts)
-            rescue
-              error ->
+            catch
+              kind, reason ->
                 if notify?,
                   do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
 
-                reraise error, __STACKTRACE__
+                :erlang.raise(kind, reason, __STACKTRACE__)
             after
               if notify? do
                 Process.delete(:ash_started_transaction?)
@@ -613,12 +610,12 @@ defmodule Ash.Actions.Destroy.Bulk do
                   opts
                 )
             end
-          rescue
-            error ->
+          catch
+            kind, reason ->
               if notify?,
                 do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
 
-              reraise error, __STACKTRACE__
+              :erlang.raise(kind, reason, __STACKTRACE__)
           after
             if notify? do
               Process.delete(:ash_started_transaction?)
@@ -759,7 +756,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         {:ok, results} ->
           results = List.wrap(results)
 
-          {results, notifications} =
+          {results, after_batch_errors, notifications} =
             if has_after_batch_hooks? do
               Ash.Actions.Update.Bulk.run_atomic_after_batch_hooks(
                 results,
@@ -769,16 +766,21 @@ defmodule Ash.Actions.Destroy.Bulk do
                 context
               )
             else
-              {results, []}
+              {results, [], []}
             end
+
+          if after_batch_errors != [] && opts[:transaction] && opts[:rollback_on_error?] &&
+               Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+            Ash.DataLayer.rollback(atomic_changeset.resource, hd(after_batch_errors))
+          end
 
           {results, errors, notifications} =
             if Enum.empty?(atomic_changeset.after_action) do
-              {results, [], notifications}
+              {results, after_batch_errors, notifications}
             else
               Enum.reduce(
                 results,
-                {[], [], notifications},
+                {[], after_batch_errors, notifications},
                 fn result, {results, errors, notifications} ->
                   case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
                     {:error, error} ->
@@ -893,10 +895,9 @@ defmodule Ash.Actions.Destroy.Bulk do
              )}
 
           _strategy ->
-            # Fallback to stream strategy - returns complete BulkResult
             run(
               atomic_changeset.domain,
-              query,
+              Ash.Query.ensure_selected(query, action_select),
               atomic_changeset.action,
               input,
               Keyword.put(opts, :strategy, [:stream]),
@@ -983,6 +984,19 @@ defmodule Ash.Actions.Destroy.Bulk do
               {:not_atomic, "data layer does not support destroying a query"}
           end
 
+        fully_atomic_changeset =
+          with %Ash.Changeset{valid?: true} = atomic_changeset <- fully_atomic_changeset,
+               {:ok, batch_query} <-
+                 Ash.Actions.Update.Bulk.atomic_batch_query(
+                   resource,
+                   read_action,
+                   atomic_changeset,
+                   :bulk_destroy,
+                   opts
+                 ) do
+            {atomic_changeset, batch_query}
+          end
+
         case fully_atomic_changeset do
           %Ash.Changeset{valid?: false, errors: errors} = changeset ->
             # Run after_transaction hooks for failed changesets
@@ -1004,7 +1018,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 }
             end
 
-          %Ash.Changeset{} = atomic_changeset ->
+          {%Ash.Changeset{} = atomic_changeset, batch_query} ->
             query =
               resource
               |> Ash.Query.new()
@@ -1041,6 +1055,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               _ ->
                 do_atomic_batches(
                   atomic_changeset,
+                  batch_query,
                   domain,
                   stream,
                   action,
@@ -1073,8 +1088,9 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp do_atomic_batches(atomic_changeset, domain, stream, action, input, opts) do
+  defp do_atomic_batches(atomic_changeset, batch_query, domain, stream, action, input, opts) do
     resource = opts[:resource]
+    warn_on_aggregates_loaded_after_destroy(resource, action, :atomic_batches, opts)
 
     batch_size =
       opts[:batch_size] || Ash.DataLayer.default_bulk_batch_size(resource, action) || 100
@@ -1096,16 +1112,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       fn batch ->
         pkeys = Ash.pkey_filter(batch, pkey)
 
-        read_action = Ash.Actions.Update.Bulk.get_read_action(resource, action, opts).name
-
-        resource
-        |> Ash.Query.for_read(read_action, %{},
-          actor: opts[:actor],
-          authorize?: false,
-          context: Map.put(atomic_changeset.context, :query_for, :bulk_destroy),
-          tenant: atomic_changeset.tenant,
-          tracer: opts[:tracer]
-        )
+        batch_query
         |> Ash.Query.set_context(%{private: %{internal?: true}})
         |> Ash.Query.filter(^pkeys)
         |> Ash.Query.select([])
@@ -1126,10 +1133,11 @@ defmodule Ash.Actions.Destroy.Bulk do
             return_errors?: opts[:return_errors?],
             filter: opts[:filter],
             load: opts[:load],
+            strict?: opts[:strict?],
             resource: opts[:resource],
             return_notifications?: opts[:return_notifications?],
             notify?: opts[:notify?],
-            read_action: read_action,
+            read_action: batch_query.action.name,
             return_records?: return_records?,
             allow_stream_with: opts[:allow_stream_with],
             strategy: [:atomic],
@@ -1247,7 +1255,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
           try do
             batch
-            |> Stream.map(
+            |> Enum.map(
               &setup_changeset(
                 &1,
                 action,
@@ -1394,7 +1402,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         end
 
       if load = opts[:load] do
-        Ash.Changeset.load(changeset, load)
+        Ash.Changeset.load(changeset, load, Keyword.take(opts, [:strict?]))
       else
         changeset
       end
@@ -1749,10 +1757,10 @@ defmodule Ash.Actions.Destroy.Bulk do
               end
             end)
         end
-      rescue
-        error ->
+      catch
+        kind, reason ->
           if notify?, do: Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
-          reraise error, __STACKTRACE__
+          :erlang.raise(kind, reason, __STACKTRACE__)
       after
         if notify? do
           notifications = Ash.Actions.Helpers.take_queued_notifications()
@@ -1881,14 +1889,15 @@ defmodule Ash.Actions.Destroy.Bulk do
       |> Ash.Changeset.pin_temporal_write_now()
 
     changeset =
-      handle_params(
-        changeset,
+      changeset
+      |> handle_params(
         Keyword.get(opts, :assume_casted?, false),
         action,
         opts,
         input,
         argument_names
       )
+      |> Ash.Actions.Helpers.Bulk.add_filter(opts)
 
     case opts[:transform_changeset] do
       nil -> changeset
@@ -1909,6 +1918,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp map_batches(stream, resource, opts, ref, callback) do
+    callback = Ash.Actions.Helpers.Bulk.with_read_errors(callback, resource, opts)
     max_concurrency = opts[:max_concurrency]
 
     max_concurrency =
@@ -2089,8 +2099,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             )
           end
 
-          new_notifications =
-            Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
+          Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
 
           {changeset, manage_notifications} =
             if changeset.valid? do
@@ -2102,7 +2111,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                      tenant: opts[:tenant]
                    ) do
                 {:error, error} ->
-                  {Ash.Changeset.add_error(changeset, error), new_notifications}
+                  {Ash.Changeset.add_error(changeset, error), []}
 
                 {changeset, manage_instructions} ->
                   {changeset, manage_instructions.notifications}
@@ -2137,108 +2146,110 @@ defmodule Ash.Actions.Destroy.Bulk do
         |> Enum.group_by(&{&1.atomics, &1.filter})
         |> Enum.flat_map(fn {_atomics, batch} ->
           result =
-            case action.manual do
-              {mod, manual_opts} ->
-                source_context =
-                  case batch do
-                    [cs | _] -> cs.context
-                    [] -> %{}
+            with {:ok, batch} <- load_before_destroy(batch, domain, opts) do
+              case action.manual do
+                {mod, manual_opts} ->
+                  source_context =
+                    case batch do
+                      [cs | _] -> cs.context
+                      [] -> %{}
+                    end
+
+                  if Code.ensure_loaded?(mod) and function_exported?(mod, :bulk_destroy, 3) do
+                    Ash.Resource.ManualDestroy.bulk_destroy(
+                      mod,
+                      batch,
+                      manual_opts,
+                      %Ash.Resource.ManualDestroy.BulkContext{
+                        actor: opts[:actor],
+                        select: opts[:select],
+                        source_context: source_context,
+                        batch_size: opts[:batch_size],
+                        authorize?: opts[:authorize?],
+                        tracer: opts[:tracer],
+                        domain: domain,
+                        return_records?:
+                          opts[:return_records?] || must_return_records? ||
+                            must_return_records_for_changes?,
+                        return_notifications?: opts[:return_notifications?] || false,
+                        return_errors?: opts[:return_errors?] || false,
+                        tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
+                      }
+                    )
+                  else
+                    ctx =
+                      %Ash.Resource.ManualDestroy.Context{
+                        select: opts[:select],
+                        source_context: source_context,
+                        actor: opts[:actor],
+                        tenant: opts[:tenant],
+                        authorize?: opts[:authorize?],
+                        tracer: opts[:tracer],
+                        return_notifications?: opts[:return_notifications?] || false,
+                        return_destroyed?:
+                          opts[:return_records?] || must_return_records? ||
+                            must_return_records_for_changes?,
+                        domain: domain
+                      }
+
+                    [changeset] = batch
+
+                    [
+                      Ash.Resource.ManualDestroy.destroy(mod, changeset, manual_opts, ctx)
+                      |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
+                        changeset,
+                        :bulk_destroy,
+                        &Ash.Actions.Helpers.Bulk.store_notification/3,
+                        ref,
+                        opts
+                      )
+                    ]
                   end
-
-                if Code.ensure_loaded?(mod) and function_exported?(mod, :bulk_destroy, 3) do
-                  Ash.Resource.ManualDestroy.bulk_destroy(
+                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                  |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
                     mod,
+                    :bulk_destroy,
+                    &Ash.Actions.Helpers.Bulk.store_notification/3,
+                    ref,
+                    opts,
                     batch,
-                    manual_opts,
-                    %Ash.Resource.ManualDestroy.BulkContext{
-                      actor: opts[:actor],
-                      select: opts[:select],
-                      source_context: source_context,
-                      batch_size: opts[:batch_size],
-                      authorize?: opts[:authorize?],
-                      tracer: opts[:tracer],
-                      domain: domain,
-                      return_records?:
-                        opts[:return_records?] || must_return_records? ||
-                          must_return_records_for_changes?,
-                      return_notifications?: opts[:return_notifications?] || false,
-                      return_errors?: opts[:return_errors?] || false,
-                      tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
-                    }
+                    changesets_by_ref,
+                    changesets_by_index
                   )
-                else
-                  ctx =
-                    %Ash.Resource.ManualDestroy.Context{
-                      select: opts[:select],
-                      source_context: source_context,
-                      actor: opts[:actor],
-                      tenant: opts[:tenant],
-                      authorize?: opts[:authorize?],
-                      tracer: opts[:tracer],
-                      return_notifications?: opts[:return_notifications?] || false,
-                      return_destroyed?:
-                        opts[:return_records?] || must_return_records? ||
-                          must_return_records_for_changes?,
-                      domain: domain
-                    }
 
+                _ ->
                   [changeset] = batch
 
-                  [
-                    Ash.Resource.ManualDestroy.destroy(mod, changeset, manual_opts, ctx)
-                    |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
-                      changeset,
-                      :bulk_destroy,
-                      &Ash.Actions.Helpers.Bulk.store_notification/3,
-                      ref,
-                      opts
-                    )
-                  ]
-                end
-                |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
-                  mod,
-                  :bulk_destroy,
-                  &Ash.Actions.Helpers.Bulk.store_notification/3,
-                  ref,
-                  opts,
-                  batch,
-                  changesets_by_ref,
-                  changesets_by_index
-                )
+                  result =
+                    resource
+                    |> Ash.DataLayer.destroy(changeset)
+                    |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
 
-              _ ->
-                [changeset] = batch
+                  case result do
+                    :ok ->
+                      {:ok, data} = Ash.Changeset.apply_attributes(changeset, force?: true)
 
-                result =
-                  resource
-                  |> Ash.DataLayer.destroy(changeset)
-                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                      {:ok,
+                       [
+                         data
+                         |> Ash.Resource.set_meta(%Ecto.Schema.Metadata{
+                           state: :deleted,
+                           schema: changeset.resource
+                         })
+                         |> Ash.Resource.put_metadata(
+                           :bulk_destroy_index,
+                           changeset.context.bulk_destroy.index
+                         )
+                         |> Ash.Resource.put_metadata(
+                           :bulk_action_ref,
+                           changeset.context.bulk_destroy.ref
+                         )
+                       ]}
 
-                case result do
-                  :ok ->
-                    {:ok, data} = Ash.Changeset.apply_attributes(changeset, force?: true)
-
-                    {:ok,
-                     [
-                       data
-                       |> Ash.Resource.set_meta(%Ecto.Schema.Metadata{
-                         state: :deleted,
-                         schema: changeset.resource
-                       })
-                       |> Ash.Resource.put_metadata(
-                         :bulk_destroy_index,
-                         changeset.context.bulk_destroy.index
-                       )
-                       |> Ash.Resource.put_metadata(
-                         :bulk_action_ref,
-                         changeset.context.bulk_destroy.ref
-                       )
-                     ]}
-
-                  {:error, error} ->
-                    {:error, error}
-                end
+                    {:error, error} ->
+                      {:error, error}
+                  end
+              end
             end
 
           case result do
@@ -2289,6 +2300,69 @@ defmodule Ash.Actions.Destroy.Bulk do
             batch |> Enum.map(&{:error, error, &1})
         end)
         |> Enum.concat(invalid_changeset_errors)
+    end
+  end
+
+  # Load before destroying, as `Ash.destroy` does, while the records still exist in the data layer
+  defp load_before_destroy([changeset | _] = batch, domain, opts) do
+    case Ash.Actions.Helpers.load(
+           {:ok, Enum.map(batch, & &1.data), %{}},
+           changeset,
+           domain,
+           actor: opts[:actor],
+           reuse_values?: true,
+           tenant: opts[:tenant],
+           action:
+             Ash.Resource.Info.primary_action(changeset.resource, :read) || changeset.action,
+           authorize?: opts[:authorize?],
+           tracer: opts[:tracer]
+         ) do
+      {:ok, records, _} ->
+        {:ok, Enum.zip_with(batch, records, &%{&1 | data: &2})}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  # The atomic strategies can only load once the records are destroyed, so aggregates can't be
+  # computed for them anymore
+  defp warn_on_aggregates_loaded_after_destroy(resource, action, strategy, opts) do
+    load =
+      cond do
+        Ash.Actions.Helpers.Bulk.need_notifications?(opts) ->
+          case Ash.Notifier.notifier_calculation_query(resource, action) do
+            nil ->
+              List.wrap(opts[:load])
+
+            query ->
+              query.calculations
+              |> Map.values()
+              |> Enum.flat_map(&List.wrap(&1.opts[:statement]))
+              |> Enum.concat(List.wrap(opts[:load]))
+          end
+
+        opts[:return_records?] ->
+          List.wrap(opts[:load])
+
+        true ->
+          []
+      end
+
+    aggregates =
+      resource
+      |> Ash.Query.load(load)
+      |> Map.get(:aggregates)
+      |> Map.keys()
+
+    if aggregates != [] do
+      Logger.warning("""
+      #{inspect(resource)}.#{action.name} is being bulk destroyed with the #{inspect(strategy)} strategy, \
+      which loads #{inspect(aggregates)} after the records are destroyed, so they won't be loaded. \
+      Calculations that depend on aggregates or related data will be `nil` for the same reason.
+
+      Use `strategy: :stream` to load them before the records are destroyed.
+      """)
     end
   end
 
@@ -2636,10 +2710,12 @@ defmodule Ash.Actions.Destroy.Bulk do
             )
           )
 
+        # `lazy?` keeps what was loaded before the records were destroyed
         Ash.load(
           records,
           load_query,
           reuse_values?: true,
+          lazy?: true,
           tenant: opts[:tenant],
           action: Ash.Resource.Info.primary_action(changeset.resource, :read) || changeset.action,
           domain: domain,

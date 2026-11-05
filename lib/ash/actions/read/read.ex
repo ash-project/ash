@@ -291,10 +291,12 @@ defmodule Ash.Actions.Read do
     relationship? = Map.has_key?(query.context, :accessing_from)
 
     page_opts =
-      if Keyword.has_key?(opts, :page) do
-        page_opts(action, opts[:page], relationship?)
-      else
-        page_opts(action, query.page, relationship?)
+      cond do
+        # with no page, an unpaginated read doesn't pick up the action's default limit or
+        # run a count for it
+        opts[:skip_pagination?] -> nil
+        Keyword.has_key?(opts, :page) -> page_opts(action, opts[:page], relationship?)
+        true -> page_opts(action, query.page, relationship?)
       end
       |> clamp_page_limit(action, query)
 
@@ -1618,10 +1620,10 @@ defmodule Ash.Actions.Read do
         true ->
           func.(&notify_or_store(&1, &2, notify?))
       end
-    rescue
-      error ->
+    catch
+      kind, reason ->
         if notify?, do: Helpers.restore_queued_notifications(queued_notifications)
-        reraise error, __STACKTRACE__
+        :erlang.raise(kind, reason, __STACKTRACE__)
     after
       if notify? do
         Process.delete(:ash_started_transaction?)
@@ -2098,6 +2100,11 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  # Records the reselect didn't return (unpersisted, deleted, filtered out) have no row to run
+  # data layer calculations against, so their expressions are evaluated in memory instead, and
+  # anything that can't be evaluated in memory (fragments, aggregates, related refs) is `nil`.
+  # 4.0: find a better way to handle this, like leaving these calculations not loaded or
+  # erroring, instead of guessing from whatever the record happens to carry.
   defp compute_expression_at_runtime_for_missing_records(data, query, data_layer_calculations) do
     if Enum.any?(data, & &1.__metadata__[:private][:missing_from_data_layer]) do
       {require_calculating, rest} =
@@ -2108,8 +2115,13 @@ defmodule Ash.Actions.Read do
         end)
         |> Enum.split_with(& &1.__metadata__[:private][:missing_from_data_layer])
 
+      calculations =
+        Enum.map(data_layer_calculations, fn {calc, expression} ->
+          %{calc | module: Ash.Resource.Calculation.Expression, opts: [expr: expression]}
+        end)
+
       require_calculating
-      |> recalculate(query, Enum.map(data_layer_calculations, &elem(&1, 0)))
+      |> recalculate(query, calculations)
       |> case do
         {:ok, result} ->
           {:ok,
@@ -3284,14 +3296,11 @@ defmodule Ash.Actions.Read do
         end)
       else
         if Ash.Resource.Info.primary_key_simple_equality?(original_query.resource) do
-          key_fields =
-            case Ash.Resource.Info.temporal_attribute(original_query.resource) do
-              nil -> pkey
-              period -> pkey ++ [period]
-            end
-
+          # Not keyed on a temporal resource's period: the read is at one instant, so it returns
+          # one version of each record, and the version a record was read as may since have
+          # been split by a later write. `Ash.load/3` reads records held at other instants apart.
           key_fun =
-            case key_fields do
+            case pkey do
               [field] -> &{Map.get(&1, field), &1}
               fields -> &{Map.take(&1, fields), &1}
             end
@@ -4733,6 +4742,7 @@ defmodule Ash.Actions.Read do
                  uniq?: resource_aggregate.uniq?,
                  read_action: read_action,
                  authorize?: resource_aggregate.authorize?,
+                 multitenancy: resource_aggregate.multitenancy,
                  join_filters:
                    Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
                ] ++ aggregate_opts
@@ -5196,6 +5206,7 @@ defmodule Ash.Actions.Read do
           uniq?: resource_aggregate.uniq?,
           read_action: read_action,
           authorize?: resource_aggregate.authorize?,
+          multitenancy: resource_aggregate.multitenancy,
           join_filters:
             Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
         ] ++ aggregate_opts

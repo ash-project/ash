@@ -87,6 +87,7 @@ defmodule Ash.Signals.Registry do
     |> Enum.sort()
   end
 
+  # sobelow_skip ["DOS.ModuleConcat"]
   defp strip_namespace(module, namespace) do
     module
     |> Module.split()
@@ -95,11 +96,14 @@ defmodule Ash.Signals.Registry do
   end
 
   @doc false
+  # sobelow_skip ["DOS.ModuleConcat"]
   def index_module(signal_module), do: Module.concat(Ash.Signals.Index, signal_module)
 
   @doc false
+  # sobelow_skip ["DOS.ModuleConcat"]
   def dispatch_module(signal_module), do: Module.concat(Ash.Signals.Dispatch, signal_module)
 
   @doc false
+  # sobelow_skip ["DOS.ModuleConcat"]
   def listener_module(resource), do: Module.concat(Ash.Signals.Listeners, resource)
 end

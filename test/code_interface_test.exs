@@ -1026,6 +1026,79 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
   end
 
+  defmodule ScopedResource do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer],
+      primary_read_warning?: false
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    code_interface do
+      define :create
+      define :read
+      define :update
+      define :destroy
+      define :hello
+      define :update_by_id, action: :atomic_update, get_by: :id
+    end
+
+    policies do
+      policy always() do
+        access_type :strict
+        authorize_if actor_attribute_equals(:allowed?, true)
+      end
+    end
+
+    actions do
+      create :create do
+        primary? true
+        change &Ash.Test.CodeInterfaceTest.ScopedResource.record_context/2
+      end
+
+      read :read do
+        primary? true
+        prepare &Ash.Test.CodeInterfaceTest.ScopedResource.record_context/2
+      end
+
+      update :update do
+        require_atomic? false
+        change &Ash.Test.CodeInterfaceTest.ScopedResource.record_context/2
+      end
+
+      update :atomic_update do
+        change set_attribute(:name, actor(:name))
+      end
+
+      destroy :destroy do
+        require_atomic? false
+        change &Ash.Test.CodeInterfaceTest.ScopedResource.record_context/2
+      end
+
+      action :hello, :string do
+        prepare &Ash.Test.CodeInterfaceTest.ScopedResource.record_context/2
+        run fn _, _ -> {:ok, "hello"} end
+      end
+    end
+
+    def record_context(subject, context) do
+      send(
+        self(),
+        {:prepared, subject.action.name, context.actor, subject.tenant, subject.context}
+      )
+
+      subject
+    end
+  end
+
   defmodule ContextScope do
     defstruct [:current_user, :org_id, :product_id]
 
@@ -1130,6 +1203,103 @@ defmodule Ash.Test.CodeInterfaceTest do
     assert "Hello, Jimmy Bimmy." = User.hello_actor!(scope: scope, actor: %{name: "Jimmy Bimmy"})
 
     assert "Hello, William Shatner." = User.hello_actor_with_default!()
+  end
+
+  describe "authorization helpers with scopes" do
+    for action <- [:create, :read, :update, :destroy, :hello], helper <- [:can, :can?] do
+      suffix = if helper == :can?, do: "?", else: ""
+      function = String.to_atom("can_#{action}#{suffix}")
+      expected = if helper == :can?, do: true, else: {:ok, true}
+      denied = if helper == :can?, do: false, else: {:ok, false}
+
+      test "#{helper} #{action} resolves scopes before preparing the subject" do
+        action = unquote(action)
+        actor = %{allowed?: true}
+        scope = %Scope{actor: actor, tenant: "tenant", context: %{shared: %{locale: "en"}}}
+        record = %ScopedResource{id: Ash.UUID.generate()}
+        args = if action in [:update, :destroy], do: [record], else: []
+        function = unquote(function)
+        expected = unquote(Macro.escape(expected))
+
+        assert apply(ScopedResource, function, [scope | args]) == expected
+
+        assert_received {:prepared, ^action, ^actor, "tenant", %{shared: %{locale: "en"}}}
+
+        assert apply(ScopedResource, function, [scope | args] ++ [[tenant: "override"]]) ==
+                 expected
+
+        assert_received {:prepared, ^action, ^actor, "override", %{shared: %{locale: "en"}}}
+
+        assert apply(
+                 ScopedResource,
+                 function,
+                 [scope | args] ++ [[context: %{shared: %{locale: "de"}}]]
+               ) ==
+                 expected
+
+        assert_received {:prepared, ^action, ^actor, "tenant", %{shared: %{locale: "de"}}}
+
+        denied_scope = %{scope | actor: %{allowed?: false}}
+
+        assert apply(ScopedResource, function, [denied_scope | args]) ==
+                 unquote(Macro.escape(denied))
+      end
+    end
+
+    test "an explicit actor and scope option still prepare the subject with that actor" do
+      actor = %{allowed?: true}
+
+      scope = %Scope{
+        actor: %{allowed?: false},
+        tenant: "tenant",
+        context: %{shared: %{locale: "en"}}
+      }
+
+      assert ScopedResource.can_create?(actor, scope: scope)
+      assert_received {:prepared, :create, ^actor, "tenant", %{shared: %{locale: "en"}}}
+    end
+
+    test "nil actors still override actors from scope options" do
+      scope = %Scope{
+        actor: %{allowed?: true},
+        tenant: "tenant",
+        context: %{shared: %{locale: "en"}}
+      }
+
+      refute ScopedResource.can_create?(nil, scope: scope)
+      assert_received {:prepared, :create, nil, "tenant", %{shared: %{locale: "en"}}}
+    end
+
+    test "a positional scope takes precedence over a scope option" do
+      actor = %{allowed?: true}
+      scope = %Scope{actor: actor, tenant: "tenant", context: %{shared: %{locale: "en"}}}
+      other_scope = %Scope{actor: %{allowed?: false}, tenant: "other"}
+
+      assert ScopedResource.can_create?(scope, scope: other_scope)
+      assert_received {:prepared, :create, ^actor, "tenant", %{shared: %{locale: "en"}}}
+    end
+
+    test "atomic helpers resolve scopes for queries and changesets" do
+      scope = %Scope{
+        actor: %{allowed?: true, name: "new name"},
+        tenant: "tenant",
+        context: %{shared: %{locale: "en"}}
+      }
+
+      id = Ash.UUID.generate()
+
+      assert ScopedResource.can_update_by_id?(scope, id)
+      assert_received {:prepared, :read, actor, "tenant", %{shared: %{locale: "en"}}}
+      assert actor == scope.actor
+
+      assert {:ok, true} = ScopedResource.can_update_by_id(scope, id)
+
+      denied_scope = %{scope | actor: %{allowed?: false, name: "new name"}}
+      refute ScopedResource.can_update_by_id?(denied_scope, id)
+
+      assert {:error, %Ash.Error.Forbidden.Policy{}} =
+               ScopedResource.can_update_by_id(denied_scope, id)
+    end
   end
 
   test "private arguments can be passed through code interface for create" do

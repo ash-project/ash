@@ -94,6 +94,7 @@ defmodule Ash.DataLayer.Ets do
       end
     end
 
+    # sobelow_skip ["DOS.ModuleConcat"]
     defp start_table(resource, table, true) do
       if Ash.DataLayer.Ets.Info.private?(resource) do
         do_wrap_existing(resource, table)
@@ -101,7 +102,8 @@ defmodule Ash.DataLayer.Ets do
         case GenServer.start(__MODULE__, {resource, table},
                name: Module.concat(table, TableManager)
              ) do
-          {:error, {:already_started, _pid}} ->
+          {:error, {:already_started, pid}} ->
+            await_init(pid)
             ETS.Set.wrap_existing(table)
 
           {:error, error} ->
@@ -111,6 +113,15 @@ defmodule Ash.DataLayer.Ets do
             ETS.Set.wrap_existing(table)
         end
       end
+    end
+
+    # A manager's name is registered before its init/1 creates the table, and a call is
+    # only answered once init/1 has returned. A manager that died answers nothing; the
+    # table lookup that follows then reports the table as missing.
+    defp await_init(pid) do
+      GenServer.call(pid, :wait)
+    catch
+      :exit, _ -> :ok
     end
 
     def init({resource, table}) do
@@ -158,7 +169,7 @@ defmodule Ash.DataLayer.Ets do
   # collected, so we only intern a new table name when we are actually going to create
   # the table. Otherwise we look the atom up, and treat a name that was never interned
   # the same as a table that doesn't exist.
-  # sobelow_skip ["DOS.StringToAtom"]
+  # sobelow_skip ["DOS.StringToAtom", "DOS.ModuleConcat"]
   def table_name(resource, tenant, create?) do
     table = Ash.DataLayer.Ets.Info.table(resource)
 
@@ -178,6 +189,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
+  # sobelow_skip ["DOS.ModuleConcat"]
   def stop(resource, tenant \\ nil) do
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
@@ -203,7 +215,13 @@ defmodule Ash.DataLayer.Ets do
               :ok
 
             pid ->
+              # Wait for the manager to exit, so its table is gone by the time this returns
+              ref = Process.monitor(pid)
               Process.exit(pid, :shutdown)
+
+              receive do
+                {:DOWN, ^ref, :process, _, _} -> :ok
+              end
           end
       end
     end
@@ -493,7 +511,11 @@ defmodule Ash.DataLayer.Ets do
              parent
            ),
          records <-
-           distinct_and_sort(records, sort, distinct, distinct_sort, maybe_not_distinct?, domain),
+           distinct_and_sort(records, sort, distinct, distinct_sort,
+             maybe_not_distinct?: maybe_not_distinct?,
+             domain: domain,
+             tenant: context[:private][:tenant]
+           ),
          records <- Enum.drop(records, offset || []),
          records <- do_limit(records, limit),
          {:ok, records} <-
@@ -515,42 +537,21 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp distinct_and_sort(records, sort, distinct, distinct_sort, maybe_not_distinct?, domain) do
+  defp distinct_and_sort(records, sort, distinct, distinct_sort, opts) do
+    opts = Keyword.put(opts, :rekey?, false)
+
     if distinct in [nil, []] do
-      Sort.runtime_sort(records, sort,
-        domain: domain,
-        maybe_not_distinct?: maybe_not_distinct?,
-        rekey?: false
-      )
+      Sort.runtime_sort(records, sort, opts)
     else
       if distinct_sort in [nil, []] do
-        Sort.runtime_sort(records, sort,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
-        |> Sort.runtime_distinct(distinct,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
+        records
+        |> Sort.runtime_sort(sort, opts)
+        |> Sort.runtime_distinct(distinct, opts)
       else
         records
-        |> Sort.runtime_sort(distinct_sort,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
-        |> Sort.runtime_distinct(distinct,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
-        |> Sort.runtime_sort(sort,
-          domain: domain,
-          maybe_not_distinct?: maybe_not_distinct?,
-          rekey?: false
-        )
+        |> Sort.runtime_sort(distinct_sort, opts)
+        |> Sort.runtime_distinct(distinct, opts)
+        |> Sort.runtime_sort(sort, opts)
       end
     end
   end
@@ -657,7 +658,8 @@ defmodule Ash.DataLayer.Ets do
   end
 
   def run_query_with_lateral_join(query, root_data, _destination_resource, [
-        {source_query, source_attribute, source_attribute_on_join_resource, relationship},
+        {source_query, source_attribute, source_attribute_on_join_resource,
+         %{type: :many_to_many} = relationship},
         {through_query, destination_attribute_on_join_resource, destination_attribute,
          _through_relationship}
       ]) do
@@ -676,6 +678,7 @@ defmodule Ash.DataLayer.Ets do
         root_data
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           through_query
+          |> resolve_parent(parent)
           |> Ash.Query.filter(
             ^ref(source_attribute_on_join_resource) ==
               ^Map.get(parent, source_attribute)
@@ -736,6 +739,140 @@ defmodule Ash.DataLayer.Ets do
           end
         end)
     end
+  end
+
+  # A through path: each step after the first is read once per record it is reached from, so
+  # that `parent/1` in its query refers to that record.
+  def run_query_with_lateral_join(query, root_data, _destination_resource, [
+        {source_query, source_attribute, destination_attribute, relationship} | [_ | _] = rest
+      ]) do
+    primary_key = Ash.Resource.Info.primary_key(source_query.resource)
+
+    source_query
+    |> lateral_join_source(root_data, source_attribute, query.domain)
+    |> case do
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, root_data} ->
+        Enum.reduce_while(root_data, {:ok, []}, fn parent, {:ok, results} ->
+          rest
+          |> follow_through_path(
+            [parent],
+            source_attribute,
+            destination_attribute,
+            query.domain
+          )
+          |> case do
+            {:ok, records, source_attribute, destination_attribute} ->
+              values =
+                records
+                |> Enum.map(&Map.get(&1, source_attribute))
+                |> Enum.reject(&is_nil/1)
+                |> Enum.uniq()
+
+              new_filter =
+                if is_nil(query.filter) do
+                  Ash.Filter.parse!(query.resource, [{destination_attribute, [in: values]}])
+                else
+                  Ash.Filter.add_to_filter!(query.filter, [{destination_attribute, [in: values]}])
+                end
+
+              case run_query(%{query | filter: new_filter}, relationship.source, parent) do
+                {:ok, new_results} ->
+                  new_results =
+                    Enum.map(
+                      new_results,
+                      &Map.put(&1, :__lateral_join_source__, Map.take(parent, primary_key))
+                    )
+
+                  {:cont, {:ok, new_results ++ results}}
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+    end
+  end
+
+  defp follow_through_path([], records, source_attribute, destination_attribute, _domain) do
+    {:ok, records, source_attribute, destination_attribute}
+  end
+
+  defp follow_through_path(
+         [{through_query, next_source_attribute, next_destination_attribute, _} | rest],
+         records,
+         source_attribute,
+         destination_attribute,
+         domain
+       ) do
+    records
+    |> Enum.reduce_while({:ok, []}, fn record, {:ok, acc} ->
+      through_query
+      |> resolve_parent(record)
+      |> Ash.Query.filter(^ref(destination_attribute) == ^Map.get(record, source_attribute))
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+      |> Ash.Query.set_domain(domain)
+      |> Ash.read(authorize?: false)
+      |> case do
+        {:ok, through_data} -> {:cont, {:ok, through_data ++ acc}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, through_data} ->
+        primary_key = Ash.Resource.Info.primary_key(through_query.resource)
+
+        follow_through_path(
+          rest,
+          Enum.uniq_by(through_data, &Map.take(&1, primary_key)),
+          next_source_attribute,
+          next_destination_attribute,
+          domain
+        )
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  # Replaces `parent/1` expressions in the query's filter with their values for `parent`.
+  defp resolve_parent(%{filter: nil} = query, _parent), do: query
+
+  defp resolve_parent(query, parent) do
+    filter =
+      Ash.Filter.map(query.filter, fn
+        %Ash.Query.Parent{expr: expr} ->
+          case Ash.Expr.eval(expr,
+                 record: parent,
+                 resource: parent.__struct__,
+                 unknown_on_unknown_refs?: true
+               ) do
+            {:ok, value} ->
+              value
+
+            {:error, error} ->
+              throw({:resolve_parent_error, error})
+
+            :unknown ->
+              throw(
+                {:resolve_parent_error,
+                 "could not resolve a `parent/1` expression in a through relationship step"}
+              )
+          end
+
+        other ->
+          other
+      end)
+
+    %{query | filter: filter}
+  catch
+    {:resolve_parent_error, error} ->
+      Ash.Query.add_error(query, error)
   end
 
   def do_add_calculations(records, _resource, [], _domain), do: {:ok, records}
@@ -869,7 +1006,11 @@ defmodule Ash.DataLayer.Ets do
                        context[:actor]
                      ),
                    sorted <-
-                     Sort.runtime_sort(filtered, query.sort, domain: domain, rekey?: false) do
+                     Sort.runtime_sort(filtered, query.sort,
+                       domain: domain,
+                       tenant: context[:tenant],
+                       rekey?: false
+                     ) do
                 field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
                 value =
@@ -1581,7 +1722,7 @@ defmodule Ash.DataLayer.Ets do
             |> set_upsert_action(:update)
           else
             {:ok, []} ->
-              {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+              skipped_upsert(resource, changeset, result)
 
             {:error, reason} ->
               {:error, reason}
@@ -1590,6 +1731,29 @@ defmodule Ash.DataLayer.Ets do
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
       end
+    end
+  end
+
+  @doc false
+  # The record an upsert skipped is only returned from the changeset's tenant: an upsert on the
+  # primary key or an `all_tenants?` identity can conflict with a record in another tenant
+  def skipped_upsert(resource, changeset, result) do
+    tenant_filter =
+      case Ash.Actions.Helpers.upsert_tenant_filter(changeset) do
+        nil -> nil
+        tenant_filter -> Ash.Filter.parse!(resource, tenant_filter)
+      end
+
+    case filter_matches([result], tenant_filter, changeset.domain, changeset.tenant, nil) do
+      {:ok, [result]} ->
+        {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+
+      {:ok, []} ->
+        {:error,
+         Ash.Error.Changes.StaleRecord.exception(resource: resource, filter: changeset.filter)}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

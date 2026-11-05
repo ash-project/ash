@@ -409,6 +409,97 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
   end
 
+  defmodule BookStruct do
+    @moduledoc false
+    use Ash.Type.NewType,
+      subtype_of: :struct,
+      constraints: [instance_of: Ash.Test.Actions.GenericActionsTest.Book]
+  end
+
+  defmodule Library do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+
+      action :get_book, :struct do
+        constraints instance_of: Ash.Test.Actions.GenericActionsTest.Book
+
+        run fn _input, _ ->
+          {:ok, Ash.read_first!(Ash.Test.Actions.GenericActionsTest.Book)}
+        end
+      end
+
+      action :list_books, {:array, :struct} do
+        constraints items: [instance_of: Ash.Test.Actions.GenericActionsTest.Book]
+
+        run fn _input, _ ->
+          {:ok, Ash.read!(Ash.Test.Actions.GenericActionsTest.Book)}
+        end
+      end
+
+      action :get_book_struct, BookStruct do
+        run fn _input, _ ->
+          {:ok, Ash.read_first!(Ash.Test.Actions.GenericActionsTest.Book)}
+        end
+      end
+
+      action :list_book_structs, {:array, BookStruct} do
+        run fn _input, _ ->
+          {:ok, Ash.read!(Ash.Test.Actions.GenericActionsTest.Book)}
+        end
+      end
+
+      action :get_book_title, :string do
+        run fn _input, _ ->
+          {:ok, Ash.read_first!(Ash.Test.Actions.GenericActionsTest.Book).title}
+        end
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+  end
+
+  defmodule Book do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true
+    end
+
+    calculations do
+      calculate :shouted_title, :string, expr(title <> "!"), public?: true
+    end
+
+    relationships do
+      belongs_to :library, Library, public?: true
+    end
+  end
+
   describe "generic actions can be called" do
     test "generic actions can be run" do
       assert "Hello fred" =
@@ -1380,6 +1471,100 @@ defmodule Ash.Test.Actions.GenericActionsTest do
                Post
                |> Ash.ActionInput.for_action(:return_nil_post_not_allowed, %{})
                |> Ash.run_action()
+    end
+  end
+
+  describe "load option on generic actions returning another resource" do
+    setup do
+      library = Ash.create!(Library, %{name: "Central"})
+      Ash.create!(Book, %{title: "dune", library_id: library.id})
+      :ok
+    end
+
+    test "for_action loads the returned resource's fields for a struct return" do
+      book =
+        Library
+        |> Ash.ActionInput.for_action(:get_book, %{}, load: [:shouted_title, :library])
+        |> Ash.run_action!()
+
+      assert book.shouted_title == "dune!"
+      assert book.library.name == "Central"
+    end
+
+    test "run_action loads the returned resource's fields for a struct return" do
+      book =
+        Library
+        |> Ash.ActionInput.for_action(:get_book, %{})
+        |> Ash.run_action!(load: [:shouted_title, :library])
+
+      assert book.shouted_title == "dune!"
+      assert book.library.name == "Central"
+    end
+
+    test "for_action loads the returned resource's fields for an array return" do
+      assert [book] =
+               Library
+               |> Ash.ActionInput.for_action(:list_books, %{}, load: [:shouted_title, :library])
+               |> Ash.run_action!()
+
+      assert book.shouted_title == "dune!"
+      assert book.library.name == "Central"
+    end
+
+    test "run_action loads the returned resource's fields for an array return" do
+      assert [book] =
+               Library
+               |> Ash.ActionInput.for_action(:list_books, %{})
+               |> Ash.run_action!(load: [:shouted_title, :library])
+
+      assert book.shouted_title == "dune!"
+      assert book.library.name == "Central"
+    end
+
+    test "loads the returned resource's fields for a NewType struct return" do
+      book =
+        Library
+        |> Ash.ActionInput.for_action(:get_book_struct, %{}, load: [:shouted_title, :library])
+        |> Ash.run_action!()
+
+      assert book.shouted_title == "dune!"
+      assert book.library.name == "Central"
+    end
+
+    test "loads the returned resource's fields for an array of NewType structs return" do
+      assert [book] =
+               Library
+               |> Ash.ActionInput.for_action(:list_book_structs, %{})
+               |> Ash.run_action!(load: [:shouted_title, :library])
+
+      assert book.shouted_title == "dune!"
+      assert book.library.name == "Central"
+    end
+
+    test "for_action rejects a load that is invalid for the returned resource" do
+      input = Ash.ActionInput.for_action(Library, :get_book, %{}, load: [:unreal])
+
+      assert [%Ash.Error.Query.InvalidLoad{load: :unreal}] = input.errors
+    end
+
+    test "run_action rejects a load that is invalid for the returned resource" do
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidLoad{load: :unreal}]}} =
+               Library
+               |> Ash.ActionInput.for_action(:list_books, %{})
+               |> Ash.run_action(load: [:unreal])
+    end
+
+    test "loads on a non-loadable return type are still validated against the action's resource" do
+      assert "dune" =
+               Library
+               |> Ash.ActionInput.for_action(:get_book_title, %{}, load: [:name])
+               |> Ash.run_action!()
+
+      assert {:error,
+              %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidLoad{load: :shouted_title}]}} =
+               Library
+               |> Ash.ActionInput.for_action(:get_book_title, %{})
+               |> Ash.run_action(load: [:shouted_title])
     end
   end
 
