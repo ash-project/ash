@@ -183,7 +183,7 @@ defmodule Ash.Actions.ManagedRelationships do
                       opts
                     )
 
-                  {_key, _create_or_update, read} ->
+                  {_key, _create_or_update, read, lookup_filter} ->
                     if is_struct(input, relationship.destination) do
                       changeset =
                         changeset
@@ -226,14 +226,30 @@ defmodule Ash.Actions.ManagedRelationships do
                           # mirrors the `has_many`/`many_to_many` lookup path below.
                           case Ash.Filter.get_filter(relationship.destination, keys) do
                             {:ok, keys} ->
-                              relationship.destination
-                              |> Ash.Query.for_read(read, %{},
-                                actor: actor,
-                                context: Map.take(changeset.context, [:shared]),
-                                authorize?: opts[:authorize?],
-                                domain: domain(changeset, relationship),
-                                tenant: changeset.tenant
-                              )
+                              query =
+                                if is_struct(read, Ash.Query) do
+                                  read
+                                else
+                                  Ash.Query.for_read(
+                                    relationship.destination,
+                                    read,
+                                    %{},
+                                    actor: actor,
+                                    context: Map.take(changeset.context, [:shared]),
+                                    authorize?: opts[:authorize?],
+                                    domain: domain(changeset, relationship),
+                                    tenant: changeset.tenant
+                                  )
+                                end
+
+                              query =
+                                if is_nil(lookup_filter) do
+                                  query
+                                else
+                                  Ash.Query.filter(query, ^lookup_filter)
+                                end
+
+                              query
                               |> Ash.Query.filter(^keys)
                               |> sort_and_filter(relationship)
                               |> Ash.Query.set_context(relationship.context)
@@ -1882,10 +1898,13 @@ defmodule Ash.Actions.ManagedRelationships do
                index
              ) do
           :error ->
-            {key, create_or_update, read, join_keys} =
+            {key, create_or_update, read, join_keys, lookup_filter} =
               case other do
-                {key, create_or_update, read} -> {key, create_or_update, read, []}
-                {key, create_or_update, read, keys} -> {key, create_or_update, read, keys}
+                {key, create_or_update, read, lookup_filter} ->
+                  {key, create_or_update, read, [], lookup_filter}
+
+                {key, create_or_update, read, join_keys, lookup_filter} ->
+                  {key, create_or_update, read, join_keys, lookup_filter}
               end
 
             case Ash.Filter.get_filter(relationship.destination, input) do
@@ -1893,14 +1912,30 @@ defmodule Ash.Actions.ManagedRelationships do
                 if is_struct(input, relationship.destination) do
                   {:ok, input}
                 else
-                  relationship.destination
-                  |> Ash.Query.for_read(read, %{},
-                    actor: actor,
-                    context: Map.take(changeset.context, [:shared]),
-                    authorize?: opts[:authorize?],
-                    domain: domain(changeset, relationship),
-                    tenant: changeset.tenant
-                  )
+                  query =
+                    if is_struct(read, Ash.Query) do
+                      read
+                    else
+                      Ash.Query.for_read(
+                        relationship.destination,
+                        read,
+                        %{},
+                        actor: actor,
+                        context: Map.take(changeset.context, [:shared]),
+                        authorize?: opts[:authorize?],
+                        domain: domain(changeset, relationship),
+                        tenant: changeset.tenant
+                      )
+                    end
+
+                  query =
+                    if is_nil(lookup_filter) do
+                      query
+                    else
+                      Ash.Query.filter(query, ^lookup_filter)
+                    end
+
+                  query
                   |> Ash.Query.filter(^keys)
                   |> sort_and_filter(relationship)
                   |> Ash.Query.set_context(relationship.context)
@@ -1964,7 +1999,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
           {:ok, found} ->
             case {relationship.type, other} do
-              {:belongs_to, {:relate_and_update, action, _}} ->
+              {:belongs_to, {:relate_and_update, action, _read, _lookup_filter}} ->
                 domain = domain(changeset, relationship)
 
                 action_name =
