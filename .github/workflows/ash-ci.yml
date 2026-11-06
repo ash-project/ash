@@ -149,6 +149,9 @@ jobs:
   auditor:
     name: audit
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Update Elixir version in .tool-versions
@@ -175,7 +178,7 @@ jobs:
           else
             echo "erlang ${{ inputs.erlang-version }}" > .tool-versions
           fi
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -187,9 +190,9 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-hex-audit@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-hex-audit@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.hex-audit }}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.deps-audit }}
         with:
           task: deps.audit
@@ -350,7 +353,7 @@ jobs:
           else
             echo "erlang ${{ inputs.erlang-version }}" > .tool-versions
           fi
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
         run: |
@@ -363,7 +366,7 @@ jobs:
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - name: Set OS deps compile partition count
         run: echo "MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(($(lscpu -p | grep -v '^#' | sort -u -t, -k 2,4 | wc -l) / 2))" >> $GITHUB_ENV
-      - uses: team-alembic/staple-actions/actions/mix-compile@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-compile@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           args: "--warnings-as-errors"
@@ -376,7 +379,7 @@ jobs:
       - spark-cheat-sheets
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -388,7 +391,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-docs@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-docs@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: dev
           use-cache: false
@@ -419,7 +422,7 @@ jobs:
     if: ${{inputs.conventional-commit}}
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -431,7 +434,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/conventional-commit@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/conventional-commit@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
 
@@ -442,7 +445,7 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -454,7 +457,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-format@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-format@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
 
@@ -465,7 +468,7 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -477,7 +480,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{inputs.spark-formatter}}
         with:
           mix-env: test
@@ -490,7 +493,7 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -502,7 +505,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{inputs.spark-cheat-sheets}}
         with:
           mix-env: test
@@ -514,7 +517,7 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -526,7 +529,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{inputs.sobelow}}
         with:
           mix-env: test
@@ -538,7 +541,7 @@ jobs:
     if: ${{inputs.doctor}}
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -550,7 +553,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-doctor@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-doctor@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
   credo:
@@ -561,7 +564,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -573,11 +576,11 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-credo@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-credo@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
       - name: Run Credo SAST
-        uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+        uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           task: credo --format sarif > results.sarif
       - name: Upload SARIF file
@@ -593,7 +596,7 @@ jobs:
     if: ${{inputs.codegen}}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -605,7 +608,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash.codegen --check
@@ -617,7 +620,7 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -629,7 +632,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: deps.unlock --check-unused
@@ -651,7 +654,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
         if: github.event.pull_request.user.login == 'dependabot[bot]'
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro && github.event.pull_request.user.login == 'dependabot[bot]' }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro && github.event.pull_request.user.login == 'dependabot[bot]' }}
@@ -663,7 +666,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           task: igniter.upgrade --git-ci --yes --all
         if: github.event.pull_request.user.login == 'dependabot[bot]'
@@ -701,7 +704,7 @@ jobs:
           - 3306:3306
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -713,82 +716,82 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{inputs.postgres && inputs.ash_postgres}}
         with:
           mix-env: test
           task: ash_postgres.generate_migrations --check
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash_postgres.create
         if: ${{inputs.postgres && inputs.ash_postgres}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ecto.create
         if: ${{inputs.postgres && inputs.ecto_postgres}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash_postgres.migrate
         if: ${{inputs.postgres && inputs.ash_postgres}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash_postgres.migrate --tenants
         if: ${{inputs.postgres && inputs.ash_postgres && inputs.tenants}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ecto.migrate
         if: ${{inputs.postgres && inputs.ecto_postgres}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash_sqlite.generate_migrations --check
         if: ${{inputs.sqlite}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash_sqlite.create
         if: ${{inputs.sqlite}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash_sqlite.migrate
         if: ${{inputs.sqlite}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{inputs.mysql && inputs.ash_mysql}}
         with:
           mix-env: test
           task: ash_mysql.generate_migrations --check
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash_mysql.create
         if: ${{inputs.mysql && inputs.ash_mysql}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ecto.create
         if: ${{inputs.mysql && inputs.ecto_mysql}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash_mysql.migrate
         if: ${{inputs.mysql && inputs.ash_mysql}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ash_mysql.migrate
         if: ${{inputs.mysql && inputs.ash_mysql}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: ecto.migrate
         if: ${{inputs.mysql && inputs.ecto_mysql}}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: test
           task: test ${{ inputs.ex-unit-args }}
@@ -804,7 +807,7 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -816,7 +819,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-dialyzer@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-dialyzer@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: dev
 
@@ -836,7 +839,7 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
         if: ${{ inputs.oban-pro }}
@@ -848,7 +851,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-compile@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-compile@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         with:
           mix-env: dev
   rust-check:
@@ -1072,11 +1075,11 @@ jobs:
           esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ steps.hex-check.outputs.on_hex == 'false' }}
-      - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-task@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ steps.hex-check.outputs.on_hex == 'false' && inputs.rustler-precompiled-module }}
         with:
           task: rustler_precompiled.download ${{inputs.rustler-precompiled-module}} --only-local --all --print
-      - uses: team-alembic/staple-actions/actions/mix-hex-publish@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/mix-hex-publish@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
         if: ${{ steps.hex-check.outputs.on_hex == 'false' }}
         with:
           mix-env: dev
@@ -1091,7 +1094,7 @@ jobs:
     name: GitHub Release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
+      - uses: team-alembic/staple-actions/actions/install-elixir@d0100ed95465c8874abf7e7a0e3a95d0402ca010 # main
       - name: Check if version exists on Hex
         id: hex-check
         env:
