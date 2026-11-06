@@ -1740,7 +1740,7 @@ defmodule Ash.Filter do
 
       %Ash.Query.Parent{} = this ->
         # you have to map over the internals of this yourself
-        func.(this)
+        this
 
       %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} =
           custom_expression ->
@@ -1752,7 +1752,7 @@ defmodule Ash.Filter do
 
       %Ash.Query.Exists{} = expr ->
         # you have to map over the internals of exists yourself
-        func.(expr)
+        expr
 
       %Ash.Query.Call{args: args} = op ->
         %{op | args: map(args, func)}
@@ -1775,7 +1775,7 @@ defmodule Ash.Filter do
 
       %Ash.Query.Ref{} = expr ->
         # you have to map over the internals of exists yourself
-        func.(expr)
+        expr
 
       value when is_map(value) ->
         value
@@ -1784,7 +1784,7 @@ defmodule Ash.Filter do
         |> Map.new()
 
       other ->
-        func.(other)
+        other
     end
   end
 
