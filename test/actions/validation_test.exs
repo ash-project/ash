@@ -15,16 +15,16 @@ defmodule Ash.Test.Actions.ValidationTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :name, :string, allow_nil?: true, public?: true
+      attribute(:name, :string, allow_nil?: true, public?: true)
     end
 
     actions do
-      default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      default_accept(:*)
+      defaults([:read, :destroy, create: :*, update: :*])
     end
 
     validations do
-      validate present(:name)
+      validate(present(:name))
     end
   end
 
@@ -35,31 +35,32 @@ defmodule Ash.Test.Actions.ValidationTest do
       data_layer: Ash.DataLayer.Ets
 
     ets do
-      private? true
+      private?(true)
     end
 
     actions do
-      default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      default_accept(:*)
+      defaults([:read, :destroy, create: :*, update: :*])
     end
 
     validations do
-      validate absent([:bio, :date]), on: :create
-      validate present(:bio), on: :update
-      validate absent(:date), on: :destroy
+      validate(absent([:bio, :date]), on: :create)
+      validate(present(:bio), on: :update)
+      validate(absent(:date), on: :destroy)
 
-      validate one_of(:status, ["foo", "bar"])
+      validate(one_of(:status, ["foo", "bar"]))
 
       validate attribute_equals(:status, "foo") do
         where([attribute_equals(:foo, true)])
       end
 
-      validate attribute_does_not_equal(:status, "foo"),
+      validate(attribute_does_not_equal(:status, "foo"),
         where: attribute_equals(:foo, false)
+      )
     end
 
     attributes do
-      uuid_primary_key :id
+      uuid_primary_key(:id)
 
       attribute :bio, :string do
         public?(true)
@@ -84,6 +85,89 @@ defmodule Ash.Test.Actions.ValidationTest do
       attribute :embedded_list, {:array, EmbeddedResource} do
         public?(true)
       end
+    end
+  end
+
+  defmodule ExpressionValidationProfile do
+    @moduledoc false
+
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept(:*)
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+
+      attribute :age, :integer do
+        public?(true)
+      end
+    end
+
+    validations do
+      validate(expr(age < 18),
+        error_expr:
+          expr(
+            error(^Ash.Error.Changes.InvalidAttribute, %{
+              field: :age,
+              value: age,
+              message: "must be at least 18",
+              vars: %{}
+            })
+          )
+      )
+    end
+  end
+
+  describe "expression validations" do
+    test "fails on update when the expression is true" do
+      profile =
+        ExpressionValidationProfile
+        |> Ash.Changeset.for_create(:create, %{age: 18})
+        |> Ash.create!()
+
+      assert_raise Ash.Error.Invalid, ~r/must be at least 18/, fn ->
+        profile
+        |> Ash.Changeset.for_update(:update, %{age: 17})
+        |> Ash.update!()
+      end
+    end
+
+    test "fails when the expression is true" do
+      assert_raise Ash.Error.Invalid, ~r/must be at least 18/, fn ->
+        ExpressionValidationProfile
+        |> Ash.Changeset.for_create(:create, %{age: 17})
+        |> Ash.create!()
+      end
+    end
+
+    test "passes when the expression is false" do
+      assert %ExpressionValidationProfile{age: 18} =
+               ExpressionValidationProfile
+               |> Ash.Changeset.for_create(:create, %{age: 18})
+               |> Ash.create!()
+    end
+
+    test "passes on update when the expression is false" do
+      profile =
+        ExpressionValidationProfile
+        |> Ash.Changeset.for_create(:create, %{age: 18})
+        |> Ash.create!()
+
+      updated =
+        profile
+        |> Ash.Changeset.for_update(:update, %{age: 19})
+        |> Ash.update!()
+
+      assert updated.age == 19
     end
   end
 
@@ -186,20 +270,20 @@ defmodule Ash.Test.Actions.ValidationTest do
         data_layer: Ash.DataLayer.Ets
 
       ets do
-        private? true
+        private?(true)
       end
 
       actions do
-        default_accept :*
-        defaults [:read, :destroy, create: :*, update: :*]
+        default_accept(:*)
+        defaults([:read, :destroy, create: :*, update: :*])
       end
 
       validations do
-        validate attribute_in(:status, ["foo", "bar"])
+        validate(attribute_in(:status, ["foo", "bar"]))
       end
 
       attributes do
-        uuid_primary_key :id
+        uuid_primary_key(:id)
 
         attribute :status, :string do
           public?(true)
@@ -230,33 +314,33 @@ defmodule Ash.Test.Actions.ValidationTest do
         data_layer: Ash.DataLayer.Ets
 
       ets do
-        private? true
+        private?(true)
       end
 
       actions do
-        default_accept :*
-        defaults [:read, :destroy, create: :*]
+        default_accept(:*)
+        defaults([:read, :destroy, create: :*])
 
         update :update_non_atomic do
-          require_atomic? false
+          require_atomic?(false)
 
-          change fn changeset, _ctx ->
+          change(fn changeset, _ctx ->
             # force non-atomic
             changeset
-          end
+          end)
         end
 
         update :update_atomic do
-          require_atomic? true
+          require_atomic?(true)
         end
       end
 
       validations do
-        validate data_one_of(:status, ["allowed", "valid"]), on: :update
+        validate(data_one_of(:status, ["allowed", "valid"]), on: :update)
       end
 
       attributes do
-        uuid_primary_key :id
+        uuid_primary_key(:id)
 
         attribute :status, :string do
           public?(true)
@@ -320,32 +404,32 @@ defmodule Ash.Test.Actions.ValidationTest do
         data_layer: Ash.DataLayer.Ets
 
       ets do
-        private? true
+        private?(true)
       end
 
       actions do
-        default_accept :*
-        defaults [:read, :destroy, create: :*, update: :*]
+        default_accept(:*)
+        defaults([:read, :destroy, create: :*, update: :*])
 
         update :fill_bar do
-          require_atomic? false
-          argument :bar, :integer, allow_nil?: false
+          require_atomic?(false)
+          argument(:bar, :integer, allow_nil?: false)
 
-          validate attributes_absent(:bar)
-          validate present(:bar)
+          validate(attributes_absent(:bar))
+          validate(present(:bar))
 
-          change fn cs, _ctx ->
+          change(fn cs, _ctx ->
             arg_bar = cs |> Ash.Changeset.get_argument(:bar)
             cs |> Ash.Changeset.change_attribute(:bar, arg_bar)
-          end
+          end)
 
-          validate attributes_present(:bar)
-          validate present(:bar)
+          validate(attributes_present(:bar))
+          validate(present(:bar))
         end
       end
 
       attributes do
-        uuid_primary_key :id
+        uuid_primary_key(:id)
 
         attribute :bar, :integer do
           public?(true)
@@ -370,33 +454,33 @@ defmodule Ash.Test.Actions.ValidationTest do
         data_layer: Ash.DataLayer.Ets
 
       ets do
-        private? true
+        private?(true)
       end
 
       actions do
-        default_accept :*
-        defaults [:read, :destroy, create: :*]
+        default_accept(:*)
+        defaults([:read, :destroy, create: :*])
 
         update :update_at_least do
-          require_atomic? true
-          validate present([:email, :phone], at_least: 1)
+          require_atomic?(true)
+          validate(present([:email, :phone], at_least: 1))
         end
 
         update :update_at_most do
-          require_atomic? true
-          validate present([:email, :phone], at_most: 1)
+          require_atomic?(true)
+          validate(present([:email, :phone], at_most: 1))
         end
 
         update :update_at_least_custom_message do
-          require_atomic? true
-          validate present([:email, :phone], at_least: 1), message: "need a way to reach you"
+          require_atomic?(true)
+          validate(present([:email, :phone], at_least: 1), message: "need a way to reach you")
         end
       end
 
       attributes do
-        uuid_primary_key :id
-        attribute :email, :string, public?: true
-        attribute :phone, :string, public?: true
+        uuid_primary_key(:id)
+        attribute(:email, :string, public?: true)
+        attribute(:phone, :string, public?: true)
       end
     end
 
@@ -486,62 +570,62 @@ defmodule Ash.Test.Actions.ValidationTest do
         data_layer: Ash.DataLayer.Ets
 
       ets do
-        private? true
+        private?(true)
       end
 
       actions do
-        default_accept :*
-        defaults [:read, :destroy, create: :*, update: :*]
+        default_accept(:*)
+        defaults([:read, :destroy, create: :*, update: :*])
 
         create :create_with_sensitive_confirm do
-          argument :confirm_secret, :string, allow_nil?: false, sensitive?: true
-          validate confirm(:secret, :confirm_secret)
+          argument(:confirm_secret, :string, allow_nil?: false, sensitive?: true)
+          validate(confirm(:secret, :confirm_secret))
         end
 
         create :create_with_sensitive_one_of do
-          validate one_of(:secret, ["allowed1", "allowed2"])
+          validate(one_of(:secret, ["allowed1", "allowed2"]))
         end
 
         create :create_with_sensitive_argument_equals do
-          argument :code, :string, allow_nil?: false, sensitive?: true
-          validate argument_equals(:code, "correct")
+          argument(:code, :string, allow_nil?: false, sensitive?: true)
+          validate(argument_equals(:code, "correct"))
         end
 
         create :create_with_sensitive_argument_does_not_equal do
-          argument :code, :string, allow_nil?: false, sensitive?: true
-          validate argument_does_not_equal(:code, "forbidden")
+          argument(:code, :string, allow_nil?: false, sensitive?: true)
+          validate(argument_does_not_equal(:code, "forbidden"))
         end
 
         create :create_with_sensitive_argument_in do
-          argument :code, :string, allow_nil?: false, sensitive?: true
-          validate argument_in(:code, ["a", "b", "c"])
+          argument(:code, :string, allow_nil?: false, sensitive?: true)
+          validate(argument_in(:code, ["a", "b", "c"]))
         end
 
         create :create_with_sensitive_compare do
-          validate compare(:secret_number, greater_than: 10)
+          validate(compare(:secret_number, greater_than: 10))
         end
 
         create :create_with_sensitive_string_length do
-          validate string_length(:secret, min: 5)
+          validate(string_length(:secret, min: 5))
         end
 
         update :update_atomic_sensitive_one_of do
-          require_atomic? true
-          validate one_of(:secret, ["allowed1", "allowed2"])
+          require_atomic?(true)
+          validate(one_of(:secret, ["allowed1", "allowed2"]))
         end
       end
 
       attributes do
-        uuid_primary_key :id
+        uuid_primary_key(:id)
 
         attribute :secret, :string do
           public?(true)
-          sensitive? true
+          sensitive?(true)
         end
 
         attribute :secret_number, :integer do
           public?(true)
-          sensitive? true
+          sensitive?(true)
         end
       end
     end
@@ -644,23 +728,23 @@ defmodule Ash.Test.Actions.ValidationTest do
       use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
       ets do
-        private? true
+        private?(true)
       end
 
       actions do
-        default_accept :*
-        defaults [:read, create: :*]
+        default_accept(:*)
+        defaults([:read, create: :*])
 
         update :confirm_secret_atomic do
-          require_atomic? true
-          argument :confirm_secret, :string, allow_nil?: false
-          validate confirm(:secret, :confirm_secret)
+          require_atomic?(true)
+          argument(:confirm_secret, :string, allow_nil?: false)
+          validate(confirm(:secret, :confirm_secret))
         end
       end
 
       attributes do
-        uuid_primary_key :id
-        attribute :secret, :string, public?: true
+        uuid_primary_key(:id)
+        attribute(:secret, :string, public?: true)
       end
     end
 
@@ -691,22 +775,22 @@ defmodule Ash.Test.Actions.ValidationTest do
         data_layer: Ash.DataLayer.Ets
 
       ets do
-        private? true
+        private?(true)
       end
 
       actions do
-        default_accept :*
-        defaults [:read, :destroy, create: :*, update: :*]
+        default_accept(:*)
+        defaults([:read, :destroy, create: :*, update: :*])
       end
 
       validations do
         validate present([:first_name, :last_name], where: [absent(:full_name)]) do
-          message "must have either first_name and last_name or full_name"
+          message("must have either first_name and last_name or full_name")
         end
       end
 
       attributes do
-        uuid_primary_key :id
+        uuid_primary_key(:id)
 
         attribute :first_name, :string do
           public?(true)
@@ -763,26 +847,26 @@ defmodule Ash.Test.Actions.ValidationTest do
         data_layer: Ash.DataLayer.Ets
 
       ets do
-        private? true
+        private?(true)
       end
 
       attributes do
-        uuid_primary_key :id
+        uuid_primary_key(:id)
       end
 
       actions do
-        default_accept :*
-        defaults [:read, :destroy, create: :*, update: :*]
+        default_accept(:*)
+        defaults([:read, :destroy, create: :*, update: :*])
 
         create :multiple_errors do
-          validate {MultipleErrors, []}
+          validate({MultipleErrors, []})
         end
 
         create :only_when_valid do
-          validate {MultipleErrors, []}
+          validate({MultipleErrors, []})
 
           validate {NeverRuns, []} do
-            only_when_valid? true
+            only_when_valid?(true)
           end
         end
       end
