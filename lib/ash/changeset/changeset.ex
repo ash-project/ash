@@ -5963,6 +5963,8 @@ defmodule Ash.Changeset do
           * `has_one` - an update action on the destination resource
           * `belongs_to` - an update action on the source resource
       * `{:relate, :action_name, :read_action_name}` - Same as the above, but customizes the read action called to search for matches.
+      * `{:relate, :action_name, filter}` - Same as `{:relate, :action_name}`, but applies the provided filter on top of the destination's primary read action when looking up records. The filter can be an expression in the DSL or an `%Ash.Query{}` when using `Ash.Changeset.manage_relationship/4` programmatically.
+      * `{:relate, :action_name, filter, join_keys}` - The same filtered lookup form for `many_to_many` relationships, with the provided join keys.
       * `:relate_and_update` - Same as `:relate`, but the remaining parameters from the lookup are passed into the action that is used to change the relationship key
       * `{:relate_and_update, :action_name}` - Same as the above, but customizes the action used. The action should be:
           * `many_to_many` - a create action on the join resource
