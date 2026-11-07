@@ -542,6 +542,27 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
 
       assert id == ticket.id
     end
+
+    test "filter input on a related field checks its field policies as a read through the relationship",
+         %{representative: representative, user: user} do
+      read = fn filter, actor ->
+        Ticket
+        |> Ash.Query.filter_input(filter)
+        |> Ash.read!(actor: actor)
+      end
+
+      assert [_, _] = read.(%{reporter: %{ticket_count: 1}}, representative)
+      assert [_, _] = read.(Ash.Query.Exists.new([:reporter], %{ticket_count: 1}), representative)
+
+      # the field policy doesn't name these, or fails for this actor
+      assert [] = read.(%{representative: %{ticket_count: 0}}, representative)
+      assert [] = read.(%{reporter: %{ticket_count: 1}}, user)
+
+      assert [] =
+               User
+               |> Ash.Query.filter_input(ticket_count: 0)
+               |> Ash.read!(actor: representative)
+    end
   end
 
   describe "sorts" do
@@ -568,6 +589,42 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.sort(points: :asc_nils_first)
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
                |> Ash.read!()
+    end
+
+    test "sorts on a related field check its field policies as a read through the relationship",
+         %{representative: representative, user: user, other_ticket: %{id: other_ticket_id}} do
+      Ash.create!(Ticket, %{representative_id: representative.id, reporter_id: user.id})
+
+      assert [%{id: ^other_ticket_id}, _, _] =
+               Ticket
+               |> Ash.Query.sort_input("reporter.ticket_count")
+               |> Ash.read!(actor: representative)
+
+      assert [_, _, %{id: ^other_ticket_id}] =
+               Ticket
+               |> Ash.Query.sort_input("-reporter.ticket_count")
+               |> Ash.read!(actor: representative)
+    end
+
+    test "sorts through a `through` relationship check field policies as a read through its last hop",
+         %{representative: representative, admin: admin} do
+      # `first_ticket_reporter` goes through `[:first_ticket, :reporter]`, so it arrives via
+      # `Ticket.reporter`. Only the representative and the admin have no tickets, so their
+      # `nil`s sort to one end.
+      without_tickets = MapSet.new([representative.id, admin.id])
+
+      sorted_ids = fn sort ->
+        User
+        |> Ash.Query.sort_input(sort)
+        |> Ash.read!(actor: representative)
+        |> Enum.map(& &1.id)
+      end
+
+      assert MapSet.new(Enum.take(sorted_ids.("first_ticket_reporter.ticket_count"), 2)) ==
+               without_tickets
+
+      assert MapSet.new(Enum.take(sorted_ids.("-first_ticket_reporter.ticket_count"), -2)) ==
+               without_tickets
     end
   end
 

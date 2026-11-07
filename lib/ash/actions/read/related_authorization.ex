@@ -32,7 +32,7 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
       domain = opts[:domain] || context.domain || Ash.Resource.Info.domain(resource)
 
       stack =
-        Enum.map([resource | List.wrap(opts[:parent_stack])], &{&1, primary_read(&1)})
+        Enum.map([resource | List.wrap(opts[:parent_stack])], &{&1, primary_read(&1), nil})
 
       {relationship_items, field_items} =
         expression
@@ -278,8 +278,8 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
     end)
   end
 
-  # The stack holds `{resource, read_action}` for the resource that the expression is relative
-  # to, followed by the resources that `parent/1` refers to. Nested calculations are authorized
+  # The stack holds `{resource, read_action, accessing_from}` for the resource that the expression
+  # is relative to, followed by the resources that `parent/1` refers to. Nested calculations are authorized
   # according to their own `authorize?` option when they are expanded, so we don't look inside of
   # them.
   defp requirements(expression, stack) do
@@ -301,13 +301,14 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
     end)
   end
 
-  defp ref_requirements(ref, [{resource, action} | _]) do
-    {destination, destination_action} = destination(resource, action, ref.relationship_path)
+  defp ref_requirements(ref, [{resource, action, accessing_from} | _]) do
+    {destination, destination_action, accessing_from} =
+      destination(resource, action, accessing_from, ref.relationship_path)
 
     field_requirements =
       case field_name(destination, ref) do
         nil -> []
-        field -> [{:field, destination, destination_action, field}]
+        field -> [{:field, destination, destination_action, accessing_from, field}]
       end
 
     relationship_requirements(resource, ref.relationship_path) ++ field_requirements
@@ -319,18 +320,19 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
        ) do
     [
       {:unrelated_exists, exists}
-      | requirements(expr, [{destination, primary_read(destination)} | stack])
+      | requirements(expr, [{destination, primary_read(destination), nil} | stack])
     ]
   end
 
   defp exists_requirements(
          %Exists{at_path: at_path, path: path, expr: expr},
-         [{resource, action} | _] = stack
+         [{resource, action, accessing_from} | _] = stack
        ) do
-    {destination, destination_action} = destination(resource, action, at_path ++ path)
+    {destination, destination_action, accessing_from} =
+      destination(resource, action, accessing_from, at_path ++ path)
 
     relationship_requirements(resource, at_path ++ path) ++
-      requirements(expr, [{destination, destination_action} | stack])
+      requirements(expr, [{destination, destination_action, accessing_from} | stack])
   end
 
   defp relationship_requirements(resource, path) do
@@ -342,24 +344,31 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
   defp field_conditions(field_items, domain, context) do
     field_items
     |> Enum.group_by(
-      fn {:field, resource, action, _field} -> {resource, action} end,
-      fn {:field, _resource, _action, field} -> field end
+      fn {:field, resource, action, accessing_from, _field} ->
+        {resource, action, accessing_from}
+      end,
+      fn {:field, _resource, _action, _accessing_from, field} -> field end
     )
-    |> Enum.reject(fn {{resource, _action}, _fields} ->
+    |> Enum.reject(fn {{resource, _action, _accessing_from}, _fields} ->
       Ash.Resource.Info.authorizers(resource) == []
     end)
-    |> Enum.reduce(%{}, fn {{resource, action}, fields}, conditions ->
+    |> Enum.reduce(%{}, fn {{resource, action, accessing_from}, fields}, conditions ->
       case Ash.Can.evaluate_field_policies(
              {resource, Ash.Resource.Info.action(resource, action)},
              Ash.Resource.Info.domain(resource) || domain,
              context.actor,
              fields,
              tenant: context.tenant,
-             run_queries?: false
+             run_queries?: false,
+             context: if(accessing_from, do: %{accessing_from: accessing_from}, else: %{})
            ) do
         {:ok, results} ->
           Enum.reduce(results, conditions, fn {field, result}, conditions ->
-            Map.put(conditions, {resource, action, field}, field_condition(result))
+            Map.put(
+              conditions,
+              {resource, action, accessing_from, field},
+              field_condition(result)
+            )
           end)
 
         {:error, error} ->
@@ -394,8 +403,9 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
     end)
   end
 
-  defp rewrite_ref(ref, [{resource, action} | _], path_filters, field_conditions) do
-    {destination, destination_action} = destination(resource, action, ref.relationship_path)
+  defp rewrite_ref(ref, [{resource, action, accessing_from} | _], path_filters, field_conditions) do
+    {destination, destination_action, accessing_from} =
+      destination(resource, action, accessing_from, ref.relationship_path)
 
     field_condition =
       case field_name(destination, ref) do
@@ -404,7 +414,7 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
 
         field ->
           field_conditions
-          |> Map.get({destination, destination_action, field}, true)
+          |> Map.get({destination, destination_action, accessing_from, field}, true)
           |> Ash.Filter.move_to_relationship_path(ref.relationship_path)
       end
 
@@ -423,7 +433,7 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
     read_action = primary_read(destination)
 
     expr =
-      rewrite(expr, [{destination, read_action} | stack], path_filters, field_conditions)
+      rewrite(expr, [{destination, read_action, nil} | stack], path_filters, field_conditions)
 
     case Map.get(path_filters, {:unrelated_exists, destination, read_action}) do
       %Ash.Filter{expression: condition} ->
@@ -436,15 +446,22 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
 
   defp rewrite_exists(
          %Exists{at_path: at_path, path: path, expr: expr} = exists,
-         [{resource, action} | _] = stack,
+         [{resource, action, accessing_from} | _] = stack,
          path_filters,
          field_conditions
        ) do
-    {at_resource, _} = destination(resource, action, at_path)
-    {destination, destination_action} = destination(resource, action, at_path ++ path)
+    {at_resource, _, _} = destination(resource, action, accessing_from, at_path)
+
+    {destination, destination_action, accessing_from} =
+      destination(resource, action, accessing_from, at_path ++ path)
 
     expr =
-      rewrite(expr, [{destination, destination_action} | stack], path_filters, field_conditions)
+      rewrite(
+        expr,
+        [{destination, destination_action, accessing_from} | stack],
+        path_filters,
+        field_conditions
+      )
 
     exists = authorize_exists_path(%{exists | expr: expr}, at_resource, path_filters)
 
@@ -460,12 +477,13 @@ defmodule Ash.Actions.Read.RelatedAuthorization do
     expr
   end
 
-  defp destination(resource, action, []), do: {resource, action}
+  defp destination(resource, action, accessing_from, []), do: {resource, action, accessing_from}
 
-  defp destination(resource, _action, path) do
+  defp destination(resource, _action, _accessing_from, path) do
     {relationship, _} = resource |> expand_path_with_through(path) |> List.last()
 
-    {relationship.destination, relationship.read_action || primary_read(relationship.destination)}
+    {relationship.destination, relationship.read_action || primary_read(relationship.destination),
+     %{source: relationship.source, name: relationship.name}}
   end
 
   defp primary_read(resource) do
