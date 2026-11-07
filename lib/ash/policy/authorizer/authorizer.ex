@@ -815,9 +815,9 @@ defmodule Ash.Policy.Authorizer do
 
   defp authorizer_acc(authorizer, resource, context) do
     %{
-      stack: [{resource, [], context.query.action, context.query.domain}],
+      stack: [{resource, [], context.query.action, context.query.domain, nil}],
       authorizers: %{
-        {resource, context.query.action} => authorizer
+        {resource, context.query.action, nil} => authorizer
       },
       actor: authorizer.actor
     }
@@ -877,6 +877,7 @@ defmodule Ash.Policy.Authorizer do
              field_name,
              context.query.action,
              context.query.domain,
+             nil,
              acc
            ) do
         {:none, acc} ->
@@ -970,14 +971,14 @@ defmodule Ash.Policy.Authorizer do
 
       %Ash.Query.Exists{expr: expr, resource: resource, related?: false} = exists ->
         original_stack = acc.stack
-        [{_, _, _, domain} | _] = original_stack
+        [{_, _, _, domain, _} | _] = original_stack
         domain = Ash.Resource.Info.domain(resource) || domain
         action = Ash.Resource.Info.primary_action!(resource, :read)
 
         {expr, acc} =
           replace_refs(expr, %{
             acc
-            | stack: [{resource, [], action, domain} | original_stack]
+            | stack: [{resource, [], action, domain, nil} | original_stack]
           })
 
         {%{exists | expr: expr}, %{acc | stack: original_stack}}
@@ -985,13 +986,17 @@ defmodule Ash.Policy.Authorizer do
       %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists ->
         full_path = at_path ++ path
         original_stack = acc.stack
-        [{resource, current_path, _, domain} | _] = original_stack
+        [{resource, current_path, _, domain, _} | _] = original_stack
+        accessing_from = accessing_from(resource, full_path)
         {resource, action} = related_with_action(resource, full_path)
 
         {expr, acc} =
           replace_refs(expr, %{
             acc
-            | stack: [{resource, current_path ++ full_path, action, domain} | original_stack]
+            | stack: [
+                {resource, current_path ++ full_path, action, domain, accessing_from}
+                | original_stack
+              ]
           })
 
         {%{exists | expr: expr}, %{acc | stack: original_stack}}
@@ -1060,9 +1065,14 @@ defmodule Ash.Policy.Authorizer do
          name,
          relationship_path,
          ref,
-         %{stack: [{parent, _path, action, domain} | _]} = acc
+         %{stack: [{parent, _path, action, domain, accessing_from} | _]} = acc
        ) do
     resource = Ash.Resource.Info.related(parent, relationship_path)
+
+    accessing_from =
+      if relationship_path == [],
+        do: accessing_from,
+        else: accessing_from(parent, relationship_path)
 
     action =
       case relationship_path do
@@ -1082,8 +1092,17 @@ defmodule Ash.Policy.Authorizer do
           end
       end
 
-    expression_for_ref(resource, name, action, domain, ref, acc)
+    expression_for_ref(resource, name, action, domain, accessing_from, ref, acc)
   end
+
+  # A longer path may be an expanded `through`, and using its last hop would reveal fields that
+  # loading the `through` hides.
+  defp accessing_from(resource, [name]) do
+    relationship = Ash.Resource.Info.relationship(resource, name)
+    %{source: relationship.source, name: relationship.name}
+  end
+
+  defp accessing_from(_resource, _path), do: nil
 
   defp related_with_action(resource, path) do
     first = :lists.droplast(path)
@@ -1103,8 +1122,8 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
-  defp expression_for_ref(resource, field, action, domain, ref, acc) do
-    case field_condition(resource, field, action, domain, acc) do
+  defp expression_for_ref(resource, field, action, domain, accessing_from, ref, acc) do
+    case field_condition(resource, field, action, domain, accessing_from, acc) do
       {:none, acc} ->
         {ref, acc}
 
@@ -1122,17 +1141,25 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
-  defp field_condition(resource, field, action, domain, acc) do
+  defp field_condition(resource, field, action, domain, accessing_from, acc) do
     if Ash.Policy.Authorizer in Ash.Resource.Info.authorizers(resource) &&
          !Enum.empty?(Ash.Policy.Info.field_policies(resource)) do
+      key = {resource, action, accessing_from}
+
       {authorizer, acc} =
-        case Map.fetch(acc.authorizers, {resource, action}) do
+        case Map.fetch(acc.authorizers, key) do
           {:ok, authorizer} ->
             {authorizer, acc}
 
           :error ->
             authorizer = initial_state(acc.actor, resource, action, domain)
-            query = Ash.Query.for_read(resource, action.name, actor: acc.actor)
+
+            query =
+              resource
+              |> Ash.Query.set_context(
+                if(accessing_from, do: %{accessing_from: accessing_from}, else: %{})
+              )
+              |> Ash.Query.for_read(action.name, actor: acc.actor)
 
             authorizer =
               ensure_context_in_authorizer(authorizer, %{
@@ -1142,8 +1169,7 @@ defmodule Ash.Policy.Authorizer do
                 domain: domain
               })
 
-            {authorizer,
-             %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+            {authorizer, %{acc | authorizers: Map.put(acc.authorizers, key, authorizer)}}
         end
 
       {expr, authorizer} =
@@ -1190,13 +1216,12 @@ defmodule Ash.Policy.Authorizer do
           end
         end
 
-      new_acc = %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}
+      new_acc = %{acc | authorizers: Map.put(acc.authorizers, key, authorizer)}
 
       if expr == true do
         {:none, new_acc}
       else
-        {:expr, expr,
-         %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+        {:expr, expr, %{acc | authorizers: Map.put(acc.authorizers, key, authorizer)}}
       end
     else
       {:none, acc}
