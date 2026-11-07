@@ -49,6 +49,17 @@ defmodule Ash.Test.Support.PolicyField.User do
       source_attribute :id
       destination_attribute :reporter_id
     end
+
+    has_one :first_ticket, Ash.Test.Support.PolicyField.Ticket do
+      public?(true)
+      source_attribute :id
+      destination_attribute :reporter_id
+    end
+
+    has_one :first_ticket_reporter, __MODULE__ do
+      public?(true)
+      through [:first_ticket, :reporter]
+    end
   end
 
   aggregates do
