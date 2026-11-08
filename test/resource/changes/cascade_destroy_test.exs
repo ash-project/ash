@@ -493,6 +493,21 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
         assert timeline(TemporalParent) == [1, 1, 0, 1]
         assert timeline(TemporalChild) == [0, 1, 0, 1]
       end
+
+      test "with as_of given as #{form}, a child that has ended by now is still destroyed" do
+        [child] = TemporalChild |> Ash.read!(as_of: ~U[2026-03-15 00:00:00.000000Z])
+
+        child
+        |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: @apr)
+        |> Ash.destroy!()
+
+        assert timeline(TemporalChild) == [0, 1, 1, 0]
+
+        destroy_temporal_parent(@mar, unquote(form))
+
+        assert timeline(TemporalParent) == [1, 1, 0, 0]
+        assert timeline(TemporalChild) == [0, 1, 0, 0]
+      end
     end
   end
 end

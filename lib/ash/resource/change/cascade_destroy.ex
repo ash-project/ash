@@ -110,6 +110,8 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       if not opts.after_action? and
            opts.relationship.type in [:many_to_many, :has_many, :has_one] do
         Ash.Changeset.before_action(changeset, fn changeset ->
+          context = current_context(context, changeset)
+
           case {destroy_related([changeset.data], opts, context, changeset),
                 opts.return_notifications?} do
             {{:error, error}, _} ->
@@ -127,6 +129,8 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         end)
       else
         Ash.Changeset.after_action(changeset, fn changeset, result ->
+          context = current_context(context, changeset)
+
           case {destroy_related([result], opts, context, changeset), opts.return_notifications?} do
             {{:error, error}, _} ->
               {:error, error}
@@ -146,6 +150,10 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       {:error, reason} ->
         Ash.Changeset.add_error(changeset, reason)
     end
+  end
+
+  defp current_context(context, changeset) do
+    %{context | source_context: changeset.context}
   end
 
   @doc false
