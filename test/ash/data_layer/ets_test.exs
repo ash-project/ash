@@ -714,7 +714,7 @@ defmodule Ash.DataLayer.EtsTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
-      transactions? true
+      transaction_group :accounts
     end
 
     actions do
@@ -758,7 +758,7 @@ defmodule Ash.DataLayer.EtsTest do
 
     ets do
       private? true
-      transactions? true
+      transaction_group :accounts
     end
 
     actions do
@@ -774,7 +774,7 @@ defmodule Ash.DataLayer.EtsTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
-      transactions? true
+      transaction_group :sides
     end
 
     actions do
@@ -795,7 +795,7 @@ defmodule Ash.DataLayer.EtsTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
-      transactions? true
+      transaction_group :sides
     end
 
     actions do
@@ -812,11 +812,27 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsTransactionNote do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :sides
+    end
+
+    actions do
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
   defmodule EtsTransactionOrganization do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
-      transactions? true
+      transaction_group :organizations
     end
 
     actions do
@@ -836,7 +852,7 @@ defmodule Ash.DataLayer.EtsTest do
       authorizers: [Ash.Policy.Authorizer]
 
     ets do
-      transactions? true
+      transaction_group :organizations
     end
 
     actions do
@@ -871,15 +887,17 @@ defmodule Ash.DataLayer.EtsTest do
               EtsTransactionAccount,
               EtsTransactionLeft,
               EtsTransactionRight,
+              EtsTransactionNote,
               EtsTransactionOrganization,
-              EtsTransactionPost
+              EtsTransactionPost,
+              EtsSharedTableTestEvent
             ] do
           Ash.DataLayer.Ets.stop(resource)
         end
       end)
     end
 
-    test "a resource that sets transactions? has them, on a table that is not private" do
+    test "a resource that names a transaction group has them, on a table that is not private" do
       assert Ash.DataLayer.data_layer_can?(EtsTransactionAccount, :transact)
       refute Ash.DataLayer.data_layer_can?(EtsSharedTableTestEvent, :transact)
       refute Ash.DataLayer.data_layer_can?(EtsPrivateTransactionAccount, :transact)
@@ -943,6 +961,67 @@ defmodule Ash.DataLayer.EtsTest do
 
       refute match?({:ok, _}, result)
       assert [] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a rollback through one resource of a group puts back what the whole group wrote" do
+      assert {:error, _} =
+               Ash.transaction([EtsTransactionLeft, EtsTransactionRight], fn ->
+                 Ash.create!(EtsTransactionLeft, %{})
+                 Ash.create!(EtsTransactionRight, %{})
+                 Ash.DataLayer.rollback(EtsTransactionRight, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionLeft)
+      assert [] = Ash.read!(EtsTransactionRight)
+    end
+
+    test "a table of the group first written inside a transaction stays locked until it ends" do
+      parent = self()
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionLeft, fn ->
+            Ash.create!(EtsTransactionNote, %{})
+            send(parent, :written)
+
+            receive do
+              :finish -> :finished
+            end
+          end)
+        end)
+
+      assert_receive :written
+      waiter = Task.async(fn -> Ash.create(EtsTransactionNote, %{}) end)
+      refute Task.yield(waiter, 100)
+
+      send(holder.pid, :finish)
+      assert {:ok, :finished} = Task.await(holder)
+      assert {:ok, _} = Task.await(waiter)
+      assert [_, _] = Ash.read!(EtsTransactionNote)
+    end
+
+    test "another group's transaction inside one keeps what it committed when the outer rolls back" do
+      assert {:error, _} =
+               Ash.transaction(EtsTransactionLeft, fn ->
+                 Ash.create!(EtsTransactionLeft, %{})
+                 Ash.create!(EtsTransactionAccount, %{email: "committed@example.com"})
+                 Ash.DataLayer.rollback(EtsTransactionLeft, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionLeft)
+      assert [_] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a rollback leaves what was written to a table outside any transaction" do
+      assert {:error, _} =
+               Ash.transaction(EtsTransactionLeft, fn ->
+                 Ash.create!(EtsTransactionLeft, %{})
+                 Ash.create!(EtsSharedTableTestEvent, %{name: "outside"})
+                 Ash.DataLayer.rollback(EtsTransactionLeft, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionLeft)
+      assert [_] = Ash.read!(EtsSharedTableTestEvent)
     end
 
     test "actions that lock each other's tables in opposite orders all complete" do

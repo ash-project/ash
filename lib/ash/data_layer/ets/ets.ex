@@ -28,11 +28,10 @@ defmodule Ash.DataLayer.Ets do
         doc:
           "Sets the ets table protection to private, and scopes it to only this process. The table name will not be used directly if this is true, to allow multiple processes to use this resource separately."
       ],
-      transactions?: [
-        type: :boolean,
-        default: false,
+      transaction_group: [
+        type: :atom,
         doc:
-          "Runs the resource's actions in transactions. A transaction holds a lock on each table it touches, and a rollback puts back what it changed. A `private?` table, held by one process, has no transactions."
+          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction holds the lock of each table of its group it touches until it ends, and a rollback through any resource of the group puts back what the group changed. A `private?` table, held by one process, has no transactions."
       ],
       table: [
         type: :atom,
@@ -46,10 +45,10 @@ defmodule Ash.DataLayer.Ets do
   @moduledoc """
   An ETS (Erlang Term Storage) backed Ash Datalayer, for testing and lightweight usage.
 
-  Remember, this has no support for transactions unless the resource sets `transactions? true`
-  in its `ets` section, and then only for a table that is not `private?`. This is not
-  recommended for production use, especially in multi-user applications. It can, however, be
-  great for prototyping.
+  Remember, this has no support for transactions unless the resource names a
+  `transaction_group` in its `ets` section, and then only for a table that is not `private?`.
+  This is not recommended for production use, especially in multi-user applications. It can,
+  however, be great for prototyping.
   """
 
   use Spark.Dsl.Extension,
@@ -366,7 +365,7 @@ defmodule Ash.DataLayer.Ets do
 
   # A resource's actions take `transaction?` from this when the resource compiles.
   def can?(resource, :transact) do
-    Ash.DataLayer.Ets.Info.transactions?(resource) and
+    not is_nil(Ash.DataLayer.Ets.Info.transaction_group(resource)) and
       not Ash.DataLayer.Ets.Info.private?(resource)
   end
 
@@ -403,49 +402,61 @@ defmodule Ash.DataLayer.Ets do
 
   @undo :ash_ets_transaction_undo
 
-  # A transaction holds the lock of each shared table it touches, so a read and the write
-  # that depends on it cannot interleave with another transaction's, and it records each
-  # object it changes, so a rollback can put it back. The tables of the resources an
-  # action touches are locked up front, in one order, and waited for; a table first
-  # locked inside a transaction is tried once, so transactions never wait in a cycle. One
-  # that outlives its timeout is undone when it finishes, as a database refuses to commit.
+  # A transaction is its group's, as a database transaction is its repo's: every resource of
+  # the group runs inside it, and a rollback through any of them puts back what the group
+  # changed in the group's tables. It holds the lock of each table of the group it touches
+  # until it ends, so a write and what depends on it cannot interleave with another
+  # transaction's. The tables of the group's resources an action touches are locked up
+  # front, in one order, and waited for; a table first written later, or locked while
+  # another group's transaction holds locks, is tried once, so transactions never wait in a
+  # cycle. One that outlives its timeout is undone when it finishes, as a database refuses
+  # to commit.
   @doc false
   @impl true
   def transaction(resource, func, timeout, reason) do
-    table = Ash.DataLayer.Ets.Info.table(resource)
+    group = Ash.DataLayer.Ets.Info.transaction_group(resource)
     deadline = deadline(timeout)
+    mode = if holding_locks?(), do: :try, else: :wait
+    Process.put({:ash_ets_transaction, group}, deadline)
 
-    {locks, mode} =
-      if holding_locks?() do
-        {[lock(resource, reason)], :try}
-      else
-        {transaction_locks(resource, reason), :wait}
-      end
+    try do
+      with :ok <-
+             Enum.reduce_while(transaction_locks(resource, reason, group), :ok, fn
+               {_table, tenant, locked}, :ok ->
+                 case lock_table(locked, tenant, group, mode, deadline) do
+                   :ok -> {:cont, :ok}
+                   refused -> {:halt, refused}
+                 end
+             end) do
+        try do
+          result = func.()
 
-    locks
-    |> with_locks(mode, deadline, fn ->
-      Process.put(@undo, [%{} | Process.get(@undo, [])])
+          if past?(deadline) do
+            undo(group)
+            :timeout
+          else
+            {:res, result}
+          end
+        catch
+          {{:ash_ets_rollback, ^group}, value} ->
+            undo(group)
+            {:error, value}
 
-      try do
-        result = func.()
-
-        if past?(deadline) do
-          undo()
-          :timeout
-        else
-          commit_undo()
-          {:res, result}
+          kind, error ->
+            undo(group)
+            :erlang.raise(kind, error, __STACKTRACE__)
         end
-      catch
-        {{:ash_ets_rollback, ^table}, value} ->
-          undo()
-          {:error, value}
-
-        kind, error ->
-          undo()
-          :erlang.raise(kind, error, __STACKTRACE__)
       end
-    end)
+    after
+      for {locked, tenant, ref, name} <- Process.get({:ash_ets_locks, group}, []) do
+        Process.delete({:ash_ets_locked, name})
+        TableManager.unlock(locked, tenant, ref)
+      end
+
+      Process.delete({:ash_ets_locks, group})
+      Process.delete({@undo, group})
+      Process.delete({:ash_ets_transaction, group})
+    end
     |> case do
       {:res, result} ->
         {:ok, result}
@@ -458,43 +469,66 @@ defmodule Ash.DataLayer.Ets do
          Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: name(reason, resource))}
 
       :busy ->
-        {:error,
-         "could not lock the table of #{inspect(resource)}, first written inside another transaction"}
+        {:error, busy(resource)}
     end
   end
 
   @doc false
   @impl true
   def rollback(resource, value) do
-    throw({{:ash_ets_rollback, Ash.DataLayer.Ets.Info.table(resource)}, value})
+    throw({{:ash_ets_rollback, Ash.DataLayer.Ets.Info.transaction_group(resource)}, value})
   end
 
   @doc false
   @impl true
   def in_transaction?(resource) do
-    Process.get({:ash_ets_transaction, Ash.DataLayer.Ets.Info.table(resource)}, false)
+    Process.get({:ash_ets_transaction, Ash.DataLayer.Ets.Info.transaction_group(resource)}) !=
+      nil
   end
 
-  defp with_locks([], _mode, _deadline, fun), do: fun.()
-
-  defp with_locks([{table, tenant, resource} | locks], mode, deadline, fun) do
+  # Takes a table's lock for the group, which holds it until its transaction ends.
+  defp lock_table(resource, tenant, group, mode, deadline) do
     ref = make_ref()
+    {:ok, name} = table_name(resource, tenant, true)
 
     case TableManager.lock(resource, tenant, ref, mode, remaining(deadline)) do
       :ok ->
-        Process.put({:ash_ets_transaction, table}, true)
+        Process.put({:ash_ets_locked, name}, group)
 
-        try do
-          with_locks(locks, mode, deadline, fun)
-        after
-          Process.delete({:ash_ets_transaction, table})
-          TableManager.unlock(resource, tenant, ref)
-        end
+        Process.put({:ash_ets_locks, group}, [
+          {resource, tenant, ref, name} | Process.get({:ash_ets_locks, group}, [])
+        ])
+
+        :ok
 
       refused ->
         refused
     end
   end
+
+  # A table of an open group, first written after its transaction began, is locked then,
+  # tried once, and held until the group's transaction ends, as a database holds a written
+  # row's lock until commit.
+  defp lock_written(resource, tenant) do
+    group = Ash.DataLayer.Ets.Info.transaction_group(resource)
+
+    with true <- shared_table?(resource),
+         deadline when not is_nil(deadline) <- Process.get({:ash_ets_transaction, group}),
+         {:ok, name} <- table_name(resource, tenant, true),
+         nil <- Process.get({:ash_ets_locked, name}) do
+      case lock_table(resource, tenant, group, :try, deadline) do
+        :ok -> :ok
+        {:error, error} -> {:error, error}
+        _busy_or_timeout -> {:error, busy(resource)}
+      end
+    else
+      _ -> :ok
+    end
+  end
+
+  defp busy(resource),
+    do:
+      "could not lock the table of #{inspect(resource)}, first written inside another transaction"
 
   defp deadline(timeout) when is_integer(timeout),
     do: System.monotonic_time(:millisecond) + timeout
@@ -513,12 +547,12 @@ defmodule Ash.DataLayer.Ets do
   defp name(_, resource), do: inspect(resource)
 
   defp holding_locks? do
-    Enum.any?(Process.get_keys(true), &match?({:ash_ets_transaction, _}, &1))
+    Enum.any?(Process.get_keys(), &match?({:ash_ets_transaction, _}, &1))
   end
 
-  defp transaction_locks(resource, reason) do
+  defp transaction_locks(resource, reason, group) do
     [resource | touched_resources(reason)]
-    |> Enum.filter(&shared_table?/1)
+    |> Enum.filter(&(shared_table?(&1) and Ash.DataLayer.Ets.Info.transaction_group(&1) == group))
     |> Enum.map(&lock(&1, reason))
     |> Enum.uniq_by(fn {table, tenant, _} -> {table, tenant} end)
     |> Enum.sort()
@@ -553,39 +587,29 @@ defmodule Ash.DataLayer.Ets do
 
   defp touched_resources(_), do: []
 
-  # The object each key held before the transaction first changed it, `[]` for none, so
-  # a rollback restores the table to what it was. Outside a transaction, nothing to keep.
+  # The object each key held before its group's transaction first changed it, `[]` for
+  # none, so a rollback restores the table to what it was. A table no open transaction
+  # holds is kept by none.
   defp remember(table, keys) do
-    case Process.get(@undo) do
-      [changes | parents] ->
+    case Process.get({:ash_ets_locked, :ets.info(table.table, :name)}) do
+      nil ->
+        :ok
+
+      group ->
         changes =
-          Enum.reduce(keys, changes, fn key, changes ->
+          Enum.reduce(keys, Process.get({@undo, group}, %{}), fn key, changes ->
             Map.put_new_lazy(changes, {table.table, key}, fn -> :ets.lookup(table.table, key) end)
           end)
 
-        Process.put(@undo, [changes | parents])
-        :ok
-
-      _ ->
+        Process.put({@undo, group}, changes)
         :ok
     end
   end
 
-  # A committed transaction inside another hands its changes to it, keeping what the
-  # outer one recorded first.
-  defp commit_undo do
-    case Process.get(@undo) do
-      [_changes] -> Process.delete(@undo)
-      [changes, outer | rest] -> Process.put(@undo, [Map.merge(changes, outer) | rest])
-    end
-  end
-
-  defp undo do
-    [changes | rest] = Process.get(@undo)
-
-    if rest == [], do: Process.delete(@undo), else: Process.put(@undo, rest)
-
-    Enum.each(changes, fn
+  defp undo(group) do
+    {@undo, group}
+    |> Process.get(%{})
+    |> Enum.each(fn
       {{tab, key}, []} -> :ets.delete(tab, key)
       {{tab, _key}, objects} -> :ets.insert(tab, objects)
     end)
@@ -2140,6 +2164,7 @@ defmodule Ash.DataLayer.Ets do
       end
     else
       with {:ok, table} <- wrap_or_create_table(resource, options.tenant),
+           :ok <- lock_written(resource, options.tenant),
            {:ok, stored} <- stored_index(table, resource) do
         Enum.reduce_while(stream, {:ok, [], stored}, fn changeset, {:ok, results, known} ->
           with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
@@ -2190,6 +2215,7 @@ defmodule Ash.DataLayer.Ets do
   def create(resource, changeset, from_bulk_create? \\ false) do
     with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
          {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+         :ok <- lock_written(resource, changeset.tenant),
          _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          {:ok, record} <- apply_atomics(changeset, resource, record),
@@ -2562,7 +2588,19 @@ defmodule Ash.DataLayer.Ets do
   defp do_destroy(resource, record, tenant, filter, domain, actor, supersede, range?) do
     case wrap_or_create_table(resource, tenant, false) do
       {:ok, table} ->
-        do_destroy(table, resource, record, tenant, filter, domain, actor, supersede, range?)
+        with :ok <- lock_written(resource, tenant),
+             do:
+               do_destroy(
+                 table,
+                 resource,
+                 record,
+                 tenant,
+                 filter,
+                 domain,
+                 actor,
+                 supersede,
+                 range?
+               )
 
       # Nothing has ever been written for this tenant, so there is nothing to destroy.
       :no_table ->
@@ -2842,6 +2880,7 @@ defmodule Ash.DataLayer.Ets do
     range? = match?(%Ash.Range{}, changeset.as_of)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant, false),
+         :ok <- lock_written(resource, changeset.tenant),
          pkey = pkey || holding_key(table, resource, changeset.data, supersede, range?),
          _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
          {:ok, record} <-

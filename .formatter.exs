@@ -337,7 +337,7 @@ spark_locals_without_parens = [
   transaction: 2,
   transaction: 3,
   transaction?: 1,
-  transactions?: 1,
+  transaction_group: 1,
   transform: 0,
   transform: 1,
   type: 1,
