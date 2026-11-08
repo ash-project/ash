@@ -3141,7 +3141,6 @@ defmodule Ash.Actions.ManagedRelationships do
       )
       |> Ash.Query.set_tenant(changeset.tenant)
       |> Ash.Query.set_context(join_relationship.context)
-      |> sort_and_filter(relationship, source_record)
 
     join_destroy_result =
       Ash.bulk_destroy(

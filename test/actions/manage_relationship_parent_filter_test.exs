@@ -17,7 +17,7 @@ defmodule Ash.Test.Actions.ManageRelationshipParentFilterTest do
     end
 
     actions do
-      defaults [:read, create: [:id, :org_id]]
+      defaults [:read, :destroy, create: [:id, :org_id]]
     end
 
     attributes do
@@ -120,6 +120,30 @@ defmodule Ash.Test.Actions.ManageRelationshipParentFilterTest do
         argument :tag_ids, {:array, :integer}, allow_nil?: false
         change manage_relationship(:tag_ids, :tags, type: :append_and_remove, value_is_key: :id)
       end
+
+      update :replace_tags do
+        require_atomic? false
+        argument :tag_ids, {:array, :integer}, allow_nil?: false
+
+        change manage_relationship(:tag_ids, :tags,
+                 on_lookup: :relate,
+                 on_no_match: :error,
+                 on_missing: :destroy,
+                 value_is_key: :id
+               )
+      end
+
+      update :replace_org_ten_tags do
+        require_atomic? false
+        argument :tag_ids, {:array, :integer}, allow_nil?: false
+
+        change manage_relationship(:tag_ids, :org_ten_tags,
+                 on_lookup: :relate,
+                 on_no_match: :error,
+                 on_missing: :destroy,
+                 value_is_key: :id
+               )
+      end
     end
 
     attributes do
@@ -153,6 +177,14 @@ defmodule Ash.Test.Actions.ManageRelationshipParentFilterTest do
         source_attribute_on_join_resource :project_id
         destination_attribute_on_join_resource :tag_id
         filter expr(org_id == parent(org_id))
+        public? true
+      end
+
+      many_to_many :org_ten_tags, Tag do
+        through ProjectTag
+        source_attribute_on_join_resource :project_id
+        destination_attribute_on_join_resource :tag_id
+        filter expr(org_id == 10)
         public? true
       end
     end
@@ -411,6 +443,38 @@ defmodule Ash.Test.Actions.ManageRelationshipParentFilterTest do
       |> Ash.Changeset.for_update(:tag, %{tag_ids: [2]})
       |> Ash.update()
       |> assert_filtered_out()
+    end
+  end
+
+  describe "many_to_many on_missing: :destroy" do
+    setup %{project: project} do
+      Tag |> Ash.Changeset.for_create(:create, %{id: 1, org_id: 10}) |> Ash.create!()
+      project |> Ash.Changeset.for_update(:tag, %{tag_ids: [1]}) |> Ash.update!()
+      :ok
+    end
+
+    test "destroys a missing record and its join row with a parent()-scoped filter", %{
+      project: project
+    } do
+      assert {:ok, _} =
+               project
+               |> Ash.Changeset.for_update(:replace_tags, %{tag_ids: []})
+               |> Ash.update()
+
+      assert Ash.read!(Tag) == []
+      assert Ash.read!(ProjectTag) == []
+    end
+
+    test "destroys a missing record and its join row with a filter on the destination", %{
+      project: project
+    } do
+      assert {:ok, _} =
+               project
+               |> Ash.Changeset.for_update(:replace_org_ten_tags, %{tag_ids: []})
+               |> Ash.update()
+
+      assert Ash.read!(Tag) == []
+      assert Ash.read!(ProjectTag) == []
     end
   end
 
