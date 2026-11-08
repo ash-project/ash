@@ -13,6 +13,12 @@ defmodule Ash.DataLayer.Ets.Info do
     Extension.get_opt(resource, [:ets], :private?, false, true)
   end
 
+  @doc "Whether or not the resource's actions run in transactions on its ets table"
+  @spec transactions?(Ash.Resource.t() | Spark.Dsl.t()) :: boolean
+  def transactions?(resource) do
+    Extension.get_opt(resource, [:ets], :transactions?, false, true)
+  end
+
   @doc "The ets table name for a resource"
   @spec table(Ash.Resource.t() | Spark.Dsl.t()) :: boolean
   def table(resource) do

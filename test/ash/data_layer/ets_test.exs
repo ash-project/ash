@@ -713,6 +713,10 @@ defmodule Ash.DataLayer.EtsTest do
   defmodule EtsTransactionAccount do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
+    ets do
+      transactions? true
+    end
+
     actions do
       defaults [:read, :destroy]
 
@@ -749,8 +753,29 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsPrivateTransactionAccount do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+      transactions? true
+    end
+
+    actions do
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
   defmodule EtsTransactionLeft do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transactions? true
+    end
 
     actions do
       defaults [:read]
@@ -769,6 +794,10 @@ defmodule Ash.DataLayer.EtsTest do
   defmodule EtsTransactionRight do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
+    ets do
+      transactions? true
+    end
+
     actions do
       defaults [:read]
 
@@ -786,6 +815,10 @@ defmodule Ash.DataLayer.EtsTest do
   defmodule EtsTransactionOrganization do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
+    ets do
+      transactions? true
+    end
+
     actions do
       defaults [:read, create: [:owner_id]]
     end
@@ -801,6 +834,10 @@ defmodule Ash.DataLayer.EtsTest do
       domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      transactions? true
+    end
 
     actions do
       defaults [:read, create: [:organization_id]]
@@ -827,7 +864,6 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
-  # Ash's test config sets `ets_transactions?`.
   describe "transactions on a shared table" do
     setup do
       on_exit(fn ->
@@ -843,9 +879,10 @@ defmodule Ash.DataLayer.EtsTest do
       end)
     end
 
-    test "only a private table has none" do
-      refute Ash.DataLayer.data_layer_can?(EtsTestUser, :transact)
+    test "a resource that sets transactions? has them, on a table that is not private" do
       assert Ash.DataLayer.data_layer_can?(EtsTransactionAccount, :transact)
+      refute Ash.DataLayer.data_layer_can?(EtsSharedTableTestEvent, :transact)
+      refute Ash.DataLayer.data_layer_can?(EtsPrivateTransactionAccount, :transact)
     end
 
     test "a create's filter policy is checked after the insert, in the transaction" do
