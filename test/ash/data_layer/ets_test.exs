@@ -897,10 +897,116 @@ defmodule Ash.DataLayer.EtsTest do
       end)
     end
 
-    test "a resource that names a transaction group has them, on a table that is not private" do
+    test "a resource that names a transaction group has them, private or not" do
       assert Ash.DataLayer.data_layer_can?(EtsTransactionAccount, :transact)
+      assert Ash.DataLayer.data_layer_can?(EtsPrivateTransactionAccount, :transact)
       refute Ash.DataLayer.data_layer_can?(EtsSharedTableTestEvent, :transact)
-      refute Ash.DataLayer.data_layer_can?(EtsPrivateTransactionAccount, :transact)
+    end
+
+    test "another process reads only what a transaction has committed" do
+      parent = self()
+
+      writer =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionAccount, fn ->
+            Ash.create!(EtsTransactionAccount, %{email: "uncommitted@example.com"})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+      assert [] = Ash.read!(EtsTransactionAccount)
+
+      send(writer.pid, :commit)
+      assert {:ok, :committed} = Task.await(writer)
+      assert [_] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a transaction reads what it wrote before it commits" do
+      assert {:ok, [%{email: "mine@example.com"}]} =
+               Ash.transaction(EtsTransactionAccount, fn ->
+                 Ash.create!(EtsTransactionAccount, %{email: "mine@example.com"})
+                 Ash.read!(EtsTransactionAccount)
+               end)
+    end
+
+    test "a private table's transaction leaves nothing behind when it rolls back" do
+      assert {:error, _} =
+               Ash.transaction(EtsPrivateTransactionAccount, fn ->
+                 Ash.create!(EtsPrivateTransactionAccount, %{})
+                 Ash.DataLayer.rollback(EtsPrivateTransactionAccount, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsPrivateTransactionAccount)
+    end
+
+    test "an older transaction waits for a younger one holding a table it writes" do
+      parent = self()
+
+      older =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionLeft, fn ->
+            send(parent, :older_started)
+
+            receive do
+              :write -> Ash.create!(EtsTransactionNote, %{})
+            end
+
+            :older_finished
+          end)
+        end)
+
+      assert_receive :older_started
+
+      younger =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionRight, fn ->
+            Ash.create!(EtsTransactionNote, %{})
+            send(parent, :younger_holds)
+
+            receive do
+              :finish -> :younger_finished
+            end
+          end)
+        end)
+
+      assert_receive :younger_holds
+      send(older.pid, :write)
+      refute Task.yield(older, 100)
+
+      send(younger.pid, :finish)
+      assert {:ok, :younger_finished} = Task.await(younger)
+      assert {:ok, :older_finished} = Task.await(older)
+      assert [_, _] = Ash.read!(EtsTransactionNote)
+    end
+
+    test "a younger transaction is refused a table an older one holds" do
+      parent = self()
+
+      older =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionLeft, fn ->
+            Ash.create!(EtsTransactionNote, %{})
+            send(parent, :older_holds)
+
+            receive do
+              :finish -> :older_finished
+            end
+          end)
+        end)
+
+      assert_receive :older_holds
+
+      result = Ash.transaction(EtsTransactionRight, fn -> Ash.create(EtsTransactionNote, %{}) end)
+      assert match?({:error, _}, result) or match?({:ok, {:error, _}}, result)
+
+      send(older.pid, :finish)
+      assert {:ok, :older_finished} = Task.await(older)
+      assert [_] = Ash.read!(EtsTransactionNote)
     end
 
     test "a create's filter policy is checked after the insert, in the transaction" do
@@ -920,7 +1026,7 @@ defmodule Ash.DataLayer.EtsTest do
       assert [_] = Ash.read!(EtsTransactionPost)
     end
 
-    test "an action that runs past its timeout is undone" do
+    test "an action that runs past its timeout leaves none of its writes" do
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.Timeout{}]}} =
                Ash.create(EtsTransactionAccount, %{email: "late@example.com"},
                  action: :create_slowly,
@@ -939,7 +1045,7 @@ defmodule Ash.DataLayer.EtsTest do
       assert [_] = Ash.read!(EtsTransactionAccount)
     end
 
-    test "a rollback undoes the writes made in the transaction" do
+    test "a rollback leaves none of the transaction's writes" do
       assert {:error, _} =
                Ash.transaction(EtsTransactionAccount, fn ->
                  Ash.create!(EtsTransactionAccount, %{email: "kept@example.com"})
@@ -963,7 +1069,7 @@ defmodule Ash.DataLayer.EtsTest do
       assert [] = Ash.read!(EtsTransactionAccount)
     end
 
-    test "a rollback through one resource of a group puts back what the whole group wrote" do
+    test "a rollback through one resource of a group leaves none of the group's writes" do
       assert {:error, _} =
                Ash.transaction([EtsTransactionLeft, EtsTransactionRight], fn ->
                  Ash.create!(EtsTransactionLeft, %{})
