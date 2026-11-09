@@ -53,6 +53,7 @@ defmodule Ash.Error do
   def to_ash_error(value, stacktrace \\ nil, opts \\ []) do
     value =
       value
+      |> normalize_error_input(opts)
       |> List.wrap()
       |> Enum.map(fn
         %struct{} = changeset
@@ -60,7 +61,7 @@ defmodule Ash.Error do
           to_error_class(changeset, opts)
 
         other ->
-          other
+          normalize_error_input(other, opts)
       end)
 
     to_error(value, Keyword.put(opts, :stacktrace, stacktrace))
@@ -96,6 +97,7 @@ defmodule Ash.Error do
   def to_error_class(value, opts) do
     value =
       value
+      |> normalize_error_input(opts)
       |> List.wrap()
       |> Enum.map(fn
         %Ash.Changeset{} = changeset ->
@@ -108,7 +110,7 @@ defmodule Ash.Error do
           to_error_class(action_input, opts)
 
         other ->
-          other
+          normalize_error_input(other, opts)
       end)
 
     class = to_class(value, opts)
@@ -133,6 +135,62 @@ defmodule Ash.Error do
       class
     end
     |> remove_required_if_other_errors_exist()
+  end
+
+  defp normalize_error_input(keyword, _opts) when is_list(keyword) do
+    if Keyword.keyword?(keyword) and supported_error_keyword?(keyword) do
+      keyword
+      |> maybe_convert_error_keyword()
+      |> maybe_set_error_path(keyword)
+    else
+      keyword
+    end
+  end
+
+  defp normalize_error_input(other, _opts), do: other
+
+  defp supported_error_keyword?(keyword) do
+    Enum.any?([:field, :fields, :message, :path, :index, :value, :private_vars], fn key ->
+      Keyword.has_key?(keyword, key)
+    end)
+  end
+
+  defp maybe_convert_error_keyword(keyword) do
+    cond do
+      keyword[:field] ->
+        Ash.Error.Changes.InvalidAttribute.exception(
+          field: keyword[:field],
+          message: keyword[:message],
+          value: keyword[:value],
+          private_vars: keyword[:private_vars],
+          vars: keyword
+        )
+
+      keyword[:fields] ->
+        Ash.Error.Changes.InvalidChanges.exception(
+          fields: keyword[:fields],
+          message: keyword[:message],
+          value: keyword[:value],
+          vars: keyword
+        )
+
+      true ->
+        Ash.Error.Changes.InvalidChanges.exception(
+          message: keyword[:message],
+          value: keyword[:value],
+          vars: keyword
+        )
+    end
+  end
+
+  defp maybe_set_error_path(error, keyword) do
+    path = keyword[:path] || (keyword[:index] && [keyword[:index]])
+
+    if is_nil(path) or path == [] do
+      error
+    else
+      Ash.Error.set_path(error, path)
+    end
   end
 
   defp remove_required_if_other_errors_exist(%{errors: errors} = class) do

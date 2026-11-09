@@ -189,6 +189,63 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
       ]
   end
 
+  defmodule ConstrainedProperty do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      uuid_primary_key :id, writable?: true
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :data_type, :atom do
+        public?(true)
+        constraints one_of: [:string, :integer]
+      end
+    end
+
+    validations do
+      validate present(:name)
+    end
+  end
+
+  defmodule PropertyContainer do
+    use Ash.Resource,
+      domain: Ash.Test.Changeset.EmbeddedResourceTest.Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read]
+      create :create
+
+      update :update do
+        require_atomic? false
+        argument :property, :map, allow_nil?: false
+
+        change fn changeset, _ ->
+          input = Ash.Changeset.get_argument(changeset, :property)
+          embedded = struct(ConstrainedProperty, input)
+
+          Ash.Changeset.change_attribute(changeset, :embedded_resources, [
+            embedded | changeset.data.embedded_resources
+          ])
+        end
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id, writable?: true
+
+      attribute :embedded_resources, {:array, ConstrainedProperty}, public?: true
+    end
+  end
+
   defmodule Author do
     use Ash.Resource,
       domain: Ash.Test.Changeset.EmbeddedResourceTest.Domain,
@@ -247,7 +304,32 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
     resources do
       resource Author
+      resource PropertyContainer
     end
+  end
+
+  test "embedded resource validation errors are surfaced as invalid attribute errors" do
+    parent =
+      PropertyContainer
+      |> Changeset.for_create(:create, %{embedded_resources: []})
+      |> Ash.create!()
+
+    assert {:error, %Ash.Error.Invalid{} = error} =
+             parent
+             |> Changeset.for_update(:update, %{property: %{name: "email", data_type: "strong"}})
+             |> Ash.update()
+
+    assert %Ash.Error.Changes.InvalidAttribute{
+             field: :data_type,
+             path: [0],
+             message: message,
+             vars: vars
+           } = Enum.find(error.errors, &match?(%Ash.Error.Changes.InvalidAttribute{}, &1))
+
+    assert message =~ "atom must be one of"
+    assert vars[:value] == "strong"
+    assert vars[:atom_list] =~ "string"
+    assert vars[:atom_list] =~ "integer"
   end
 
   test "embedded resources can be created" do
