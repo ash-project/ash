@@ -351,9 +351,18 @@ defmodule Ash.Test.Policy.CreateFilterTest do
       assert {:ok, %UnknownPost{}} =
                UnknownPost
                |> Ash.Changeset.for_create(:create, %{text: "ok-#{actor_id}"})
-               |> Ash.create(actor: %{id: actor_id})
+               |> Ash.create(actor: %{id: actor_id}, tracer: Ash.Tracer.Simple)
 
       assert_received {:custom_check_invoked, 1}
+
+      assert_received {:span,
+                       %{
+                         type: :authorization,
+                         metadata: %{resource: UnknownPost, action: :create, phase: :runtime},
+                         parent_id: parent_id
+                       }}
+
+      assert parent_id
     end
 
     test "forbids and rolls back when check/4 returns no records" do

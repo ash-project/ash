@@ -9,6 +9,7 @@ defmodule Ash.Tracer do
 
   @type span_type() ::
           :action
+          | :authorization
           | :bulk_create
           | :bulk_update
           | :bulk_destroy

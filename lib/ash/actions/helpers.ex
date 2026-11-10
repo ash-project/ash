@@ -5,6 +5,41 @@
 defmodule Ash.Actions.Helpers do
   @moduledoc false
   require Logger
+  require Ash.Tracer
+
+  # Keep instrumentation at authorization boundaries, rather than inside policy
+  # solving, which may recursively evaluate many resources and relationship paths.
+  def authorization_span(subject, phase, opts, callback) do
+    tracer =
+      [
+        opts[:tracer],
+        subject.context[:private][:tracer],
+        Application.get_env(:ash, :tracer)
+      ]
+      |> Enum.flat_map(&List.wrap/1)
+      |> Enum.uniq()
+
+    metadata = fn ->
+      %{
+        domain: subject.domain,
+        resource: subject.resource,
+        resource_short_name: Ash.Resource.Info.short_name(subject.resource),
+        action: subject.action.name,
+        phase: phase
+      }
+    end
+
+    Ash.Tracer.span :authorization,
+                    fn ->
+                      "#{Ash.Domain.Info.span_name(subject.domain, subject.resource, subject.action.name)} authorization:#{phase}"
+                    end,
+                    tracer do
+      Ash.Tracer.telemetry_span [:ash, :authorization], metadata do
+        Ash.Tracer.set_metadata(tracer, :authorization, metadata)
+        callback.()
+      end
+    end
+  end
 
   @keep_read_action_loads_when_loading? Application.compile_env(
                                           :ash,

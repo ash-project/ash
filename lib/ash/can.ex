@@ -237,9 +237,11 @@ defmodule Ash.Can do
 
       case Ash.Domain.Info.resource(domain, resource) do
         {:ok, _} ->
-          domain
-          |> run_check(actor, subject, opts)
-          |> alter_source(domain, actor, subject, opts)
+          Ash.Actions.Helpers.authorization_span(subject, :main, opts, fn ->
+            domain
+            |> run_check(actor, subject, opts)
+            |> alter_source(domain, actor, subject, opts)
+          end)
 
         {:error, error} ->
           {:error, error}
@@ -1159,7 +1161,7 @@ defmodule Ash.Can do
                         fn query, results ->
                           context = Map.merge(context, %{data: results, query: query})
 
-                          case Ash.Authorizer.check(authorizer, authorizer_state, context) do
+                          case check_with_span(authorizer, authorizer_state, context, opts) do
                             :authorized ->
                               {:ok, results}
 
@@ -1233,7 +1235,7 @@ defmodule Ash.Can do
                       |> Ash.Query.authorize_results(fn query, results ->
                         context = Map.merge(context, %{data: results, query: query})
 
-                        case Ash.Authorizer.check(authorizer, authorizer_state, context) do
+                        case check_with_span(authorizer, authorizer_state, context, opts) do
                           :authorized ->
                             {:ok, results}
 
@@ -1725,10 +1727,18 @@ defmodule Ash.Can do
     end
   end
 
+  defp check_with_span(authorizer, state, context, opts) do
+    subject = context.changeset || context.query || context.action_input
+
+    Ash.Actions.Helpers.authorization_span(subject, :runtime, opts, fn ->
+      Ash.Authorizer.check(authorizer, state, context)
+    end)
+  end
+
   defp delegate_to_authorizer_check(authorizer, authorizer_state, context, changeset, record) do
     context = Map.merge(context, %{data: [record], changeset: changeset})
 
-    case Ash.Authorizer.check(authorizer, authorizer_state, context) do
+    case check_with_span(authorizer, authorizer_state, context, []) do
       :authorized ->
         {:ok, [record]}
 
