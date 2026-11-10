@@ -6,6 +6,7 @@ defmodule Ash.Test.Filter.FilterTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Expr
   import Ash.Test
 
   alias Ash.Filter
@@ -333,6 +334,54 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(^"5" < points)
                |> Ash.read!()
+    end
+  end
+
+  describe "exists/2 errors" do
+    test "returns a helpful error for invalid exists syntax" do
+      expression = Ash.Expr.expr(exists(posts.title == "bar"))
+
+      assert {:error, error} = Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "exists(foo.bar == \"bar\")"
+      assert message =~ "exists(foo, bar == \"bar\")"
+    end
+
+    test "returns a helpful error for an unknown relationship" do
+      expression = Ash.Expr.expr(exists(postz, true))
+
+      assert {:error, error} = Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "Could not find a related resource at path [:postz]"
+      assert message =~ "Ensure the relationship name is spelled correctly"
+    end
+
+    test "returns a helpful error for an unknown nested relationship" do
+      expression = Ash.Expr.expr(exists(posts.comentz, true))
+
+      assert {:error, error} = Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "Could not find a related resource at path [:posts, :comentz]"
+    end
+  end
+
+  describe "exists/2" do
+    test "hydrates valid exists syntax" do
+      expression = Ash.Expr.expr(exists(posts, title == "bar"))
+
+      assert {:ok, %Ash.Query.Exists{path: [:posts], expr: hydrated_expr}} =
+               Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      refute hydrated_expr == expression.expr
     end
   end
 
@@ -1580,4 +1629,7 @@ defmodule Ash.Test.Filter.FilterTest do
       assert %{valid?: false} = Ash.Query.filter(NoJoinPost, comments.title == author.name)
     end
   end
+
+  defp error_message(error) when is_binary(error), do: error
+  defp error_message(error), do: Exception.message(error)
 end
