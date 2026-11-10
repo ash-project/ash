@@ -149,6 +149,17 @@ defmodule Ash.Test.Filter.FilterTest do
     end
   end
 
+  # `postz` is intentionally invalid to exercise error handling in FilterCheck.
+  defmodule InvalidExistsFilterCheck do
+    use Ash.Policy.FilterCheck
+
+    @impl true
+    def describe(_opts), do: "contains an invalid exists expression"
+
+    @impl true
+    def filter(_actor, _context, _opts), do: expr(exists(postz, true))
+  end
+
   defmodule PolicyUser do
     @moduledoc false
     use Ash.Resource,
@@ -170,7 +181,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     policies do
       policy action_type(:read) do
-        authorize_if expr(exists(postz, true))
+        authorize_if InvalidExistsFilterCheck
       end
     end
   end
@@ -417,6 +428,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
       assert message =~ "Invalid `exists/2` expression"
       assert message =~ "Could not find a related resource at path [:postz]"
+      assert message =~ "PolicyUser"
     end
   end
 
