@@ -64,6 +64,8 @@ The `namespace:` value is concatenated to the host module. With `Helpdesk.Suppor
 
 Ash refuses to overwrite an existing module, so the generated target name must be unique. Definitions without a `namespace:` (and without a block-level default) continue to land on the host module.
 
+Generated namespace modules retain the host's compiler environment. Elixir compiler tracers observe these modules, so compile-time tools can track their definitions and references.
+
 ## Using the code interface
 
 If the action is an update or destroy, it will take a record or a changeset as its _first_ argument.
@@ -504,8 +506,17 @@ For predicate interfaces (names ending in `?`), see [Predicate interfaces](#pred
 
 For each action defined in a code interface, Ash automatically generates corresponding authorization check functions:
 
-- `can_action_name?(actor, params \\ %{}, opts \\ [])` - Returns `true`/`false` for authorization checks
-- `can_action_name(actor, params \\ %{}, opts \\ [])` - Returns `{:ok, true/false}` or `{:error, reason}`
+- `can_action_name?(actor_or_scope, params \\ %{}, opts \\ [])` - Returns `true`/`false` for authorization checks
+- `can_action_name(actor_or_scope, params \\ %{}, opts \\ [])` - Returns `{:ok, true/false}` or `{:error, reason}`
+
+The first argument accepts an actor or a struct implementing `Ash.Scope.ToOpts`, just like
+`Ash.can/3` and `Ash.can?/3`. When given a scope, the helpers extract its actor, tenant,
+`authorize?` setting, and context before preparing the action's subject:
+
+```elixir
+MyApp.Blog.can_create_post?(scope)
+MyApp.Blog.can_create_post(scope, %{title: "New Post"})
+```
 
 Example usage:
 ```elixir

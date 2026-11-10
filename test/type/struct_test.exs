@@ -12,6 +12,23 @@ defmodule Type.StructTest do
     defstruct [:foo, :bar, not_nil_by_default: "foo"]
   end
 
+  defmodule ExceptionErrorType do
+    use Ash.Type
+
+    @impl true
+    def storage_type(_), do: :string
+
+    @impl true
+    def cast_input(_, _),
+      do: {:error, Ash.Error.Changes.InvalidAttribute.exception(message: "rejected")}
+
+    @impl true
+    def cast_stored(value, _), do: {:ok, value}
+
+    @impl true
+    def dump_to_native(value, _), do: {:ok, value}
+  end
+
   defmodule Embedded do
     use Ash.Resource, data_layer: :embedded
 
@@ -104,6 +121,34 @@ defmodule Type.StructTest do
              )
   end
 
+  test "collects exception errors from every invalid field" do
+    constraints = [
+      instance_of: Metadata,
+      fields: [foo: [type: ExceptionErrorType], bar: [type: ExceptionErrorType]]
+    ]
+
+    assert {:error,
+            [
+              %Ash.Error.Changes.InvalidAttribute{field: :foo},
+              %Ash.Error.Changes.InvalidAttribute{field: :bar}
+            ]} =
+             Ash.Type.apply_constraints(Ash.Type.Struct, %{foo: "a", bar: "b"}, constraints)
+  end
+
+  test "collects exception errors from struct fields in arrays with the item index" do
+    {:ok, constraints} =
+      Ash.Type.init({:array, Ash.Type.Struct},
+        items: [instance_of: Metadata, fields: [foo: [type: ExceptionErrorType]]]
+      )
+
+    assert {:error, [%Ash.Error.Changes.InvalidAttribute{field: :foo, path: [1]}]} =
+             Ash.Type.apply_constraints(
+               {:array, Ash.Type.Struct},
+               [%{}, %{foo: "a"}],
+               constraints
+             )
+  end
+
   test "cast_stored does not cast keys with nil values by default" do
     constraints = [
       instance_of: Metadata,
@@ -116,7 +161,7 @@ defmodule Type.StructTest do
              Ash.Type.cast_stored(Ash.Type.Struct, %{"not_nil_by_default" => nil}, constraints)
   end
 
-  test "cast_stored casts keys with nil values by default" do
+  test "cast_stored keeps keys with nil values when preserve_nil_values? is true" do
     constraints = [
       instance_of: Metadata,
       preserve_nil_values?: true,
@@ -426,7 +471,7 @@ defmodule Type.StructTest do
                private_vars: nil,
                value: %{:bar => "2", "foo" => ""},
                bread_crumbs: [],
-               vars: [{:value, nil}],
+               vars: [],
                path: [:metadata]
              }
            ] = changeset.errors
@@ -572,6 +617,28 @@ defmodule Type.StructTest do
     test "handles nil" do
       assert {:ok, nil} =
                Ash.Type.dump_to_embedded(Ash.Type.Struct, nil, instance_of: DumpMetadata)
+    end
+
+    test "dump retains nil fields when preserve_nil_values? is true" do
+      constraints = [
+        instance_of: DumpMetadata,
+        preserve_nil_values?: true,
+        fields: [name: [type: :string]]
+      ]
+
+      assert {:ok, %{name: nil}} =
+               Ash.Type.dump_to_embedded(Ash.Type.Struct, %DumpMetadata{name: nil}, constraints)
+    end
+
+    test "dump retains nil fields when preserve_nil_values? is false" do
+      constraints = [
+        instance_of: DumpMetadata,
+        preserve_nil_values?: false,
+        fields: [name: [type: :string]]
+      ]
+
+      assert {:ok, %{name: nil}} =
+               Ash.Type.dump_to_embedded(Ash.Type.Struct, %DumpMetadata{name: nil}, constraints)
     end
 
     test "returns error without instance_of" do

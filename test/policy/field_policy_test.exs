@@ -7,6 +7,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
   use ExUnit.Case
 
   require Ash.Query
+  require Ash.Expr
 
   alias Ash.Test.Support.PolicyField.{Post, Ticket, User}
 
@@ -87,6 +88,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
+               %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false}
              ] =
                Ash.Policy.Info.field_policies(User)
@@ -109,6 +111,99 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(id == ^post.id)
                |> Ash.read_one!(authorize?: true, actor: admin)
                |> Map.get(:admin_notes)
+    end
+  end
+
+  describe "loading a record whose embedded field is forbidden (#3109)" do
+    defmodule ShopSettings do
+      @moduledoc false
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :theme, :string, public?: true
+      end
+    end
+
+    defmodule Shop do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.Domain,
+        data_layer: Ash.DataLayer.Ets,
+        authorizers: [Ash.Policy.Authorizer]
+
+      ets do
+        private? true
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+        attribute :settings, ShopSettings, public?: true
+      end
+
+      actions do
+        defaults [:read, :destroy, create: [:name, :settings], update: [:name]]
+      end
+
+      policies do
+        policy always() do
+          authorize_if always()
+        end
+      end
+
+      field_policies do
+        field_policy :settings do
+          authorize_if actor_present()
+        end
+
+        field_policy :* do
+          authorize_if always()
+        end
+      end
+    end
+
+    # Read without an actor, `settings` is %Ash.ForbiddenField{}. Loading the record again
+    # must leave it alone the way it leaves `nil` alone.
+    setup do
+      shop =
+        Shop
+        |> Ash.Changeset.for_create(:create, %{name: "shop", settings: %{theme: "dark"}})
+        |> Ash.create!(authorize?: false)
+
+      shop = Ash.get!(Shop, shop.id, authorize?: true)
+      assert %Ash.ForbiddenField{field: :settings} = shop.settings
+
+      [shop: shop]
+    end
+
+    test "an update that changes nothing", %{shop: shop} do
+      assert {:ok, %{settings: %Ash.ForbiddenField{field: :settings}}} =
+               shop
+               |> Ash.Changeset.for_update(:update, %{})
+               |> Ash.update(authorize?: true)
+    end
+
+    test "a streamed bulk update", %{shop: shop} do
+      assert %Ash.BulkResult{
+               status: :success,
+               records: [%{settings: %Ash.ForbiddenField{field: :settings}}]
+             } =
+               Ash.bulk_update([shop], :update, %{},
+                 authorize?: true,
+                 strategy: :stream,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "a destroy returning the record", %{shop: shop} do
+      assert {:ok, %{settings: %Ash.ForbiddenField{field: :settings}}} =
+               Ash.destroy(shop, return_destroyed?: true, authorize?: true)
+    end
+
+    test "loading onto the record", %{shop: shop} do
+      assert {:ok, %{settings: %Ash.ForbiddenField{field: :settings}}} =
+               Ash.load(shop, [:name], reuse_values?: true, authorize?: true)
     end
   end
 
@@ -448,6 +543,83 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
 
       assert id == ticket.id
     end
+
+    test "filter input on a related field checks its field policies as a read through the relationship",
+         %{representative: representative, user: user} do
+      read = fn filter, actor ->
+        Ticket
+        |> Ash.Query.filter_input(filter)
+        |> Ash.read!(actor: actor)
+      end
+
+      assert [_, _] = read.(%{reporter: %{ticket_count: 1}}, representative)
+      assert [_, _] = read.(Ash.Query.Exists.new([:reporter], %{ticket_count: 1}), representative)
+
+      # the field policy doesn't name these, or fails for this actor
+      assert [] = read.(%{representative: %{ticket_count: 0}}, representative)
+      assert [] = read.(%{reporter: %{ticket_count: 1}}, user)
+
+      assert [] =
+               User
+               |> Ash.Query.filter_input(ticket_count: 0)
+               |> Ash.read!(actor: representative)
+
+      # both orders, to catch a cache key without accessing_from
+      assert [_, _] =
+               read.(
+                 %{or: [%{representative: %{ticket_count: 0}}, %{reporter: %{ticket_count: 1}}]},
+                 representative
+               )
+
+      assert [] =
+               read.(
+                 %{and: [%{reporter: %{ticket_count: 1}}, %{representative: %{ticket_count: 0}}]},
+                 representative
+               )
+    end
+
+    test "filter input in `parent/1` checks field policies against the outer frame",
+         %{representative: representative} do
+      assert [_, _] =
+               Ticket
+               |> Ash.Query.filter_input(
+                 Ash.Query.Exists.new(
+                   [:representative],
+                   Ash.Expr.expr(parent(reporter.ticket_count) == 1)
+                 )
+               )
+               |> Ash.read!(actor: representative)
+
+      assert [] =
+               User
+               |> Ash.Query.filter_input(
+                 Ash.Query.Exists.new([:tickets], Ash.Expr.expr(parent(ticket_count) == 1))
+               )
+               |> Ash.read!(actor: representative)
+    end
+
+    test "filter input through a relationship to the same resource checks field policies as a read through it",
+         %{representative: representative, user: user} do
+      %{id: managed_id} =
+        Ash.create!(User, %{role: :user, manager_id: user.id}, authorize?: false)
+
+      Ash.create!(Ticket, %{representative_id: representative.id, reporter_id: managed_id})
+
+      read = fn filter ->
+        User
+        |> Ash.Query.filter_input(filter)
+        |> Ash.read!(actor: representative)
+      end
+
+      assert [%{id: ^managed_id}] = read.(%{manager: %{ticket_count: 1}})
+      assert [] = read.(%{ticket_count: 1})
+
+      # both orders, to catch a cache key without accessing_from
+      assert [%{id: ^managed_id}] =
+               read.(%{or: [%{ticket_count: 1}, %{manager: %{ticket_count: 1}}]})
+
+      assert [] = read.(%{and: [%{manager: %{ticket_count: 1}}, %{ticket_count: 1}]})
+    end
   end
 
   describe "sorts" do
@@ -474,6 +646,145 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.sort(points: :asc_nils_first)
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
                |> Ash.read!()
+    end
+  end
+
+  describe "counting project tickets filtered by visible hours" do
+    alias Ash.Test.Support.PolicyField.{HoursBenchmark, Project, ProjectTicket}
+
+    setup do
+      for id <- [1, 2] do
+        Project
+        |> Ash.Changeset.for_create(:create, %{id: id})
+        |> Ash.create!()
+      end
+
+      for {id, hours, owner_id, project_id} <- [
+            {1, 5, 1, 1},
+            {2, 20, 1, 1},
+            {3, 30, 2, 1},
+            {4, 40, 2, 1},
+            {5, 50, 2, 1},
+            {6, 60, 1, 2}
+          ] do
+        ProjectTicket
+        |> Ash.Changeset.for_create(:create, %{
+          id: id,
+          hours: hours,
+          owner_id: owner_id,
+          project_id: project_id
+        })
+        |> Ash.create!(authorize?: false)
+      end
+
+      %{actor: %{id: 1}}
+    end
+
+    test "count project tickets using only hours the actor can filter", context do
+      query =
+        ProjectTicket
+        |> Ash.Query.filter_input(%{hours: %{greater_than: 10}})
+        |> Ash.Query.page(limit: 10, count: true)
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+
+      direct =
+        query
+        |> Ash.Query.filter_input(%{project_id: 1})
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+        |> Ash.read!(page: [limit: 10, count: true])
+
+      assert Enum.map(direct.results, & &1.id) == [2]
+      assert direct.count == 1
+
+      project =
+        Project
+        |> Ash.Query.filter(id == 1)
+        |> Ash.Query.load(tickets: query)
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+        |> Ash.read_one!()
+
+      assert Enum.map(project.tickets.results, & &1.id) == [2]
+      assert project.tickets.count == direct.count
+    end
+
+    test "count project tickets matched by public benchmarks using only visible hours" do
+      for {id, hours} <- [{1, 30}, {2, 60}] do
+        HoursBenchmark
+        |> Ash.Changeset.for_create(:create, %{id: id, hours: hours})
+        |> Ash.create!()
+      end
+
+      for {mode, actor, expected_ids} <- [
+            {:input, %{id: 1}, []},
+            {:input, %{id: 2}, [3]},
+            {:trusted, %{id: 1}, [3]}
+          ] do
+        query =
+          case mode do
+            :input ->
+              Ash.Query.filter_input(
+                ProjectTicket,
+                Ash.Expr.expr(exists(HoursBenchmark, hours == parent(hours)))
+              )
+
+            :trusted ->
+              Ash.Query.filter(ProjectTicket, exists(HoursBenchmark, hours == parent(hours)))
+          end
+          |> Ash.Query.page(limit: 10, count: true)
+          |> Ash.Query.for_read(:read, %{}, actor: actor)
+
+        direct =
+          query
+          |> Ash.Query.filter(project_id == 1)
+          |> Ash.Query.for_read(:read, %{}, actor: actor)
+          |> Ash.read!()
+
+        assert Enum.map(direct.results, & &1.id) == expected_ids
+        assert direct.count == length(expected_ids)
+
+        project =
+          Project
+          |> Ash.Query.filter(id == 1)
+          |> Ash.Query.load(tickets: query)
+          |> Ash.Query.for_read(:read, %{}, actor: actor)
+          |> Ash.read_one!()
+
+        assert Enum.map(project.tickets.results, & &1.id) == expected_ids
+        assert project.tickets.count == direct.count
+      end
+    end
+
+    test "count zero project tickets when only hidden hours match the filter", context do
+      query =
+        ProjectTicket
+        |> Ash.Query.filter_input(%{hours: %{greater_than: 35}})
+        |> Ash.Query.page(limit: 10, count: true)
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+
+      project =
+        Project
+        |> Ash.Query.filter(id == 1)
+        |> Ash.Query.load(tickets: query)
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+        |> Ash.read_one!()
+
+      assert project.tickets.results == []
+      assert project.tickets.count == 0
+    end
+
+    test "count project tickets in an aggregate using only hours the actor can filter",
+         context do
+      project =
+        Project
+        |> Ash.Query.filter(id == 1)
+        |> Ash.Query.aggregate(:long_ticket_count, :count, :tickets,
+          query: Ash.Query.filter_input(ProjectTicket, %{hours: %{greater_than: 10}}),
+          default: 0
+        )
+        |> Ash.Query.for_read(:read, %{}, actor: context.actor)
+        |> Ash.read_one!()
+
+      assert project.aggregates.long_ticket_count == 1
     end
   end
 end

@@ -102,6 +102,10 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
         allow_nil?: false
     end
 
+    calculations do
+      calculate :shouted_title, :string, expr(title <> "!"), public?: true
+    end
+
     actions do
       defaults [:read, :destroy, update: :*]
 
@@ -140,6 +144,12 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
       end
 
       first :latest_authored_report, Report, :title do
+        filter expr(author_name == parent(name))
+        sort inserted_at: :desc
+        public? true
+      end
+
+      first :latest_authored_report_shouted, Report, :shouted_title do
         filter expr(author_name == parent(name))
         sort inserted_at: :desc
         public? true
@@ -361,6 +371,20 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
       assert jane.total_active_profiles == 3
     end
 
+    test "unrelated aggregates on the same resource keep their own filters when authorized",
+         %{user1: user1} do
+      Ash.create!(Profile, %{name: "John", age: 40, active: false})
+
+      user =
+        User
+        |> Ash.Query.filter(id == ^user1.id)
+        |> Ash.Query.load([:matching_name_profiles_count, :total_active_profiles])
+        |> Ash.read_one!(authorize?: true)
+
+      assert user.matching_name_profiles_count == 3
+      assert user.total_active_profiles == 3
+    end
+
     test "can load first unrelated aggregates", %{user1: user1} do
       user =
         User
@@ -369,6 +393,40 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
         |> Ash.read_one!()
 
       assert user.latest_authored_report == "John's Latest Report"
+    end
+
+    test "can sort by first unrelated aggregates" do
+      assert [
+               %{latest_authored_report: "John's Latest Report"},
+               %{latest_authored_report: "Jane's Report"}
+             ] =
+               User
+               |> Ash.Query.sort(latest_authored_report: :desc)
+               |> Ash.Query.load(:latest_authored_report)
+               |> Ash.read!()
+    end
+
+    test "can load first unrelated aggregates over a calculation", %{user1: user1} do
+      user =
+        User
+        |> Ash.Query.filter(id == ^user1.id)
+        |> Ash.Query.load(:latest_authored_report_shouted)
+        |> Ash.read_one!()
+
+      assert user.latest_authored_report_shouted == "John's Latest Report!"
+    end
+
+    test "can load first unrelated query aggregates over a calculation", %{user1: user1} do
+      user =
+        User
+        |> Ash.Query.filter(id == ^user1.id)
+        |> Ash.Query.aggregate(:latest_shouted, :first, Report,
+          field: :shouted_title,
+          query: [filter: expr(author_name == parent(name)), sort: [inserted_at: :desc]]
+        )
+        |> Ash.read_one!()
+
+      assert user.aggregates.latest_shouted == "John's Latest Report!"
     end
 
     test "can load sum unrelated aggregates", %{user1: user1, user2: user2} do
@@ -471,6 +529,27 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
                latest_report: "Alice's Research",
                total_score: 95
              }
+    end
+  end
+
+  describe "unrelated aggregate targets that are not loaded yet" do
+    test "are recognized as resources rather than relationship names" do
+      # Simulates a freshly started interactive-mode VM (dev, test) where the
+      # target resource has not been called - and therefore not loaded - yet.
+      # `function_exported?/3` alone reports false for unloaded modules.
+      :code.purge(Ash.Test.Support.LazyAggregateTarget)
+      :code.delete(Ash.Test.Support.LazyAggregateTarget)
+      refute :erlang.module_loaded(Ash.Test.Support.LazyAggregateTarget)
+
+      user = Ash.create!(User, %{name: "John"})
+
+      assert %{aggregates: %{lazy_count: 0}} =
+               User
+               |> Ash.Query.filter(id == ^user.id)
+               |> Ash.Query.aggregate(:lazy_count, :count, Ash.Test.Support.LazyAggregateTarget,
+                 query: [filter: expr(name == parent(name))]
+               )
+               |> Ash.read_one!()
     end
   end
 

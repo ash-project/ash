@@ -176,6 +176,15 @@ defmodule Ash do
     use Spark.Options.Validator, schema: read_opts_schema
   end
 
+  @unpaginated_read_opts_schema Keyword.delete(@read_opts_schema, :page)
+
+  unpaginated_read_opts_schema = @unpaginated_read_opts_schema
+
+  defmodule UnpaginatedReadOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: unpaginated_read_opts_schema
+  end
+
   @read_one_opts_schema Spark.Options.merge(
                           [
                             not_found_error?: [
@@ -366,6 +375,14 @@ defmodule Ash do
     load: [
       type: :any,
       doc: "A load statement to add onto the changeset"
+    ],
+    strict?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If set to true, only the fields listed for a relationship in `load` are loaded on it,
+      as with the `strict?` option to `Ash.load/3`.
+      """
     ]
   ]
 
@@ -2649,7 +2666,9 @@ defmodule Ash do
   - `page!/2` for the raising version
   """
   @spec page(Ash.Page.page(), page_request) ::
-          {:ok, Ash.Page.page()} | {:error, Ash.Error.t()}
+          {:ok, Ash.Page.page()}
+          | {:ok, Ash.Page.page(), Ash.Query.t()}
+          | {:error, Ash.Error.t() | String.t()}
   def page(%Ash.Page.Keyset{results: []} = page, :next) do
     {:ok, page}
   end
@@ -2878,7 +2897,8 @@ defmodule Ash do
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
-          {:ok, Ash.Resource.Record.t() | [Ash.Resource.Record.t()] | nil} | {:error, term}
+          {:ok, Ash.Resource.Record.t() | [Ash.Resource.Record.t()] | :ok | nil}
+          | {:error, term}
 
   @doc spark_opts: [{2, @load_opts_schema}]
   def load(data, query, opts \\ [])
@@ -2945,8 +2965,43 @@ defmodule Ash do
   def load([record | _] = data, query, opts) do
     Ash.Helpers.expect_options!(opts)
     resource = Ash.Helpers.resource_from_data!(data, query, opts)
-    opts = Keyword.delete(opts, :resource)
 
+    if load_at_each_instant?(data, resource, query, opts) do
+      load_at_each_instant(data, query, Keyword.put(opts, :resource, resource))
+    else
+      do_load(data, record, resource, query, Keyword.delete(opts, :resource))
+    end
+  end
+
+  # Records of a temporal resource are loaded as of the instant each was read or written at,
+  # so records held at different instants can't share one query, unless `as_of` says otherwise.
+  defp load_at_each_instant?([record | rest], resource, query, opts) do
+    first_as_of = Map.get(record.__metadata__, :as_of)
+
+    is_nil(opts[:as_of]) and not match?(%Ash.Query{as_of: as_of} when not is_nil(as_of), query) and
+      Ash.Resource.Info.temporal?(resource) and
+      Enum.any?(rest, &(Map.get(&1.__metadata__, :as_of) != first_as_of))
+  end
+
+  defp load_at_each_instant(data, query, opts) do
+    data
+    |> Enum.with_index()
+    |> Enum.group_by(fn {record, _} -> Map.get(record.__metadata__, :as_of) end)
+    |> Enum.reduce_while({:ok, []}, fn {_as_of, indexed}, {:ok, acc} ->
+      {records, indices} = Enum.unzip(indexed)
+
+      case load(records, query, opts) do
+        {:ok, loaded} -> {:cont, {:ok, Enum.zip(indices, loaded) ++ acc}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, loaded} -> {:ok, loaded |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp do_load(data, record, resource, query, opts) do
     query =
       case query do
         %Ash.Query{} = query ->
@@ -3214,7 +3269,9 @@ defmodule Ash do
   #{Spark.Options.docs(Ash.Page.Keyset.page_opts())}
   """
   @spec read(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
-          {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()} | {:error, term}
+          {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()}
+          | {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page(), Ash.Query.t()}
+          | {:error, term}
   @doc read: [{1, @read_opts_schema}]
   def read(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -3250,6 +3307,96 @@ defmodule Ash do
     else
       {:error, error} ->
         {:error, Ash.Error.to_error_class(invalid_page_error(error, opts))}
+    end
+  end
+
+  @doc """
+  Runs an `Ash.Query` without pagination or raises an error. See `unpaginated_read/2` for more.
+
+  ## Examples
+
+      iex> Ash.unpaginated_read!(MyApp.Post)
+      [%MyApp.Post{}, %MyApp.Post{}, ...]
+
+  ## See also
+
+  - `unpaginated_read/2` for the non-raising version
+  """
+  @spec unpaginated_read!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
+          list(Ash.Resource.Record.t()) | no_return
+  @doc spark_opts: [{1, @unpaginated_read_opts_schema}]
+  def unpaginated_read!(query, opts \\ []) do
+    Ash.Helpers.expect_resource_or_query!(query)
+    Ash.Helpers.expect_options!(opts)
+
+    query
+    |> unpaginated_read(opts)
+    |> Ash.Helpers.unwrap_or_raise!()
+  end
+
+  @doc """
+  Runs an `Ash.Query` without pagination, returning every record it matches.
+
+  The read action runs as usual, including its preparations and authorization, but its
+  pagination is skipped. Pagination being `required?` doesn't apply, its `default_limit`
+  isn't used, and any page options on the query are ignored. A limit set with
+  `Ash.Query.limit/2` still applies.
+
+  Use this when your own code needs every record a query matches from an action that
+  paginates, like for an export, or to compute something across all of them.
+
+  > ### Don't use this to bypass a pagination requirement {: .warning}
+  >
+  > An action that requires pagination is declaring that callers shouldn't read it all at
+  > once. API extensions, and anything else that reads on behalf of a client, must not use
+  > this to get around pagination that an action defines.
+
+  ## Examples
+
+      iex> Ash.unpaginated_read(MyApp.Post)
+      {:ok, [%MyApp.Post{}, %MyApp.Post{}, ...]}
+
+  ## See also
+
+  - `unpaginated_read!/2` for the raising version
+  - `read/2` for reading with pagination
+
+  ## Options
+
+  #{Spark.Options.docs(@unpaginated_read_opts_schema)}
+  """
+  @spec unpaginated_read(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
+          {:ok, list(Ash.Resource.Record.t())}
+          | {:ok, list(Ash.Resource.Record.t()), Ash.Query.t()}
+          | {:error, term}
+  @doc spark_opts: [{1, @unpaginated_read_opts_schema}]
+  def unpaginated_read(query, opts \\ []) do
+    Ash.Helpers.expect_resource_or_query!(query)
+    Ash.Helpers.expect_options!(opts)
+
+    query = Ash.Query.new(query)
+
+    domain = Ash.Helpers.domain!(query, opts)
+
+    query =
+      if opts[:lock] do
+        Ash.Query.lock(query, opts[:lock])
+      else
+        query
+      end
+
+    with {:ok, opts} <- UnpaginatedReadOpts.validate(opts),
+         opts <- UnpaginatedReadOpts.to_options(opts),
+         {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
+      case Ash.Actions.Read.unpaginated_read(query, action, opts) do
+        {:ok, results} -> {:ok, results}
+        {:ok, results, query} -> {:ok, results, query}
+        {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+      end
+    else
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
     end
   end
 
@@ -3378,7 +3525,9 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @read_one_opts_schema}]
   @spec read_one(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
-          {:ok, Ash.Resource.Record.t() | nil} | {:error, Ash.Error.t()}
+          {:ok, Ash.Resource.Record.t() | nil}
+          | {:ok, Ash.Resource.Record.t() | nil, Ash.Query.t()}
+          | {:error, Ash.Error.t()}
   def read_one(query, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_resource_or_query!(query)
@@ -3457,7 +3606,9 @@ defmodule Ash do
   #{Spark.Options.docs(@read_one_opts_schema)}
   """
   @spec read_first(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
-          {:ok, Ash.Resource.Record.t() | nil} | {:error, Ash.Error.t()}
+          {:ok, Ash.Resource.Record.t() | nil}
+          | {:ok, Ash.Resource.Record.t() | nil, Ash.Query.t()}
+          | {:error, Ash.Error.t()}
   @doc spark_opts: [{1, @read_one_opts_schema}]
   def read_first(query, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
@@ -3627,7 +3778,10 @@ defmodule Ash do
     Ash.Helpers.expect_resource!(resource)
     Ash.Helpers.expect_options!(opts)
 
-    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_create_opts()))
+    # `for_create/4` uses `upsert_condition` in place of the action's, but doesn't declare it
+    changeset_opts =
+      Keyword.take(opts, [:upsert_condition | Keyword.keys(Ash.Changeset.for_create_opts())])
+
     create_opts = Keyword.take(opts, Keyword.keys(@create_opts_schema))
 
     action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
@@ -4215,7 +4369,6 @@ defmodule Ash do
 
     checked = check_as_of_option(changeset, opts)
     opts = Keyword.put_new(opts, :tenant, Map.get(changeset.data.__metadata__, :tenant))
-    opts = Keyword.put_new(opts, :as_of, Map.get(changeset.data.__metadata__, :as_of))
 
     with :ok <- checked,
          {:ok, opts} <- UpdateOpts.validate(opts),
@@ -4243,12 +4396,6 @@ defmodule Ash do
     opts =
       case Map.fetch(record.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
-        _ -> opts
-      end
-
-    opts =
-      case Map.fetch(record.__metadata__, :as_of) do
-        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 
@@ -4361,12 +4508,6 @@ defmodule Ash do
     opts =
       case Map.fetch(data.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
-        _ -> opts
-      end
-
-    opts =
-      case Map.fetch(data.__metadata__, :as_of) do
-        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 
@@ -4551,11 +4692,11 @@ defmodule Ash do
 
           {:error, Ash.Error.to_ash_error(error)}
       end
-    rescue
-      error ->
+    catch
+      kind, reason ->
         Process.delete(:ash_notifications)
 
-        reraise error, __STACKTRACE__
+        :erlang.raise(kind, reason, __STACKTRACE__)
     after
       if notify? do
         Process.delete(:ash_started_transaction?)
@@ -4655,11 +4796,11 @@ defmodule Ash do
 
           {:error, Ash.Error.to_ash_error(error)}
       end
-    rescue
-      error ->
+    catch
+      kind, reason ->
         Process.delete(:ash_notifications)
 
-        reraise error, __STACKTRACE__
+        :erlang.raise(kind, reason, __STACKTRACE__)
     after
       if notify? do
         Process.delete(:ash_started_transaction?)

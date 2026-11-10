@@ -868,10 +868,12 @@ multiple actions of each type in a large application.
    * prepare
    * validate
    * pipe_through
+   * emit
  * [create](#actions-create)
    * change
    * validate
    * pipe_through
+   * emit
    * argument
    * metadata
  * [read](#actions-read)
@@ -886,12 +888,14 @@ multiple actions of each type in a large application.
    * change
    * validate
    * pipe_through
+   * emit
    * metadata
    * argument
  * [destroy](#actions-destroy)
    * change
    * validate
    * pipe_through
+   * emit
    * metadata
    * argument
 
@@ -955,6 +959,7 @@ For calling this action, see the `Ash.Domain` documentation.
  * [prepare](#actions-action-prepare)
  * [validate](#actions-action-validate)
  * [pipe_through](#actions-action-pipe_through)
+ * [emit](#actions-action-emit)
 
 
 ### Examples
@@ -1027,7 +1032,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-action-argument-allow_nil?){: #actions-action-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-action-argument-public?){: #actions-action-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-action-argument-sensitive?){: #actions-action-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-action-argument-default){: #actions-action-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-action-argument-default){: #actions-action-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 
@@ -1131,7 +1136,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 
@@ -1168,6 +1173,76 @@ pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 
 Target: `Ash.Resource.Actions.PipeThrough`
 
+### actions.action.emit
+```elixir
+emit signal_module, signal
+```
+
+
+Emits a signal from the action. See `Ash.Signals`.
+
+The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+the signal declares. Signal fields are taken from the record's attributes of the same name (in
+a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+their signals together, except for signals emitted after the transaction.
+
+An action can only emit signals it declares. To build a signal in your own code, declare it
+with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+
+
+
+
+### Examples
+```
+emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]
+```
+
+```
+emit MyApp.Shop.Signals, :order_status_changed,
+  fields: [order_id: :id],
+  values: [previous_status: previous(:status), changed_by: actor(:id)],
+  where: [changing(:status)]
+
+```
+
+```
+emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
+```
+
+```
+emit MyApp.Shop.Signals, :order_placed,
+  dynamic?: true,
+  description: "When the order is paid in full."
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#actions-action-emit-signal_module){: #actions-action-emit-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signal. |
+| [`signal`](#actions-action-emit-signal){: #actions-action-emit-signal .spark-required} | `atom` |  | The name of the signal. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`phase`](#actions-action-emit-phase){: #actions-action-emit-phase } | `:before_action \| :after_action \| :after_transaction` | `:after_action` | When the signal is emitted, which must be the phase the signal declares. |
+| [`fields`](#actions-action-emit-fields){: #actions-action-emit-fields } | `list(atom \| {atom, atom})` | `[]` | Signal fields to take from attributes of the record (or, in a generic action, from fields of its result), as a keyword list of `signal_field: field`. A bare name takes the field with the same name. |
+| [`values`](#actions-action-emit-values){: #actions-action-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
+| [`where`](#actions-action-emit-where){: #actions-action-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
+| [`dynamic?`](#actions-action-emit-dynamic?){: #actions-action-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+| [`description`](#actions-action-emit-description){: #actions-action-emit-description } | `String.t` |  | A description of when and why the action emits the signal. Especially useful with `dynamic?: true`, where the code that emits the signal decides when it is emitted. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.Emit`
+
 
 
 
@@ -1188,6 +1263,7 @@ Declares a `create` action. For calling this action, see the `Ash.Domain` docume
  * [change](#actions-create-change)
  * [validate](#actions-create-validate)
  * [pipe_through](#actions-create-pipe_through)
+ * [emit](#actions-create-emit)
  * [argument](#actions-create-argument)
  * [metadata](#actions-create-metadata)
 
@@ -1333,7 +1409,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 
@@ -1370,6 +1446,76 @@ pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 
 Target: `Ash.Resource.Actions.PipeThrough`
 
+### actions.create.emit
+```elixir
+emit signal_module, signal
+```
+
+
+Emits a signal from the action. See `Ash.Signals`.
+
+The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+the signal declares. Signal fields are taken from the record's attributes of the same name (in
+a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+their signals together, except for signals emitted after the transaction.
+
+An action can only emit signals it declares. To build a signal in your own code, declare it
+with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+
+
+
+
+### Examples
+```
+emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]
+```
+
+```
+emit MyApp.Shop.Signals, :order_status_changed,
+  fields: [order_id: :id],
+  values: [previous_status: previous(:status), changed_by: actor(:id)],
+  where: [changing(:status)]
+
+```
+
+```
+emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
+```
+
+```
+emit MyApp.Shop.Signals, :order_placed,
+  dynamic?: true,
+  description: "When the order is paid in full."
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#actions-create-emit-signal_module){: #actions-create-emit-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signal. |
+| [`signal`](#actions-create-emit-signal){: #actions-create-emit-signal .spark-required} | `atom` |  | The name of the signal. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`phase`](#actions-create-emit-phase){: #actions-create-emit-phase } | `:before_action \| :after_action \| :after_transaction` | `:after_action` | When the signal is emitted, which must be the phase the signal declares. |
+| [`fields`](#actions-create-emit-fields){: #actions-create-emit-fields } | `list(atom \| {atom, atom})` | `[]` | Signal fields to take from attributes of the record (or, in a generic action, from fields of its result), as a keyword list of `signal_field: field`. A bare name takes the field with the same name. |
+| [`values`](#actions-create-emit-values){: #actions-create-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
+| [`where`](#actions-create-emit-where){: #actions-create-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
+| [`dynamic?`](#actions-create-emit-dynamic?){: #actions-create-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+| [`description`](#actions-create-emit-description){: #actions-create-emit-description } | `String.t` |  | A description of when and why the action emits the signal. Especially useful with `dynamic?: true`, where the code that emits the signal decides when it is emitted. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.Emit`
+
 ### actions.create.argument
 ```elixir
 argument name, type
@@ -1403,7 +1549,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-create-argument-allow_nil?){: #actions-create-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-create-argument-public?){: #actions-create-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-create-argument-sensitive?){: #actions-create-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-create-argument-default){: #actions-create-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-create-argument-default){: #actions-create-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 
@@ -1554,7 +1700,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-read-argument-allow_nil?){: #actions-read-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-read-argument-public?){: #actions-read-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-read-argument-sensitive?){: #actions-read-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-read-argument-default){: #actions-read-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-read-argument-default){: #actions-read-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 
@@ -1658,7 +1804,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 
@@ -1830,6 +1976,7 @@ Declares a `update` action. For calling this action, see the `Ash.Domain` docume
  * [change](#actions-update-change)
  * [validate](#actions-update-validate)
  * [pipe_through](#actions-update-pipe_through)
+ * [emit](#actions-update-emit)
  * [metadata](#actions-update-metadata)
  * [argument](#actions-update-argument)
 
@@ -1969,7 +2116,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 
@@ -2005,6 +2152,76 @@ pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 ### Introspection
 
 Target: `Ash.Resource.Actions.PipeThrough`
+
+### actions.update.emit
+```elixir
+emit signal_module, signal
+```
+
+
+Emits a signal from the action. See `Ash.Signals`.
+
+The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+the signal declares. Signal fields are taken from the record's attributes of the same name (in
+a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+their signals together, except for signals emitted after the transaction.
+
+An action can only emit signals it declares. To build a signal in your own code, declare it
+with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+
+
+
+
+### Examples
+```
+emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]
+```
+
+```
+emit MyApp.Shop.Signals, :order_status_changed,
+  fields: [order_id: :id],
+  values: [previous_status: previous(:status), changed_by: actor(:id)],
+  where: [changing(:status)]
+
+```
+
+```
+emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
+```
+
+```
+emit MyApp.Shop.Signals, :order_placed,
+  dynamic?: true,
+  description: "When the order is paid in full."
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#actions-update-emit-signal_module){: #actions-update-emit-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signal. |
+| [`signal`](#actions-update-emit-signal){: #actions-update-emit-signal .spark-required} | `atom` |  | The name of the signal. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`phase`](#actions-update-emit-phase){: #actions-update-emit-phase } | `:before_action \| :after_action \| :after_transaction` | `:after_action` | When the signal is emitted, which must be the phase the signal declares. |
+| [`fields`](#actions-update-emit-fields){: #actions-update-emit-fields } | `list(atom \| {atom, atom})` | `[]` | Signal fields to take from attributes of the record (or, in a generic action, from fields of its result), as a keyword list of `signal_field: field`. A bare name takes the field with the same name. |
+| [`values`](#actions-update-emit-values){: #actions-update-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
+| [`where`](#actions-update-emit-where){: #actions-update-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
+| [`dynamic?`](#actions-update-emit-dynamic?){: #actions-update-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+| [`description`](#actions-update-emit-description){: #actions-update-emit-description } | `String.t` |  | A description of when and why the action emits the signal. Especially useful with `dynamic?: true`, where the code that emits the signal decides when it is emitted. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.Emit`
 
 ### actions.update.metadata
 ```elixir
@@ -2087,7 +2304,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-update-argument-allow_nil?){: #actions-update-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-update-argument-public?){: #actions-update-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-update-argument-sensitive?){: #actions-update-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-update-argument-default){: #actions-update-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-update-argument-default){: #actions-update-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 
@@ -2119,6 +2336,7 @@ See `Ash.Resource.Change.Builtins.cascade_destroy/2` for cascading destroy opera
  * [change](#actions-destroy-change)
  * [validate](#actions-destroy-validate)
  * [pipe_through](#actions-destroy-pipe_through)
+ * [emit](#actions-destroy-emit)
  * [metadata](#actions-destroy-metadata)
  * [argument](#actions-destroy-argument)
 
@@ -2262,7 +2480,7 @@ pipe_through names
 
 
 References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
+Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
 
 
 
@@ -2298,6 +2516,76 @@ pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 ### Introspection
 
 Target: `Ash.Resource.Actions.PipeThrough`
+
+### actions.destroy.emit
+```elixir
+emit signal_module, signal
+```
+
+
+Emits a signal from the action. See `Ash.Signals`.
+
+The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+the signal declares. Signal fields are taken from the record's attributes of the same name (in
+a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+their signals together, except for signals emitted after the transaction.
+
+An action can only emit signals it declares. To build a signal in your own code, declare it
+with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+
+
+
+
+### Examples
+```
+emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]
+```
+
+```
+emit MyApp.Shop.Signals, :order_status_changed,
+  fields: [order_id: :id],
+  values: [previous_status: previous(:status), changed_by: actor(:id)],
+  where: [changing(:status)]
+
+```
+
+```
+emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction
+```
+
+```
+emit MyApp.Shop.Signals, :order_placed,
+  dynamic?: true,
+  description: "When the order is paid in full."
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#actions-destroy-emit-signal_module){: #actions-destroy-emit-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signal. |
+| [`signal`](#actions-destroy-emit-signal){: #actions-destroy-emit-signal .spark-required} | `atom` |  | The name of the signal. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`phase`](#actions-destroy-emit-phase){: #actions-destroy-emit-phase } | `:before_action \| :after_action \| :after_transaction` | `:after_action` | When the signal is emitted, which must be the phase the signal declares. |
+| [`fields`](#actions-destroy-emit-fields){: #actions-destroy-emit-fields } | `list(atom \| {atom, atom})` | `[]` | Signal fields to take from attributes of the record (or, in a generic action, from fields of its result), as a keyword list of `signal_field: field`. A bare name takes the field with the same name. |
+| [`values`](#actions-destroy-emit-values){: #actions-destroy-emit-values } | `keyword` | `[]` | Signal fields to set to the given values, which may be templates like `arg(:reason)` or `actor(:id)`, or for update and destroy actions `previous(:field)`, the value of a field before the action. |
+| [`where`](#actions-destroy-emit-where){: #actions-destroy-emit-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for the signal to be emitted. |
+| [`dynamic?`](#actions-destroy-emit-dynamic?){: #actions-destroy-emit-dynamic? } | `boolean` | `false` | Declares that the action emits the signal from your own code, with `Ash.Signals.emit/5` or `Ash.Signals.emit_many/5`, instead of emitting it. Use it when building the signal needs more than `fields` and `values` can express. |
+| [`description`](#actions-destroy-emit-description){: #actions-destroy-emit-description } | `String.t` |  | A description of when and why the action emits the signal. Especially useful with `dynamic?: true`, where the code that emits the signal decides when it is emitted. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.Emit`
 
 ### actions.destroy.metadata
 ```elixir
@@ -2380,7 +2668,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-destroy-argument-allow_nil?){: #actions-destroy-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-destroy-argument-public?){: #actions-destroy-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-destroy-argument-sensitive?){: #actions-destroy-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-destroy-argument-default){: #actions-destroy-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-destroy-argument-default){: #actions-destroy-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 
@@ -3246,6 +3534,144 @@ Target: `Ash.Resource.Preparation`
 ### Introspection
 
 Target: `Ash.Resource.Pipeline`
+
+
+
+
+## signals_in
+Listen to signals emitted by other resources. See `Ash.Signals`.
+
+
+### Nested DSLs
+ * [from](#signals_in-from)
+   * on
+
+
+### Examples
+```
+signals_in do
+  from MyApp.Blog.Signals do
+    on :post_created, :add_to_feeds
+  end
+end
+
+```
+
+
+
+
+### signals_in.from
+```elixir
+from signal_module
+```
+
+
+Listens to signals from an `Ash.Signals` module.
+
+
+### Nested DSLs
+ * [on](#signals_in-from-on)
+
+
+### Examples
+```
+from MyApp.Blog.Signals do
+  on :post_created, :add_to_feeds
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal_module`](#signals_in-from-signal_module){: #signals_in-from-signal_module .spark-required} | `atom` |  | The `Ash.Signals` module that declares the signals. |
+
+
+
+### signals_in.from.on
+```elixir
+on signal, name
+```
+
+
+Runs an action when a signal is emitted. Its return value is ignored.
+
+The action defaults to the listener's name. A generic action receives the signal struct as an
+argument (named `signal` by default), or every signal emitted together as a list with
+`batch?: true`. A create action creates a record from each signal. An update or destroy action
+runs on the records selected for each signal by `read_action`, `args` and `get_by`. Create,
+update and destroy actions handle the signals emitted together in bulk.
+
+By default, the listener runs immediately, during the signal's phase. Set `delivery` to have
+signals reach it another way, for example in a job. See `Ash.Signals.Delivery`.
+
+
+
+
+### Examples
+```
+on :post_created, :add_to_feeds
+```
+
+```
+on :post_created, :add_all_to_feeds, batch?: true
+```
+
+```
+on :post_created, :record_post, action: :create, inputs: [:post_id, body: :title]
+```
+
+```
+on :post_archived, :archive, read_action: :for_post, args: [:post_id]
+```
+
+```
+on :post_archived, :archive, get_by: [post_id: :post_id]
+```
+
+```
+on :order_placed, :send_receipt, delivery: {MyApp.JobDelivery, queue: :mailers}
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`signal`](#signals_in-from-on-signal){: #signals_in-from-on-signal .spark-required} | `atom` |  | The name of the signal. |
+| [`name`](#signals_in-from-on-name){: #signals_in-from-on-name .spark-required} | `atom` |  | The name of the listener, unique within the resource. Also the action it runs, unless `action` is set. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`action`](#signals_in-from-on-action){: #signals_in-from-on-action } | `atom` |  | The action to run when the signal is emitted. Defaults to the listener's name. A generic action receives the signal struct as an argument. A create action creates a record from each signal. An update or destroy action runs on the records that `read_action`, `args` and `get_by` select for each signal. |
+| [`batch?`](#signals_in-from-on-batch?){: #signals_in-from-on-batch? } | `boolean` | `false` | For a generic action, run it once with every signal emitted together (by `Ash.Signals.emit_many/5`), as a list, instead of once per signal. Create, update and destroy actions always handle signals in bulk. |
+| [`argument`](#signals_in-from-on-argument){: #signals_in-from-on-argument } | `atom` |  | For a generic action, the argument that receives the signal struct. Defaults to `:signal`, or to `:signals` with `batch?: true`, in which case it receives a list of signal structs. |
+| [`inputs`](#signals_in-from-on-inputs){: #signals_in-from-on-inputs } | `list(atom \| {atom, atom})` |  | For a create, update or destroy action, the inputs of the action to set from the signal. Defaults to every signal field with the same name as an input of the action. A keyword list mapping each name to the signal field it takes its value from. A bare name takes its value from the signal field with the same name, e.g. `[:customer_id, order: :order_id]`. |
+| [`read_action`](#signals_in-from-on-read_action){: #signals_in-from-on-read_action } | `atom` |  | For an update or destroy action, the read action that selects the records to change. Defaults to the primary read action. Signals for which it returns no records are handled. |
+| [`args`](#signals_in-from-on-args){: #signals_in-from-on-args } | `list(atom \| {atom, atom})` | `[]` | For an update or destroy action, the arguments of the read action to set from the signal. A keyword list mapping each name to the signal field it takes its value from. A bare name takes its value from the signal field with the same name, e.g. `[:customer_id, order: :order_id]`. |
+| [`get_by`](#signals_in-from-on-get_by){: #signals_in-from-on-get_by } | `list(atom \| {atom, atom})` | `[]` | For an update or destroy action, fields of the resource that must equal the given signal fields. A keyword list mapping each name to the signal field it takes its value from. A bare name takes its value from the signal field with the same name, e.g. `[:customer_id, order: :order_id]`. |
+| [`delivery`](#signals_in-from-on-delivery){: #signals_in-from-on-delivery } | `module` | `{Ash.Signals.Delivery.Inline, []}` | How signals reach the listener. Defaults to `Ash.Signals.Delivery.Inline`, which runs it immediately, during the signal's phase. Other deliveries can, for example, run it in a job. See `Ash.Signals.Delivery`. |
+| [`description`](#signals_in-from-on-description){: #signals_in-from-on-description } | `String.t` |  | A description of the listener. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.SignalListener`
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.SignalSource`
 
 
 
@@ -4236,6 +4662,7 @@ end
 | [`description`](#calculations-calculate-description){: #calculations-calculate-description } | `String.t` |  | An optional description for the calculation |
 | [`public?`](#calculations-calculate-public?){: #calculations-calculate-public? } | `boolean` | `false` | Whether or not the calculation will appear in public interfaces. |
 | [`sensitive?`](#calculations-calculate-sensitive?){: #calculations-calculate-sensitive? } | `boolean` | `false` | Whether or not references to the calculation will be considered sensitive. |
+| [`authorize?`](#calculations-calculate-authorize?){: #calculations-calculate-authorize? } | `boolean` | `false` | Whether or not the related data that the calculation uses should be authorized, when the parent query is authorized. By default, calculations are trusted, just like `Ash.Query.filter/2`: relationship references in their expressions, and relationships they load, are not subject to the related resource's read policies. When `true`, the calculation only sees related records the actor can read: - In an expression, a reference through a relationship resolves to `nil` when the related record is not readable, and `exists` only considers readable related records. - Relationships that the calculation loads are loaded with authorization. Aggregates are authorized regardless of this option, according to their own `authorize?` option. |
 | [`load`](#calculations-calculate-load){: #calculations-calculate-load } | `any` | `[]` | A load statement to be applied if the calculation is used. Only works with module-based or function-based calculations, not expression calculations. |
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. When `false`, the calculation must never return `nil`. Ash does not validate the result, so a `nil` will not raise an error. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |

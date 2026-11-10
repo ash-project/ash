@@ -272,37 +272,32 @@ defmodule Ash.Sort do
           path ->
             case related_field(resource, path, field, only_public?, input) do
               {:ok, path, field, type, constraints} ->
-                case field do
-                  %struct{} = thing when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
-                    ref = %Ash.Query.Ref{
-                      attribute: thing,
-                      relationship_path: path,
-                      resource: Ash.Resource.Info.related(resource, path)
-                    }
+                attribute =
+                  case field do
+                    %struct{} = thing
+                    when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
+                      thing
 
-                    Ash.Query.Calculation.new(
-                      :__calc__,
-                      Ash.Resource.Calculation.Expression,
-                      [expr: ref],
-                      type,
-                      constraints
-                    )
+                    %{name: name} ->
+                      name
+                  end
 
-                  %{name: name} ->
-                    ref = %Ash.Query.Ref{
-                      attribute: name,
-                      relationship_path: path,
-                      resource: Ash.Resource.Info.related(resource, path)
-                    }
+                ref = %Ash.Query.Ref{
+                  attribute: attribute,
+                  relationship_path: path,
+                  resource: Ash.Resource.Info.related(resource, path),
+                  input?: true
+                }
 
-                    Ash.Query.Calculation.new(
-                      :__calc__,
-                      Ash.Resource.Calculation.Expression,
-                      [expr: ref],
-                      type,
-                      constraints
-                    )
-                end
+                # The related data is only visible if the actor can read it
+                Ash.Query.Calculation.new(
+                  :__calc__,
+                  Ash.Resource.Calculation.Expression,
+                  [expr: ref],
+                  type,
+                  constraints,
+                  authorize?: true
+                )
 
               {:error, error} ->
                 {:error, error}
@@ -323,10 +318,7 @@ defmodule Ash.Sort do
   defp do_get_field(resource, field, true, input) do
     case Ash.Resource.Info.public_field(resource, field) do
       %Ash.Resource.Calculation{} = calc ->
-        with {:ok, calc} <-
-               Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
-          {:ok, %{calc | name: :__calc__}}
-        end
+        input_calculation(resource, calc, input)
 
       nil ->
         {:error, NoSuchField.exception(field: field, resource: resource)}
@@ -347,10 +339,7 @@ defmodule Ash.Sort do
   defp do_get_field(resource, field, _, input) do
     case Ash.Resource.Info.field(resource, field) do
       %Ash.Resource.Calculation{} = calc ->
-        with {:ok, calc} <-
-               Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
-          {:ok, %{calc | name: :__calc__}}
-        end
+        input_calculation(resource, calc, input)
 
       nil ->
         {:error, NoSuchField.exception(field: field, resource: resource)}
@@ -359,6 +348,31 @@ defmodule Ash.Sort do
         {:ok, other}
     end
   end
+
+  defp input_calculation(resource, calc, input) do
+    with {:ok, args} <- calculation_input(calc, input),
+         {:ok, calc} <-
+           Ash.Query.Calculation.from_resource_calculation(resource, calc, args: args) do
+      {:ok, %{calc | name: :__calc__}}
+    end
+  end
+
+  # The input of a calculation in a sort, as a map.
+  defp calculation_input(_calc, nil), do: {:ok, %{}}
+
+  defp calculation_input(_calc, input) when is_map(input) and not is_struct(input),
+    do: {:ok, input}
+
+  defp calculation_input(calc, input) when is_list(input) do
+    if Keyword.keyword?(input) do
+      {:ok, Map.new(input)}
+    else
+      {:error, InvalidSort.exception(sort: {calc.name, input})}
+    end
+  end
+
+  defp calculation_input(calc, input),
+    do: {:error, InvalidSort.exception(sort: {calc.name, input})}
 
   defp do_get_relationship(resource, relationship, true) do
     Ash.Resource.Info.public_relationship(resource, relationship)
@@ -369,7 +383,7 @@ defmodule Ash.Sort do
   end
 
   defp type_sortable?(resource, %Ash.Resource.Aggregate{} = aggregate) do
-    case aggregate_type(resource, aggregate) do
+    case get_type(resource, aggregate) do
       {type, constraints} ->
         do_type_sortable?(resource, type, constraints)
 
@@ -456,52 +470,6 @@ defmodule Ash.Sort do
   defp field_name(%Ash.Query.Calculation{calc_name: name}) when not is_nil(name), do: name
   defp field_name(%{name: name}), do: name
 
-  defp aggregate_type(resource, aggregate) do
-    attribute =
-      if aggregate.field do
-        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-        Ash.Resource.Info.field(related, aggregate.field)
-      end
-
-    case attribute do
-      %Ash.Resource.Aggregate{} = related_aggregate ->
-        case aggregate_type(
-               Ash.Resource.Info.related(resource, aggregate.relationship_path),
-               related_aggregate
-             ) do
-          {type, constraints} ->
-            case Ash.Query.Aggregate.kind_to_type(aggregate.kind, type, constraints) do
-              {:ok, type, constraints} ->
-                {type, constraints}
-
-              _ ->
-                nil
-            end
-
-          nil ->
-            nil
-        end
-
-      nil ->
-        case Ash.Query.Aggregate.kind_to_type(aggregate.kind, nil, nil) do
-          {:ok, type, constraints} ->
-            {type, constraints}
-
-          _ ->
-            nil
-        end
-
-      field ->
-        case Ash.Query.Aggregate.kind_to_type(aggregate.kind, field.type, field.constraints) do
-          {:ok, type, constraints} ->
-            {type, constraints}
-
-          _ ->
-            nil
-        end
-    end
-  end
-
   defp get_type(resource, %Ash.Resource.Aggregate{} = aggregate) do
     case Ash.Query.Aggregate.aggregate_type(resource, aggregate) do
       {:ok, type, constraints} ->
@@ -552,6 +520,10 @@ defmodule Ash.Sort do
     case do_get_relationship(resource, first, only_public?) do
       %{sortable?: false, name: name} ->
         {:error, UnsortableField.exception(field: name, resource: resource)}
+
+      # Sorting through a to-many relationship would produce a row per related record
+      %{cardinality: :many, name: name} ->
+        {:error, UnsortableField.exception(field: name, resource: resource, reason: :to_many)}
 
       %{sortable?: true, destination: destination, name: name} ->
         related_field(destination, rest, field, only_public?, input, [name | acc])

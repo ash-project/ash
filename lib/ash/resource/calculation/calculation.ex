@@ -16,6 +16,7 @@ defmodule Ash.Resource.Calculation do
             filterable?: true,
             sortable?: true,
             sensitive?: false,
+            authorize?: false,
             multitenancy: nil,
             load: [],
             name: nil,
@@ -67,6 +68,20 @@ defmodule Ash.Resource.Calculation do
       default: false,
       doc: """
       Whether or not references to the calculation will be considered sensitive.
+      """
+    ],
+    authorize?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not the related data that the calculation uses should be authorized, when the parent query is authorized.
+
+      By default, calculations are trusted, just like `Ash.Query.filter/2`: relationship references in their expressions, and relationships they load, are not subject to the related resource's read policies. When `true`, the calculation only sees related records the actor can read:
+
+      - In an expression, a reference through a relationship resolves to `nil` when the related record is not readable, and `exists` only considers readable related records.
+      - Relationships that the calculation loads are loaded with authorization.
+
+      Aggregates are authorized regardless of this option, according to their own `authorize?` option.
       """
     ],
     load: [
@@ -162,6 +177,7 @@ defmodule Ash.Resource.Calculation do
           load: keyword,
           sortable?: boolean,
           sensitive?: boolean,
+          authorize?: boolean,
           multitenancy: nil | :enforce | :allow_global | :bypass | :bypass_all,
           name: atom(),
           public?: boolean,

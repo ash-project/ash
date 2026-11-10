@@ -181,12 +181,15 @@ defmodule Ash.Resource.Validation.Present do
       {:at_least, at_least} ->
         at_most_nil = attribute_count - at_least
 
+        message =
+          context.message || error_message("at least %{at_least} of %{keys} must be present")
+
         {:atomic, opts[:attributes], expr(^nil_count > ^at_most_nil),
          expr(
            error(^InvalidAttribute, %{
              field: ^Enum.at(opts[:attributes], 0),
              value: ^atomic_ref(Enum.at(opts[:attributes], 0)),
-             message: error_message("at least %{at_least} of %{keys} must be present"),
+             message: ^message,
              vars: %{at_least: ^at_least, keys: ^Enum.join(opts[:attributes], ", ")}
            })
          )}
@@ -194,12 +197,15 @@ defmodule Ash.Resource.Validation.Present do
       {:at_most, at_most} ->
         at_least_nil = attribute_count - at_most
 
+        message =
+          context.message || error_message("at most %{at_most} of %{keys} must be present")
+
         {:atomic, opts[:attributes], expr(^nil_count < ^at_least_nil),
          expr(
            error(^InvalidAttribute, %{
              field: ^Enum.at(opts[:attributes], 0),
              value: ^atomic_ref(Enum.at(opts[:attributes], 0)),
-             message: error_message("at most %{at_most} of %{keys} must be present"),
+             message: ^message,
              vars: %{at_most: ^at_most, keys: ^Enum.join(opts[:attributes], ", ")}
            })
          )}

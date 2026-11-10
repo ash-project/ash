@@ -335,6 +335,21 @@ defmodule Ash.Test.Actions.AggregateTest do
   end
 
   describe "Ash.aggregate" do
+    test "aggregates with a path are rejected" do
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [%Ash.Error.Query.InvalidQuery{field: :path, value: [:comments]} = error]
+              }} =
+               Ash.aggregate(Post, {:total, :sum, path: [:comments], field: :thing3},
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "against Ash.Test.Actions.AggregateTest.Comment"
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidQuery{field: :path}]}} =
+               Ash.count(Post, path: [:comments], authorize?: false)
+    end
+
     test "an aggregate's read_action filter is not bypassed by a supplied `action`" do
       ScopedCount |> Ash.Changeset.for_create(:create, %{public: true}) |> Ash.create!()
       ScopedCount |> Ash.Changeset.for_create(:create, %{public: false}) |> Ash.create!()
@@ -374,6 +389,19 @@ defmodule Ash.Test.Actions.AggregateTest do
                Ash.aggregate!(mine, {:v, :first, field: :public, default: false},
                  authorize?: false
                )
+    end
+
+    test "aggregates over a calculation field" do
+      for thing3 <- [1, 2] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{thing: "calculated", thing3: thing3})
+        |> Ash.create!(authorize?: false)
+      end
+
+      mine = Ash.Query.filter(Comment, thing == "calculated")
+
+      assert %{v: 6} =
+               Ash.aggregate!(mine, {:v, :sum, field: :doubled_thing3}, authorize?: false)
     end
 
     test "min, max and sum over no records at all return the default" do
@@ -873,6 +901,24 @@ defmodule Ash.Test.Actions.AggregateTest do
       assert length(Ash.read!(query, authorize?: false)) == 2
       assert Ash.count!(query, authorize?: false) == 2
       assert Ash.exists?(query, authorize?: false)
+    end
+
+    test "an aggregate's query for a read action with arguments keeps them when authorizing" do
+      post = Ash.create!(Post, %{public: true}, authorize?: false)
+
+      for thing <- ["c", "c", "d"] do
+        Ash.create!(Comment, %{post_id: post.id, public: true, thing: thing}, authorize?: false)
+      end
+
+      query = Ash.Query.for_read(Comment, :by_thing_argument, %{thing: "c"})
+
+      for authorize? <- [false, true] do
+        assert %{aggregates: %{c_count: 2}} =
+                 Post
+                 |> Ash.Query.filter(id == ^post.id)
+                 |> Ash.Query.aggregate(:c_count, :count, :comments, query: query)
+                 |> Ash.read_one!(authorize?: authorize?)
+      end
     end
 
     test "aggregates can reference calculations" do

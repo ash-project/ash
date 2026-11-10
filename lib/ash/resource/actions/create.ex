@@ -27,6 +27,7 @@ defmodule Ash.Resource.Actions.Create do
     upsert_condition: nil,
     arguments: [],
     changes: [],
+    emits: [],
     reject: [],
     metadata: [],
     transaction?: true,

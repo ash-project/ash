@@ -310,6 +310,15 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
+  The value of a field before the action, for the `values` of `emit` in update and destroy
+  actions.
+
+      emit MyApp.Shop.Signals, :order_status_changed, values: [previous_status: previous(:status)]
+  """
+  @spec previous(atom()) :: {:_previous, atom()}
+  def previous(field) when is_atom(field), do: {:_previous, field}
+
+  @doc """
   Merges the given query context.
 
   If an MFA is provided, it will be called with the changeset.

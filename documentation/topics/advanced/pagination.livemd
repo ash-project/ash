@@ -65,11 +65,24 @@ Keyset pagination, also known as cursor pagination, is done via providing an `af
 >
 > A keyset is an encoded, serialized snapshot of a record's sort values. Always pass back a keyset that Ash previously returned (from a record's `__metadata__.keyset`) — treat it as an opaque token. Ash validates and decodes incoming `after`/`before` cursors and rejects anything malformed with an `Ash.Error.Page.InvalidKeyset` error.
 >
-> Because `after`/`before` come straight from client input on public paginated endpoints, Ash guards cursor deserialization against memory exhaustion: compressed payloads are rejected outright (Ash never produces them), and uncompressed cursors are capped in size (defaulting to 10 KiB). Legitimate cursors only encode a single record's sort values and are far smaller than this. If you sort on unusually large values and hit the limit, raise it with:
+> Because `after`/`before` come straight from client input on public paginated endpoints, Ash guards cursor deserialization against memory exhaustion: compressed payloads are rejected outright (Ash never produces them), and unsigned cursors are capped in size (defaulting to 10 KiB). Legitimate cursors only encode a single record's sort values and are far smaller than this. If you sort on unusually large values and hit the limit, raise it with:
 >
 > ```elixir
 > # config/config.exs
 > config :ash, max_keyset_byte_size: 20_480
+> ```
+>
+> These checks still require Ash to decode input that anyone can send. To have Ash reject
+> anything it didn't generate itself before decoding it, configure a secret for signing
+> keysets. Ash then rejects any keyset that is unsigned, signed with a different secret,
+> or modified, without decoding it. Because a signed keyset can only have come from your
+> application, signed keysets are not limited by `max_keyset_byte_size`. New applications
+> have this configured by the installer. See
+> [`keyset_signing_secret`](/documentation/topics/development/backwards-compatibility-config.md#keyset_signing_secret)
+> for details.
+>
+> ```elixir
+> config :ash, keyset_signing_secret: "a-long-random-string"
 > ```
 
 ### Pros of keyset pagination

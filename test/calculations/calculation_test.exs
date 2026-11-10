@@ -468,6 +468,31 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule PauseMonthsSince do
+    use Ash.Resource.Calculation
+    require Ash.Query
+
+    @impl true
+    def load(_query, opts, _context) do
+      pauses =
+        Ash.Test.CalculationTest.Pause
+        |> Ash.Query.filter(month >= ^opts[:month])
+        |> Ash.Query.select([:month])
+
+      [rule: [parent: [pauses: pauses]]]
+    end
+
+    @impl true
+    def calculate(children, _opts, _context) do
+      Enum.map(children, fn child ->
+        case child.rule.parent.pauses do
+          nil -> nil
+          pauses -> pauses |> Enum.map(& &1.month) |> Enum.sort()
+        end
+      end)
+    end
+  end
+
   defmodule Forward do
     use Ash.Resource.Calculation
 
@@ -505,6 +530,7 @@ defmodule Ash.Test.CalculationTest do
 
     attributes do
       uuid_primary_key :id
+      attribute :month, :integer, public?: true
     end
 
     relationships do
@@ -602,6 +628,14 @@ defmodule Ash.Test.CalculationTest do
       calculate :todos, :map, {Ash.Test.CalculationTest.WithWindow, with_pauses?: true}
       calculate :forwarded_todos, :map, {Ash.Test.CalculationTest.Forward, calc: :todos}
       calculate :pause_ids, {:array, :uuid}, Ash.Test.CalculationTest.PauseIds
+
+      calculate :pause_months_since_jan,
+                {:array, :integer},
+                {Ash.Test.CalculationTest.PauseMonthsSince, month: 1}
+
+      calculate :pause_months_since_jun,
+                {:array, :integer},
+                {Ash.Test.CalculationTest.PauseMonthsSince, month: 6}
     end
 
     defmodule CalcFoo do
@@ -692,6 +726,14 @@ defmodule Ash.Test.CalculationTest do
       calculate :children_pause_ids,
                 {:array, {:array, :uuid}},
                 {Ash.Test.CalculationTest.LoadChildren, calc: :pause_ids}
+
+      calculate :children_pause_months_since_jan,
+                {:array, {:array, :integer}},
+                {Ash.Test.CalculationTest.LoadChildren, calc: :pause_months_since_jan}
+
+      calculate :children_pause_months_since_jun,
+                {:array, {:array, :integer}},
+                {Ash.Test.CalculationTest.LoadChildren, calc: :pause_months_since_jun}
     end
   end
 
@@ -2325,6 +2367,40 @@ defmodule Ash.Test.CalculationTest do
 
       assert loaded.timetable == [%{timezone: "Europe/Berlin", pauses: nil}]
       assert loaded.todos == [%{timezone: "Europe/Berlin", pauses: [pause.id]}]
+    end
+
+    for authorize? <- [true, false] do
+      test "related calculations load one nested relationship with different queries, authorize?: #{authorize?}",
+           %{parent: parent} do
+        Ash.Seed.seed!(Pause, %{parent_id: parent.id, month: 1})
+        Ash.Seed.seed!(Pause, %{parent_id: parent.id, month: 6})
+
+        loaded =
+          Ash.get!(Parent, parent.id,
+            load: [:children_pause_months_since_jan, :children_pause_months_since_jun],
+            authorize?: unquote(authorize?)
+          )
+
+        assert loaded.children_pause_months_since_jan == [[1, 6]]
+        assert loaded.children_pause_months_since_jun == [[6]]
+      end
+
+      test "related calculations load one nested relationship with different queries through a loaded relationship, authorize?: #{authorize?}",
+           %{parent: parent} do
+        Ash.Seed.seed!(Pause, %{parent_id: parent.id, month: 1})
+        Ash.Seed.seed!(Pause, %{parent_id: parent.id, month: 6})
+
+        parent = Ash.get!(Parent, parent.id, load: [children: :rule], authorize?: false)
+
+        loaded =
+          Ash.load!(parent, [:children_pause_months_since_jan, :children_pause_months_since_jun],
+            reuse_values?: true,
+            authorize?: unquote(authorize?)
+          )
+
+        assert loaded.children_pause_months_since_jan == [[1, 6]]
+        assert loaded.children_pause_months_since_jun == [[6]]
+      end
     end
   end
 end

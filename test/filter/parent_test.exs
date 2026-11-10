@@ -6,6 +6,7 @@ defmodule Ash.Test.Filter.ParentTest do
   use ExUnit.Case, async: false
 
   require Ash.Query
+  import Ash.Expr, only: [expr: 1]
   alias Ash.Test.Domain, as: Domain
 
   defmodule User do
@@ -140,6 +141,85 @@ defmodule Ash.Test.Filter.ParentTest do
     end
   end
 
+  defmodule Shelved do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:destroy, create: :*, update: :*]
+
+      read :read do
+        primary? true
+        filter expr(shelved == false)
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute(:kind, :string, public?: true)
+      attribute(:shelved, :boolean, default: false, public?: true)
+    end
+
+    relationships do
+      has_many :items, Ash.Test.Filter.ParentTest.ShelvedItem do
+        public? true
+        filter expr(kind == parent(kind))
+      end
+    end
+  end
+
+  defmodule ShelvedItem do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute(:kind, :string, public?: true)
+    end
+
+    relationships do
+      belongs_to :shelved, Ash.Test.Filter.ParentTest.Shelved do
+        public? true
+        attribute_writable? true
+      end
+    end
+  end
+
+  describe "Ash.Filter.has_parent_expr?/1" do
+    test "finds `parent/1` in the expression's own scope" do
+      assert Ash.Filter.has_parent_expr?(expr(title == parent(name)))
+    end
+
+    test "ignores `parent/1` that refers to the scope of an `exists`" do
+      refute Ash.Filter.has_parent_expr?(expr(exists(posts, title == parent(name))))
+    end
+
+    test "finds `parent/1` that escapes an `exists`" do
+      assert Ash.Filter.has_parent_expr?(expr(exists(posts, title == parent(parent(name)))))
+    end
+
+    test "ignores `parent/1` that refers to the scope of a referenced aggregate" do
+      query =
+        Ash.Query.filter(User, count(posts, query: [filter: expr(title == parent(name))]) > 0)
+
+      refute Ash.Filter.has_parent_expr?(query.filter)
+    end
+  end
+
   test "exists/2 can use `parent` to refer to the root record" do
     author =
       User
@@ -243,5 +323,14 @@ defmodule Ash.Test.Filter.ParentTest do
 
     assert {:ok, %{notes: notes}} = base |> Ash.Query.select([:id, :org_id]) |> Ash.read_one()
     assert Enum.map(notes, & &1.secret) == ["same organization"]
+  end
+
+  test "a relationship using `parent` loads on a record its source's read action no longer returns" do
+    shelved = Ash.create!(Shelved, %{kind: "book"})
+    item = Ash.create!(ShelvedItem, %{kind: "book", shelved_id: shelved.id})
+    shelved = Ash.update!(shelved, %{shelved: true})
+
+    assert [loaded] = Ash.load!(shelved, :items).items
+    assert loaded.id == item.id
   end
 end

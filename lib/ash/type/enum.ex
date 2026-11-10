@@ -276,18 +276,18 @@ defmodule Ash.Type.Enum do
       @impl true
       def apply_atomic_constraints(new_value, constraints) do
         if Ash.Expr.expr?(new_value) do
-          if @any_not_downcase? do
-            error_expr =
-              Ash.Expr.expr(
-                error(
-                  Ash.Error.Changes.InvalidChanges,
-                  message: ^error_message("must be one of %{values}"),
-                  vars: %{values: ^Enum.join(@values, ", ")}
-                )
+          error_expr =
+            Ash.Expr.expr(
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: ^error_message("must be one of %{values}"),
+                vars: %{values: ^Enum.join(@values, ", ")}
               )
+            )
 
-            Enum.reduce(@values, {:atomic, error_expr}, fn valid_value, {:atomic, expr} ->
-              expr =
+          expr =
+            if @any_not_downcase? do
+              Enum.reduce(@values, error_expr, fn valid_value, expr ->
                 Ash.Expr.expr(
                   if string_downcase(^new_value) == string_downcase(^valid_value) do
                     ^valid_value
@@ -295,23 +295,25 @@ defmodule Ash.Type.Enum do
                     ^expr
                   end
                 )
+              end)
+            else
+              Ash.Expr.expr(
+                if ^new_value in ^@values do
+                  ^new_value
+                else
+                  ^error_expr
+                end
+              )
+            end
 
-              {:atomic, expr}
-            end)
-          else
-            {:ok,
-             Ash.Expr.expr(
-               if ^new_value in ^@values do
-                 ^new_value
-               else
-                 error(
-                   Ash.Error.Changes.InvalidChanges,
-                   message: ^error_message("must be one of %{values}"),
-                   vars: %{values: ^Enum.join(@values, ", ")}
-                 )
-               end
-             )}
-          end
+          {:ok,
+           Ash.Expr.expr(
+             if is_nil(^new_value) do
+               ^new_value
+             else
+               ^expr
+             end
+           )}
         else
           apply_constraints(new_value, constraints)
         end

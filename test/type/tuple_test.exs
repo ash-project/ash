@@ -160,6 +160,63 @@ defmodule Ash.Type.TupleTest do
            ] = changeset.errors
   end
 
+  describe "casting a map keyed by field name" do
+    test "casts into a tuple in field order" do
+      changeset =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          metadata: %{"integer_min_0" => "2", "foo" => "bar"},
+          metadata_type: %{foo: "baz"}
+        })
+
+      assert changeset.valid?
+
+      assert changeset.attributes == %{
+               metadata: {"bar", 2},
+               metadata_type: {"baz"}
+             }
+    end
+
+    test "a missing field takes nil in its position" do
+      changeset =
+        Post
+        |> Ash.Changeset.for_create(:create, %{metadata: %{"foo" => "bar"}})
+
+      assert changeset.valid?
+      assert changeset.attributes == %{metadata: {"bar", nil}}
+    end
+
+    test "a missing field that does not allow nil is rejected" do
+      changeset =
+        Post
+        |> Ash.Changeset.for_create(:create, %{metadata: %{"integer_min_0" => 1}})
+
+      refute changeset.valid?
+
+      assert [
+               %Ash.Error.Changes.InvalidAttribute{
+                 field: :foo,
+                 message: "value must not be nil",
+                 path: [:metadata]
+               }
+             ] = changeset.errors
+    end
+
+    test "undeclared keys are ignored" do
+      assert {:ok, {"bar", nil}} =
+               Ash.Type.cast_input(
+                 Ash.Type.Tuple,
+                 %{"foo" => "bar", "other" => 1},
+                 fields: [foo: [type: :string], integer_min_0: [type: :integer]]
+               )
+    end
+
+    test "structs are not cast" do
+      assert {:error, _} =
+               Ash.Type.cast_input(Ash.Type.Tuple, ~D[2024-01-01], fields: [foo: [type: :string]])
+    end
+  end
+
   describe "dump_to_native" do
     test "recursively dumps field types" do
       {:ok, constraints} =
@@ -340,6 +397,105 @@ defmodule Ash.Type.TupleTest do
                  %{"name" => "embedded:hello", "count" => 42},
                  constraints
                )
+    end
+  end
+
+  describe "loading invalid stored values" do
+    setup do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            a: [type: :string, allow_nil?: false],
+            b: [type: :integer],
+            c: [type: :string]
+          ]
+        )
+
+      %{constraints: constraints}
+    end
+
+    test "cast_stored returns an error when a field fails to cast", %{constraints: constraints} do
+      assert :error =
+               Ash.Type.cast_stored(
+                 Ash.Type.Tuple,
+                 %{"a" => "x", "b" => "abc", "c" => "z"},
+                 constraints
+               )
+    end
+
+    test "cast_from_embedded returns an error when a field fails to cast", %{
+      constraints: constraints
+    } do
+      assert :error =
+               Ash.Type.cast_from_embedded(
+                 Ash.Type.Tuple,
+                 %{"a" => "x", "b" => "abc", "c" => "z"},
+                 constraints
+               )
+    end
+
+    test "a missing first field loads as nil in its position", %{constraints: constraints} do
+      assert {:ok, {nil, 1, "z"}} =
+               Ash.Type.cast_stored(Ash.Type.Tuple, %{"b" => 1, "c" => "z"}, constraints)
+    end
+
+    test "a missing middle field loads as nil in its position", %{constraints: constraints} do
+      assert {:ok, {"x", nil, "z"}} =
+               Ash.Type.cast_stored(Ash.Type.Tuple, %{"a" => "x", "c" => "z"}, constraints)
+
+      assert {:ok, {"x", nil, "z"}} =
+               Ash.Type.cast_from_embedded(Ash.Type.Tuple, %{a: "x", c: "z"}, constraints)
+    end
+
+    test "a missing last field loads as nil in its position", %{constraints: constraints} do
+      assert {:ok, {"x", 1, nil}} =
+               Ash.Type.cast_stored(Ash.Type.Tuple, %{"a" => "x", "b" => 1}, constraints)
+    end
+
+    test "apply_constraints rejects a missing field that does not allow nil", %{
+      constraints: constraints
+    } do
+      assert {:ok, value} =
+               Ash.Type.cast_stored(Ash.Type.Tuple, %{"b" => 1, "c" => "z"}, constraints)
+
+      assert {:error, [[message: "value must not be nil", field: :a]]} =
+               Ash.Type.apply_constraints(Ash.Type.Tuple, value, constraints)
+    end
+  end
+
+  test "init rejects duplicate field names" do
+    assert {:error, "fields must have unique names, got duplicates `[:a]`"} =
+             Ash.Type.Tuple.init(fields: [a: [type: :integer], a: [type: :string]])
+  end
+
+  describe "load" do
+    test "returns an error for load keys that are not declared fields" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Tuple, fields: [foo: [type: :string]])
+
+      assert {:error, "cannot load [:unknown]" <> _} =
+               Ash.Type.Tuple.load([{"bar"}], [:unknown], constraints, %{})
+    end
+  end
+
+  describe "apply_constraints" do
+    test "rejects tuples with the wrong number of elements" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple, fields: [a: [type: :string], b: [type: :string]])
+
+      assert {:error, [message: _, expected_length: 2, value_length: 1]} =
+               Ash.Type.apply_constraints(Ash.Type.Tuple, {"x"}, constraints)
+    end
+
+    test "reports every invalid field" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple, fields: [a: [type: :integer], b: [type: :integer]])
+
+      assert {:error,
+              [
+                [message: "is invalid", field: :a, value: "x"],
+                [message: "is invalid", field: :b, value: "y"]
+              ]} =
+               Ash.Type.apply_constraints(Ash.Type.Tuple, {"x", "y"}, constraints)
     end
   end
 

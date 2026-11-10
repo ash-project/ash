@@ -35,13 +35,34 @@ defmodule Ash.Policy.Info do
   @spec policy_expressions(Ash.Resource.t() | Spark.Dsl.t()) ::
           %{
             policies: [Ash.Policy.Policy.t()],
-            overall: Crux.Expression.t(Ash.Policy.Check.ref()),
-            by_action: %{atom() => Crux.Expression.t(Ash.Policy.Check.ref())}
+            overall: cache_entry(),
+            by_action: %{atom() => cache_entry()}
           }
           | nil
   def policy_expressions(resource) do
     if Spark.Dsl.is?(resource, Ash.Resource) do
-      Extension.get_persisted(resource, :policy_expressions)
+      # Renamed from `:policy_expressions` when the entries changed shape, so a
+      # resource compiled against the old shape falls back instead of misreading it.
+      Extension.get_persisted(resource, :policy_expression_cache)
+    end
+  end
+
+  # See `Ash.Policy.Policy.static_cache_entry/3`
+  @typep cache_entry ::
+           {{Crux.Expression.t(Ash.Policy.Check.ref()),
+             Crux.Expression.t(Ash.Policy.Check.ref())},
+            Crux.Expression.t(Ash.Policy.Check.ref()) | nil}
+
+  @doc false
+  @spec domain_policy_expression(Ash.Domain.t()) ::
+          %{
+            policies: [Ash.Policy.Policy.t()],
+            template: Crux.Expression.t(Ash.Policy.Check.ref())
+          }
+          | nil
+  def domain_policy_expression(domain) do
+    if Spark.Dsl.is?(domain, Ash.Domain) do
+      Extension.get_persisted(domain, :domain_policy_expression)
     end
   end
 

@@ -98,9 +98,6 @@ defmodule Ash.Actions.Read.AsyncLimiter do
 
   defp collect_yielded(results) do
     Enum.reduce(results, {[], []}, fn
-      {_task, {:ok, {:__exception__, e, stacktrace}}}, _acc ->
-        reraise e, stacktrace
-
       {_task, {:ok, term}}, {complete, pending} ->
         {[term | complete], pending}
 

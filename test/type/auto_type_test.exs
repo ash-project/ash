@@ -218,7 +218,8 @@ defmodule Ash.Test.Type.AutoTypeTest do
       # struct literal (Ash.Type - embedded resource)
       calculate :address_struct_calc,
                 :auto,
-                expr(%Address{street: title, city: body, zip: "00000"}), public?: true
+                expr(%Address{street: title, city: body, zip: "00000"}),
+                public?: true
 
       # cross-resource ref
       calculate :author_name, :auto, expr(author.name), public?: true

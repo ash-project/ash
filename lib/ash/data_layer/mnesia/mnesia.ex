@@ -90,6 +90,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :bulk_create), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
+  def can?(_, :changeset_filter), do: true
   def can?(_, :create), do: true
   def can?(_, :read), do: true
   def can?(_, :calculate), do: true
@@ -246,6 +247,9 @@ defmodule Ash.DataLayer.Mnesia do
         {:error, error}
     end
     |> case do
+      {:ok, results} ->
+        {:ok, results}
+
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
 
@@ -292,7 +296,9 @@ defmodule Ash.DataLayer.Mnesia do
          {:ok, filtered} <-
            filter_matches(records, filter, domain, tenant, context[:private][:actor]),
          offset_records <-
-           filtered |> Sort.runtime_sort(sort, domain: domain) |> Enum.drop(offset || 0),
+           filtered
+           |> Sort.runtime_sort(sort, domain: domain, tenant: tenant)
+           |> Enum.drop(offset || 0),
          limited_records <- do_limit(offset_records, limit),
          {:ok, records} <-
            Ash.DataLayer.Ets.do_add_aggregates(
@@ -561,21 +567,57 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def destroy(resource, %{data: record}) do
+  def destroy(resource, %{data: record} = changeset) do
     pkey =
       resource
       |> Ash.Resource.Info.primary_key()
       |> Enum.map(&Map.get(record, &1))
 
+    table = Ash.DataLayer.Mnesia.Info.table(resource)
+
     result =
       Mnesia.transaction(fn ->
-        Mnesia.delete({Ash.DataLayer.Mnesia.Info.table(resource), pkey})
+        with :ok <- check_changeset_filter(Mnesia.read({table, pkey}), resource, changeset) do
+          Mnesia.delete({table, pkey})
+        end
       end)
 
     case result do
+      {:atomic, {:error, error}} -> {:error, error}
       {:atomic, _} -> :ok
       {:aborted, error} -> {:error, error}
     end
+  end
+
+  # The stored record must still match the changeset's filter to be written or deleted
+  defp check_changeset_filter(_stored, _resource, %{filter: filter}) when filter in [nil, true],
+    do: :ok
+
+  defp check_changeset_filter(_stored, _resource, %{filter: %Ash.Filter{expression: true}}),
+    do: :ok
+
+  defp check_changeset_filter([{_, _, record}], resource, changeset) do
+    with {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource),
+         {:ok, [_]} <-
+           filter_matches(
+             [record],
+             changeset.filter,
+             changeset.domain,
+             changeset.tenant,
+             changeset.context[:private][:actor]
+           ) do
+      :ok
+    else
+      {:ok, []} -> stale_record(resource, changeset)
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp check_changeset_filter([], resource, changeset), do: stale_record(resource, changeset)
+
+  defp stale_record(resource, changeset) do
+    {:error,
+     Ash.Error.Changes.StaleRecord.exception(resource: resource, filter: changeset.filter)}
   end
 
   @doc false
@@ -595,7 +637,12 @@ defmodule Ash.DataLayer.Mnesia do
       Mnesia.transaction(fn ->
         with {:ok, record} <- Ash.Changeset.apply_attributes(%{changeset | action_type: :update}),
              {:ok, record} <-
-               do_update(Ash.DataLayer.Mnesia.Info.table(resource), {pkey, record}, resource),
+               do_update(
+                 Ash.DataLayer.Mnesia.Info.table(resource),
+                 {pkey, record},
+                 resource,
+                 changeset
+               ),
              {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource) do
           new_pkey = pkey_list(resource, record)
 
@@ -652,7 +699,7 @@ defmodule Ash.DataLayer.Mnesia do
     |> Enum.map(&Map.get(data, &1))
   end
 
-  defp do_update(table, {pkey, record}, resource) do
+  defp do_update(table, {pkey, record}, resource, changeset) do
     attributes = Ash.Resource.Info.attributes(resource)
 
     case Ash.DataLayer.Ets.dump_to_native(record, attributes) do
@@ -661,10 +708,12 @@ defmodule Ash.DataLayer.Mnesia do
           [] ->
             {:error, "Record not found matching: #{inspect(pkey)}"}
 
-          [{_, _, record}] ->
-            Mnesia.write({table, pkey, Map.merge(record, casted)})
-            [{_, _, record}] = Mnesia.read({table, pkey})
-            {:ok, record}
+          [{_, _, record}] = stored ->
+            with :ok <- check_changeset_filter(stored, resource, changeset) do
+              Mnesia.write({table, pkey, Map.merge(record, casted)})
+              [{_, _, record}] = Mnesia.read({table, pkey})
+              {:ok, record}
+            end
         end
 
       {:error, error} ->
@@ -745,7 +794,7 @@ defmodule Ash.DataLayer.Mnesia do
             |> set_upsert_action(:update)
           else
             {:ok, []} ->
-              {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+              Ash.DataLayer.Ets.skipped_upsert(resource, changeset, result)
 
             {:error, reason} ->
               {:error, reason}
@@ -982,8 +1031,25 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def transaction(_, func, _timeout, _reason) do
-    case Mnesia.transaction(func, 1) do
+  def transaction(resource, func, _timeout, reason) do
+    tables = transaction_tables(resource, reason)
+    started = {__MODULE__, make_ref()}
+
+    # Mnesia makes a transaction that meets a lock held by an older one wait by
+    # restarting it, and the hooks it runs must run once. The tables of the
+    # resources the action touches are locked before any of it runs, and a
+    # restart after it has started aborts as a transaction without restarts does.
+    result =
+      Mnesia.transaction(fn ->
+        if Process.get(started), do: Mnesia.abort(:nomore)
+        Enum.each(tables, &Mnesia.lock({:table, &1}, :write))
+        Process.put(started, true)
+        func.()
+      end)
+
+    Process.delete(started)
+
+    case result do
       {:atomic, result} ->
         {:ok, result}
 
@@ -1004,6 +1070,28 @@ defmodule Ash.DataLayer.Mnesia do
         end
     end
   end
+
+  defp transaction_tables(resource, reason) do
+    [resource | touched_resources(reason)]
+    |> Enum.filter(&(Ash.Resource.Info.data_layer(&1) == __MODULE__))
+    |> Enum.map(&Ash.DataLayer.Mnesia.Info.table/1)
+    |> Enum.uniq()
+  end
+
+  defp touched_resources(%{metadata: %{resource: resource, action: action}})
+       when is_atom(action) do
+    case Ash.Resource.Info.action(resource, action) do
+      %{touches_resources: touches_resources} -> [resource | touches_resources]
+      _ -> [resource]
+    end
+  end
+
+  defp touched_resources(%{
+         metadata: %{query: %{action: %{touches_resources: touches_resources}}}
+       }),
+       do: touches_resources
+
+  defp touched_resources(_), do: []
 
   @doc false
   @impl true

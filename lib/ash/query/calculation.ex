@@ -21,6 +21,7 @@ defmodule Ash.Query.Calculation do
     async?: false,
     sortable?: true,
     sensitive?: false,
+    authorize?: false,
     allow_nil?: true
   ]
 
@@ -76,7 +77,10 @@ defmodule Ash.Query.Calculation do
     ],
     authorize?: [
       type: :boolean,
-      doc: "Whether or not authorization is being performed"
+      default: false,
+      doc: """
+      Whether or not the related data that the calculation uses should be authorized, when the parent query is authorized. See the `authorize?` option on resource calculations for more.
+      """
     ],
     tracer: [
       type: :any,
@@ -113,18 +117,11 @@ defmodule Ash.Query.Calculation do
       ) do
     with {:ok, opts} <- Opts.validate(opts),
          {:ok, calc_opts} <- Ash.Resource.Calculation.init(module, calc_opts) do
-      authorize? =
-        if :authorize? in opts.__set__ do
-          opts.authorize?
-        else
-          opts.source_context[:private][:authorize?]
-        end
-
       context = %Ash.Resource.Calculation.Context{
         arguments: opts.arguments,
         type: type,
         constraints: constraints,
-        authorize?: authorize?,
+        authorize?: opts.source_context[:private][:authorize?],
         actor: opts.actor || opts.source_context[:private][:actor],
         tenant: opts.tenant || opts.source_context[:private][:tenant],
         tracer: opts.tracer || opts.source_context[:private][:tracer],
@@ -150,6 +147,7 @@ defmodule Ash.Query.Calculation do
          filterable?: opts.filterable?,
          sortable?: opts.sortable?,
          sensitive?: opts.sensitive?,
+         authorize?: opts.authorize?,
          allow_nil?: opts.allow_nil?
        }}
     end
@@ -157,14 +155,21 @@ defmodule Ash.Query.Calculation do
 
   @from_resource_schema [
     args: [
-      type: :map,
-      doc: "Arguments to pass to the calculation",
+      # any key type, so that keys that aren't argument names get a `NoSuchInput` error
+      # from argument validation
+      type: {:map, :any, :any},
+      doc: "Arguments to pass to the calculation, keyed by argument name as an atom or a string",
       default: %{}
     ],
     source_context: [
       type: :map,
       doc: "Context from the source query or changeset.",
       default: %{}
+    ],
+    allow_expr?: [
+      type: :boolean,
+      doc: "Whether arguments that allow expressions may be given expressions.",
+      default: true
     ]
   ]
 
@@ -224,7 +229,11 @@ defmodule Ash.Query.Calculation do
 
     with {:ok, opts} <- FromResourceOpts.validate(opts),
          {:ok, args} <-
-           Ash.Query.validate_calculation_arguments(resource_calculation, opts.args),
+           Ash.Query.validate_calculation_arguments(
+             resource_calculation,
+             opts.args,
+             opts.allow_expr?
+           ),
          {:ok, calculation} <-
            new(
              name,
@@ -237,6 +246,7 @@ defmodule Ash.Query.Calculation do
              filterable?: resource_calculation.filterable?,
              sortable?: resource_calculation.sortable?,
              sensitive?: resource_calculation.sensitive?,
+             authorize?: resource_calculation.authorize?,
              allow_nil?: resource_calculation.allow_nil?,
              load: resource_calculation.load,
              source_context: opts.source_context,

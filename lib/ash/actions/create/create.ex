@@ -180,6 +180,21 @@ defmodule Ash.Actions.Create do
         }
       })
 
+    # The condition the changeset was built with is already in its filter, so a different one
+    # passed when running it is added to it, as `bulk_create` does
+    changeset =
+      case opts[:upsert_condition] do
+        nil ->
+          changeset
+
+        upsert_condition ->
+          if upsert_condition == get_in(changeset.context, [:private, :upsert_condition]) do
+            changeset
+          else
+            Ash.Changeset.filter(changeset, upsert_condition)
+          end
+      end
+
     with %{valid?: true} = changeset <- handle_multitenancy(changeset, action),
          %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
          %{valid?: true} = changeset <- check_upsert_support(changeset, opts),
@@ -252,6 +267,11 @@ defmodule Ash.Actions.Create do
     {:ok, %{data | __metadata__: metadata}}
   end
 
+  defp add_tenant({:ok, data, instructions}, changeset) do
+    {:ok, data} = add_tenant({:ok, data}, changeset)
+    {:ok, data, instructions}
+  end
+
   defp add_tenant(other, _), do: other
 
   defp add_notifications(
@@ -313,6 +333,13 @@ defmodule Ash.Actions.Create do
       end
 
     changeset = set_tenant(changeset)
+
+    changeset =
+      if opts[:upsert?] do
+        Ash.Changeset.filter(changeset, Helpers.upsert_tenant_filter(changeset))
+      else
+        changeset
+      end
 
     is_upsert? = changeset.context[:private][:upsert?]
 
@@ -698,7 +725,8 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp handle_attribute_multitenancy(changeset) do
+  @doc false
+  def handle_attribute_multitenancy(changeset) do
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
       attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)

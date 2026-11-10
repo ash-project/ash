@@ -231,6 +231,21 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
+  This check is true when the current action is being run by a listener of the given signal.
+
+  ```elixir
+  # points_entry.ex
+  policy action(:earn_points) do
+    authorize_if signal_in(MyApp.Shop.Signals, :order_placed)
+  end
+  ```
+  """
+  @spec signal_in(Ash.Signals.t(), atom) :: Ash.Policy.Check.ref()
+  def signal_in(signal_module, signal) do
+    {Ash.Policy.Check.SignalIn, signal_module: signal_module, signal: signal}
+  end
+
+  @doc """
   This check passes if the data relates to the actor via the specified relationship or path of relationships.
 
   For `update` & `destroy` actions, this check will apply to *the original data* before the changes are applied.

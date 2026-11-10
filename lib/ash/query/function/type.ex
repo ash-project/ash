@@ -24,6 +24,10 @@ defmodule Ash.Query.Function.Type do
     Ash.Expr.can_return_nil?(value)
   end
 
+  # Validated calculation literals retain their type hint for data layers without
+  # coercing the already cast and constrained value again.
+  def evaluate(%{arguments: [val, _, _], extra: %{casted?: true}}), do: {:known, val}
+
   def evaluate(%{arguments: [val, type, constraints]}) do
     case Ash.Type.coerce(type, val, constraints) do
       {:ok, value} ->

@@ -136,6 +136,12 @@ The central concept in Ash, a resource can be used to model all kinds of things.
 
 See the [Resource DSL docs](dsl-ash-resource.html) for DSL documentation.
 
+## Signal
+
+A typed event that a resource emits from its actions, and that other resources listen to with their own actions, so that neither depends on the other. Signals are declared in a signal module that uses `Ash.Signals`. By default, listeners run as nested actions while the emitting action runs, usually inside its transaction.
+
+See the [Signals guide](/documentation/topics/resources/signals.md) for more.
+
 ## Tenant
 
 Multitenancy is the siloing of your app's data into discrete non-overlapping groups, typically by customer or organization (the tenant). Ash supports multitenancy both at the code level and the data layer level (depending on the data layer; for example, AshPostgres uses schemas to fully separate data per tenant.)

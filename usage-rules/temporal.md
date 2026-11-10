@@ -53,6 +53,7 @@ MyApp.Subscription
 - A **create** opens `[as_of, ∞)`. You can't create a record if any later version of it already exists.
 - An **update** splits the version valid at `as_of`. The new values run from `as_of` to wherever that version ended. To schedule a future change, write an update with a future `as_of`, not a create.
 - A **destroy** closes the version valid at `as_of` down to `[from, as_of)`. It doesn't delete history.
+- A record keeps the instant it was read or written at, and `Ash.load`/`Ash.reload` reuse it. Writes don't. An update or destroy given a record, without `as_of`, happens now, on the version valid now, even if the record is an older version. To write at the record's instant, pass `as_of: record.__metadata__.as_of`.
 - An update or destroy with no version valid at `as_of` (because the history ended, the record hasn't started yet, or `as_of` falls in a gap) fails as a stale record. To bring back a record whose history has ended, **create** it again rather than updating it.
 - On Postgres, concurrent writes to the same record are retried automatically, up to 25 conflicts, after which `AshPostgres.Temporal.WriteConflict` is raised. It's safe to retry. Under `REPEATABLE READ`/`SERIALIZABLE` you get a serialization failure instead, and retrying is up to you.
 

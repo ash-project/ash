@@ -354,8 +354,18 @@ end
 - **Authorization**: Policies on intermediate resources in the path are respected.
   If the actor cannot read a record at any step in the path, it will be excluded
   from the results.
+- **Steps**: The records at each step are read the way the relationship
+  leading to them reads them: with its `read_action`, `filter`, `domain` and
+  `limit` (or `from_many?`), and as `accessing_from` that relationship for
+  policies. A limit applies to each record the step is reached from, and
+  `parent/1` in a filter refers to that record. Unless the through relationship
+  sets its own `read_action`, the destination is read with the last
+  relationship's. A `many_to_many` step goes through its join resource, and its
+  filter can't use `parent/1`. A limit or a filter using `parent/1` on the last
+  relationship requires the destination to have a single-attribute primary key.
 - **Sorting**: You can use `sort` and `default_sort` on through relationships.
-  The sort applies to the final result set.
+  The sort applies to the final result set. Without one, the last
+  relationship's sort is used.
 - **Filtering and aggregates**: Through relationships support filtering and
   aggregates just like regular relationships.
 - **Cross-domain**: The relationships in the path can span different domains.
@@ -444,6 +454,10 @@ followers = Ash.Query.sort(User, follower_count: :asc)
 
 Ash.load(users, followers: followers)
 ```
+When loading the same relationship multiple times with different queries, the
+queries do not stack. The later query takes precedence over earlier queries for
+options such as filters, sorts, and limits. Nested load statements are the
+exception and are combined across the queries.
 
 Nested loads will be included in the parent load.
 
@@ -583,7 +597,8 @@ end
 
 ### Query when loading with strict?: true
 
-When using `Ash.Query.load` or `Ash.load` with the `strict?: true` option, the
+When using `Ash.Query.load`, `Ash.load`, or the `load` option of a create, update
+or destroy action with the `strict?: true` option, the
 query that is provided to the load callback might be configured with a
 select-statement that doesn't load the attributes you want to group matching
 results by. If your codebase utilizes the strict loading functionality, it is

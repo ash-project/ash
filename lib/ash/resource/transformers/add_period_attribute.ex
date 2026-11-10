@@ -32,6 +32,7 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
         Ash.Resource.Builder.add_attribute(dsl_state, attribute_name, Ash.Type.Range,
           allow_nil?: false,
           generated?: true,
+          always_select?: true,
           constraints: [
             inner_type: :utc_datetime_usec,
             lower: [inclusive?: true],
@@ -41,7 +42,7 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
 
       attribute ->
         check(attribute, module)
-        {:ok, mark_generated(dsl_state, attribute)}
+        {:ok, mark_period(dsl_state, attribute)}
     end
   end
 
@@ -59,13 +60,15 @@ defmodule Ash.Resource.Transformers.AddPeriodAttribute do
     end
   end
 
-  defp mark_generated(dsl_state, %{generated?: true}), do: dsl_state
+  # The period is part of a version's identity alongside the primary key, so it is always
+  # selected: reselecting for `Ash.load` matches rows back to records on both.
+  defp mark_period(dsl_state, %{generated?: true, always_select?: true}), do: dsl_state
 
-  defp mark_generated(dsl_state, attribute) do
+  defp mark_period(dsl_state, attribute) do
     Transformer.replace_entity(
       dsl_state,
       [:attributes],
-      %{attribute | generated?: true},
+      %{attribute | generated?: true, always_select?: true},
       &(&1.name == attribute.name)
     )
   end

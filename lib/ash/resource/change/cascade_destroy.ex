@@ -110,9 +110,13 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       if not opts.after_action? and
            opts.relationship.type in [:many_to_many, :has_many, :has_one] do
         Ash.Changeset.before_action(changeset, fn changeset ->
-          # can't produce `{:error, error}` because `changeset.phase` is before_action
+          context = current_context(context, changeset)
+
           case {destroy_related([changeset.data], opts, context, changeset),
                 opts.return_notifications?} do
+            {{:error, error}, _} ->
+              Ash.Changeset.add_error(changeset, error)
+
             {_, false} ->
               changeset
 
@@ -125,6 +129,8 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         end)
       else
         Ash.Changeset.after_action(changeset, fn changeset, result ->
+          context = current_context(context, changeset)
+
           case {destroy_related([result], opts, context, changeset), opts.return_notifications?} do
             {{:error, error}, _} ->
               {:error, error}
@@ -144,6 +150,10 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       {:error, reason} ->
         Ash.Changeset.add_error(changeset, reason)
     end
+  end
+
+  defp current_context(context, changeset) do
+    %{context | source_context: changeset.context}
   end
 
   @doc false
@@ -314,17 +324,13 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
     case related_query(data, opts, context_opts) do
       {:ok, query} ->
-        Ash.bulk_destroy!(
-          query,
-          action.name,
-          %{},
-          destroy_opts
-        )
+        query
+        |> Ash.bulk_destroy(action.name, %{}, destroy_opts)
+        |> handle_bulk_result()
 
-      :error ->
+      failure ->
         if changeset.phase == :after_action and changeset.action_type == :destroy do
-          {:error,
-           "Unable to cascade destroy for #{relationship.name} relationship in after_action"}
+          {:error, after_action_error(relationship, failure)}
         else
           read_action_name =
             opts.read_action || opts.relationship.read_action || opts.action.atomic_upgrade_with
@@ -350,28 +356,38 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
           data
           |> List.wrap()
-          |> Ash.load!(
-            [{relationship.name, load_query}],
-            scope: context
-          )
-          |> Enum.flat_map(fn record ->
-            record
-            |> Map.get(relationship.name)
-            |> List.wrap()
-          end)
-          |> Ash.bulk_destroy!(
-            action.name,
-            %{},
-            Keyword.update(
-              destroy_opts,
-              :context,
-              action_context,
-              &Map.merge(&1, action_context)
-            )
-          )
+          |> Ash.load([{relationship.name, load_query}], scope: context)
+          |> case do
+            {:ok, data} ->
+              data
+              |> Enum.flat_map(fn record ->
+                record
+                |> Map.get(relationship.name)
+                |> List.wrap()
+              end)
+              |> Ash.bulk_destroy(
+                action.name,
+                %{},
+                Keyword.update(
+                  destroy_opts,
+                  :context,
+                  action_context,
+                  &Map.merge(&1, action_context)
+                )
+              )
+              |> handle_bulk_result()
+
+            {:error, error} ->
+              {:error, error}
+          end
         end
     end
   end
+
+  defp handle_bulk_result(%Ash.BulkResult{status: :success} = result), do: result
+
+  defp handle_bulk_result(%Ash.BulkResult{errors: errors}),
+    do: {:error, Ash.Error.to_error_class(errors || [])}
 
   # The destroys carry the changeset's own `as_of`, which may be a range or set after the
   # change ran; the read that finds them does not.
@@ -422,17 +438,25 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         Ash.Query.new(opts.relationship.source)
       )
       |> elem(1)
-      |> filter_by_keys(opts.relationship, records)
 
     if Ash.Actions.Read.Relationships.has_parent_expr?(
          opts.relationship,
          related_query.context,
          related_query.domain
        ) do
-      :error
+      Ash.Actions.Read.Relationships.filter_by_parents(related_query, opts.relationship, records)
     else
-      {:ok, related_query}
+      {:ok, filter_by_keys(related_query, opts.relationship, records)}
     end
+  end
+
+  defp after_action_error(relationship, {:error, error}) do
+    "Unable to cascade destroy for #{relationship.name} relationship in after_action: " <>
+      Exception.message(error)
+  end
+
+  defp after_action_error(relationship, :error) do
+    "Unable to cascade destroy for #{relationship.name} relationship in after_action"
   end
 
   defp filter_by_keys(query, %{no_attributes?: true}, _records) do

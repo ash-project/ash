@@ -524,7 +524,7 @@ defmodule Ash.Resource.Dsl do
     name: :pipe_through,
     describe: """
     References one or more pipelines to apply to this action.
-    Pipeline entities are prepended before the action's own changes/preparations.
+    Pipeline entities are inserted at the position of the `pipe_through` declaration, in order with the action's own changes/preparations.
     """,
     examples: [
       """
@@ -541,6 +541,41 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Actions.PipeThrough,
     schema: Ash.Resource.Actions.PipeThrough.schema(),
     args: [:names]
+  }
+
+  @emit %Spark.Dsl.Entity{
+    name: :emit,
+    describe: """
+    Emits a signal from the action. See `Ash.Signals`.
+
+    The signal is emitted during its `phase`, `:after_action` by default, which must be the phase
+    the signal declares. Signal fields are taken from the record's attributes of the same name (in
+    a generic action, from its arguments), unless set with `fields` or `values`. Bulk actions emit
+    their signals together, except for signals emitted after the transaction.
+
+    An action can only emit signals it declares. To build a signal in your own code, declare it
+    with `dynamic?: true`, and emit it with `Ash.Signals.emit/5`.
+    """,
+    examples: [
+      "emit MyApp.Shop.Signals, :order_placed, fields: [order_id: :id]",
+      """
+      emit MyApp.Shop.Signals, :order_status_changed,
+        fields: [order_id: :id],
+        values: [previous_status: previous(:status), changed_by: actor(:id)],
+        where: [changing(:status)]
+      """,
+      "emit MyApp.Shop.Signals, :order_shipped, phase: :after_transaction",
+      """
+      emit MyApp.Shop.Signals, :order_placed,
+        dynamic?: true,
+        description: "When the order is paid in full."
+      """
+    ],
+    target: Ash.Resource.Actions.Emit,
+    schema: Ash.Resource.Actions.Emit.schema(),
+    no_depend_modules: [:signal_module],
+    transform: {Ash.Resource.Actions.Emit, :transform, []},
+    args: [:signal_module, :signal]
   }
 
   @create %Spark.Dsl.Entity{
@@ -570,7 +605,8 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @action_change,
         @action_validate,
-        @pipe_through
+        @pipe_through,
+        @emit
       ],
       arguments: [
         @action_argument
@@ -646,7 +682,8 @@ defmodule Ash.Resource.Dsl do
               |> Keyword.delete(:always_atomic?)
               |> Keyword.delete(:on)
         },
-        @pipe_through
+        @pipe_through,
+        @emit
       ]
     ],
     args: [:name, {:optional, :returns}]
@@ -728,7 +765,8 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @action_change,
         @action_validate,
-        @pipe_through
+        @pipe_through,
+        @emit
       ],
       metadata: [
         @metadata
@@ -774,7 +812,8 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @action_change,
         @action_validate,
-        @pipe_through
+        @pipe_through,
+        @emit
       ],
       metadata: [
         @metadata
@@ -1245,6 +1284,70 @@ defmodule Ash.Resource.Dsl do
     entities: [
       @pipeline
     ]
+  }
+
+  @signal_listener %Spark.Dsl.Entity{
+    name: :on,
+    describe: """
+    Runs an action when a signal is emitted. Its return value is ignored.
+
+    The action defaults to the listener's name. A generic action receives the signal struct as an
+    argument (named `signal` by default), or every signal emitted together as a list with
+    `batch?: true`. A create action creates a record from each signal. An update or destroy action
+    runs on the records selected for each signal by `read_action`, `args` and `get_by`. Create,
+    update and destroy actions handle the signals emitted together in bulk.
+
+    By default, the listener runs immediately, during the signal's phase. Set `delivery` to have
+    signals reach it another way, for example in a job. See `Ash.Signals.Delivery`.
+    """,
+    examples: [
+      "on :post_created, :add_to_feeds",
+      "on :post_created, :add_all_to_feeds, batch?: true",
+      "on :post_created, :record_post, action: :create, inputs: [:post_id, body: :title]",
+      "on :post_archived, :archive, read_action: :for_post, args: [:post_id]",
+      "on :post_archived, :archive, get_by: [post_id: :post_id]",
+      "on :order_placed, :send_receipt, delivery: {MyApp.JobDelivery, queue: :mailers}"
+    ],
+    target: Ash.Resource.SignalListener,
+    schema: Ash.Resource.SignalListener.schema(),
+    no_depend_modules: [:delivery],
+    args: [:signal, :name]
+  }
+
+  @signal_source %Spark.Dsl.Entity{
+    name: :from,
+    describe: """
+    Listens to signals from an `Ash.Signals` module.
+    """,
+    examples: [
+      """
+      from MyApp.Blog.Signals do
+        on :post_created, :add_to_feeds
+      end
+      """
+    ],
+    target: Ash.Resource.SignalSource,
+    schema: Ash.Resource.SignalSource.schema(),
+    no_depend_modules: [:signal_module],
+    entities: [listeners: [@signal_listener]],
+    args: [:signal_module]
+  }
+
+  @signals_in %Spark.Dsl.Section{
+    name: :signals_in,
+    describe: """
+    Listen to signals emitted by other resources. See `Ash.Signals`.
+    """,
+    examples: [
+      """
+      signals_in do
+        from MyApp.Blog.Signals do
+          on :post_created, :add_to_feeds
+        end
+      end
+      """
+    ],
+    entities: [@signal_source]
   }
 
   @join_filter %Spark.Dsl.Entity{
@@ -1805,6 +1908,7 @@ defmodule Ash.Resource.Dsl do
     @preparations,
     @validations,
     @pipelines,
+    @signals_in,
     @aggregates,
     @calculations,
     @multitenancy,
@@ -1814,6 +1918,7 @@ defmodule Ash.Resource.Dsl do
   @transformers [
     Ash.Resource.Transformers.RequireStringLengthCountConfig,
     Ash.Resource.Transformers.ResolvePipelines,
+    Ash.Resource.Transformers.ResolveEmits,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.AddPeriodAttribute,
@@ -1835,6 +1940,8 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @persisters [
+    Ash.Resource.Transformers.DefineSignalListeners,
+    Ash.Resource.Transformers.SetSignalsOut,
     Ash.Resource.Transformers.CacheRelationships,
     Ash.Resource.Transformers.ResolveAutoTypes,
     Ash.Resource.Transformers.CacheCalculations,
@@ -1872,7 +1979,9 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.VerifyNotifiers,
     Ash.Resource.Verifiers.VerifyPrimaryKeyPresent,
     Ash.Resource.Verifiers.VerifyGenericActionReactorInputs,
-    Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface
+    Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface,
+    Ash.Resource.Verifiers.VerifySignalListeners,
+    Ash.Resource.Verifiers.VerifyEmitSignal
   ]
 
   @moduledoc false

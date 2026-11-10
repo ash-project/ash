@@ -322,4 +322,46 @@ defmodule Ash.Test.Policy.CanSeeFieldsTest do
       end
     end
   end
+
+  describe "visibility before authorizer loading" do
+    test "hide forbidden note fields before the first authorized read" do
+      # A separate VM preserves normal lazy module loading without unloading an
+      # authorizer used by other tests in this VM.
+      script = """
+      {:ok, _} = Application.ensure_all_started(:ash)
+      false = :code.is_loaded(Ash.Policy.Authorizer)
+      resource = Ash.Test.Support.PolicyField.RestrictedNote
+      actor = %{id: 1}
+      query = Ash.Query.for_read(resource, :read, %{}, actor: actor)
+      false = :code.is_loaded(Ash.Policy.Authorizer)
+      before_loading = Ash.can_see_fields(query, actor, [:secret], filter_is: false)
+      Code.ensure_loaded!(Ash.Policy.Authorizer)
+      after_loading = Ash.can_see_fields(query, actor, [:secret], filter_is: false)
+      result = Base.encode64(:erlang.term_to_binary({before_loading, after_loading}))
+      IO.puts("FIELD_VISIBILITY:" <> result)
+      """
+
+      paths = Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)])
+
+      {output, status} =
+        System.cmd(System.find_executable("elixir"), paths ++ ["-e", script],
+          stderr_to_stdout: true,
+          env: [{"ERL_FLAGS", "+S 2:2"}]
+        )
+
+      assert status == 0, output
+
+      encoded =
+        output
+        |> String.split("\n")
+        |> Enum.find(&String.starts_with?(&1, "FIELD_VISIBILITY:"))
+        |> String.replace_prefix("FIELD_VISIBILITY:", "")
+
+      {before_loading, after_loading} =
+        encoded |> Base.decode64!() |> :erlang.binary_to_term([:safe])
+
+      assert after_loading == {:ok, %{secret: false}}
+      assert before_loading == {:ok, %{secret: false}}
+    end
+  end
 end

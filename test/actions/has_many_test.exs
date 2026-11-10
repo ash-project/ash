@@ -6,6 +6,7 @@ defmodule Ash.Test.Actions.HasManyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Expr
   require Ash.Query
 
   defmodule Comment do
@@ -182,6 +183,11 @@ defmodule Ash.Test.Actions.HasManyTest do
       create_timestamp :inserted_at, public?: true
     end
 
+    calculations do
+      calculate :titled_after_parent?, :boolean, expr(title == parent(name))
+      calculate :popular?, :boolean, expr(likes > 10)
+    end
+
     relationships do
       has_many :comments, Comment do
         destination_attribute :post_id
@@ -338,6 +344,50 @@ defmodule Ash.Test.Actions.HasManyTest do
 
         # This is evenn't
         filter expr(id != parent(post_view.last_post.id))
+      end
+
+      has_many :posts_with_popular_comments, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        # `parent` here refers to the post, not the user
+        filter expr(exists(comments, priority > parent(likes)))
+      end
+
+      has_many :posts_with_comments_named_after_user, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        # `parent(parent(...))` here refers to the user
+        filter expr(exists(comments, content == parent(parent(name))))
+      end
+
+      has_many :posts_with_popular_comment_count, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        # `parent` here refers to the post, not the user
+        filter expr(count(comments, query: [filter: expr(priority > parent(likes))]) > 0)
+      end
+
+      has_many :popular_posts, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        filter expr(popular?)
+      end
+
+      has_many :posts_titled_after_user_first, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        # `parent` in the calculation refers to the user
+        sort titled_after_parent?: :desc, title: :asc
       end
     end
   end
@@ -802,6 +852,50 @@ defmodule Ash.Test.Actions.HasManyTest do
       priorities = Enum.map(post.comments_after_top, & &1.priority)
       # Sorted desc: [100, 90, 80, 70, 60], offset 1 => [90, 80, 70, 60], limit 2 => [90, 80]
       assert priorities == [90, 80]
+    end
+  end
+
+  describe "parent expression detection" do
+    test "a parent reference in the relationship filter refers to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :unread_posts)
+
+      assert Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "a parent reference inside an exists does not refer to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :posts_with_popular_comments)
+
+      refute Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "a nested parent reference inside an exists can refer to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :posts_with_comments_named_after_user)
+
+      assert Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "a parent reference inside an aggregate's filter does not refer to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :posts_with_popular_comment_count)
+
+      refute Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "a parent reference in a calculation that the relationship sorts on refers to the source" do
+      relationship = Ash.Resource.Info.relationship(User, :posts_titled_after_user_first)
+
+      assert Ash.Actions.Read.Relationships.has_parent_expr?(relationship, %{}, Domain)
+    end
+
+    test "parent expressions in the actor are not mistaken for ones in aggregates or calculations" do
+      context = %{
+        private: %{actor: %{saved_expression: Ash.Expr.expr(parent(parent(name)))}}
+      }
+
+      for name <- [:posts_with_popular_comment_count, :popular_posts] do
+        relationship = Ash.Resource.Info.relationship(User, name)
+
+        refute Ash.Actions.Read.Relationships.has_parent_expr?(relationship, context, Domain)
+      end
     end
   end
 end

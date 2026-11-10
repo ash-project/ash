@@ -710,6 +710,84 @@ defmodule Ash.Filter do
     do_find(expr, pred, false, ors?, ands?, structures?)
   end
 
+  @doc """
+  Returns true if the expression uses `parent/1` to reference the scope outside of it.
+
+  `exists` and aggregates are scopes of their own, so a `parent/1` inside of them only counts
+  if it is nested deeply enough to escape them, i.e `exists(posts, parent(parent(id)) == author_id)`.
+  Expressions of calculations and aggregates referenced by the expression are checked as well.
+  """
+  @spec has_parent_expr?(term) :: boolean
+  def has_parent_expr?(expr), do: do_has_parent_expr?(expr, 0)
+
+  # `depth` is how many scopes (`exists` or aggregates) deep we are.
+  defp do_has_parent_expr?(%Ash.Query.Parent{expr: expr}, depth),
+    do: depth == 0 || do_has_parent_expr?(expr, depth - 1)
+
+  defp do_has_parent_expr?(%Call{name: :parent, args: [expr]}, depth),
+    do: depth == 0 || do_has_parent_expr?(expr, depth - 1)
+
+  defp do_has_parent_expr?(%Ash.Query.Exists{expr: expr}, depth),
+    do: do_has_parent_expr?(expr, depth + 1)
+
+  defp do_has_parent_expr?(%Ref{attribute: attribute}, depth),
+    do: do_has_parent_expr?(attribute, depth)
+
+  defp do_has_parent_expr?(%Aggregate{} = aggregate, depth) do
+    query_has_parent_expr? =
+      case aggregate.query do
+        %Ash.Query{filter: filter, sort: sort} -> do_has_parent_expr?([filter, sort], depth + 1)
+        _ -> false
+      end
+
+    query_has_parent_expr? ||
+      do_has_parent_expr?(aggregate.field, depth + 1) ||
+      do_has_parent_expr?(Map.values(aggregate.join_filters || %{}), depth + 1)
+  end
+
+  defp do_has_parent_expr?(%Calculation{module: module, opts: opts, context: context}, depth) do
+    Ash.Resource.Calculation.has_expression?(module) &&
+      module
+      |> Ash.Resource.Calculation.expression(opts, context)
+      |> do_has_parent_expr?(depth)
+  end
+
+  defp do_has_parent_expr?(%__MODULE__{expression: expression}, depth),
+    do: do_has_parent_expr?(expression, depth)
+
+  defp do_has_parent_expr?(%BooleanExpression{left: left, right: right}, depth),
+    do: do_has_parent_expr?(left, depth) || do_has_parent_expr?(right, depth)
+
+  defp do_has_parent_expr?(%Not{expression: expression}, depth),
+    do: do_has_parent_expr?(expression, depth)
+
+  defp do_has_parent_expr?(
+         %Ash.CustomExpression{expression: expression, simple_expression: simple_expression},
+         depth
+       ),
+       do: do_has_parent_expr?(expression, depth) || do_has_parent_expr?(simple_expression, depth)
+
+  defp do_has_parent_expr?(%Call{args: args}, depth),
+    do: do_has_parent_expr?(args, depth)
+
+  defp do_has_parent_expr?(%{__operator__?: true, left: left, right: right}, depth),
+    do: do_has_parent_expr?(left, depth) || do_has_parent_expr?(right, depth)
+
+  defp do_has_parent_expr?(%{__function__?: true, arguments: arguments}, depth),
+    do: do_has_parent_expr?(arguments, depth)
+
+  defp do_has_parent_expr?(list, depth) when is_list(list),
+    do: Enum.any?(list, &do_has_parent_expr?(&1, depth))
+
+  defp do_has_parent_expr?(tuple, depth) when is_tuple(tuple),
+    do: tuple |> Tuple.to_list() |> do_has_parent_expr?(depth)
+
+  # Map literals are expressions, but other structs (queries, contexts, actors, records) are not.
+  defp do_has_parent_expr?(map, depth) when is_map(map) and not is_struct(map),
+    do: map |> Map.to_list() |> do_has_parent_expr?(depth)
+
+  defp do_has_parent_expr?(_other, _depth), do: false
+
   defp do_find(expr, pred, value?, ors?, ands?, structures?) do
     if value = pred.(expr) do
       if value? do
@@ -1064,6 +1142,8 @@ defmodule Ash.Filter do
 
       paths_with_refs
       |> Enum.map(&elem(&1, 0))
+      |> Enum.concat(input_exists_paths(query.filter))
+      |> Enum.uniq()
       |> Enum.reduce_while({:ok, filters}, fn path, {:ok, filters} ->
         expanded_relationships = expand_through_path(query.resource, path)
 
@@ -1073,7 +1153,7 @@ defmodule Ash.Filter do
                  filters,
                  relationship,
                  domain,
-                 query,
+                 query.context[:shared],
                  actor,
                  tenant,
                  refs
@@ -1106,11 +1186,28 @@ defmodule Ash.Filter do
     end
   end
 
+  @doc false
+  # Adds authorization filters for specific relationships and unrelated exists, keyed the same
+  # way as `relationship_filters/7`. Items are `{:relationship, relationship}` or
+  # `{:unrelated_exists, exists}`.
+  def relationship_authorization_filters(domain, shared, actor, tenant, items, filters) do
+    Enum.reduce_while(items, {:ok, filters}, fn
+      {:relationship, relationship}, {:ok, filters} ->
+        add_authorization_path_filter(filters, relationship, domain, shared, actor, tenant, [])
+
+      {:unrelated_exists, exists}, {:ok, filters} ->
+        case add_unrelated_exists_filter(filters, exists, domain, actor, tenant) do
+          {:ok, filters} -> {:cont, {:ok, filters}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+    end)
+  end
+
   defp add_authorization_path_filter(
          filters,
          last_relationship,
          domain,
-         query,
+         shared,
          actor,
          tenant,
          _refs,
@@ -1123,7 +1220,7 @@ defmodule Ash.Filter do
            actor,
            tenant,
            base_related_query,
-           %{shared: query.context[:shared]}
+           %{shared: shared}
          ) do
       %{errors: []} = related_query ->
         if filters[{last_relationship.source, last_relationship.name, related_query.action.name}] do
@@ -1225,7 +1322,7 @@ defmodule Ash.Filter do
             filters,
             last_relationship,
             domain,
-            query,
+            query.context[:shared],
             actor,
             tenant,
             refs,
@@ -1242,7 +1339,9 @@ defmodule Ash.Filter do
           )
         end)
       else
-        case Ash.can(aggregate_query, actor,
+        # The result is shared by every unrelated aggregate over this resource and action, so it
+        # can only hold the authorization filter, not this aggregate's own filter.
+        case Ash.can(Map.put(aggregate_query, :filter, nil), actor,
                run_queries?: false,
                pre_flight?: false,
                alter_source?: true,
@@ -1286,7 +1385,7 @@ defmodule Ash.Filter do
                   filters,
                   last_relationship,
                   domain,
-                  query,
+                  query.context[:shared],
                   actor,
                   tenant,
                   refs,
@@ -1368,6 +1467,24 @@ defmodule Ash.Filter do
 
   defp add_unrelated_exists_authorization({:error, error}, _, _, _, _, _, _) do
     {:error, error}
+  end
+
+  # The paths of `exists` that came from input are authorized even when the `exists` has no
+  # references inside of it, e.g `exists(comments, true)`.
+  defp input_exists_paths(filter) do
+    flat_map(filter, fn
+      %Ash.Query.Exists{related?: true, at_path: at_path, path: path, expr: expr} = exists ->
+        nested = Enum.map(input_exists_paths(expr), &(at_path ++ path ++ &1))
+
+        if exists.input? do
+          [at_path ++ path | nested]
+        else
+          nested
+        end
+
+      _ ->
+        []
+    end)
   end
 
   defp collect_unrelated_exists_with_input_refs(filter) do
@@ -1532,13 +1649,25 @@ defmodule Ash.Filter do
     if query.__validated_for_action__ == action do
       query
     else
-      Ash.Query.for_read(query, action, relationship_read_action_arguments(relationship),
+      Ash.Query.for_read(
+        query,
+        action,
+        relationship_query_arguments(relationship, base_query, action),
         actor: actor,
         authorize?: true,
         tenant: tenant,
         domain: domain,
         context: source_context
       )
+    end
+  end
+
+  # The base query's arguments are for its own action, so they only apply when that action is read
+  defp relationship_query_arguments(relationship, base_query, action) do
+    if base_query.action && base_query.action.name == action do
+      Map.merge(base_query.arguments || %{}, relationship_read_action_arguments(relationship))
+    else
+      relationship_read_action_arguments(relationship)
     end
   end
 
@@ -1611,7 +1740,7 @@ defmodule Ash.Filter do
 
       %Ash.Query.Parent{} = this ->
         # you have to map over the internals of this yourself
-        func.(this)
+        this
 
       %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} =
           custom_expression ->
@@ -1623,7 +1752,7 @@ defmodule Ash.Filter do
 
       %Ash.Query.Exists{} = expr ->
         # you have to map over the internals of exists yourself
-        func.(expr)
+        expr
 
       %Ash.Query.Call{args: args} = op ->
         %{op | args: map(args, func)}
@@ -1646,7 +1775,7 @@ defmodule Ash.Filter do
 
       %Ash.Query.Ref{} = expr ->
         # you have to map over the internals of exists yourself
-        func.(expr)
+        expr
 
       value when is_map(value) ->
         value
@@ -1655,7 +1784,7 @@ defmodule Ash.Filter do
         |> Map.new()
 
       other ->
-        func.(other)
+        other
     end
   end
 
@@ -2443,6 +2572,15 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(
+         %Ash.CustomExpression{expression: expression},
+         include_exists?,
+         with_refs?,
+         expand_aggregates?
+       ) do
+    do_relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?)
+  end
+
+  defp do_relationship_paths(
          %Ash.Query.Exists{at_path: at_path, related?: related?, expr: expression},
          false,
          with_refs?,
@@ -2638,6 +2776,7 @@ defmodule Ash.Filter do
              uniq?: aggregate.uniq?,
              read_action: read_action,
              authorize?: aggregate.authorize?,
+             multitenancy: aggregate.multitenancy,
              join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
            ) do
         {:ok, query_aggregate} ->
@@ -3256,11 +3395,11 @@ defmodule Ash.Filter do
           resource_calculation when tuple_size(args) == 2 ->
             {args, nested_statement} = args
 
-            with {:ok, args} <-
-                   Ash.Query.validate_calculation_arguments(resource_calculation, args || %{}),
+            with {:ok, args} <- calculation_input(args),
                  {:ok, calculation} <-
                    Calculation.from_resource_calculation(context.resource, resource_calculation,
-                     args: args
+                     args: args,
+                     allow_expr?: !context[:input?]
                    ) do
               calculation = %{calculation | load: calculation.name}
 
@@ -3271,9 +3410,6 @@ defmodule Ash.Filter do
                 {:error, error} ->
                   {:error, error}
               end
-            else
-              {:error, error} ->
-                {:error, error}
             end
         end
 
@@ -3413,6 +3549,7 @@ defmodule Ash.Filter do
                      uniq?: aggregate.uniq?,
                      read_action: read_action,
                      authorize?: aggregate.authorize?,
+                     multitenancy: aggregate.multitenancy,
                      join_filters:
                        Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                    ] ++ aggregate_opts
@@ -3454,34 +3591,13 @@ defmodule Ash.Filter do
               {%{}, nested_statement}
           end
 
-        input =
-          case context[:ref_transformer] do
-            nil ->
-              input
-
-            transformer ->
-              Map.new(input, fn {key, val} ->
-                new_key =
-                  transformer.(
-                    context.resource,
-                    {:calculation_argument, resource_calculation.name, key}
-                  ) || key
-
-                {new_key, val}
-              end)
-          end
-
-        with {:ok, args} <-
-               Ash.Query.validate_calculation_arguments(
-                 resource_calculation,
-                 input,
-                 !context[:input?]
-               ),
+        with {:ok, input} <- calculation_input(input),
              {:ok, calculation} <-
                Calculation.from_resource_calculation(
                  context.resource,
                  resource_calculation,
-                 args: args
+                 args: transform_calculation_input(input, resource_calculation, context),
+                 allow_expr?: !context[:input?]
                ) do
           calculation = %{calculation | load: calculation.name}
 
@@ -3492,9 +3608,6 @@ defmodule Ash.Filter do
             {:error, error} ->
               {:error, error}
           end
-        else
-          {:error, error} ->
-            {:error, error}
         end
 
       true ->
@@ -3554,6 +3667,43 @@ defmodule Ash.Filter do
 
   defp add_expression_part(value, _context, _expression, _could_be_function?) do
     {:error, InvalidFilterValue.exception(value: value)}
+  end
+
+  # The input of a calculation in a filter statement, as a map.
+  defp calculation_input(nil), do: {:ok, %{}}
+  defp calculation_input(input) when is_map(input) and not is_struct(input), do: {:ok, input}
+
+  defp calculation_input(input) when is_list(input) do
+    if Keyword.keyword?(input) do
+      {:ok, Map.new(input)}
+    else
+      calculation_input(:invalid, input)
+    end
+  end
+
+  defp calculation_input(input), do: calculation_input(:invalid, input)
+
+  defp calculation_input(:invalid, input) do
+    {:error,
+     InvalidFilterValue.exception(value: input, message: "calculation input must be a map")}
+  end
+
+  defp transform_calculation_input(input, resource_calculation, context) do
+    case context[:ref_transformer] do
+      nil ->
+        input
+
+      transformer ->
+        Map.new(input, fn {key, val} ->
+          new_key =
+            transformer.(
+              context.resource,
+              {:calculation_argument, resource_calculation.name, key}
+            ) || key
+
+          {new_key, val}
+        end)
+    end
   end
 
   defp add_expression_part_relationship(rel, nested_statement, context, expression) do
@@ -3894,14 +4044,9 @@ defmodule Ash.Filter do
 
     cond do
       resource_calculation ->
-        with {:ok, args} <-
-               Ash.Query.validate_calculation_arguments(
-                 resource_calculation,
-                 Map.new(Enum.at(args, 0) || [])
-               ),
-             {:ok, calculation} <-
+        with {:ok, calculation} <-
                Calculation.from_resource_calculation(context.resource, resource_calculation,
-                 args: args
+                 args: Map.new(Enum.at(args, 0) || [])
                ) do
           {:ok,
            %Ref{
@@ -3910,9 +4055,6 @@ defmodule Ash.Filter do
                Map.get(context, :relationship_path, []) ++ call.relationship_path,
              resource: resource
            }}
-        else
-          {:error, error} ->
-            {:error, error}
         end
 
       custom_expression =
@@ -4036,6 +4178,8 @@ defmodule Ash.Filter do
       |> Keyword.take([
         :query,
         :field,
+        :expr,
+        :expr_type,
         :default,
         :filterable?,
         :type,
@@ -4377,6 +4521,7 @@ defmodule Ash.Filter do
                          uniq?: aggregate.uniq?,
                          read_action: aggregate.read_action,
                          authorize?: aggregate.authorize?,
+                         multitenancy: aggregate.multitenancy,
                          join_filters:
                            Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                        ] ++ aggregate_opts
@@ -4673,8 +4818,8 @@ defmodule Ash.Filter do
     end
   end
 
-  def do_hydrate_refs(%Ash.Query.UpsertConflict{} = this, _context),
-    do: {:ok, this}
+  def do_hydrate_refs(%Ash.Query.UpsertConflict{} = this, context),
+    do: {:ok, %{this | resource: this.resource || context[:resource]}}
 
   def do_hydrate_refs(
         %Ash.Query.Exists{related?: false, resource: nil} = exists,

@@ -278,6 +278,7 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
 
       update :update do
         primary? true
+        validate compare(:name, is_not_equal: "invalid"), message: "name cannot be invalid"
       end
     end
 
@@ -461,6 +462,17 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
         return_errors?: true
       )
     end
+  end
+
+  test "cascade update returns errors from the cascaded action in the fallback path" do
+    author = Author.create!(%{})
+    tag = Tag.create!(%{})
+    AuthorTag.create!(%{author_id: author.id, tag_id: tag.id})
+
+    assert {:error, %Ash.Error.Invalid{} = error} =
+             Author.update_tags_with_read_action(author, %{name: "invalid"})
+
+    assert Exception.message(error) =~ "name cannot be invalid"
   end
 
   test "uses read_action option in fallback path for many_to_many relationships" do

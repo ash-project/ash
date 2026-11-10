@@ -454,6 +454,38 @@ defmodule Ash.Test.Filter.FilterTest do
         |> Ash.read!()
       end
     end
+
+    test "name the missing function" do
+      assert_raise Ash.Error.Invalid, ~r/No such function not_a_function for resource/, fn ->
+        Post
+        |> Ash.Query.filter(not_a_function(title) == "foobar")
+        |> Ash.read!()
+      end
+    end
+  end
+
+  describe "sigils" do
+    test "can be compared against attributes" do
+      %{id: post_id} =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "title1",
+          approved_at: ~U[2025-04-09 12:00:00Z]
+        })
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        title: "title2",
+        approved_at: ~U[2025-04-10 12:00:00Z]
+      })
+      |> Ash.create!()
+
+      assert [%Post{id: ^post_id}] =
+               Post
+               |> Ash.Query.filter(approved_at == ~U[2025-04-09 12:00:00Z])
+               |> Ash.read!()
+    end
   end
 
   describe "simple attribute filters" do

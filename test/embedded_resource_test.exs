@@ -974,6 +974,49 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     end
   end
 
+  describe "the skip_unknown_inputs constraint" do
+    defmodule LooseTag do
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :name, :string, public?: true
+      end
+    end
+
+    defmodule LooseTagHolder do
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :tag, LooseTag, public?: true, constraints: [skip_unknown_inputs: [:*]]
+
+        attribute :tags, {:array, LooseTag},
+          public?: true,
+          constraints: [items: [skip_unknown_inputs: [:*]]]
+
+        attribute :strict_tag, LooseTag, public?: true
+      end
+    end
+
+    test "skips unknown inputs on an embedded attribute" do
+      assert {:ok, %{tag: %LooseTag{name: "x"}}} =
+               Ash.Type.cast_input(LooseTagHolder, %{"tag" => %{"name" => "x", "extra" => 1}})
+    end
+
+    test "skips unknown inputs on each item of an embedded array attribute" do
+      assert {:ok, %{tags: [%LooseTag{name: "x"}, %LooseTag{name: "y"}]}} =
+               Ash.Type.cast_input(LooseTagHolder, %{
+                 "tags" => [%{"name" => "x", "extra" => 1}, %{"name" => "y", "other" => 2}]
+               })
+    end
+
+    test "unknown inputs are still rejected on an embedded attribute without it" do
+      assert {:error, _} =
+               Ash.Type.cast_input(LooseTagHolder, %{
+                 "strict_tag" => %{"name" => "x", "extra" => 1}
+               })
+    end
+  end
+
   describe "error messages include field context" do
     defmodule FailingType do
       @moduledoc false

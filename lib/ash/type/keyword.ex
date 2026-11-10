@@ -75,7 +75,6 @@ defmodule Ash.Type.Keyword do
   #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
-  import Ash.Gettext
 
   @impl true
   def constraints, do: @constraints
@@ -92,19 +91,7 @@ defmodule Ash.Type.Keyword do
   end
 
   @impl true
-  def can_load?(constraints) do
-    case constraints[:fields] do
-      fields when is_list(fields) ->
-        Enum.any?(fields, fn {_name, config} ->
-          inner_type = config[:type]
-          inner_constraints = config[:constraints] || []
-          inner_type && Ash.Type.can_load?(inner_type, inner_constraints)
-        end)
-
-      _ ->
-        false
-    end
-  end
+  def can_load?(constraints), do: Ash.Type.CompositeTypeHelpers.can_load_fields?(constraints)
 
   # Override the default splice — without this, `splicing_nil_values/2`'s
   # flat_map would tear each keyword-list value apart into its
@@ -133,149 +120,26 @@ defmodule Ash.Type.Keyword do
 
   @impl true
   def load(values, load, constraints, context) when is_list(values) do
-    fields = constraints[:fields] || []
-
-    fields
-    |> effective_load(load)
-    |> Enum.reduce_while({:ok, values}, fn {key, sub_load}, {:ok, values} ->
-      config = Keyword.fetch!(fields, key)
-      inner_type = config[:type]
-      inner_constraints = config[:constraints] || []
-
-      load_field_across(values, key, inner_type, inner_constraints, sub_load, context)
-    end)
-  end
-
-  defp load_field_across(
-         values,
-         key,
-         {:array, _} = inner_type,
-         inner_constraints,
-         sub_load,
-         context
-       ) do
-    values
-    |> Enum.reduce_while({:ok, []}, fn
-      kw, {:ok, acc} when is_list(kw) ->
-        case Keyword.get(kw, key) do
-          nil ->
-            {:cont, {:ok, [kw | acc]}}
-
-          list when is_list(list) ->
-            case Ash.Type.load(inner_type, list, sub_load, inner_constraints, context) do
-              {:ok, loaded} -> {:cont, {:ok, [Keyword.put(kw, key, loaded) | acc]}}
-              {:error, error} -> {:halt, {:error, error}}
-            end
-
-          other ->
-            {:cont, {:ok, [Keyword.put(kw, key, other) | acc]}}
-        end
-
-      other, {:ok, acc} ->
-        {:cont, {:ok, [other | acc]}}
-    end)
-    |> case do
-      {:ok, reversed} -> {:cont, {:ok, Enum.reverse(reversed)}}
-      {:error, error} -> {:halt, {:error, error}}
-    end
-  end
-
-  defp load_field_across(values, key, inner_type, inner_constraints, sub_load, context) do
-    slice =
-      Enum.map(values, fn
-        kw when is_list(kw) -> Keyword.get(kw, key)
-        _ -> nil
-      end)
-
-    case Ash.Type.load(inner_type, slice, sub_load, inner_constraints, context) do
-      {:ok, loaded_slice} ->
-        updated =
-          values
-          |> Enum.zip(loaded_slice)
-          |> Enum.map(fn
-            {kw, v} when is_list(kw) -> Keyword.put(kw, key, v)
-            {other, _v} -> other
-          end)
-
-        {:cont, {:ok, updated}}
-
-      {:error, error} ->
-        {:halt, {:error, error}}
-    end
-  end
-
-  defp effective_load(fields, load) do
-    explicit =
-      load
-      |> List.wrap()
-      |> Enum.flat_map(fn
-        {k, sub} when is_atom(k) -> [{k, sub}]
-        k when is_atom(k) -> [{k, []}]
-        _ -> []
-      end)
-      |> Map.new()
-
-    Enum.reduce(fields, explicit, fn {field_name, config}, acc ->
-      cond do
-        Map.has_key?(acc, field_name) ->
-          acc
-
-        loadable_inner?(config) ->
-          Map.put(acc, field_name, [])
-
-        true ->
-          acc
-      end
-    end)
-  end
-
-  defp loadable_inner?(config) do
-    type = config[:type]
-    constraints = config[:constraints] || []
-    type && Ash.Type.can_load?(type, constraints)
+    Ash.Type.CompositeTypeHelpers.load_fields(
+      values,
+      load,
+      constraints[:fields] || [],
+      context,
+      %{
+        get: fn
+          kw, {key, _index} when is_list(kw) -> Keyword.fetch(kw, key)
+          _, _ -> :error
+        end,
+        put: fn kw, {key, _index}, value -> List.keyreplace(kw, key, 0, {key, value}) end
+      }
+    )
   end
 
   @impl true
   def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:fields])
 
   @impl true
-  def init(constraints) do
-    if is_list(constraints[:fields]) do
-      constraints[:fields]
-      |> List.wrap()
-      |> Enum.reduce_while({:ok, []}, fn {name, config}, {:ok, fields} ->
-        type = Ash.Type.get_type(config[:type])
-        constraints = config[:constraints] || []
-
-        if Keyword.get(config, :init?, true) do
-          case Ash.Type.init(type, constraints) do
-            {:ok, constraints} ->
-              {:cont,
-               {:ok,
-                [{name, Keyword.merge(config, constraints: constraints, type: type)} | fields]}}
-
-            {:error, error} ->
-              {:halt, {:error, error}}
-          end
-        else
-          {:cont, {:ok, [{name, config} | fields]}}
-        end
-      end)
-      |> case do
-        {:ok, fields} ->
-          {:ok, Keyword.put(constraints, :fields, Enum.reverse(fields))}
-
-        {:error, error} ->
-          {:error, error}
-      end
-    else
-      if is_nil(constraints[:fields]) do
-        {:ok, constraints}
-      else
-        {:error, "fields must be a list, got `#{constraints[:fields]}`"}
-      end
-    end
-  end
+  def init(constraints), do: Ash.Type.CompositeTypeHelpers.init_fields(constraints)
 
   @impl true
   def cast_input("", _), do: {:ok, nil}
@@ -363,10 +227,11 @@ defmodule Ash.Type.Keyword do
   def apply_constraints(value, constraints) do
     Enum.reduce(constraints, {:ok, value}, fn
       {:fields, fields}, {:ok, value} ->
-        case check_fields(value, fields) do
-          {:ok, fields} -> {:ok, Enum.reverse(fields)}
-          {:error, error} -> {:error, error}
-        end
+        Ash.Type.CompositeTypeHelpers.check_fields(
+          value,
+          fields,
+          [fetch: &Keyword.fetch/2] ++ keyword_shape()
+        )
 
       {_, _}, {:error, errors} ->
         {:error, errors}
@@ -381,150 +246,37 @@ defmodule Ash.Type.Keyword do
     end)
   end
 
-  defp check_fields(value, fields) do
-    {errors, result} =
-      Enum.reduce(fields, {[], []}, fn {field, field_constraints}, {errors_acc, result_acc} ->
-        case fetch_field(value, field) do
-          {:ok, field_value} ->
-            case check_field(result_acc, field, field_value, field_constraints) do
-              {:ok, updated_result} ->
-                {errors_acc, updated_result}
-
-              {:error, field_errors} ->
-                {errors_acc ++ field_errors, result_acc}
-            end
-
-          :error ->
-            if field_constraints[:allow_nil?] == false do
-              field_error = [message: error_message("field must be present"), field: field]
-              {errors_acc ++ [field_error], result_acc}
-            else
-              {errors_acc, result_acc}
-            end
-        end
-      end)
-
-    case errors do
-      [] -> {:ok, result}
-      _ -> {:error, errors}
-    end
-  end
-
-  defp check_field(result, field, field_value, field_constraints) do
-    case Ash.Type.cast_input(
-           field_constraints[:type],
-           field_value,
-           field_constraints[:constraints] || []
-         ) do
-      {:ok, field_value} ->
-        case Ash.Type.apply_constraints(
-               field_constraints[:type],
-               field_value,
-               field_constraints[:constraints]
-             ) do
-          {:ok, nil} ->
-            if field_constraints[:allow_nil?] == false do
-              {:error, [[message: error_message("value must not be nil"), field: field]]}
-            else
-              {:ok, [{field, nil} | result]}
-            end
-
-          {:ok, field_value} ->
-            {:ok, [{field, field_value} | result]}
-
-          {:error, errors} ->
-            {:error,
-             Ash.Type.CompositeTypeHelpers.convert_constraint_errors_to_keyword_lists(
-               errors,
-               field
-             )}
-        end
-
-      {:error, error} ->
-        {:error, [error]}
-
-      :error ->
-        {:error, [[message: error_message("invalid value"), field: field]]}
-    end
-  end
-
-  defp fetch_field(keyword, atom) when is_atom(atom) do
-    Keyword.fetch(keyword, atom)
-  end
-
-  defp fetch_field(keyword, string) when is_binary(string) do
-    fetch_field(keyword, String.to_existing_atom(string))
-  end
-
-  defp fetch_field(_, _), do: :error
-
   defp cast_keyword_fields(value, constraints, cast_fn) do
     if fields = constraints[:fields] do
-      fields
-      |> Enum.reduce_while({:ok, []}, fn {key, config}, {:ok, acc} ->
-        case cast_keyword_field(value, key, config, cast_fn) do
-          {:ok, value} -> {:cont, {:ok, [{key, value} | acc]}}
-          :skip -> {:cont, {:ok, acc}}
-          other -> {:halt, other}
-        end
-      end)
-      |> case do
-        {:ok, keyword} -> {:ok, Enum.reverse(keyword)}
-        other -> other
-      end
+      Ash.Type.CompositeTypeHelpers.map_fields(value, fields, cast_fn, keyword_shape())
     else
       {:ok, try_map_to_keyword(value, constraints)}
     end
   end
 
-  defp cast_keyword_field(map, key, config, cast_fn) do
-    case fetch_map_field(map, key) do
-      {:ok, value} -> cast_fn.(config[:type], value, config[:constraints] || [])
-      :error -> :skip
-    end
-  end
-
   defp dump_fields(value, constraints, dump_fn) do
     if fields = constraints[:fields] do
-      Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
-        case dump_field(value, key, config, dump_fn) do
-          {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
-          :skip -> {:cont, {:ok, acc}}
-          other -> {:halt, other}
-        end
-      end)
+      Ash.Type.CompositeTypeHelpers.map_fields(value, fields, dump_fn, fetch: &fetch_dump_field/2)
     else
       {:ok, if(is_map(value), do: value, else: Map.new(value))}
     end
   end
 
-  defp dump_field(value, key, config, dump_fn) do
-    fetched =
-      if is_map(value),
-        do: fetch_map_field(value, key),
-        else: Keyword.fetch(value, key)
-
-    case fetched do
-      {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
-      :error -> :skip
-    end
+  # Builds keyword results in field order.
+  defp keyword_shape do
+    [acc: [], put: fn acc, key, value -> [{key, value} | acc] end, finish: &Enum.reverse/1]
   end
 
-  defp fetch_map_field(map, atom) when is_atom(atom) do
-    case Map.fetch(map, atom) do
-      {:ok, value} -> {:ok, value}
-      :error -> Map.fetch(map, to_string(atom))
-    end
-  end
+  defp fetch_dump_field(value, key) when is_map(value),
+    do: Ash.Type.CompositeTypeHelpers.fetch_field(value, key)
+
+  defp fetch_dump_field(value, key), do: Keyword.fetch(value, key)
 
   defp try_map_to_keyword(map, constraints) do
     constraints[:fields]
     |> Kernel.||([])
     |> Enum.flat_map(fn {key, field_constraints} ->
-      with :error <- Map.fetch(map, key),
-           :error <- Map.fetch(map, to_string(key)) do
-        []
-      else
+      case Ash.Type.CompositeTypeHelpers.fetch_field(map, key) do
         {:ok, value} ->
           if type = field_constraints[:type] do
             case Ash.Type.cast_stored(type, value, field_constraints[:constraints] || []) do
@@ -534,6 +286,9 @@ defmodule Ash.Type.Keyword do
           else
             [{key, value}]
           end
+
+        :error ->
+          []
       end
     end)
   end

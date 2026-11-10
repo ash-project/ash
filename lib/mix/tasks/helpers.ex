@@ -52,31 +52,12 @@ defmodule Ash.Mix.Tasks.Helpers do
     end
   end
 
-  Code.ensure_loaded!(Mix.Project)
-
-  if function_exported?(Mix.Project, :deps_tree, 0) do
-    # for our app, and all dependency apps, we want to find extensions
-    # the benefit of not just getting all loaded applications is that this
-    # is actually a surprisingly expensive thing to do for every single built
-    # in application for elixir/erlang. Instead we get anything w/ a dependency on ash or spark
-    # this could miss things, but its unlikely. And if it misses things, it actually should be
-    # fixed in the dependency that is relying on a transitive dependency :)
-    defp apps do
-      Mix.Project.deps_tree()
-      |> Stream.filter(fn {_, nested_deps} ->
-        Enum.any?(nested_deps, &(&1 == :spark || &1 == :ash))
-      end)
-      |> Stream.map(&elem(&1, 0))
-    end
-  else
-    defp apps do
-      Logger.warning(
-        "Mix.Project.deps_tree/0 not available, falling back to loaded_applications/0. Upgrade to Elixir 1.15+ to make this *much* faster."
-      )
-
-      :application.loaded_applications()
-      |> Stream.map(&elem(&1, 0))
-    end
+  defp apps do
+    Mix.Project.deps_tree()
+    |> Stream.filter(fn {_, nested_deps} ->
+      Enum.any?(nested_deps, &(&1 == :spark || &1 == :ash))
+    end)
+    |> Stream.map(&elem(&1, 0))
   end
 
   @doc """

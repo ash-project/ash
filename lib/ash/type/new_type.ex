@@ -214,54 +214,6 @@ defmodule Ash.Type.NewType do
         unquote(subtype_of).coerce(value, constraints)
       end
 
-      @impl Ash.Type
-      def cast_input_array(nil, _), do: {:ok, nil}
-
-      def cast_input_array(term, constraints) do
-        term
-        |> Stream.with_index()
-        |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-          case cast_input(item, constraints) do
-            :error ->
-              {:halt,
-               {:error,
-                message: error_message("invalid value at %{index}"), index: index, path: [index]}}
-
-            {:error, keyword} ->
-              errors =
-                keyword
-                |> List.wrap()
-                |> Ash.Helpers.flatten_preserving_keywords()
-                |> Enum.map(fn
-                  message when is_binary(message) ->
-                    [message: message, index: index, path: [index]]
-
-                  error when is_exception(error) ->
-                    error
-                    |> Ash.Error.to_ash_error()
-                    |> Ash.Error.set_path([index])
-
-                  keyword ->
-                    keyword
-                    |> Keyword.put(:index, index)
-                    |> Keyword.update(:path, [index], &[index | &1])
-                end)
-
-              {:halt, {:error, errors}}
-
-            {:ok, value} ->
-              {:cont, {:ok, [value | casted]}}
-          end
-        end)
-        |> case do
-          {:ok, result} ->
-            {:ok, Enum.reverse(result)}
-
-          {:error, error} ->
-            {:error, error}
-        end
-      end
-
       @impl Ash.Type.NewType
       def lazy_init?, do: unquote(lazy_init?)
 
@@ -327,41 +279,6 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def cast_stored_array(term, constraints) do
-        if is_nil(term) do
-          {:ok, nil}
-        else
-          term
-          |> Enum.with_index()
-          |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-            case cast_stored(item, constraints) do
-              :error ->
-                {:halt, {:error, index: index}}
-
-              {:error, keyword} ->
-                errors =
-                  keyword
-                  |> List.wrap()
-                  |> Ash.Helpers.flatten_preserving_keywords()
-                  |> Enum.map(fn
-                    string when is_binary(string) ->
-                      [message: string, index: index]
-
-                    vars ->
-                      Keyword.put(vars, :index, index)
-                  end)
-
-                {:halt, {:error, errors}}
-
-              {:ok, value} ->
-                {:cont, {:ok, [value | casted]}}
-            end
-          end)
-        end
-      end
-
-      @impl Ash.Type
       def include_source(constraints, source) do
         subtype_constraints(constraints)
         |> then(&Ash.Type.include_source(unquote(subtype_of), source, &1))
@@ -393,84 +310,9 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def dump_to_embedded_array(term, constraints) do
-        if is_nil(term) do
-          {:ok, nil}
-        else
-          term
-          |> Enum.with_index()
-          |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
-            case dump_to_embedded(item, constraints) do
-              {:ok, value} ->
-                {:cont, {:ok, [value | dumped]}}
-
-              error ->
-                {:halt, Ash.Helpers.error_with_context(error, index: index)}
-            end
-          end)
-        end
-      end
-
-      @impl Ash.Type
-      def cast_from_embedded_array(term, constraints) do
-        if is_nil(term) do
-          {:ok, nil}
-        else
-          term
-          |> Enum.with_index()
-          |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-            case cast_from_embedded(item, constraints) do
-              :error ->
-                {:halt, {:error, index: index}}
-
-              {:error, keyword} ->
-                errors =
-                  keyword
-                  |> List.wrap()
-                  |> Ash.Helpers.flatten_preserving_keywords()
-                  |> Enum.map(fn
-                    string when is_binary(string) ->
-                      [message: string, index: index]
-
-                    vars ->
-                      Keyword.put(vars, :index, index)
-                  end)
-
-                {:halt, {:error, errors}}
-
-              {:ok, value} ->
-                {:cont, {:ok, [value | casted]}}
-            end
-          end)
-        end
-      end
-
-      @impl Ash.Type
       def dump_to_native(value, constraints) do
         constraints = subtype_constraints(constraints)
         unquote(subtype_of).dump_to_native(value, constraints)
-      end
-
-      @impl Ash.Type
-      def dump_to_native_array(term, constraints) do
-        if is_nil(term) do
-          {:ok, nil}
-        else
-          term
-          |> Enum.with_index()
-          |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
-            case dump_to_native(item, constraints) do
-              {:ok, value} ->
-                {:cont, {:ok, [value | dumped]}}
-
-              error ->
-                {:halt, Ash.Helpers.error_with_context(error, index: index)}
-            end
-          end)
-        end
       end
 
       @impl Ash.Type
@@ -488,47 +330,63 @@ defmodule Ash.Type.NewType do
         Ash.Type.generator(unquote(subtype_of), constraints)
       end
 
-      @impl Ash.Type
-      def handle_change(old_term, new_term, constraints) do
-        constraints = subtype_constraints(constraints)
+      if lazy_init? or subtype_of.handle_change?() do
+        @impl Ash.Type
+        def handle_change(old_term, new_term, constraints) do
+          constraints = subtype_constraints(constraints)
 
-        Ash.Type.handle_change(unquote(subtype_of), old_term, new_term, constraints)
+          Ash.Type.handle_change(unquote(subtype_of), old_term, new_term, constraints)
+        end
+
+        defoverridable handle_change: 3
       end
 
-      @impl Ash.Type
-      def handle_change_array(old_term, new_term, constraints) do
-        constraints = subtype_constraints(constraints)
+      if lazy_init? or subtype_of.handle_change_array?() do
+        @impl Ash.Type
+        def handle_change_array(old_term, new_term, constraints) do
+          constraints = subtype_constraints(constraints)
 
-        Ash.Type.handle_change(
-          {:array, unquote(subtype_of)},
-          old_term,
-          new_term,
-          items: constraints
-        )
+          Ash.Type.handle_change(
+            {:array, unquote(subtype_of)},
+            old_term,
+            new_term,
+            items: constraints
+          )
+        end
+
+        defoverridable handle_change_array: 3
       end
 
-      @impl Ash.Type
-      def prepare_change(old_term, new_term, constraints) do
-        constraints = subtype_constraints(constraints)
+      if lazy_init? or subtype_of.prepare_change?() do
+        @impl Ash.Type
+        def prepare_change(old_term, new_term, constraints) do
+          constraints = subtype_constraints(constraints)
 
-        Ash.Type.prepare_change(
-          unquote(subtype_of),
-          old_term,
-          new_term,
-          constraints
-        )
+          Ash.Type.prepare_change(
+            unquote(subtype_of),
+            old_term,
+            new_term,
+            constraints
+          )
+        end
+
+        defoverridable prepare_change: 3
       end
 
-      @impl Ash.Type
-      def prepare_change_array(old_term, new_term, constraints) do
-        constraints = subtype_constraints(constraints)
+      if lazy_init? or subtype_of.prepare_change_array?() do
+        @impl Ash.Type
+        def prepare_change_array(old_term, new_term, constraints) do
+          constraints = subtype_constraints(constraints)
 
-        Ash.Type.prepare_change(
-          {:array, unquote(subtype_of)},
-          old_term,
-          new_term,
-          items: constraints
-        )
+          Ash.Type.prepare_change(
+            {:array, unquote(subtype_of)},
+            old_term,
+            new_term,
+            items: constraints
+          )
+        end
+
+        defoverridable prepare_change_array: 3
       end
 
       @impl Ash.Type
@@ -723,23 +581,14 @@ defmodule Ash.Type.NewType do
                      apply_atomic_constraints_array: 2,
                      cast_atomic: 2,
                      cast_atomic_array: 2,
-                     cast_input_array: 2,
                      cast_input: 2,
-                     cast_stored_array: 2,
                      cast_stored: 2,
                      constraints: 0,
-                     dump_to_embedded_array: 2,
                      dump_to_embedded: 2,
                      cast_from_embedded: 2,
-                     cast_from_embedded_array: 2,
-                     dump_to_native_array: 2,
                      dump_to_native: 2,
                      generator: 1,
-                     handle_change_array: 3,
-                     handle_change: 3,
                      include_source: 2,
-                     prepare_change_array: 3,
-                     prepare_change: 3,
                      storage_type: 1,
                      type_constraints: 2
     end

@@ -815,9 +815,9 @@ defmodule Ash.Policy.Authorizer do
 
   defp authorizer_acc(authorizer, resource, context) do
     %{
-      stack: [{resource, [], context.query.action, context.query.domain}],
+      stack: [{resource, [], context.query.action, context.query.domain, nil}],
       authorizers: %{
-        {resource, context.query.action} => authorizer
+        {resource, context.query.action, nil} => authorizer
       },
       actor: authorizer.actor
     }
@@ -867,126 +867,25 @@ defmodule Ash.Policy.Authorizer do
           field
       end
 
-    type = get_type(authorizer.resource, field)
-
-    {path, field, actual_field, action, domain} =
-      case {field_name, field} do
-        {nil,
-         %Ash.Query.Calculation{module: Ash.Resource.Calculation.Expression, opts: opts} = calc} ->
-          field_and_path =
-            case opts[:expr] do
-              %Ash.Query.Function.Type{arguments: [%Ash.Query.Ref{} = ref | _]} ->
-                {ref.relationship_path, ref.attribute.name}
-
-              %Ash.Query.Function.Type{arguments: [{:_ref, path, field} | _]} ->
-                {path, field}
-
-              %Ash.Query.Call{name: :type, args: [%Ash.Query.Ref{} = ref | _]} ->
-                {ref.relationship_path, ref.attribute}
-
-              %Ash.Query.Call{name: :type, args: [{:_ref, path, field} | _]} ->
-                {path, field}
-
-              %Ash.Query.Ref{} = ref ->
-                {ref.relationship_path, ref.attribute}
-
-              {:_ref, path, field} ->
-                {path, field}
-
-              _ ->
-                nil
-            end
-
-          case field_and_path do
-            {path, %Ash.Query.Calculation{calc_name: calc_name}} when not is_nil(calc_name) ->
-              {path, calc_name}
-
-            {path, %Ash.Query.Aggregate{agg_name: agg_name}} when not is_nil(agg_name) ->
-              {path, agg_name}
-
-            {_, %Ash.Query.Calculation{}} ->
-              nil
-
-            {_, %Ash.Query.Aggregate{}} ->
-              nil
-
-            {path, %{name: name}} when not is_nil(name) ->
-              {path, name}
-
-            {path, field} when is_atom(field) and not is_nil(field) ->
-              {path, field}
-
-            _ ->
-              nil
-          end
-          |> then(fn
-            nil ->
-              raise Ash.Error.Framework.AssumptionFailed,
-                message: """
-                It should not be possible to provide a non-resource calculation as user input.
-                In the future it will be, and that will need to be addressed here.
-                This error message is to prevent forgetting to address that reality.
-
-                Got:
-
-                  #{inspect(calc)}
-                """
-
-            {path, field} ->
-              relationship = Ash.Resource.Info.relationship(authorizer.resource, path)
-
-              domain =
-                Ash.Domain.Info.related_domain(
-                  relationship.destination,
-                  relationship,
-                  relationship.domain || authorizer.domain
-                )
-
-              action =
-                case relationship.read_action do
-                  nil ->
-                    Ash.Resource.Info.primary_action!(relationship.destination, :read)
-
-                  read_action ->
-                    Ash.Resource.Info.action(relationship.destination, read_action)
-                end
-
-              {path, field, calc, action, domain}
-          end)
-
-        {nil, %Ash.Query.Calculation{} = calculation} ->
-          raise Ash.Error.Framework.AssumptionFailed,
-            message: """
-            It should not be possible to provide a non-resource calculation as user input.
-            In the future it will be, and that will need to be addressed here.
-            This error message is to prevent forgetting to address that reality.
-
-            Got:
-
-              #{inspect(calculation)}
-            """
-
-        {_other, field} ->
-          {[], field_name, field, context.query.action, context.query.domain}
-      end
-
-    resource =
-      Ash.Resource.Info.related(authorizer.resource, path)
-
+    # Sorts on related fields are calculations with `authorize?: true`, which apply the related
+    # resource's field policies when they are expanded.
     if field_name do
+      type = get_type(authorizer.resource, field)
+
       case field_condition(
-             resource,
-             field,
-             action,
-             domain,
+             authorizer.resource,
+             field_name,
+             context.query.action,
+             context.query.domain,
+             nil,
              acc
            ) do
         {:none, acc} ->
-          {{actual_field, data}, acc}
+          {{field, data}, acc}
 
         {:expr, expr, acc} ->
-          field =
-            case actual_field do
+          ref =
+            case field do
               %Ash.Query.Calculation{} = calculation ->
                 %Ash.Query.Ref{
                   attribute: calculation,
@@ -1014,7 +913,7 @@ defmodule Ash.Policy.Authorizer do
           expr =
             Ash.Expr.calc(
               if ^expr do
-                ^field
+                ^ref
               else
                 nil
               end,
@@ -1025,7 +924,7 @@ defmodule Ash.Policy.Authorizer do
           {{expr, data}, acc}
       end
     else
-      {{actual_field, data}, acc}
+      {{field, data}, acc}
     end
   end
 
@@ -1072,14 +971,14 @@ defmodule Ash.Policy.Authorizer do
 
       %Ash.Query.Exists{expr: expr, resource: resource, related?: false} = exists ->
         original_stack = acc.stack
-        [{_, _, _, domain} | _] = original_stack
+        [{_, _, _, domain, _} | _] = original_stack
         domain = Ash.Resource.Info.domain(resource) || domain
         action = Ash.Resource.Info.primary_action!(resource, :read)
 
         {expr, acc} =
           replace_refs(expr, %{
             acc
-            | stack: [{resource, [], action, domain} | original_stack]
+            | stack: [{resource, [], action, domain, nil} | original_stack]
           })
 
         {%{exists | expr: expr}, %{acc | stack: original_stack}}
@@ -1087,13 +986,17 @@ defmodule Ash.Policy.Authorizer do
       %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists ->
         full_path = at_path ++ path
         original_stack = acc.stack
-        [{resource, current_path, _, domain} | _] = original_stack
+        [{resource, current_path, _, domain, _} | _] = original_stack
+        accessing_from = accessing_from(resource, full_path)
         {resource, action} = related_with_action(resource, full_path)
 
         {expr, acc} =
           replace_refs(expr, %{
             acc
-            | stack: [{resource, current_path ++ full_path, action, domain} | original_stack]
+            | stack: [
+                {resource, current_path ++ full_path, action, domain, accessing_from}
+                | original_stack
+              ]
           })
 
         {%{exists | expr: expr}, %{acc | stack: original_stack}}
@@ -1162,9 +1065,14 @@ defmodule Ash.Policy.Authorizer do
          name,
          relationship_path,
          ref,
-         %{stack: [{parent, _path, action, domain} | _]} = acc
+         %{stack: [{parent, _path, action, domain, accessing_from} | _]} = acc
        ) do
     resource = Ash.Resource.Info.related(parent, relationship_path)
+
+    accessing_from =
+      if relationship_path == [],
+        do: accessing_from,
+        else: accessing_from(parent, relationship_path)
 
     action =
       case relationship_path do
@@ -1184,8 +1092,17 @@ defmodule Ash.Policy.Authorizer do
           end
       end
 
-    expression_for_ref(resource, name, action, domain, ref, acc)
+    expression_for_ref(resource, name, action, domain, accessing_from, ref, acc)
   end
+
+  # A longer path may be an expanded `through`, and using its last hop would reveal fields that
+  # loading the `through` hides.
+  defp accessing_from(resource, [name]) do
+    relationship = Ash.Resource.Info.relationship(resource, name)
+    %{source: relationship.source, name: relationship.name}
+  end
+
+  defp accessing_from(_resource, _path), do: nil
 
   defp related_with_action(resource, path) do
     first = :lists.droplast(path)
@@ -1205,8 +1122,8 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
-  defp expression_for_ref(resource, field, action, domain, ref, acc) do
-    case field_condition(resource, field, action, domain, acc) do
+  defp expression_for_ref(resource, field, action, domain, accessing_from, ref, acc) do
+    case field_condition(resource, field, action, domain, accessing_from, acc) do
       {:none, acc} ->
         {ref, acc}
 
@@ -1224,17 +1141,25 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
-  defp field_condition(resource, field, action, domain, acc) do
+  defp field_condition(resource, field, action, domain, accessing_from, acc) do
     if Ash.Policy.Authorizer in Ash.Resource.Info.authorizers(resource) &&
          !Enum.empty?(Ash.Policy.Info.field_policies(resource)) do
+      key = {resource, action, accessing_from}
+
       {authorizer, acc} =
-        case Map.fetch(acc.authorizers, {resource, action}) do
+        case Map.fetch(acc.authorizers, key) do
           {:ok, authorizer} ->
             {authorizer, acc}
 
           :error ->
             authorizer = initial_state(acc.actor, resource, action, domain)
-            query = Ash.Query.for_read(resource, action.name, actor: acc.actor)
+
+            query =
+              resource
+              |> Ash.Query.set_context(
+                if(accessing_from, do: %{accessing_from: accessing_from}, else: %{})
+              )
+              |> Ash.Query.for_read(action.name, actor: acc.actor)
 
             authorizer =
               ensure_context_in_authorizer(authorizer, %{
@@ -1244,8 +1169,7 @@ defmodule Ash.Policy.Authorizer do
                 domain: domain
               })
 
-            {authorizer,
-             %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+            {authorizer, %{acc | authorizers: Map.put(acc.authorizers, key, authorizer)}}
         end
 
       {expr, authorizer} =
@@ -1292,13 +1216,12 @@ defmodule Ash.Policy.Authorizer do
           end
         end
 
-      new_acc = %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}
+      new_acc = %{acc | authorizers: Map.put(acc.authorizers, key, authorizer)}
 
       if expr == true do
         {:none, new_acc}
       else
-        {:expr, expr,
-         %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+        {:expr, expr, %{acc | authorizers: Map.put(acc.authorizers, key, authorizer)}}
       end
     else
       {:none, acc}
@@ -1402,8 +1325,7 @@ defmodule Ash.Policy.Authorizer do
                 :boolean,
                 async?: false,
                 actor: actor,
-                tenant: tenant,
-                authorize?: false
+                tenant: tenant
               )
 
             {:cont, {records, [calc | calcs], authorizer}}

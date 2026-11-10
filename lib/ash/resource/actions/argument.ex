@@ -65,7 +65,7 @@ defmodule Ash.Resource.Actions.Argument do
       default: [
         type: :any,
         doc:
-          "The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value"
+          "The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value"
       ]
     ]
   end

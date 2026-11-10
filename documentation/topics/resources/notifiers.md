@@ -25,6 +25,10 @@ error in that process prevents it from being sent.
 In these cases you are looking for something other than a notifier. For example, you may want to look into integrating
 https://hexdocs.pm/oban into your application, allowing you to commit a "job" in the same transaction as your changes, to be processed later.
 
+If the reaction belongs to other resources in your application, use [signals](/documentation/topics/resources/signals.md).
+By default, the listeners of a signal run as nested actions inside the emitting action's transaction, so their changes
+are committed with the action's changes, or not at all.
+
 Alternatively, you could look into using `Reactor`, which is designed for writing "sagas" and has first-class support
 for Ash via the `AshReactor` extension.
 

@@ -24,6 +24,14 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
   def after?(Ash.Resource.Transformers.DefaultAccept), do: true
   def after?(_), do: false
 
+  # TEMPORARY: AshArchival's `SetupArchival` makes destroy actions soft, including the ones this
+  # transformer adds from `defaults`, but it declares that it runs after
+  # `Ash.Resource.Transformers.ValidatePrimaryActions`, which no longer exists. Nothing else orders
+  # it after this transformer, so adding unrelated transformers can reorder them and leave default
+  # destroy actions deleting records. Remove once AshArchival orders itself after this transformer.
+  def before?(AshArchival.Resource.Transformers.SetupArchival), do: true
+  def before?(_), do: false
+
   def transform(dsl_state) do
     with {:ok, dsl_state} <- add_defaults(dsl_state) do
       dsl_state

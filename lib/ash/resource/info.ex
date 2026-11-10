@@ -584,6 +584,27 @@ defmodule Ash.Resource.Info do
     end
   end
 
+  @doc "Returns the `Ash.Signals` modules for a resource"
+  @spec signals_out(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Signals.t()]
+  def signals_out(resource) do
+    Extension.get_persisted(resource, :signals_out, [])
+  end
+
+  @doc "Returns the signal listeners of a resource"
+  @spec signal_listeners(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.SignalListener.t()]
+  def signal_listeners(resource) do
+    Extension.get_persisted(resource, :signal_listeners, [])
+  end
+
+  @doc "Returns the signal listener of a resource with the given name, or `nil`."
+  @spec signal_listener(Spark.Dsl.t() | Ash.Resource.t(), atom()) ::
+          Ash.Resource.SignalListener.t() | nil
+  def signal_listener(resource, name) do
+    resource
+    |> signal_listeners()
+    |> Enum.find(&(&1.name == name))
+  end
+
   @doc "Returns all pipelines of a resource"
   @spec pipelines(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Pipeline.t())
   def pipelines(resource) do
@@ -805,7 +826,7 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns the list of possible accepted keys by an action"
-  @spec action_inputs(Ash.Resource.t(), action :: atom()) ::
+  @spec action_inputs(Spark.Dsl.t() | Ash.Resource.t(), action :: atom()) ::
           MapSet.t()
   def action_inputs(resource, action) do
     Extension.get_persisted(resource, {:action_inputs, action}) || MapSet.new()

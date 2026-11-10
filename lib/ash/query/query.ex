@@ -255,7 +255,8 @@ defmodule Ash.Query do
 
   @typedoc "Result type for around_transaction hooks, containing either successful records or an error."
   @type around_result ::
-          {:ok, list(Ash.Resource.Record.t())}
+          {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()}
+          | {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page(), t}
           | {:error, Ash.Error.t()}
 
   @typedoc "Function type for before_transaction hooks that run before query execution."
@@ -267,7 +268,7 @@ defmodule Ash.Query do
              {:ok, list(Ash.Resource.Record.t())} | {:error, any})
 
   @typedoc "Function type for around_transaction hooks that wrap query execution in a transaction."
-  @type around_transaction_fun :: (t -> {:ok, Ash.Resource.Record.t()} | {:error, any})
+  @type around_transaction_fun :: (t, (t -> around_result) -> around_result)
 
   alias Ash.Actions.Sort
 
@@ -2575,7 +2576,7 @@ defmodule Ash.Query do
         end
 
       value =
-        if argument do
+        if argument && !Ash.Expr.expr?(value) do
           Ash.Type.Helpers.handle_indexed_maps(argument.type, value)
         else
           value
@@ -2663,46 +2664,46 @@ defmodule Ash.Query do
           with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
                {:ok, casted} <-
                  Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
-            if has_one_expr? do
-              {:cont,
-               {:ok,
-                Map.put(
-                  arg_values,
-                  argument.name,
-                  %Ash.Query.Function.Type{
-                    arguments: [value, argument.type, argument.constraints]
-                  }
-                )}}
-            else
-              cond do
-                is_nil(casted) && argument.allow_nil? ->
-                  {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
+            cond do
+              is_nil(casted) && argument.allow_nil? ->
+                {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
 
-                is_nil(casted) && is_nil(argument.default) ->
-                  {:halt,
-                   {:error,
-                    InvalidCalculationArgument.exception(
-                      field: argument.name,
-                      calculation: calculation.name,
-                      message: "is required",
-                      value: value
-                    )}}
+              is_nil(casted) ->
+                {:halt,
+                 {:error,
+                  InvalidCalculationArgument.exception(
+                    field: argument.name,
+                    calculation: calculation.name,
+                    message: "is required",
+                    value: value
+                  )}}
 
-                is_nil(Map.get(args, argument.name, Map.get(args, to_string(argument.name)))) &&
-                    not is_nil(value) ->
-                  {:cont,
-                   {:ok,
-                    Map.put(
-                      arg_values,
-                      argument.name,
-                      value
-                    )}}
+              has_one_expr? ->
+                {:cont,
+                 {:ok,
+                  Map.put(
+                    arg_values,
+                    argument.name,
+                    %Ash.Query.Function.Type{
+                      arguments: [casted, argument.type, argument.constraints],
+                      extra: %{casted?: true}
+                    }
+                  )}}
 
-                true ->
-                  {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
-              end
+              true ->
+                {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
             end
           else
+            :error ->
+              {:halt,
+               {:error,
+                InvalidCalculationArgument.exception(
+                  field: argument.name,
+                  calculation: calculation.name,
+                  message: "is invalid",
+                  value: value
+                )}}
+
             {:error, error} when is_binary(error) ->
               {:halt,
                {:error,
@@ -3530,7 +3531,7 @@ defmodule Ash.Query do
     {related, actual_relationship, opts_with_resource, is_unrelated?} =
       case relationship do
         [module] when is_atom(module) ->
-          if function_exported?(module, :__info__, 1) do
+          if Ash.Resource.Info.resource?(module) do
             {module, [], Keyword.put(opts, :resource, module), true}
           else
             related = Ash.Resource.Info.related(query.resource, relationship)
@@ -3642,6 +3643,13 @@ defmodule Ash.Query do
       ...>   {MyApp.Calculations.Discount, []}, %{rate: 0.1},
       ...>   [precision: 2, scale: 2], %{currency: "USD"})
       %Ash.Query{calculations: %{discounted_price: %{...}}, ...}
+
+      # Only see related data that the actor can read
+      iex> Ash.Query.calculate(MyApp.Post, :author_name, :string,
+      ...>   expr(author.name), %{}, [], %{}, authorize?: true)
+      %Ash.Query{calculations: %{author_name: %{...}}, ...}
+
+  The last argument is passed to `Ash.Query.Calculation.new/6` as options.
 
   ## See also
 
@@ -4429,7 +4437,7 @@ defmodule Ash.Query do
   - `filter/2` for adding filter conditions
   """
   @spec apply_to(t(), records :: list(Ash.Resource.Record.t()), opts :: Keyword.t()) ::
-          {:ok, list(Ash.Resource.Record.t())}
+          {:ok, list(Ash.Resource.Record.t())} | {:error, Ash.Error.t()}
   def apply_to(query, records, opts \\ []) do
     domain =
       query.domain || Ash.Resource.Info.domain(query.resource) || opts[:domain] ||
@@ -4644,10 +4652,7 @@ defmodule Ash.Query do
                    Enum.uniq(
                      selected_fields(
                        ash_query.resource,
-                       with_temporal_field(
-                         combination.select || default_select,
-                         ash_query.resource
-                       )
+                       combination.select || default_select
                      ) ++ Map.keys(combination.calculations)
                    )
                }}
@@ -4660,17 +4665,6 @@ defmodule Ash.Query do
       true ->
         {:ok, opts[:initial_query] || Ash.DataLayer.resource_to_query(ash_query.resource, domain),
          %{}}
-    end
-  end
-
-  # A temporal resource's combination legs must always project the period attribute: the
-  # point-in-time `valid_at @> as_of` filter and the back-join (which keys on id + period)
-  # both reference it, so it has to be in each leg's SELECT / the combination fieldset.
-  defp with_temporal_field(fields, resource) do
-    if Ash.Resource.Info.temporal?(resource) do
-      Enum.uniq(fields ++ [Ash.Resource.Info.temporal_attribute(resource)])
-    else
-      fields
     end
   end
 
@@ -4704,13 +4698,8 @@ defmodule Ash.Query do
         |> do_filter(combination.filter)
         |> sort(combination.sort)
         |> select(
-          with_temporal_field(
-            combination.select ||
-              MapSet.to_list(
-                Ash.Resource.Info.selected_by_default_attribute_names(query.resource)
-              ),
-            query.resource
-          )
+          combination.select ||
+            MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(query.resource))
         )
         |> Ash.Query.set_context(query.context)
         |> Ash.Query.set_context(%{data_layer: %{combination_query?: true}})

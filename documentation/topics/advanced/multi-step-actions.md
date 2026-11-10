@@ -20,6 +20,11 @@ You should use hooks for most multi-step workflow scenarios as they provide simp
 - Working with external services that don't need compensation logic
 - Building small-to-medium complexity workflows
 
+**Use [signals](/documentation/topics/resources/signals.md) when:**
+- Other resources need to react to an action, and the resource taking the action shouldn't know about them
+- Several independent reactions to the same event will be added over time
+- The action doesn't need anything back from the resources that react to it
+
 **Use [reactor](/documentation/topics/advanced/reactor.md) when:**
 - You need to compensate/undo changes across multiple external services
 - Building complex workflows that require sophisticated error handling and rollback logic
@@ -44,6 +49,7 @@ Ash provides several tools for building complex workflows. Choosing the right on
 | Modify a read query before it executes | A preparation |
 | Create, update, or remove related records from action input | `manage_relationship` |
 | Run logic before or after an action | Lifecycle hooks |
+| Let other resources react to an action without depending on them | Signals |
 | Coordinate multiple dependent steps or external systems | Reactor |
 
 Changes and preparations are often the first tools to reach for. Changes modify create, update, and destroy actions by working with changesets. Preparations modify read actions by working with queries before they execute.
@@ -51,6 +57,8 @@ Changes and preparations are often the first tools to reach for. Changes modify 
 Use lifecycle hooks when your workflow needs additional behavior before or after an action runs, especially for side effects such as notifications, logging, or communication with external services.
 
 When related records are part of the action input, prefer `manage_relationship` over manually creating or updating those records in hooks. It expresses the relationship directly and keeps the action focused on managing resource data.
+
+When other resources react to an action, but the action doesn't depend on them, prefer emitting a signal over calling them from a hook. The resource taking the action then doesn't change when a new reaction is added.
 
 When a workflow spans multiple resources, external services, or requires compensation logic, consider using Reactor instead.
 
@@ -112,6 +120,44 @@ actions do
   end
 end
 ```
+
+#### When would a signal be a better fit?
+
+If the activity log is a resource, the ticket doesn't need to know about it. The ticket can emit a signal instead, and the activity log can listen to it with one of its own actions:
+
+```elixir
+defmodule HelpDesk.Signals do
+  use Ash.Signals
+
+  signals do
+    signal :ticket_opened do
+      argument :ticket_id, :uuid, allow_nil?: false
+      argument :title, :string, allow_nil?: false
+    end
+  end
+end
+```
+
+```elixir
+# in HelpDesk.Ticket
+create :create do
+  accept [:title, :description]
+
+  emit HelpDesk.Signals, :ticket_opened, fields: [ticket_id: :id]
+end
+```
+
+```elixir
+# in HelpDesk.ActivityLog
+signals_in do
+  from HelpDesk.Signals do
+    # creates an entry for each ticket opened, with `ticket_id` and `summary` from the signal
+    on :ticket_opened, :log_ticket_opened, action: :create, inputs: [:ticket_id, summary: :title]
+  end
+end
+```
+
+As with the hook, the listener runs in the ticket's transaction, so if it fails, the ticket isn't created. But the ticket no longer depends on the activity log, and other resources can react to `:ticket_opened` without changing the ticket. See the [Signals guide](/documentation/topics/resources/signals.md) for more.
 
 ### Example 2: Multi-Hook Ticket Assignment
 

@@ -11,6 +11,10 @@ defmodule Ash.Error.Query.UnsortableField do
     "#{inspect(field)} is not sortable on #{inspect(resource)}, as its type is not sortable by the data layer"
   end
 
+  def message(%{field: field, reason: :to_many, resource: resource}) do
+    "#{inspect(field)} is not sortable on #{inspect(resource)}, as it is a to-many relationship. Use an aggregate, like `first`, to sort on related data through a to-many relationship"
+  end
+
   def message(%{field: field, resource: resource}) do
     "#{inspect(field)} is not sortable on #{inspect(resource)}"
   end

@@ -322,19 +322,17 @@ defmodule Ash.Actions.Helpers do
   end
 
   @doc false
-  # Stamp an explicit point-in-time `as_of` onto a written record's metadata, so a later
-  # `Ash.load/3` of that record reuses the same instant (parity with how tenant is
-  # stamped — see `Ash.load/3`). Only a concrete `DateTime` is stamped: a `:now`/`nil`
-  # write is anchored at the *data layer's* clock, which core never observes, so stamping
-  # a (slightly earlier) core `now()` could place `as_of` before the row's validity and
-  # make the reload miss it. Those are left for `load` to default to the current instant.
-  # A range is concrete in the same way, and stamps the instant it begins at.
+  # Stamp the instant a write was made at onto the record it returns, so a later
+  # `Ash.load/3` or `Ash.reload/2` of that record reuses it (parity with how tenant is
+  # stamped — see `Ash.load/3`). It replaces any instant the record was read or written at
+  # before, since the record now reflects this write. Later writes don't reuse it: a write
+  # given no `as_of` is made now. A range stamps the instant it begins at.
   def put_write_as_of(metadata, resource, %Ash.Range{} = as_of),
     do: put_write_as_of(metadata, resource, Ash.Temporal.resolve_write_as_of(as_of))
 
   def put_write_as_of(metadata, resource, %DateTime{} = as_of) do
     if Ash.Resource.Info.temporal?(resource) do
-      Map.put_new(metadata, :as_of, as_of)
+      Map.put(metadata, :as_of, as_of)
     else
       metadata
     end
@@ -875,7 +873,7 @@ defmodule Ash.Actions.Helpers do
 
   def apply_opts_load(%Ash.Changeset{} = changeset, opts) do
     if opts[:load] do
-      Ash.Changeset.load(changeset, opts[:load])
+      Ash.Changeset.load(changeset, opts[:load], Keyword.take(opts, [:strict?]))
     else
       changeset
     end
@@ -1228,6 +1226,22 @@ defmodule Ash.Actions.Helpers do
   end
 
   def get_multitenancy_from_context(_), do: nil
+
+  @doc false
+  # An upsert's keys don't always include the multitenancy attribute (the primary key, or an
+  # `all_tenants?` identity), so the record it conflicts with may be in another tenant. This is
+  # the filter that record must match to be updated or returned, or `nil` if it needn't.
+  @spec upsert_tenant_filter(Ash.Changeset.t()) :: Keyword.t() | nil
+  def upsert_tenant_filter(changeset) do
+    if changeset.tenant &&
+         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute &&
+         get_multitenancy_from_context(changeset) not in [:bypass, :bypass_all] do
+      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
+      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
+
+      [{attribute, apply(m, f, [changeset.to_tenant | a])}]
+    end
+  end
 
   @doc """
   Validates that a changeset has a tenant when required by the resource.
