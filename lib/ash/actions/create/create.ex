@@ -14,6 +14,7 @@ defmodule Ash.Actions.Create do
           | {:ok, Ash.Resource.Record.t()}
           | {:error, term}
   def run(domain, changeset, action, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     is_upsert? = changeset.context[:private][:upsert?]
 
     create_atomics_unsupported? =

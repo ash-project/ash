@@ -29,10 +29,12 @@ defmodule Ash.Actions.Read do
   def run(query, action, opts \\ [])
 
   def run(%{valid?: false, errors: errors}, _action, _opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     {:error, Ash.Error.to_error_class(errors)}
   end
 
   def run(query, action, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     query = Ash.Query.new(query)
 
     domain = query.domain || opts[:domain] || Ash.Resource.Info.domain(query.resource)

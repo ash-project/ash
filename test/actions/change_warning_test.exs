@@ -47,6 +47,7 @@ defmodule Ash.Test.Actions.ChangeWarningTest do
       create :create_with_nested_action do
         change fn changeset, _context ->
           Ash.create!(NestedResource, %{})
+          Ash.create!(NestedResource, %{})
           changeset
         end
       end
@@ -82,7 +83,9 @@ defmodule Ash.Test.Actions.ChangeWarningTest do
         |> Ash.Changeset.for_create(:create_with_nested_action, %{})
       end)
 
-    assert log =~ "An Ash action was called from inside the `change/3` callback"
+    warnings = Regex.scan(~r/An Ash action was called from inside the `change\/3` callback/, log)
+
+    assert length(warnings) == 1
   end
 
   test "does not warn when an action is called from a before_action hook" do

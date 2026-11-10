@@ -17,6 +17,7 @@ defmodule Ash.Actions.Destroy do
           | {:error, Ash.Changeset.t()}
           | {:error, term}
   def run(domain, changeset, %{soft?: true} = action, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
 
     changeset =
@@ -53,6 +54,7 @@ defmodule Ash.Actions.Destroy do
   end
 
   def run(domain, changeset, action, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
     # Pinned as the action runs, so an `as_of` set after the changeset was built is the one used.
     changeset = Ash.Changeset.pin_temporal_write_now(changeset)

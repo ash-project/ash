@@ -6,6 +6,7 @@ defmodule Ash.Actions.Read.Stream do
   @moduledoc false
 
   def run!(domain, query, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     query = Ash.Query.new(query)
 
     {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
