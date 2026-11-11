@@ -1165,7 +1165,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declare validations prior to performing actions against the resource
     """,
-    imports: [Ash.Resource.Validation.Builtins],
+    imports: [Ash.Resource.Validation.Builtins, Ash.Expr],
     examples: [
       """
       validations do
