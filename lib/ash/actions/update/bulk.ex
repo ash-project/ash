@@ -3956,14 +3956,7 @@ defmodule Ash.Actions.Update.Bulk do
             changeset
 
           {:error, error} ->
-            error =
-              if validation.message do
-                Ash.Error.override_validation_message(error, validation.message)
-              else
-                error
-              end
-
-            Ash.Changeset.add_error(changeset, error)
+            Ash.Changeset.add_validation_error(changeset, error, validation.message)
         end
       else
         changeset

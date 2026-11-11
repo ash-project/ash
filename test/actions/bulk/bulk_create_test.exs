@@ -152,6 +152,19 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule ValidateCodeArgument do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_argument(changeset, :code) do
+        "bad" -> {:error, field: :code, message: "code cannot be bad"}
+        _ -> :ok
+      end
+    end
+  end
+
   defmodule PostWithBulkValidationOrdering do
     @moduledoc false
     use Ash.Resource,
@@ -193,6 +206,18 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         change before_action(fn changeset, _context ->
                  Ash.Changeset.force_change_attribute(changeset, :status, "ugly")
                end)
+      end
+
+      create :with_code_argument do
+        accept [:title]
+        argument :code, :string
+        validate ValidateCodeArgument
+      end
+
+      create :with_code_argument_message do
+        accept [:title]
+        argument :code, :string
+        validate ValidateCodeArgument, message: "code is overridden"
       end
     end
 
@@ -2731,7 +2756,14 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  authorize?: false
                )
 
-      assert Exception.message(error) =~ "status cannot be bad"
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: :status,
+                   message: "status cannot be bad"
+                 }
+               ]
+             } = error
     end
 
     test "before_action? global validation rejects with correct error" do
@@ -2744,7 +2776,68 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  authorize?: false
                )
 
-      assert Exception.message(error) =~ "status cannot be ugly"
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: :status,
+                   message: "status cannot be ugly"
+                 }
+               ]
+             } = error
+    end
+
+    test "keyword errors on arguments become InvalidArgument, matching Ash.create" do
+      assert %Ash.BulkResult{status: :error, errors: [bulk_error]} =
+               Ash.bulk_create(
+                 [%{title: "good", code: "bad"}],
+                 PostWithBulkValidationOrdering,
+                 :with_code_argument,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert {:error, single_error} =
+               PostWithBulkValidationOrdering
+               |> Ash.Changeset.for_create(:with_code_argument, %{title: "good", code: "bad"},
+                 authorize?: false
+               )
+               |> Ash.create()
+
+      for error <- [bulk_error, single_error] do
+        assert %Ash.Error.Invalid{
+                 errors: [
+                   %Ash.Error.Changes.InvalidArgument{field: :code, message: "code cannot be bad"}
+                 ]
+               } = error
+      end
+    end
+
+    test "validation message overrides keyword errors, matching Ash.create" do
+      assert %Ash.BulkResult{status: :error, errors: [bulk_error]} =
+               Ash.bulk_create(
+                 [%{title: "good", code: "bad"}],
+                 PostWithBulkValidationOrdering,
+                 :with_code_argument_message,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert {:error, single_error} =
+               PostWithBulkValidationOrdering
+               |> Ash.Changeset.for_create(
+                 :with_code_argument_message,
+                 %{title: "good", code: "bad"},
+                 authorize?: false
+               )
+               |> Ash.create()
+
+      for error <- [bulk_error, single_error] do
+        assert %Ash.Error.Invalid{
+                 errors: [
+                   %Ash.Error.Changes.InvalidArgument{field: :code, message: "code is overridden"}
+                 ]
+               } = error
+      end
     end
 
     test "deferred action validation sees before_transaction changes" do

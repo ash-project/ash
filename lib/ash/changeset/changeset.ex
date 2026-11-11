@@ -1330,12 +1330,7 @@ defmodule Ash.Changeset do
             changeset
 
           [{:error, error}] ->
-            if message do
-              error = Ash.Error.override_validation_message(error, message)
-              add_error(changeset, error)
-            else
-              add_error(changeset, error)
-            end
+            add_validation_error(changeset, error, message)
 
           [{:not_atomic, error}] ->
             {:not_atomic, error}
@@ -4536,43 +4531,8 @@ defmodule Ash.Changeset do
                 :ok ->
                   changeset
 
-                {:error, error} when is_binary(error) ->
-                  Ash.Changeset.add_error(changeset, validation.message || error)
-
-                {:error, error} when is_exception(error) ->
-                  if validation.message do
-                    error = Ash.Error.override_validation_message(error, validation.message)
-                    add_error(changeset, error)
-                  else
-                    add_error(changeset, error)
-                  end
-
-                {:error, errors} when is_list(errors) ->
-                  cond do
-                    validation.message ->
-                      errors =
-                        Enum.map(errors, fn error ->
-                          Ash.Error.override_validation_message(error, validation.message)
-                        end)
-
-                      add_error(changeset, errors)
-
-                    Keyword.keyword?(errors) ->
-                      add_error(changeset, keyword_to_validation_change_error(changeset, errors))
-
-                    true ->
-                      add_error(changeset, errors)
-                  end
-
                 {:error, error} ->
-                  error =
-                    if Keyword.keyword?(error) do
-                      Keyword.put(error, :message, validation.message || error[:message])
-                    else
-                      validation.message || error
-                    end
-
-                  Ash.Changeset.add_error(changeset, error)
+                  add_validation_error(changeset, error, validation.message)
               end
           end
         end
@@ -8090,6 +8050,38 @@ defmodule Ash.Changeset do
     else
       error
     end
+  end
+
+  @doc false
+  # Adds the error returned by a validation to the changeset, applying the
+  # validation's `message` override if present. Keyword list errors are resolved
+  # against the action so `field:` becomes `InvalidArgument` or `InvalidAttribute`.
+  # Shared by the single, atomic and bulk validation paths so they produce the same errors.
+  def add_validation_error(changeset, [], _message), do: changeset
+
+  def add_validation_error(changeset, error, message) when is_list(error) do
+    if Keyword.keyword?(error) do
+      error =
+        if message do
+          Keyword.put(error, :message, message)
+        else
+          error
+        end
+
+      add_error(changeset, keyword_to_validation_change_error(changeset, error))
+    else
+      Enum.reduce(error, changeset, &add_validation_error(&2, &1, message))
+    end
+  end
+
+  def add_validation_error(changeset, error, message) when is_binary(error) do
+    add_error(changeset, message || error)
+  end
+
+  def add_validation_error(changeset, error, nil), do: add_error(changeset, error)
+
+  def add_validation_error(changeset, error, message) do
+    add_error(changeset, Ash.Error.override_validation_message(error, message))
   end
 
   defp keyword_to_validation_change_error(changeset, keyword) do

@@ -273,6 +273,19 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule ValidateCodeArgument do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_argument(changeset, :code) do
+        "bad" -> {:error, field: :code, message: "code cannot be bad"}
+        _ -> :ok
+      end
+    end
+  end
+
   defmodule PostWithBulkValidationOrdering do
     @moduledoc false
     use Ash.Resource,
@@ -291,6 +304,13 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
         primary? true
         accept [:title]
         require_atomic? false
+      end
+
+      update :update_with_code_argument do
+        accept [:title]
+        argument :code, :string
+        require_atomic? false
+        validate ValidateCodeArgument
       end
     end
 
@@ -2677,7 +2697,14 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  authorize?: false
                )
 
-      assert Exception.message(error) =~ "status cannot be bad"
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: :status,
+                   message: "status cannot be bad"
+                 }
+               ]
+             } = error
     end
 
     test "before_action? global validation rejects with correct error" do
@@ -2697,7 +2724,38 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  authorize?: false
                )
 
-      assert Exception.message(error) =~ "status cannot be ugly"
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: :status,
+                   message: "status cannot be ugly"
+                 }
+               ]
+             } = error
+    end
+
+    test "keyword errors on arguments become InvalidArgument" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "initial"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_update(
+                 [post],
+                 :update_with_code_argument,
+                 %{title: "good", code: "bad"},
+                 resource: PostWithBulkValidationOrdering,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidArgument{field: :code, message: "code cannot be bad"}
+               ]
+             } = error
     end
 
     test "before_action? validation falls back from atomic to stream strategy" do
