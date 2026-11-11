@@ -6,6 +6,7 @@ defmodule Ash.Test.Filter.FilterTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Expr
   import Ash.Test
 
   alias Ash.Filter
@@ -144,6 +145,43 @@ defmodule Ash.Test.Filter.FilterTest do
 
       calculate :name_plus_text, :string, expr(name <> ^arg(:text)) do
         argument :text, :string, allow_nil?: false
+      end
+    end
+  end
+
+  # `postz` is intentionally invalid to exercise error handling in FilterCheck.
+  defmodule InvalidExistsFilterCheck do
+    use Ash.Policy.FilterCheck
+
+    @impl true
+    def describe(_opts), do: "contains an invalid exists expression"
+
+    @impl true
+    def filter(_actor, _context, _opts), do: expr(exists(postz, true))
+  end
+
+  defmodule PolicyUser do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:read]
+    end
+
+    policies do
+      policy action_type(:read) do
+        authorize_if InvalidExistsFilterCheck
       end
     end
   end
@@ -333,6 +371,64 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(^"5" < points)
                |> Ash.read!()
+    end
+  end
+
+  describe "exists/2 errors" do
+    test "returns a helpful error for invalid exists syntax" do
+      expression = Ash.Expr.expr(exists(posts.title == "bar"))
+
+      assert {:error, error} = Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "exists(foo.bar == \"bar\")"
+      assert message =~ "exists(foo, bar == \"bar\")"
+    end
+
+    test "returns a helpful error for an unknown relationship" do
+      expression = Ash.Expr.expr(exists(postz, true))
+
+      assert {:error, error} = Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "Could not find a related resource at path [:postz]"
+      assert message =~ "Ensure the relationship name is spelled correctly"
+    end
+
+    test "returns a helpful error for an unknown nested relationship" do
+      expression = Ash.Expr.expr(exists(posts.comentz, true))
+
+      assert {:error, error} = Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "Could not find a related resource at path [:posts, :comentz]"
+    end
+  end
+
+  describe "exists/2" do
+    test "hydrates valid exists syntax" do
+      expression = Ash.Expr.expr(exists(posts, title == "bar"))
+
+      assert {:ok, %Ash.Query.Exists{path: [:posts], expr: hydrated_expr}} =
+               Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      refute hydrated_expr == expression.expr
+    end
+
+    test "returns exists errors from filter policy checks" do
+      assert {:error, error} = Ash.can({PolicyUser, :read}, nil)
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "Could not find a related resource at path [:postz]"
+      assert message =~ "PolicyUser"
     end
   end
 
@@ -1580,4 +1676,7 @@ defmodule Ash.Test.Filter.FilterTest do
       assert %{valid?: false} = Ash.Query.filter(NoJoinPost, comments.title == author.name)
     end
   end
+
+  defp error_message(error) when is_binary(error), do: error
+  defp error_message(error), do: Exception.message(error)
 end
