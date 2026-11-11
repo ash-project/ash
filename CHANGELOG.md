@@ -8,6 +8,25 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.4](https://github.com/ash-project/ash/compare/v3.37.3...v3.37.4) (2026-11-11)
+
+
+
+
+### Bug Fixes:
+
+* properly transform bulk errors into Ash errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* set source context in after action hook for cascade destroy by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve `parent()` relationship filters in managed lookups and cascades (#3056) by [@jimsynz](https://github.com/jimsynz) [(#3056)](https://github.com/ash-project/ash/pull/3056)
+
+* use accessing_from for related field policies in filter input (#3116) by [@emadshaaban92](https://github.com/emadshaaban92) [(#3116)](https://github.com/ash-project/ash/pull/3116)
+
+* only apply generic action argument defaults when the argument is omitted by [@zachdaniel](https://github.com/zachdaniel)
+
+* avoid applying filter mappers twice (#3114) by Jechol Lee [(#3114)](https://github.com/ash-project/ash/pull/3114)
+
 ## [v3.37.3](https://github.com/ash-project/ash/compare/v3.37.2...v3.37.3) (2026-11-05)
 
 
