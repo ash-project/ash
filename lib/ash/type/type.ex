@@ -2544,7 +2544,7 @@ defmodule Ash.Type do
   end
 
   defp ash_type_module?(module) do
-    module.ash_type?()
+    String.starts_with?(Atom.to_string(module), "Elixir.") and module.ash_type?()
   rescue
     _ -> false
   end
