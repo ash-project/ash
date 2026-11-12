@@ -350,6 +350,10 @@ defmodule Ash.Actions.Read.Relationships do
       })
       |> Ash.Query.set_tenant(query.tenant || related_query.tenant)
       |> Ash.Query.set_context(Map.take(query.context, [:shared]))
+      # set before `for_read`, so that the destination's preparations can see it
+      |> Ash.Query.set_context(%{
+        accessing_from: %{source: relationship.source, name: relationship.name}
+      })
       |> Ash.Actions.Read.for_read(read_action, nil, arguments,
         domain: domain,
         authorize?: query.context[:private][:authorize?],
