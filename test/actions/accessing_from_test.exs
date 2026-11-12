@@ -71,11 +71,15 @@ defmodule Ash.Test.Actions.AccessingFromTest do
     %{post: post}
   end
 
-  test "preparations don't see accessing_from when reading directly" do
-    assert [_, _] = Ash.read!(Comment)
+  test "reading comments directly returns spam comments too" do
+    assert [false, true] =
+             Comment
+             |> Ash.read!()
+             |> Enum.map(& &1.spam?)
+             |> Enum.sort()
   end
 
-  test "preparations see accessing_from when loading a relationship", %{post: post} do
+  test "loading a post's comments hides spam comments", %{post: post} do
     assert %{comments: [%{spam?: false}]} = Ash.load!(post, :comments)
   end
 end
