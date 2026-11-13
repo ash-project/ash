@@ -259,11 +259,12 @@ defmodule Ash.Actions.Read.Stream do
          )}
 
       allowed_strategy == :offset ->
-        Ash.Error.Invalid.NonStreamableAction.exception(
-          resource: query.resource,
-          action: query.action,
-          types: [:keyset, :offset]
-        )
+        {:error,
+         Ash.Error.Invalid.NonStreamableAction.exception(
+           resource: query.resource,
+           action: query.action,
+           types: [:keyset, :offset]
+         )}
     end
   end
 
