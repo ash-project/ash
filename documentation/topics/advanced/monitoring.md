@@ -24,6 +24,12 @@ Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, (doma
 
 ### Events
 
+- `[:ash, :authorization, :run_checks]` - Main authorization, including policy checks and source alteration.
+- `[:ash, :authorization, :authorize_related]` - Related-query authorization, grouped across relationship paths.
+- `[:ash, :authorization, :runtime_check]` - Runtime authorization checks against fetched records.
+
+Authorization events include `domain`, `resource`, `resource_short_name`, `action`, and `phase` metadata. The phase matches the operation in the event name. These spans can nest, so their durations should not be summed as independent timings.
+
 - `[:ash, (domain_short_name), :create]` - The execution of a create action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, (domain_short_name), :update]` - The execution of a update action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, (domain_short_name), :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.
@@ -72,6 +78,9 @@ For customizing the names created for each span, see:
 
 These are the list of trace types.
 
+- `[:authorization, :run_checks]` - Main authorization, including policy checks and source alteration.
+- `[:authorization, :authorize_related]` - Authorization of related queries.
+- `[:authorization, :runtime_check]` - Runtime authorization checks against fetched records.
 - `:action` - A single action (create, read, update, destroy, or generic action).
 - `:bulk_create` - A bulk create operation.
 - `:bulk_update` - A bulk update operation.
@@ -117,3 +126,21 @@ defmodule MyApp.CustomChange do
   end
 end
 ```
+
+### Authorization spans with OpenTelemetry
+
+Authorization span types are two-element lists. A tracer's `trace_type?/1`, `start_span/2`, and `set_metadata/2` callbacks receive the full list, so filtering can select individual operations.
+For example, `opentelemetry_ash` defaults to `:custom` and `:action`:
+
+```elixir
+config :opentelemetry_ash, :trace_types, [
+  :custom,
+  :action,
+  [:authorization, :run_checks],
+  [:authorization, :authorize_related],
+  [:authorization, :runtime_check]
+]
+```
+
+Authorization telemetry events are emitted independently of the configured tracer.
+Instrumentation measures elapsed time; it does not change authorization decisions.

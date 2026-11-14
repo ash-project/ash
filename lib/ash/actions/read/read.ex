@@ -687,99 +687,13 @@ defmodule Ash.Actions.Read do
                      parent_stack: parent_stack_from_context(query.context),
                      source_context: query.context
                    ),
-                 filter <-
-                   add_calc_context_to_filter(
-                     query.filter,
-                     opts[:actor],
-                     opts[:authorize?],
-                     query.tenant,
-                     opts[:tracer],
-                     query.domain,
-                     query.resource,
-                     expand?: true,
-                     parent_stack: parent_stack_from_context(query.context),
-                     source_context: query.context
-                   ),
-                 {:ok, relationship_path_filters} <-
-                   Ash.Filter.relationship_filters(
-                     query.domain,
+                 {:ok, query, data_layer_calculations, relationship_path_filters} <-
+                   authorize_related(
+                     query,
                      pre_authorization_query,
-                     opts[:actor],
-                     query.tenant,
-                     agg_refs(query, data_layer_calculations ++ [{nil, filter}]),
-                     opts[:authorize?]
-                   ),
-                 data_layer_calculations <-
-                   authorize_calculation_expressions(
                      data_layer_calculations,
-                     query.resource,
-                     opts[:authorize?],
-                     relationship_path_filters,
-                     opts[:actor],
-                     query.tenant,
-                     opts[:tracer],
-                     query.domain,
-                     parent_stack_from_context(query.context),
-                     query.context
+                     opts
                    ),
-                 query <-
-                   authorize_loaded_aggregates(
-                     query,
-                     relationship_path_filters,
-                     opts[:actor],
-                     opts[:authorize?],
-                     query.tenant,
-                     opts[:tracer]
-                   ),
-                 query <-
-                   authorize_sorts(
-                     query,
-                     relationship_path_filters,
-                     opts[:actor],
-                     opts[:authorize?],
-                     query.tenant,
-                     opts[:tracer]
-                   ),
-                 {:ok, filter} <-
-                   filter_with_related(
-                     query,
-                     opts[:authorize?],
-                     relationship_path_filters
-                   ),
-                 {:ok, filter} <-
-                   Filter.run_other_data_layer_filters(
-                     query.domain,
-                     query.resource,
-                     filter,
-                     query.tenant
-                   ),
-                 filter <-
-                   add_calc_context_to_filter(
-                     filter,
-                     opts[:actor],
-                     opts[:authorize?],
-                     query.tenant,
-                     opts[:tracer],
-                     query.domain,
-                     query.resource,
-                     expand?: true,
-                     parent_stack: parent_stack_from_context(query.context),
-                     source_context: query.context
-                   ),
-                 filter <-
-                   update_aggregate_filters(
-                     filter,
-                     query.resource,
-                     opts[:authorize?],
-                     relationship_path_filters,
-                     opts[:actor],
-                     query.tenant,
-                     opts[:tracer],
-                     query.domain,
-                     parent_stack_from_context(query.context),
-                     query.context
-                   ),
-                 query <- Map.put(query, :filter, filter),
                  query <- Ash.Query.unset(query, :calculations),
                  {%{valid?: true} = query, before_notifications} <- run_before_action(query),
                  {:ok, count} <-
@@ -5216,6 +5130,16 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def authorize_related(query, pre_authorization_query, data_layer_calculations, opts) do
+    if opts[:authorize?] do
+      Helpers.authorization_span(query, :authorize_related, opts, fn ->
+        do_authorize_related(query, pre_authorization_query, data_layer_calculations, opts)
+      end)
+    else
+      do_authorize_related(query, pre_authorization_query, data_layer_calculations, opts)
+    end
+  end
+
+  defp do_authorize_related(query, pre_authorization_query, data_layer_calculations, opts) do
     with filter <-
            add_calc_context_to_filter(
              query.filter,
