@@ -7,9 +7,11 @@ defmodule Ash.Tracer do
   A behaviour for implementing tracing for an Ash application.
   """
 
+  @type authorization_operation() :: :run_checks | :authorize_related | :runtime_check
+
   @type span_type() ::
           :action
-          | :authorization
+          | [:authorization | authorization_operation()]
           | :bulk_create
           | :bulk_update
           | :bulk_destroy
@@ -48,7 +50,7 @@ defmodule Ash.Tracer do
   @callback get_span_context() :: term()
   @callback set_span_context(term()) :: :ok
   @callback set_error(Exception.t(), Keyword.t()) :: :ok
-  @callback trace_type?(atom) :: boolean()
+  @callback trace_type?(span_type()) :: boolean()
   @callback set_handled_error(Exception.t(), Keyword.t()) :: :ok
 
   @doc """
@@ -182,7 +184,7 @@ defmodule Ash.Tracer do
     end
   end
 
-  @spec trace_type?(module(), atom()) :: boolean()
+  @spec trace_type?(module(), span_type()) :: boolean()
   def trace_type?(tracer, type) do
     if function_exported?(tracer, :trace_type?, 1) do
       result = apply(tracer, :trace_type?, [type])

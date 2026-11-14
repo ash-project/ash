@@ -113,7 +113,21 @@ defmodule Ash.Test.AuthorizationTracerTest do
     @moduledoc false
     use Ash.Tracer
 
-    def trace_type?(type), do: type != :authorization
+    def trace_type?([:authorization, _operation]), do: false
+    def trace_type?(_type), do: true
+    defdelegate start_span(type, name), to: Ash.Tracer.Simple
+    defdelegate stop_span(), to: Ash.Tracer.Simple
+    defdelegate set_metadata(type, metadata), to: Ash.Tracer.Simple
+    defdelegate set_error(error), to: Ash.Tracer.Simple
+    defdelegate get_span_context(), to: Ash.Tracer.Simple
+    defdelegate set_span_context(context), to: Ash.Tracer.Simple
+  end
+
+  defmodule RelatedOnlyTracer do
+    @moduledoc false
+    use Ash.Tracer
+
+    def trace_type?(type), do: type == [:authorization, :authorize_related]
     defdelegate start_span(type, name), to: Ash.Tracer.Simple
     defdelegate stop_span(), to: Ash.Tracer.Simple
     defdelegate set_metadata(type, metadata), to: Ash.Tracer.Simple
@@ -127,7 +141,11 @@ defmodule Ash.Test.AuthorizationTracerTest do
 
     :telemetry.attach_many(
       handler,
-      [[:ash, :authorization, :start], [:ash, :authorization, :stop]],
+      for(
+        operation <- [:run_checks, :authorize_related, :runtime_check],
+        event <- [:start, :stop],
+        do: [:ash, :authorization, operation, event]
+      ),
       &__MODULE__.handle_event/4,
       self()
     )
@@ -144,9 +162,9 @@ defmodule Ash.Test.AuthorizationTracerTest do
     assert [] = Ash.read!(Post, authorize?: true, tracer: Ash.Tracer.Simple)
     assert [%{type: :action} = action] = Ash.Tracer.Simple.gather_spans()
 
-    for phase <- [:main, :related_queries] do
+    for phase <- [:run_checks, :authorize_related] do
       assert span = Enum.find(action.spans, &(&1.metadata[:phase] == phase))
-      assert span.type == :authorization
+      assert span.type == [:authorization, phase]
       assert span.parent_id == action.id
       assert span.duration >= 0
 
@@ -158,11 +176,11 @@ defmodule Ash.Test.AuthorizationTracerTest do
                phase: phase
              }
 
-      assert_receive {:authorization, [:ash, :authorization, :start], %{system_time: _},
+      assert_receive {:authorization, [:ash, :authorization, ^phase, :start], %{system_time: _},
                       %{phase: ^phase, resource: Post, action: :read}}
 
-      assert_receive {:authorization, [:ash, :authorization, :stop], %{duration: duration},
-                      %{phase: ^phase, resource: Post, action: :read}}
+      assert_receive {:authorization, [:ash, :authorization, ^phase, :stop],
+                      %{duration: duration}, %{phase: ^phase, resource: Post, action: :read}}
 
       assert duration >= 0
     end
@@ -180,10 +198,10 @@ defmodule Ash.Test.AuthorizationTracerTest do
 
     assert result.id == post.id
     assert [%{type: :action} = action] = Ash.Tracer.Simple.gather_spans()
-    assert [related] = Enum.filter(action.spans, &(&1.metadata[:phase] == :related_queries))
+    assert [related] = Enum.filter(action.spans, &(&1.metadata[:phase] == :authorize_related))
 
     refute Enum.any?(authorization_spans(related.spans), fn span ->
-             span.metadata.phase == :related_queries
+             span.metadata.phase == :authorize_related
            end)
   end
 
@@ -198,7 +216,7 @@ defmodule Ash.Test.AuthorizationTracerTest do
 
     assert result.id == allowed.id
     spans = authorization_spans(Ash.Tracer.Simple.gather_spans())
-    assert Enum.any?(spans, &(&1.metadata.phase == :runtime))
+    assert Enum.any?(spans, &(&1.metadata.phase == :runtime_check))
   end
 
   test "the global tracer is respected and deduplicated" do
@@ -214,7 +232,9 @@ defmodule Ash.Test.AuthorizationTracerTest do
     end)
 
     assert Ash.can?({Post, :read}, nil, tracer: Ash.Tracer.Simple)
-    assert [%{type: :authorization}] = authorization_spans(Ash.Tracer.Simple.gather_spans())
+
+    assert [%{type: [:authorization, :run_checks]}] =
+             authorization_spans(Ash.Tracer.Simple.gather_spans())
   end
 
   test "standalone permission checks inherit a tracer from the subject" do
@@ -222,23 +242,49 @@ defmodule Ash.Test.AuthorizationTracerTest do
     Ash.Tracer.Simple.gather_spans()
     assert Ash.can?(query, nil)
 
-    assert [%{type: :authorization, metadata: %{phase: :main}}] =
+    assert [%{type: [:authorization, :run_checks], metadata: %{phase: :run_checks}}] =
              Ash.Tracer.Simple.gather_spans()
   end
 
   test "telemetry works without a tracer and forbidden results are unchanged" do
     post = Ash.create!(Post, %{}, authorize?: false)
     refute Ash.can?({Post, :denied}, nil, data: post)
-    assert_receive {:authorization, [:ash, :authorization, :start], _, %{phase: :main}}
 
-    assert_receive {:authorization, [:ash, :authorization, :stop], %{duration: _},
-                    %{phase: :main}}
+    assert_receive {:authorization, [:ash, :authorization, :run_checks, :start], _,
+                    %{phase: :run_checks}}
+
+    assert_receive {:authorization, [:ash, :authorization, :run_checks, :stop], %{duration: _},
+                    %{phase: :run_checks}}
   end
 
   test "tracer type filtering does not disable telemetry" do
     assert Ash.can?({Post, :read}, nil, tracer: FilteredTracer)
     assert [] = Ash.Tracer.Simple.gather_spans()
-    assert_receive {:authorization, [:ash, :authorization, :stop], _, %{phase: :main}}
+
+    assert_receive {:authorization, [:ash, :authorization, :run_checks, :stop], _,
+                    %{phase: :run_checks}}
+  end
+
+  test "a tracer can select related authorization independently of other operations" do
+    allowed = Ash.create!(Post, %{allowed: true}, authorize?: false)
+
+    assert [%{id: id}] =
+             Post
+             |> Ash.Query.for_read(:runtime)
+             |> Ash.read!(authorize?: true, tracer: RelatedOnlyTracer)
+
+    assert id == allowed.id
+
+    assert [%{type: [:authorization, :authorize_related], metadata: %{phase: :authorize_related}}] =
+             Ash.Tracer.Simple.gather_spans()
+
+    for operation <- [:run_checks, :authorize_related, :runtime_check] do
+      assert_receive {:authorization, [:ash, :authorization, ^operation, :start], _,
+                      %{resource: Post, action: :runtime, phase: ^operation}}
+
+      assert_receive {:authorization, [:ash, :authorization, ^operation, :stop], %{duration: _},
+                      %{resource: Post, action: :runtime, phase: ^operation}}
+    end
   end
 
   test "raised checks close both spans and allow subsequent tracing" do
@@ -246,12 +292,16 @@ defmodule Ash.Test.AuthorizationTracerTest do
       Ash.can?({Post, :raising}, nil, tracer: Ash.Tracer.Simple)
     end
 
-    assert [%{type: :authorization, error: %RuntimeError{}}] =
+    assert [%{type: [:authorization, :run_checks], error: %RuntimeError{}}] =
              Ash.Tracer.Simple.gather_spans()
 
-    assert_receive {:authorization, [:ash, :authorization, :stop], _, %{phase: :main}}
+    assert_receive {:authorization, [:ash, :authorization, :run_checks, :stop], _,
+                    %{phase: :run_checks}}
+
     assert Ash.can?({Post, :read}, nil, tracer: Ash.Tracer.Simple)
-    assert [%{type: :authorization, parent_id: nil}] = Ash.Tracer.Simple.gather_spans()
+
+    assert [%{type: [:authorization, :run_checks], parent_id: nil}] =
+             Ash.Tracer.Simple.gather_spans()
   end
 
   test "actions with authorization disabled do not emit authorization spans" do
@@ -262,7 +312,7 @@ defmodule Ash.Test.AuthorizationTracerTest do
 
   defp authorization_spans(spans) do
     Enum.flat_map(spans, fn span ->
-      if span.type == :authorization do
+      if match?([:authorization, _operation], span.type) do
         [span | authorization_spans(span.spans)]
       else
         authorization_spans(span.spans)

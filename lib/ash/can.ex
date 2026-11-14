@@ -237,7 +237,7 @@ defmodule Ash.Can do
 
       case Ash.Domain.Info.resource(domain, resource) do
         {:ok, _} ->
-          Ash.Actions.Helpers.authorization_span(subject, :main, opts, fn ->
+          Ash.Actions.Helpers.authorization_span(subject, :run_checks, opts, fn ->
             domain
             |> run_check(actor, subject, opts)
             |> alter_source(domain, actor, subject, opts)
@@ -1730,7 +1730,7 @@ defmodule Ash.Can do
   defp check_with_span(authorizer, state, context, opts) do
     subject = context.changeset || context.query || context.action_input
 
-    Ash.Actions.Helpers.authorization_span(subject, :runtime, opts, fn ->
+    Ash.Actions.Helpers.authorization_span(subject, :runtime_check, opts, fn ->
       Ash.Authorizer.check(authorizer, state, context)
     end)
   end

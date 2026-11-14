@@ -5131,7 +5131,7 @@ defmodule Ash.Actions.Read do
   @doc false
   def authorize_related(query, pre_authorization_query, data_layer_calculations, opts) do
     if opts[:authorize?] do
-      Helpers.authorization_span(query, :related_queries, opts, fn ->
+      Helpers.authorization_span(query, :authorize_related, opts, fn ->
         do_authorize_related(query, pre_authorization_query, data_layer_calculations, opts)
       end)
     else

@@ -357,8 +357,12 @@ defmodule Ash.Test.Policy.CreateFilterTest do
 
       assert_received {:span,
                        %{
-                         type: :authorization,
-                         metadata: %{resource: UnknownPost, action: :create, phase: :runtime},
+                         type: [:authorization, :runtime_check],
+                         metadata: %{
+                           resource: UnknownPost,
+                           action: :create,
+                           phase: :runtime_check
+                         },
                          parent_id: parent_id
                        }}
 

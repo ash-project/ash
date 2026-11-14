@@ -9,7 +9,7 @@ defmodule Ash.Actions.Helpers do
 
   # Keep instrumentation at authorization boundaries, rather than inside policy
   # solving, which may recursively evaluate many resources and relationship paths.
-  def authorization_span(subject, phase, opts, callback) do
+  def authorization_span(subject, operation, opts, callback) do
     tracer =
       [
         opts[:tracer],
@@ -19,23 +19,25 @@ defmodule Ash.Actions.Helpers do
       |> Enum.flat_map(&List.wrap/1)
       |> Enum.uniq()
 
+    span_type = [:authorization, operation]
+
     metadata = fn ->
       %{
         domain: subject.domain,
         resource: subject.resource,
         resource_short_name: Ash.Resource.Info.short_name(subject.resource),
         action: subject.action.name,
-        phase: phase
+        phase: operation
       }
     end
 
-    Ash.Tracer.span :authorization,
+    Ash.Tracer.span span_type,
                     fn ->
-                      "#{Ash.Domain.Info.span_name(subject.domain, subject.resource, subject.action.name)} authorization:#{phase}"
+                      "#{Ash.Domain.Info.span_name(subject.domain, subject.resource, subject.action.name)} authorization:#{operation}"
                     end,
                     tracer do
-      Ash.Tracer.telemetry_span [:ash, :authorization], metadata do
-        Ash.Tracer.set_metadata(tracer, :authorization, metadata)
+      Ash.Tracer.telemetry_span [:ash, :authorization, operation], metadata do
+        Ash.Tracer.set_metadata(tracer, span_type, metadata)
         callback.()
       end
     end
