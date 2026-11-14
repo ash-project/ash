@@ -15,6 +15,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   def run(domain, stream, action, input, opts, not_atomic_reason)
       when is_atom(action) and not is_nil(action) do
+    Ash.Resource.Change.warn_on_action_in_change()
     resource = opts[:resource]
 
     opts =
@@ -62,6 +63,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   def run(domain, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
+    Ash.Resource.Change.warn_on_action_in_change()
     opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
     action_name = action.name
 
@@ -474,6 +476,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   def run(domain, stream, action, input, opts, not_atomic_reason) do
+    Ash.Resource.Change.warn_on_action_in_change()
     opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
     resource = opts[:resource]
 

@@ -7,6 +7,7 @@ defmodule Ash.Actions.Aggregate do
   require Ash.Tracer
 
   def run(domain, query, aggregates, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     query = Ash.Query.new(query)
     query = %{query | domain: domain}
     {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(query.domain, query, opts)

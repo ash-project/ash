@@ -18,6 +18,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   def run(domain, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
+    Ash.Resource.Change.warn_on_action_in_change()
     opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
     action_name = if is_atom(action), do: action, else: action.name
 
@@ -493,6 +494,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   def run(domain, stream, action, input, opts, not_atomic_reason) do
+    Ash.Resource.Change.warn_on_action_in_change()
     opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
     resource = opts[:resource]
 
