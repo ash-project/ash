@@ -332,6 +332,223 @@ defmodule Ash.DataLayer.EtsTemporalTest do
       assert ["first"] = names_at(~U[2020-06-01 00:00:00Z])
       assert ["second"] = names_at(~U[2021-06-01 00:00:00Z])
     end
+
+    test "carries changed attributes into later versions that did not change them" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "bronze", seats: 5, valid_at: @early})
+
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "silver",
+        seats: 5,
+        valid_at: %Ash.Range{
+          lower: ~U[2021-01-01 00:00:00Z],
+          upper: ~U[2022-01-01 00:00:00Z],
+          bounds: :"[)"
+        }
+      })
+
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "gold",
+        seats: 5,
+        valid_at: %Ash.Range{lower: ~U[2022-01-01 00:00:00Z], upper: nil, bounds: :"[)"}
+      })
+
+      early = Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      early
+      |> Ash.Changeset.for_update(:update, %{seats: 10}, as_of: ~U[2020-06-01 00:00:00Z])
+      |> Ash.update!()
+
+      assert %{name: "bronze", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      assert %{name: "bronze", seats: 10} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-09-01 00:00:00Z])
+
+      assert %{name: "silver", seats: 10} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2021-06-01 00:00:00Z])
+
+      assert %{name: "gold", seats: 10} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2022-06-01 00:00:00Z])
+    end
+
+    test "stops carrying an attribute at the first later version that changed it, even if a still-later one changed it back" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "x", valid_at: @early})
+
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "y",
+        valid_at: %Ash.Range{
+          lower: ~U[2021-01-01 00:00:00Z],
+          upper: ~U[2022-01-01 00:00:00Z],
+          bounds: :"[)"
+        }
+      })
+
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "x",
+        valid_at: %Ash.Range{lower: ~U[2022-01-01 00:00:00Z], upper: nil, bounds: :"[)"}
+      })
+
+      early = Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+      update_at(early, "z", ~U[2020-06-01 00:00:00Z])
+
+      assert ["x"] = names_at(~U[2020-03-01 00:00:00Z])
+      assert ["z"] = names_at(~U[2020-09-01 00:00:00Z])
+      assert ["y"] = names_at(~U[2021-06-01 00:00:00Z])
+      assert ["x"] = names_at(~U[2022-06-01 00:00:00Z])
+    end
+
+    test "each changed attribute stops carrying on its own" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "bronze", seats: 5, valid_at: @early})
+
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "bronze",
+        seats: 10,
+        valid_at: %Ash.Range{
+          lower: ~U[2021-01-01 00:00:00Z],
+          upper: ~U[2022-01-01 00:00:00Z],
+          bounds: :"[)"
+        }
+      })
+
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "gold",
+        seats: 10,
+        valid_at: %Ash.Range{lower: ~U[2022-01-01 00:00:00Z], upper: nil, bounds: :"[)"}
+      })
+
+      early = Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      early
+      |> Ash.Changeset.for_update(:update, %{name: "silver", seats: 8},
+        as_of: ~U[2020-06-01 00:00:00Z]
+      )
+      |> Ash.update!()
+
+      assert %{name: "bronze", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      assert %{name: "silver", seats: 8} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-09-01 00:00:00Z])
+
+      assert %{name: "silver", seats: 10} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2021-06-01 00:00:00Z])
+
+      assert %{name: "gold", seats: 10} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2022-06-01 00:00:00Z])
+    end
+
+    test "an atomic update evaluates once on the version holding the instant and carries that value forward" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "bronze", seats: 5, valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "gold", seats: 5, valid_at: @open})
+
+      early = Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      early
+      |> Ash.Changeset.for_update(:add_seat, %{}, as_of: ~U[2020-06-01 00:00:00Z])
+      |> Ash.update!()
+
+      assert %{name: "bronze", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      assert %{name: "bronze", seats: 6} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-09-01 00:00:00Z])
+
+      assert %{name: "gold", seats: 6} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2021-06-01 00:00:00Z])
+    end
+
+    test "carry stops at a gap in validity" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "a", seats: 5, valid_at: @early})
+
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "a",
+        seats: 5,
+        valid_at: %Ash.Range{lower: ~U[2022-01-01 00:00:00Z], upper: nil, bounds: :"[)"}
+      })
+
+      early = Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      early
+      |> Ash.Changeset.for_update(:update, %{name: "b", seats: 10},
+        as_of: ~U[2020-06-01 00:00:00Z]
+      )
+      |> Ash.update!()
+
+      assert %{name: "b", seats: 10} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-09-01 00:00:00Z])
+
+      assert %{name: "a", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2022-06-01 00:00:00Z])
+    end
+
+    test "updating now carries into a version scheduled for the future" do
+      record =
+        EtsVersioned
+        |> Ash.Changeset.for_create(:create, %{id: 1, name: "bronze", seats: 5},
+          as_of: ~U[2020-01-01 00:00:00Z]
+        )
+        |> Ash.create!()
+
+      record
+      |> Ash.Changeset.for_update(:update, %{name: "gold"}, as_of: ~U[2030-01-01 00:00:00Z])
+      |> Ash.update!()
+
+      record
+      |> Ash.Changeset.for_update(:update, %{seats: 10})
+      |> Ash.update!()
+
+      assert %{name: "bronze", seats: 10} = Ash.get!(EtsVersioned, 1)
+
+      assert %{name: "gold", seats: 10} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2030-06-01 00:00:00Z])
+    end
+
+    test "a matched upsert as of an instant carries changed attributes into later versions" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "bronze", seats: 5, valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "gold", seats: 5, valid_at: @open})
+
+      assert {:ok, _} =
+               Ash.create(EtsVersioned, %{id: 1, name: "bronze", seats: 12},
+                 action: :upsert,
+                 upsert_fields: [:seats],
+                 as_of: ~U[2020-06-01 00:00:00Z]
+               )
+
+      assert %{name: "bronze", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      assert %{name: "bronze", seats: 12} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-09-01 00:00:00Z])
+
+      assert %{name: "gold", seats: 12} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2021-06-01 00:00:00Z])
+    end
+
+    test "a bulk update as of an instant carries changed attributes into later versions" do
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "bronze", seats: 5, valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "gold", seats: 5, valid_at: @open})
+
+      assert %Ash.BulkResult{status: :success} =
+               EtsVersioned
+               |> Ash.Query.as_of(~U[2020-06-01 00:00:00Z])
+               |> Ash.bulk_update(:update, %{seats: 20}, return_errors?: true)
+
+      assert %{name: "bronze", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      assert %{name: "bronze", seats: 20} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-09-01 00:00:00Z])
+
+      assert %{name: "gold", seats: 20} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2021-06-01 00:00:00Z])
+    end
   end
 
   describe "every temporal write is made as of one instant Ash resolves" do
@@ -528,7 +745,7 @@ defmodule Ash.DataLayer.EtsTemporalTest do
   end
 
   describe "a destroy ends a version rather than erasing it" do
-    test "the record keeps the values it held up to the instant of the write" do
+    test "the record keeps the values it held up to the instant of the write, and later versions are removed" do
       early = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "early", valid_at: @early})
       Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
 
@@ -541,14 +758,47 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                EtsVersioned |> Ash.Query.as_of(~U[2020-03-01 00:00:00Z]) |> Ash.read!()
 
       assert [] = EtsVersioned |> Ash.Query.as_of(~U[2020-09-01 00:00:00Z]) |> Ash.read!()
+      assert [] = EtsVersioned |> Ash.Query.as_of(~U[2026-06-01 00:00:00Z]) |> Ash.read!()
+    end
 
-      assert [%{name: "open"}] =
-               EtsVersioned |> Ash.Query.as_of(~U[2026-06-01 00:00:00Z]) |> Ash.read!()
+    test "destroying as of an instant stops at the first gap in validity, leaving a later re-creation alone" do
+      early = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "early", valid_at: @early})
+
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "next",
+        valid_at: %Ash.Range{
+          lower: ~U[2021-01-01 00:00:00Z],
+          upper: ~U[2022-01-01 00:00:00Z],
+          bounds: :"[)"
+        }
+      })
+
+      Ash.Seed.seed!(%EtsVersioned{
+        id: 1,
+        name: "recreated",
+        valid_at: %Ash.Range{lower: ~U[2023-01-01 00:00:00Z], upper: nil, bounds: :"[)"}
+      })
+
+      assert :ok =
+               early
+               |> Ash.Changeset.for_destroy(:destroy, %{}, as_of: ~U[2020-06-01 00:00:00Z])
+               |> Ash.destroy()
+
+      assert [%{name: "early", valid_at: %Ash.Range{upper: ~U[2020-06-01 00:00:00Z]}}] =
+               EtsVersioned |> Ash.Query.as_of(~U[2020-03-01 00:00:00Z]) |> Ash.read!()
+
+      assert [] = EtsVersioned |> Ash.Query.as_of(~U[2020-09-01 00:00:00Z]) |> Ash.read!()
+      assert [] = EtsVersioned |> Ash.Query.as_of(~U[2021-06-01 00:00:00Z]) |> Ash.read!()
+
+      assert [%{name: "recreated"}] =
+               EtsVersioned |> Ash.Query.as_of(~U[2023-06-01 00:00:00Z]) |> Ash.read!()
     end
 
     # Nothing of the version survives the instant it began.
-    test "destroying at the instant a version began removes it" do
+    test "destroying at the instant a version began removes it and any contiguous later versions" do
       early = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "early", valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "open", valid_at: @open})
 
       assert :ok =
                early
@@ -556,6 +806,7 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                |> Ash.destroy()
 
       assert [] = EtsVersioned |> Ash.Query.as_of(~U[2020-06-01 00:00:00Z]) |> Ash.read!()
+      assert [] = EtsVersioned |> Ash.Query.as_of(~U[2026-06-01 00:00:00Z]) |> Ash.read!()
     end
 
     test "destroying a version at an instant it does not hold is refused" do
@@ -908,6 +1159,27 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                  ~U[2020-07-01 00:00:00Z],
                  ~U[2020-10-01 00:00:00Z]
                ])
+    end
+
+    test "an update over a range does not carry into later versions" do
+      record = Ash.Seed.seed!(%EtsVersioned{id: 1, name: "bronze", seats: 5, valid_at: @early})
+      Ash.Seed.seed!(%EtsVersioned{id: 1, name: "gold", seats: 5, valid_at: @open})
+
+      record
+      |> Ash.Changeset.for_update(:update, %{seats: 10}, as_of: @portion)
+      |> Ash.update!()
+
+      assert %{name: "bronze", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-03-01 00:00:00Z])
+
+      assert %{name: "bronze", seats: 10} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-07-01 00:00:00Z])
+
+      assert %{name: "bronze", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2020-10-01 00:00:00Z])
+
+      assert %{name: "gold", seats: 5} =
+               Ash.get!(EtsVersioned, 1, as_of: ~U[2021-06-01 00:00:00Z])
     end
 
     test "an update whose portion spans two stored versions returns the first it wrote" do
