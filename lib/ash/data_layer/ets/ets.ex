@@ -28,6 +28,11 @@ defmodule Ash.DataLayer.Ets do
         doc:
           "Sets the ets table protection to private, and scopes it to only this process. The table name will not be used directly if this is true, to allow multiple processes to use this resource separately."
       ],
+      transaction_group: [
+        type: :atom,
+        doc:
+          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. A transaction holds the lock of each shared table of its group it touches until it ends."
+      ],
       table: [
         type: :atom,
         doc: """
@@ -40,8 +45,9 @@ defmodule Ash.DataLayer.Ets do
   @moduledoc """
   An ETS (Erlang Term Storage) backed Ash Datalayer, for testing and lightweight usage.
 
-  Remember, this does not have support for transactions! This is not recommended for production
-  use, especially in multi-user applications. It can, however, be great for prototyping.
+  Remember, this has no support for transactions unless the resource names a
+  `transaction_group` in its `ets` section. This is not recommended for production use,
+  especially in multi-user applications. It can, however, be great for prototyping.
   """
 
   use Spark.Dsl.Extension,
@@ -127,14 +133,99 @@ defmodule Ash.DataLayer.Ets do
     def init({resource, table}) do
       case do_wrap_existing(resource, table) do
         {:ok, table} ->
-          {:ok, {resource, table}, :hibernate}
+          {:ok, %{resource: resource, table: table, holder: nil, waiting: []}, :hibernate}
 
         {:error, error} ->
           {:error, error}
       end
     end
 
+    # The manager also holds the table's transaction lock, one transaction at a time, in the
+    # order Mnesia's lock manager keeps
+    # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia_locker.erl): a
+    # transaction waits for a younger holder and is refused by an older one, so none waits in
+    # a cycle, and a released lock goes to the youngest waiting.
+    def lock(resource, tenant, ref, age, timeout) do
+      {:ok, table} = Ash.DataLayer.Ets.table_name(resource, tenant, true)
+      name = Module.concat(table, TableManager)
+
+      case GenServer.start(__MODULE__, {resource, table}, name: name) do
+        {:error, {:already_started, _pid}} -> call_lock(name, ref, age, timeout)
+        {:error, error} -> {:error, error}
+        {:ok, _pid} -> call_lock(name, ref, age, timeout)
+      end
+    end
+
+    defp call_lock(name, ref, age, timeout) do
+      GenServer.call(name, {:lock, ref, age}, timeout)
+    catch
+      :exit, {:timeout, _} ->
+        GenServer.cast(name, {:cancel, ref})
+        :timeout
+
+      # The table was stopped while the transaction waited for it.
+      :exit, reason ->
+        {:error, Exception.format_exit(reason)}
+    end
+
+    def unlock(resource, tenant, ref) do
+      {:ok, table} = Ash.DataLayer.Ets.table_name(resource, tenant, true)
+      GenServer.call(Module.concat(table, TableManager), {:unlock, ref})
+    catch
+      # The table was stopped, and its lock with it.
+      :exit, _ -> :ok
+    end
+
     def handle_call(:wait, _, state), do: {:reply, :ok, state}
+
+    def handle_call({:lock, ref, age}, {pid, _} = from, state) do
+      case state.holder do
+        nil ->
+          {:reply, :ok, hold(state, pid, ref, age)}
+
+        {_pid, _monitor, _ref, holder} when holder > age ->
+          {:noreply, %{state | waiting: [{from, ref, age} | state.waiting]}}
+
+        _older ->
+          {:reply, :busy, state}
+      end
+    end
+
+    def handle_call({:unlock, ref}, _from, state), do: {:reply, :ok, release(state, ref)}
+
+    # A waiter that gave up: forgotten if still waiting, released if granted meanwhile.
+    def handle_cast({:cancel, ref}, state) do
+      waiting = Enum.reject(state.waiting, fn {_from, waiting, _age} -> waiting == ref end)
+      {:noreply, release(%{state | waiting: waiting}, ref)}
+    end
+
+    def handle_info({:DOWN, monitor, :process, _, _}, %{holder: {_, monitor, ref, _}} = state),
+      do: {:noreply, release(state, ref)}
+
+    def handle_info(_, state), do: {:noreply, state}
+
+    defp hold(state, pid, ref, age), do: %{state | holder: {pid, Process.monitor(pid), ref, age}}
+
+    defp release(%{holder: {_pid, monitor, ref, _age}} = state, ref) do
+      Process.demonitor(monitor, [:flush])
+      grant_next(%{state | holder: nil})
+    end
+
+    defp release(state, _ref), do: state
+
+    defp grant_next(%{waiting: []} = state), do: state
+
+    defp grant_next(state) do
+      {{pid, _} = from, ref, age} = youngest = Enum.max_by(state.waiting, &elem(&1, 2))
+      state = %{state | waiting: List.delete(state.waiting, youngest)}
+
+      if Process.alive?(pid) do
+        GenServer.reply(from, :ok)
+        hold(state, pid, ref, age)
+      else
+        grant_next(state)
+      end
+    end
 
     defp do_wrap_existing(_resource, table) do
       case ETS.Set.wrap_existing(table) do
@@ -276,7 +367,11 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :distinct), do: true
-  def can?(_, :transact), do: false
+
+  # A resource's actions take `transaction?` from this when the resource compiles.
+  def can?(resource, :transact),
+    do: not is_nil(Ash.DataLayer.Ets.Info.transaction_group(resource))
+
   def can?(_, {:filter_expr, _}), do: true
 
   case Application.compile_env(:ash, :no_join_mnesia_ets) || false do
@@ -307,6 +402,341 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:atomic, :create}), do: true
   def can?(_, :through_relationship), do: true
   def can?(_, _), do: false
+
+  # A transaction is its group's, as a database transaction is its repo's: every resource of
+  # the group runs inside it. Its writes wait in its store until it commits, as Mnesia keeps a
+  # transaction's writes in its store
+  # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia.erl, write_to_store):
+  # its own reads see them over the tables (add_written and add_match there), every other
+  # process reads only what was committed, and a rollback or a timeout leaves the tables as
+  # they were. It locks each shared table of the group it touches and holds the lock until it
+  # ends: the tables of the group's resources an action touches before anything runs, as
+  # Ash's Mnesia data layer locks them, and any other at its first write. Locks are ordered
+  # by age, as Mnesia orders them
+  # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia_locker.erl): a
+  # transaction waits for a younger one and is refused by an older one, so none waits in a
+  # cycle.
+  @doc false
+  @impl true
+  def transaction(resource, func, timeout, reason) do
+    group = Ash.DataLayer.Ets.Info.transaction_group(resource)
+    deadline = deadline(timeout)
+    age = System.unique_integer([:monotonic, :positive])
+    Process.put({:ash_ets_transaction, group}, {age, deadline})
+
+    try do
+      with :ok <-
+             lock_up_front(transaction_locks(resource, reason, group), group, age, deadline, 1) do
+        try do
+          result = func.()
+
+          if past?(deadline) do
+            :timeout
+          else
+            {:ash_ets_store, group}
+            |> Process.get(%{})
+            |> Enum.group_by(fn {{tid, _key}, _op} -> tid end, fn {{_tid, key}, op} ->
+              {key, op}
+            end)
+            |> Enum.each(fn {tid, ops} ->
+              for {key, :delete} <- ops, do: :ets.delete(tid, key)
+              :ets.insert(tid, for({_key, {:write, object}} <- ops, do: object))
+            end)
+
+            {:res, result}
+          end
+        catch
+          {{:ash_ets_rollback, ^group}, value} -> {:error, value}
+        end
+      end
+    after
+      release(group)
+      Process.delete({:ash_ets_store, group})
+      Process.delete({:ash_ets_transaction, group})
+    end
+    |> case do
+      {:res, result} ->
+        {:ok, result}
+
+      {:error, error} ->
+        {:error, error}
+
+      :timeout ->
+        {:error,
+         Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: name(reason, resource))}
+
+      :busy ->
+        {:error, busy(resource)}
+    end
+  end
+
+  @doc false
+  @impl true
+  def rollback(resource, value) do
+    throw({{:ash_ets_rollback, Ash.DataLayer.Ets.Info.transaction_group(resource)}, value})
+  end
+
+  @doc false
+  @impl true
+  def in_transaction?(resource) do
+    Process.get({:ash_ets_transaction, Ash.DataLayer.Ets.Info.transaction_group(resource)}) !=
+      nil
+  end
+
+  # The locks taken before the transaction runs anything. An older transaction holding one
+  # sends it back to let go of what it took and try again, waiting longer each time, as Mnesia
+  # restarts a transaction
+  # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia_tm.erl, restart, with
+  # mnesia_lib's random_time), until its timeout.
+  defp lock_up_front(locks, group, age, deadline, attempt) do
+    locks
+    |> Enum.reduce_while(:ok, fn {_table, tenant, locked}, :ok ->
+      case lock_table(locked, tenant, group, age, deadline) do
+        :ok -> {:cont, :ok}
+        refused -> {:halt, refused}
+      end
+    end)
+    |> case do
+      :busy ->
+        release(group)
+        squared = attempt * attempt
+        wait = squared + :rand.uniform(trunc(500 * (1 - 50 / (squared + 50))))
+
+        case remaining(deadline) do
+          left when left == :infinity or left > wait ->
+            Process.sleep(wait)
+            lock_up_front(locks, group, age, deadline, attempt + 1)
+
+          _ ->
+            :timeout
+        end
+
+      locked ->
+        locked
+    end
+  end
+
+  # Takes a table's lock for the group, which holds it until its transaction ends.
+  defp lock_table(resource, tenant, group, age, deadline) do
+    ref = make_ref()
+
+    case TableManager.lock(resource, tenant, ref, age, remaining(deadline)) do
+      :ok ->
+        {:ok, name} = table_name(resource, tenant, true)
+        hold(:ets.whereis(name), group, {resource, tenant, ref})
+
+      refused ->
+        refused
+    end
+  end
+
+  # A table of an open group, first written after its transaction began, is locked at that
+  # write and held until the group's transaction ends, as mnesia:write takes its lock. Once
+  # the transaction has run, an older one holding the table fails the write, as Ash's Mnesia
+  # data layer aborts a transaction that would restart after its work began. A private table,
+  # which no other process reaches, needs no lock.
+  defp lock_written(table, resource, tenant) do
+    group = Ash.DataLayer.Ets.Info.transaction_group(resource)
+
+    with {age, deadline} <- Process.get({:ash_ets_transaction, group}),
+         nil <- Process.get({:ash_ets_held, table.table}) do
+      if Ash.DataLayer.Ets.Info.private?(resource) do
+        hold(table.table, group, {resource, tenant, nil})
+      else
+        case lock_table(resource, tenant, group, age, deadline) do
+          :ok -> :ok
+          {:error, error} -> {:error, error}
+          _busy_or_timeout -> {:error, busy(resource)}
+        end
+      end
+    else
+      _ -> :ok
+    end
+  end
+
+  defp hold(tid, group, {resource, tenant, ref}) do
+    Process.put({:ash_ets_held, tid}, group)
+
+    Process.put({:ash_ets_locks, group}, [
+      {resource, tenant, ref, tid} | Process.get({:ash_ets_locks, group}, [])
+    ])
+
+    :ok
+  end
+
+  defp release(group) do
+    for {resource, tenant, ref, tid} <- Process.get({:ash_ets_locks, group}, []) do
+      Process.delete({:ash_ets_held, tid})
+      if ref, do: TableManager.unlock(resource, tenant, ref)
+    end
+
+    Process.delete({:ash_ets_locks, group})
+  end
+
+  defp busy(resource),
+    do: "could not lock the table of #{inspect(resource)}: an older transaction holds it"
+
+  defp deadline(timeout) when is_integer(timeout),
+    do: System.monotonic_time(:millisecond) + timeout
+
+  defp deadline(_), do: :infinity
+
+  defp remaining(:infinity), do: :infinity
+  defp remaining(deadline), do: max(deadline - System.monotonic_time(:millisecond), 0)
+
+  defp past?(:infinity), do: false
+  defp past?(deadline), do: System.monotonic_time(:millisecond) > deadline
+
+  defp name(%{metadata: %{resource: resource, action: action}}, _) when is_atom(action),
+    do: "#{inspect(resource)}.#{action}"
+
+  defp name(_, resource), do: inspect(resource)
+
+  defp transaction_locks(resource, reason, group) do
+    [resource | touched_resources(reason)]
+    |> Enum.filter(&(shared_table?(&1) and Ash.DataLayer.Ets.Info.transaction_group(&1) == group))
+    |> Enum.map(&lock(&1, reason))
+    |> Enum.uniq_by(fn {table, tenant, _} -> {table, tenant} end)
+  end
+
+  defp lock(resource, reason) do
+    tenant =
+      if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+        reason[:tenant]
+      end
+
+    {Ash.DataLayer.Ets.Info.table(resource), tenant, resource}
+  end
+
+  defp shared_table?(resource) do
+    Ash.Resource.Info.data_layer(resource) == __MODULE__ and
+      not Ash.DataLayer.Ets.Info.private?(resource)
+  end
+
+  defp touched_resources(%{metadata: %{resource: resource, action: action}})
+       when is_atom(action) do
+    case Ash.Resource.Info.action(resource, action) do
+      %{touches_resources: touches_resources} -> [resource | touches_resources]
+      _ -> [resource]
+    end
+  end
+
+  defp touched_resources(%{
+         metadata: %{query: %{action: %{touches_resources: touches_resources}}}
+       }),
+       do: touches_resources
+
+  defp touched_resources(_), do: []
+
+  # The store of the open transaction holding a table, whose writes wait there until it
+  # commits. A table no open transaction holds is read and written directly.
+  defp store_of(table) do
+    with group when not is_nil(group) <- Process.get({:ash_ets_held, table.table}),
+         do: {group, Process.get({:ash_ets_store, group}, %{})}
+  end
+
+  # A transaction reads what it wrote over what the table holds, as Mnesia's add_written.
+  defp get_object(table, key) do
+    with {_group, store} <- store_of(table),
+         {:ok, op} <- Map.fetch(store, {table.table, key}) do
+      case op do
+        {:write, object} -> {:ok, object}
+        :delete -> {:ok, nil}
+      end
+    else
+      _ -> ETS.Set.get(table, key)
+    end
+  end
+
+  defp all_objects(table) do
+    with {:ok, objects} <- ETS.Set.to_list(table), do: {:ok, merge(objects, table)}
+  end
+
+  # The match spec runs over what the transaction wrote too, as Mnesia's add_written_match.
+  defp select_objects(table, spec) do
+    case store_of(table) do
+      nil ->
+        ETS.Set.select(table, spec)
+
+      _ ->
+        heads = for {head, guards, _body} <- spec, do: {head, guards, [:"$_"]}
+
+        with {:ok, objects} <- ETS.Set.select(table, heads) do
+          {:ok, :ets.match_spec_run(merge(objects, table), :ets.match_spec_compile(spec))}
+        end
+    end
+  end
+
+  # A scan sees what the transaction wrote over what the table holds, in key order, as
+  # Mnesia's add_match keeps an ordered set's.
+  defp merge(objects, table) do
+    with {_group, store} <- store_of(table),
+         ops when ops != %{} <-
+           for({{tid, key}, op} <- store, tid == table.table, into: %{}, do: {key, op}) do
+      objects
+      |> Enum.reject(&Map.has_key?(ops, elem(&1, 0)))
+      |> Enum.concat(for {_key, {:write, object}} <- ops, do: object)
+      |> Enum.sort_by(&elem(&1, 0))
+    else
+      _ -> objects
+    end
+  end
+
+  # Inserted only when no object holds the key, the transaction's own writes counted.
+  defp insert_new_object(table, {key, _} = object) do
+    case store_of(table) do
+      nil ->
+        :ets.insert_new(table.table, object)
+
+      {group, store} ->
+        taken =
+          case Map.fetch(store, {table.table, key}) do
+            {:ok, {:write, _}} -> true
+            {:ok, :delete} -> false
+            :error -> :ets.member(table.table, key)
+          end
+
+        if taken do
+          false
+        else
+          Process.put(
+            {:ash_ets_store, group},
+            Map.put(store, {table.table, key}, {:write, object})
+          )
+
+          true
+        end
+    end
+  end
+
+  defp put_objects(table, objects) do
+    case store_of(table) do
+      nil ->
+        ETS.Set.put(table, objects)
+
+      {group, store} ->
+        store =
+          objects
+          |> List.wrap()
+          |> Enum.reduce(store, fn {key, _} = object, store ->
+            Map.put(store, {table.table, key}, {:write, object})
+          end)
+
+        Process.put({:ash_ets_store, group}, store)
+        {:ok, table}
+    end
+  end
+
+  defp delete_object(table, key) do
+    case store_of(table) do
+      nil ->
+        ETS.Set.delete(table, key)
+
+      {group, store} ->
+        Process.put({:ash_ets_store, group}, Map.put(store, {table.table, key}, :delete))
+        {:ok, table}
+    end
+  end
 
   @doc false
   @impl true
@@ -1292,7 +1722,7 @@ defmodule Ash.DataLayer.Ets do
         {:ok, []}
 
       {:ok, table} ->
-        with {:ok, record_tuples} <- ETS.Set.to_list(table),
+        with {:ok, record_tuples} <- all_objects(table),
              records <- Enum.map(record_tuples, &elem(&1, 1)) do
           cast_records(records, resource)
         end
@@ -1880,6 +2310,7 @@ defmodule Ash.DataLayer.Ets do
       end
     else
       with {:ok, table} <- wrap_or_create_table(resource, options.tenant),
+           :ok <- lock_written(table, resource, options.tenant),
            {:ok, stored} <- stored_index(table, resource) do
         Enum.reduce_while(stream, {:ok, [], stored}, fn changeset, {:ok, results, known} ->
           with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
@@ -1930,6 +2361,7 @@ defmodule Ash.DataLayer.Ets do
   def create(resource, changeset, from_bulk_create? \\ false) do
     with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
          {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+         :ok <- lock_written(table, resource, changeset.tenant),
          _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          {:ok, record} <- apply_atomics(changeset, resource, record),
@@ -2023,7 +2455,7 @@ defmodule Ash.DataLayer.Ets do
         primary_key = primary_key(resource, record)
 
         with {:ok, periods} <-
-               ETS.Set.select(table, [{{Map.put(primary_key, period, :"$1"), :_}, [], [:"$1"]}]) do
+               select_objects(table, [{{Map.put(primary_key, period, :"$1"), :_}, [], [:"$1"]}]) do
           {:ok, %{primary_key => periods}}
         end
     end
@@ -2036,7 +2468,7 @@ defmodule Ash.DataLayer.Ets do
         {:ok, %{}}
 
       period ->
-        with {:ok, keys} <- ETS.Set.select(table, [{{:"$1", :_}, [], [:"$1"]}]) do
+        with {:ok, keys} <- select_objects(table, [{{:"$1", :_}, [], [:"$1"]}]) do
           {:ok, Enum.group_by(keys, &Map.drop(&1, [period]), &Map.get(&1, period))}
         end
     end
@@ -2086,8 +2518,8 @@ defmodule Ash.DataLayer.Ets do
 
     case dump_to_native(record, attributes) do
       {:ok, casted} ->
-        if :ets.insert_new(table.table, {pkey, casted}) do
-          {_key, record} = ETS.Set.get!(table, pkey)
+        if insert_new_object(table, {pkey, casted}) do
+          {:ok, {_key, record}} = get_object(table, pkey)
           cast_record(record, resource)
         else
           {:error, pkey_already_taken_error(resource)}
@@ -2120,11 +2552,11 @@ defmodule Ash.DataLayer.Ets do
     end)
     |> case do
       {:ok, batch, indices} ->
-        case ETS.Set.put(table, batch) do
+        case put_objects(table, batch) do
           {:ok, set} ->
             if return_records? do
               Enum.reduce_while(indices, {:ok, []}, fn {pkey, index, ref}, {:ok, acc} ->
-                {_key, record} = ETS.Set.get!(set, pkey)
+                {:ok, {_key, record}} = get_object(set, pkey)
 
                 case cast_record(record, resource) do
                   {:ok, casted} ->
@@ -2298,7 +2730,19 @@ defmodule Ash.DataLayer.Ets do
   defp do_destroy(resource, record, tenant, filter, domain, actor, supersede, range?) do
     case wrap_or_create_table(resource, tenant, false) do
       {:ok, table} ->
-        do_destroy(table, resource, record, tenant, filter, domain, actor, supersede, range?)
+        with :ok <- lock_written(table, resource, tenant),
+             do:
+               do_destroy(
+                 table,
+                 resource,
+                 record,
+                 tenant,
+                 filter,
+                 domain,
+                 actor,
+                 supersede,
+                 range?
+               )
 
       # Nothing has ever been written for this tenant, so there is nothing to destroy.
       :no_table ->
@@ -2317,7 +2761,7 @@ defmodule Ash.DataLayer.Ets do
     pkey = holding_key(table, resource, record, supersede, range?)
 
     if has_filter?(filter) do
-      case ETS.Set.get(table, pkey) do
+      case get_object(table, pkey) do
         {:ok, {_key, record}} when is_map(record) ->
           with {:ok, record} <- cast_record(record, resource),
                {:ok, [_]} <- filter_matches([record], filter, domain, tenant, actor) do
@@ -2364,7 +2808,7 @@ defmodule Ash.DataLayer.Ets do
     do: retire(table, pkey, resource, supersede)
 
   defp retire(table, pkey, resource, supersede) do
-    case {supersede, ETS.Set.get(table, pkey)} do
+    case {supersede, get_object(table, pkey)} do
       {{period, %Ash.Range{} = written}, {:ok, {_key, stored}}} when is_map(stored) ->
         close_version(table, pkey, stored, resource, period, written)
 
@@ -2373,7 +2817,7 @@ defmodule Ash.DataLayer.Ets do
         {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
 
       _ ->
-        with {:ok, _} <- ETS.Set.delete(table, pkey), do: :ok
+        with {:ok, _} <- delete_object(table, pkey), do: :ok
     end
   end
 
@@ -2381,7 +2825,7 @@ defmodule Ash.DataLayer.Ets do
     Enum.reduce_while(versions, :ok, fn version, :ok ->
       key = Map.put(primary_key, period, version)
 
-      with {:ok, {_key, stored}} <- ETS.Set.get(table, key),
+      with {:ok, {_key, stored}} <- get_object(table, key),
            :ok <- close_version(table, key, stored, resource, period, overlap(version, written)) do
         {:cont, :ok}
       else
@@ -2398,14 +2842,15 @@ defmodule Ash.DataLayer.Ets do
     with {:ok, closed} <- close_at(prior, written.lower, resource, period),
          {:ok, resumed} <- resume_after(prior, written, resource, period),
          {:ok, versions} <- carved(resource, pkey, period, stored, [closed, resumed]),
-         {:ok, table} <- ETS.Set.delete(table, pkey),
+         {:ok, table} <- delete_object(table, pkey),
          {:ok, _} <- put_versions(table, versions) do
       :ok
     end
   end
 
   defp put_versions(table, []), do: {:ok, table}
-  defp put_versions(table, versions), do: ETS.Set.put(table, versions)
+
+  defp put_versions(table, versions), do: put_objects(table, versions)
 
   # An instant ends validity for good; a range hands back what lies beyond its upper bound.
   defp resume_after(_prior, %Ash.Range{upper: nil}, _resource, _period), do: {:ok, nil}
@@ -2571,6 +3016,7 @@ defmodule Ash.DataLayer.Ets do
     range? = match?(%Ash.Range{}, changeset.as_of)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant, false),
+         :ok <- lock_written(table, resource, changeset.tenant),
          pkey = pkey || holding_key(table, resource, changeset.data, supersede, range?),
          _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
          {:ok, record} <-
@@ -2647,7 +3093,7 @@ defmodule Ash.DataLayer.Ets do
     case Map.get(pkey, period) do
       %Ash.Range{} = held ->
         Ash.Range.contains?(held, instant) and
-          match?({:ok, {_key, stored}} when is_map(stored), ETS.Set.get(table, pkey))
+          match?({:ok, {_key, stored}} when is_map(stored), get_object(table, pkey))
 
       _ ->
         false
@@ -2709,7 +3155,7 @@ defmodule Ash.DataLayer.Ets do
 
     case dump_to_native(record, attributes) do
       {:ok, casted} ->
-        case ETS.Set.get(table, pkey) do
+        case get_object(table, pkey) do
           {:ok, {_key, record}} when is_map(record) ->
             with {:ok, casted_record} <- cast_record(record, resource),
                  {:ok, [casted_record]} <-
@@ -2769,7 +3215,7 @@ defmodule Ash.DataLayer.Ets do
          {:ok, {_key, opened_data} = opened} <-
            version(resource, pkey, period, data, opening),
          {:ok, kept} <- carved(resource, pkey, period, prior_data, [closed, resumed]),
-         {:ok, table} <- ETS.Set.delete(table, pkey),
+         {:ok, table} <- delete_object(table, pkey),
          {:ok, _table} <- put_versions(table, kept ++ [opened]) do
       {:ok, opened_data}
     end
@@ -2869,10 +3315,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp put_data(table, pkey, data) do
-    case ETS.Set.put(
-           table,
-           {pkey, data}
-         ) do
+    case put_objects(table, {pkey, data}) do
       {:ok, _set} ->
         {:ok, data}
 
