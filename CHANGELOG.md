@@ -8,6 +8,29 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.5](https://github.com/ash-project/ash/compare/v3.37.4...v3.37.5) (2026-11-15)
+
+
+
+
+### Improvements:
+
+* add `Ash.Filter.map_reduce` by [@zachdaniel](https://github.com/zachdaniel)
+
+* compile-time checks for attribute vs argument validations (#3118) by TravelCurry02 [(#3118)](https://github.com/ash-project/ash/pull/3118)
+
+### Bug Fixes:
+
+* resolve repeated calculations with different arguments at runtime and type untyped literals in expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* drop notifications for no notifiers in Ash.Notifier.notify/1 (#3124) by Stefan Luptak [(#3124)](https://github.com/ash-project/ash/pull/3124)
+
+* return error tuple from stream_strategy when offset streaming is impossible (#3125) by [@emadshaaban92](https://github.com/emadshaaban92) [(#3125)](https://github.com/ash-project/ash/pull/3125)
+
+* set accessing_from before running preparations on relationship loads (#3123) by Ahatch3 [(#3123)](https://github.com/ash-project/ash/pull/3123)
+
+* keep unrelated exists scoped to its resource in can_read by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.37.4](https://github.com/ash-project/ash/compare/v3.37.3...v3.37.4) (2026-11-11)
 
 
