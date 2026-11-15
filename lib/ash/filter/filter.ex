@@ -1788,6 +1788,114 @@ defmodule Ash.Filter do
     end
   end
 
+  @doc """
+  Like `map/2`, but threads an accumulator through the traversal.
+
+  `func` is called with each expression (parents before their children) and the current
+  accumulator, and must return `{new_expression, acc}`. Return `{{:halt, new_expression}, acc}`
+  to replace an expression without traversing into the result.
+
+  As with `map/2`, the internals of `parent/1`, `exists/2` and refs are not traversed;
+  handle those in `func` yourself if needed.
+
+  ```elixir
+  Ash.Filter.map_reduce(expression, 0, fn
+    %Ash.Query.Ref{} = ref, count -> {ref, count + 1}
+    other, count -> {other, count}
+  end)
+  ```
+  """
+  @spec map_reduce(term, acc, (term, acc -> {term, acc})) :: {term, acc} when acc: term
+  def map_reduce(%__MODULE__{expression: nil} = filter, acc, _) do
+    {filter, acc}
+  end
+
+  def map_reduce(%__MODULE__{expression: expression} = filter, acc, func) do
+    {expression, acc} = func.(expression, acc)
+    {expression, acc} = do_map_reduce(expression, acc, func)
+    {%{filter | expression: expression}, acc}
+  end
+
+  def map_reduce(expression, acc, func) do
+    {expression, acc} = func.(expression, acc)
+    do_map_reduce(expression, acc, func)
+  end
+
+  defp do_map_reduce(expression, acc, func) do
+    case expression do
+      {:halt, expr} ->
+        {expr, acc}
+
+      value when is_tuple(value) ->
+        {list, acc} = value |> Tuple.to_list() |> map_reduce(acc, func)
+        {List.to_tuple(list), acc}
+
+      value when is_list(value) ->
+        Enum.map_reduce(value, acc, &map_reduce(&1, &2, func))
+
+      %MapSet{} = value ->
+        {list, acc} = Enum.map_reduce(value, acc, &map_reduce(&1, &2, func))
+        {MapSet.new(list), acc}
+
+      %BooleanExpression{left: left, right: right} = expr ->
+        {left, acc} = map_reduce(left, acc, func)
+        {right, acc} = map_reduce(right, acc, func)
+        {%{expr | left: left, right: right}, acc}
+
+      %Not{expression: not_expr} = expr ->
+        {not_expr, acc} = map_reduce(not_expr, acc, func)
+        {%{expr | expression: not_expr}, acc}
+
+      %Ash.Query.Parent{} = this ->
+        # you have to map over the internals of this yourself
+        {this, acc}
+
+      %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} =
+          custom_expression ->
+        {expression, acc} = map_reduce(expression, acc, func)
+        {simple_expression, acc} = map_reduce(simple_expression, acc, func)
+
+        {%{custom_expression | expression: expression, simple_expression: simple_expression}, acc}
+
+      %Ash.Query.Exists{} = expr ->
+        # you have to map over the internals of exists yourself
+        {expr, acc}
+
+      %Ash.Query.Call{args: args} = op ->
+        {args, acc} = map_reduce(args, acc, func)
+        {%{op | args: args}, acc}
+
+      %{__operator__?: true, left: left, right: right} = op ->
+        {left, acc} = map_reduce(left, acc, func)
+        {right, acc} = map_reduce(right, acc, func)
+        {%{op | left: left, right: right}, acc}
+
+      %{__function__?: true, arguments: arguments} = function ->
+        {arguments, acc} =
+          Enum.map_reduce(arguments, acc, fn
+            {key, arg}, acc when is_atom(key) ->
+              {arg, acc} = map_reduce(arg, acc, func)
+              {{key, arg}, acc}
+
+            arg, acc ->
+              map_reduce(arg, acc, func)
+          end)
+
+        {%{function | arguments: arguments}, acc}
+
+      %Ash.Query.Ref{} = expr ->
+        # you have to map over the internals of refs yourself
+        {expr, acc}
+
+      value when is_map(value) ->
+        {list, acc} = value |> Map.to_list() |> map_reduce(acc, func)
+        {Map.new(list), acc}
+
+      other ->
+        {other, acc}
+    end
+  end
+
   def flat_map(%__MODULE__{expression: nil}, _) do
     []
   end

@@ -1663,6 +1663,67 @@ defmodule Ash.Test.Filter.FilterTest do
     end
   end
 
+  describe "map_reduce/3" do
+    test "threads the accumulator through every expression" do
+      filter = Filter.parse!(Post, expr(title == "foo" and (points > 1 or contents == "bar")))
+
+      {mapped, visited} =
+        Filter.map_reduce(filter, [], fn
+          %Ash.Query.Ref{attribute: %{name: name}} = ref, acc -> {ref, [name | acc]}
+          other, acc -> {other, acc}
+        end)
+
+      assert mapped == filter
+      assert Enum.sort(visited) == [:contents, :points, :title]
+    end
+
+    test "replaces expressions like map/2" do
+      filter = Filter.parse!(Post, expr(points > 1 and points < 10))
+
+      {mapped, count} =
+        Filter.map_reduce(filter, 0, fn
+          %Ash.Query.Operator.GreaterThan{} = op, count -> {%{op | right: 5}, count + 1}
+          other, count -> {other, count}
+        end)
+
+      assert count == 1
+
+      assert mapped ==
+               Filter.map(filter, fn
+                 %Ash.Query.Operator.GreaterThan{} = op -> %{op | right: 5}
+                 other -> other
+               end)
+
+      assert %Ash.Query.BooleanExpression{left: %Ash.Query.Operator.GreaterThan{right: 5}} =
+               mapped.expression
+    end
+
+    test "does not traverse into the result of {:halt, expr}" do
+      filter = Filter.parse!(Post, expr(not (points > 1)))
+
+      {mapped, visited} =
+        Filter.map_reduce(filter, [], fn
+          %Ash.Query.Not{} = not_expr, acc -> {{:halt, not_expr}, [:not | acc]}
+          other, acc -> {other, [other.__struct__ | acc]}
+        end)
+
+      assert mapped == filter
+      refute Ash.Query.Operator.GreaterThan in visited
+      assert :not in visited
+    end
+
+    test "works on bare expressions and empty filters" do
+      empty = %Filter{resource: Post, expression: nil}
+      assert {^empty, :untouched} = Filter.map_reduce(empty, :untouched, &{&1, &2})
+
+      assert {[1, {2, 3}], 6} =
+               Filter.map_reduce([1, {2, 3}], 0, fn
+                 value, acc when is_integer(value) -> {value, acc + value}
+                 other, acc -> {other, acc}
+               end)
+    end
+  end
+
   describe "data layers that cannot join" do
     test "one ref through a relationship is allowed" do
       assert %{valid?: true} = Ash.Query.filter(NoJoinPost, comments.title == "foo")
