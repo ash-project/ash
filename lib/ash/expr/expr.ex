@@ -1190,7 +1190,83 @@ defmodule Ash.Expr do
     {type, constraints}
   end
 
+  def determine_types(mod, values, known_result, true) do
+    do_determine_types(mod, values, known_result, false)
+  end
+
   def determine_types(mod, values, known_result, _nested?) do
+    case do_determine_types(mod, values, known_result, false) do
+      {types, returns} = result when is_list(types) ->
+        if is_nil(returns) or Enum.any?(types, &is_nil/1) do
+          case do_determine_types(mod, values, known_result, true) do
+            {literal_types, literal_returns} = literal_result when is_list(literal_types) ->
+              if consistent_types?(types, literal_types) and
+                   (is_nil(returns) or returns == literal_returns) do
+                literal_result
+              else
+                result
+              end
+
+            _ ->
+              result
+          end
+        else
+          result
+        end
+
+      result ->
+        result
+    end
+  end
+
+  defp consistent_types?(types, literal_types) do
+    length(types) == length(literal_types) and
+      types
+      |> Enum.zip(literal_types)
+      |> Enum.all?(fn {type, literal_type} -> is_nil(type) or type == literal_type end)
+  end
+
+  defp determine_type_with_literals(value) do
+    case determine_type(value) do
+      {:ok, type} ->
+        {:ok, type}
+
+      :error ->
+        literal_type(value)
+    end
+  end
+
+  defp literal_type(value) when is_boolean(value), do: {:ok, {Ash.Type.Boolean, []}}
+  defp literal_type(value) when is_integer(value), do: {:ok, {Ash.Type.Integer, []}}
+  defp literal_type(value) when is_float(value), do: {:ok, {Ash.Type.Float, []}}
+  defp literal_type(%Decimal{}), do: {:ok, {Ash.Type.Decimal, []}}
+  defp literal_type(%Date{}), do: {:ok, {Ash.Type.Date, []}}
+  defp literal_type(%Time{}), do: {:ok, {Ash.Type.Time, []}}
+  defp literal_type(%NaiveDateTime{}), do: {:ok, {Ash.Type.NaiveDatetime, []}}
+  defp literal_type(%DateTime{}), do: {:ok, {Ash.Type.UtcDatetimeUsec, []}}
+  defp literal_type(%Duration{}), do: {:ok, {Ash.Type.Duration, []}}
+
+  defp literal_type(value) when is_binary(value) do
+    if String.valid?(value), do: {:ok, {Ash.Type.String, []}}, else: :error
+  end
+
+  defp literal_type(%mod{__predicate__?: _, arguments: arguments}) do
+    case do_determine_types(mod, arguments, nil, true) do
+      {_, nil} -> :error
+      {_, type} -> {:ok, type}
+    end
+  end
+
+  defp literal_type(%mod{__predicate__?: _, left: left, right: right}) do
+    case do_determine_types(mod, [left, right], nil, true) do
+      {_, nil} -> :error
+      {_, type} -> {:ok, type}
+    end
+  end
+
+  defp literal_type(_), do: :error
+
+  defp do_determine_types(mod, values, known_result, literals?) do
     Code.ensure_compiled(mod)
 
     known_result =
@@ -1233,6 +1309,14 @@ defmodule Ash.Expr do
 
     no_signatures? = types == :var_args || returns == :no_return || returns == :unknown
 
+    generic_signature? =
+      is_list(types) &&
+        Enum.any?(types, fn
+          :same -> true
+          signature when is_list(signature) -> !Enum.any?(signature, &concrete_signature_type?/1)
+          _ -> false
+        end)
+
     # `determine_type/1` is a pure function of the operand: it does not depend on
     # which candidate signature is being considered. Calling it from inside the
     # loop over signatures below re-derived every operand once per signature, and
@@ -1252,7 +1336,11 @@ defmodule Ash.Expr do
       if no_signatures? do
         {}
       else
-        values |> Enum.map(&determine_type/1) |> List.to_tuple()
+        if literals? do
+          values |> Enum.map(&determine_type_with_literals/1) |> List.to_tuple()
+        else
+          values |> Enum.map(&determine_type/1) |> List.to_tuple()
+        end
       end
 
     if no_signatures? do
@@ -1340,6 +1428,9 @@ defmodule Ash.Expr do
       # "here's my return type for this signature" (e.g. `Money + Money`,
       # `integer in IntListType`) — let it win normally when matched.
       overload_forces_conversion? = is_overload? && !is_nil(cast_as_types)
+
+      unsupported? =
+        generic_signature? && unsupported_signature?(match_types, values, value_types)
 
       basis =
         cond do
@@ -1619,7 +1710,7 @@ defmodule Ash.Expr do
               cast_as_types || Enum.reverse(types)
 
             # must_adopt_basis is empty means all types matched exactly
-            {output_types, returns, 0, last_resort?}
+            {output_types, returns, 0, last_resort? || unsupported?}
           end
 
         %{basis: nil, must_adopt_basis: _} ->
@@ -1657,7 +1748,7 @@ defmodule Ash.Expr do
                 end
               )
 
-          {output_types, returns, Enum.count(basis_adopters), last_resort?}
+          {output_types, returns, Enum.count(basis_adopters), last_resort? || unsupported?}
       end
     end)
     |> Enum.filter(& &1)
@@ -1679,6 +1770,28 @@ defmodule Ash.Expr do
         select_matches(types, length(values), values)
     end
   end
+
+  defp unsupported_signature?(:same, _values, _value_types), do: false
+
+  defp unsupported_signature?(match_types, values, value_types) do
+    positions = match_types |> Enum.zip(values) |> Enum.with_index()
+
+    supported? =
+      Enum.any?(positions, fn {{_type, value}, index} ->
+        match?({:ok, _}, elem(value_types, index)) or
+          (!Ash.Expr.expr?(value) and not is_nil(value))
+      end)
+
+    !supported? and
+      Enum.any?(positions, fn {{type, value}, index} ->
+        concrete_signature_type?(type) and Ash.Expr.expr?(value) and
+          elem(value_types, index) == :error
+      end)
+  end
+
+  defp concrete_signature_type?(vague) when vague in [:any, :same], do: false
+  defp concrete_signature_type?({_, vague}) when vague in [:any, :same], do: false
+  defp concrete_signature_type?(_), do: true
 
   # An overload belongs to the type that declares it, and only applies once an operand is
   # known to be of that type: a literal of it, or an expression that resolves to it.

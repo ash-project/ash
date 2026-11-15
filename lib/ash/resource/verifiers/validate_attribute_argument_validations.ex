@@ -16,19 +16,27 @@ defmodule Ash.Resource.Verifiers.ValidateAttributeArgumentValidations do
   alias Spark.Error.DslError
 
   @attribute_validations %{
-    Ash.Resource.Validation.AttributeEquals =>
-      %{name: "attribute_equals", suggest: "argument_equals"},
-    Ash.Resource.Validation.AttributeDoesNotEqual =>
-      %{name: "attribute_does_not_equal", suggest: "argument_does_not_equal"},
+    Ash.Resource.Validation.AttributeEquals => %{
+      name: "attribute_equals",
+      suggest: "argument_equals"
+    },
+    Ash.Resource.Validation.AttributeDoesNotEqual => %{
+      name: "attribute_does_not_equal",
+      suggest: "argument_does_not_equal"
+    },
     Ash.Resource.Validation.AttributeIn => %{name: "attribute_in", suggest: "argument_in"},
     Ash.Resource.Validation.DataOneOf => %{name: "data_one_of", suggest: nil}
   }
 
   @argument_validations %{
-    Ash.Resource.Validation.ArgumentEquals =>
-      %{name: "argument_equals", suggest: "attribute_equals"},
-    Ash.Resource.Validation.ArgumentDoesNotEqual =>
-      %{name: "argument_does_not_equal", suggest: "attribute_does_not_equal"},
+    Ash.Resource.Validation.ArgumentEquals => %{
+      name: "argument_equals",
+      suggest: "attribute_equals"
+    },
+    Ash.Resource.Validation.ArgumentDoesNotEqual => %{
+      name: "argument_does_not_equal",
+      suggest: "attribute_does_not_equal"
+    },
     Ash.Resource.Validation.ArgumentIn => %{name: "argument_in", suggest: "one_of"}
   }
 
@@ -302,10 +310,7 @@ defmodule Ash.Resource.Verifiers.ValidateAttributeArgumentValidations do
   end
 
   defp describe_actions(actions) do
-    names =
-      actions
-      |> Enum.map(&"`#{inspect(&1.name)}`")
-      |> Enum.join(", ")
+    names = Enum.map_join(actions, ", ", &"`#{inspect(&1.name)}`")
 
     "the #{names} actions"
   end

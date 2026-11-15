@@ -183,6 +183,63 @@ defmodule Ash.Test.ExprTest do
       assert microseconds < 1_000_000
     end
 
+    test "untyped expressions are not claimed by a signature nothing supports" do
+      {:ok, %op{left: left, right: right}} =
+        expr(fragment("1") + fragment("2"))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[nil, nil], nil} = determine_types(op, [left, right])
+    end
+
+    test "literals give their types when nothing else does" do
+      {:ok, %op{left: left, right: right}} =
+        expr(if(fragment("true"), do: 1, else: 0) + if(fragment("true"), do: 10, else: 0))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[{Ash.Type.Integer, []}, {Ash.Type.Integer, []}], {Ash.Type.Integer, []}} =
+               determine_types(op, [left, right])
+
+      {:ok, %func{arguments: args}} =
+        expr(if(fragment("true"), do: 1, else: 0))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[_, {Ash.Type.Integer, []}, {Ash.Type.Integer, []}], {Ash.Type.Integer, []}} =
+               determine_types(func, args)
+    end
+
+    test "literals don't override a type the expression gives" do
+      {:ok, %op{left: left, right: right}} =
+        expr(type(fragment("1"), :decimal) == if(fragment("true"), do: 1, else: 0))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[{Ash.Type.Decimal, []}, {Ash.Type.Decimal, []}], {Ash.Type.Boolean, []}} =
+               determine_types(op, [left, right])
+
+      {:ok, %func{arguments: args}} =
+        expr(if(fragment("true"), do: 1, else: 0))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[_, {Ash.Type.Decimal, []}, {Ash.Type.Decimal, []}], {Ash.Type.Decimal, []}} =
+               determine_types(func, args, Ash.Type.Decimal)
+    end
+
+    test "an untyped expression still takes a signature that another operand supports" do
+      {:ok, %op{left: left, right: right}} =
+        expr(fragment("now()") + ^Duration.new!(day: 1))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[{Ash.Type.Duration, []}, {Ash.Type.Duration, []}], {Ash.Type.Duration, []}} =
+               determine_types(op, [left, right])
+    end
+
+    test "an untyped expression still takes the only signature there is" do
+      {:ok, %func{arguments: args}} =
+        expr(string_length(fragment("'foo'")))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[{Ash.Type.String, []}], {Ash.Type.Integer, []}} = determine_types(func, args)
+    end
+
     test "upsert_conflict/1 has the type of the attribute it refers to" do
       {:ok, conflict} =
         expr(upsert_conflict(:on_hand))
