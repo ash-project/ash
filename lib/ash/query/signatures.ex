@@ -111,6 +111,7 @@ defmodule Ash.Query.Signatures do
 
   # The value of a function defined with a single clause whose body is a literal. Module
   # attributes in it have been expanded by now.
+  # sobelow_skip ["RCE.CodeModule"]
   defp literal(module, fun) do
     case Module.get_definition(module, fun) do
       {:v1, :def, _meta, [{_clause_meta, [], [], body}]} ->
