@@ -2135,6 +2135,7 @@ defmodule Ash.Actions.Update.Bulk do
 
       notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
       queued_notifications = Process.get(:ash_notifications)
+      bulk_notifications = Process.get({:bulk_notifications, ref}, [])
 
       try do
         Ash.DataLayer.transaction(
@@ -2201,6 +2202,9 @@ defmodule Ash.Actions.Update.Bulk do
 
           {:error, error} ->
             Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
+            # Earlier batches may have committed; discard only this batch's notifications.
+            Process.put({:bulk_notifications, ref}, bulk_notifications)
 
             # Convert batch changesets to error tuples for after_transaction processing
             error_tagged_results =
