@@ -8,6 +8,21 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.6](https://github.com/ash-project/ash/compare/v3.37.5...v3.37.6) (2026-11-16)
+
+
+
+
+### Improvements:
+
+* expand and type repeated calculations once by [@zachdaniel](https://github.com/zachdaniel)
+
+* derive operator signatures at compile time by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* cleanup any_success? pdict key for bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.37.5](https://github.com/ash-project/ash/compare/v3.37.4...v3.37.5) (2026-11-15)
 
 
