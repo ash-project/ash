@@ -818,6 +818,28 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end)
   end
 
+  test "atomic updates that return records leave nothing in the process dictionary" do
+    Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create, authorize?: false)
+
+    for strategy <- [:atomic, :atomic_batches] do
+      assert %Ash.BulkResult{status: :success, records: [_, _]} =
+               Ash.bulk_update!(Post, :update, %{title2: "updated value"},
+                 strategy: strategy,
+                 return_records?: true,
+                 authorize?: false
+               )
+
+      assert leftover_bulk_keys() == []
+    end
+  end
+
+  defp leftover_bulk_keys do
+    Enum.filter(
+      Process.get_keys(),
+      &match?({key, _} when key in [:any_success?, :bulk_notifications], &1)
+    )
+  end
+
   test "the `filter` option skips records that no longer match it with the stream strategy" do
     [unchanged, changed] =
       Ash.bulk_create!([%{title: "title"}, %{title: "title"}], Post, :create,

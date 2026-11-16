@@ -583,6 +583,27 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     assert [] = Ash.read!(Post)
   end
 
+  test "atomic destroys that return records leave nothing in the process dictionary" do
+    for strategy <- [:atomic, :atomic_batches] do
+      Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create)
+
+      assert %Ash.BulkResult{status: :success, records: [_, _]} =
+               Ash.bulk_destroy!(Post, :destroy, %{},
+                 strategy: strategy,
+                 return_records?: true
+               )
+
+      assert leftover_bulk_keys() == []
+    end
+  end
+
+  defp leftover_bulk_keys do
+    Enum.filter(
+      Process.get_keys(),
+      &match?({key, _} when key in [:any_success?, :bulk_notifications], &1)
+    )
+  end
+
   test "passes batch_change/3 a list with the stream strategy" do
     Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create)
 
