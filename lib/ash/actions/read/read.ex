@@ -2467,65 +2467,94 @@ defmodule Ash.Actions.Read do
         {domain, resource, opts}
       end
 
-    Ash.Filter.map(filter, fn
+    {filter, _cache} =
+      add_calc_context_to_filter_cached(
+        filter,
+        actor,
+        authorize?,
+        tenant,
+        tracer,
+        domain,
+        resource,
+        opts,
+        %{}
+      )
+
+    filter
+  end
+
+  @doc false
+  def add_calc_context_to_filter_cached(
+        filter,
+        actor,
+        authorize?,
+        tenant,
+        tracer,
+        domain,
+        resource,
+        opts,
+        cache
+      ) do
+    Ash.Filter.map_reduce(filter, cache, fn
       # Anchor relative-time expressions to the query's `as_of` (temporal reads).
       # `as_of` rides in `opts[:as_of]` (optional — `nil` leaves wall-clock behavior),
       # threaded by `add_calc_context_to_query` and by data layers at their call sites.
-      %Ash.Query.Function.Now{} = now ->
-        opts[:as_of] || now
+      %Ash.Query.Function.Now{} = now, cache ->
+        {opts[:as_of] || now, cache}
 
-      %Ash.Query.Function.Ago{arguments: [factor, interval]} = ago when is_integer(factor) ->
-        if as_of = opts[:as_of] do
-          Ash.Query.Function.Ago.datetime_add(as_of, -factor, interval)
-        else
-          ago
-        end
-
-      %Ash.Query.Function.FromNow{arguments: [factor, interval]} = from_now
+      %Ash.Query.Function.Ago{arguments: [factor, interval]} = ago, cache
       when is_integer(factor) ->
         if as_of = opts[:as_of] do
-          Ash.Query.Function.Ago.datetime_add(as_of, factor, interval)
+          {Ash.Query.Function.Ago.datetime_add(as_of, -factor, interval), cache}
         else
-          from_now
+          {ago, cache}
         end
 
-      %Ash.Query.Function.Ago{arguments: [duration]} = ago
+      %Ash.Query.Function.FromNow{arguments: [factor, interval]} = from_now, cache
+      when is_integer(factor) ->
+        if as_of = opts[:as_of] do
+          {Ash.Query.Function.Ago.datetime_add(as_of, factor, interval), cache}
+        else
+          {from_now, cache}
+        end
+
+      %Ash.Query.Function.Ago{arguments: [duration]} = ago, cache
       when is_struct(duration, Duration) ->
         if as_of = opts[:as_of] do
-          Ash.Query.Function.Ago.datetime_add(as_of, Duration.negate(duration))
+          {Ash.Query.Function.Ago.datetime_add(as_of, Duration.negate(duration)), cache}
         else
-          ago
+          {ago, cache}
         end
 
       # A date rather than a datetime, so it anchors by taking the date of `as_of`.
-      %Ash.Query.Function.Today{} = today ->
+      %Ash.Query.Function.Today{} = today, cache ->
         if as_of = opts[:as_of] do
-          DateTime.to_date(as_of)
+          {DateTime.to_date(as_of), cache}
         else
-          today
+          {today, cache}
         end
 
-      %Ash.Query.Parent{} = parent ->
+      %Ash.Query.Parent{} = parent, cache ->
         if List.wrap(opts[:parent_stack]) != [] do
-          %{
-            parent
-            | expr:
-                add_calc_context_to_filter(
-                  parent.expr,
-                  actor,
-                  authorize?,
-                  tenant,
-                  tracer,
-                  domain,
-                  hd(opts[:parent_stack]),
-                  Keyword.update!(opts, :parent_stack, &tl/1)
-                )
-          }
+          {expr, cache} =
+            add_calc_context_to_filter_cached(
+              parent.expr,
+              actor,
+              authorize?,
+              tenant,
+              tracer,
+              domain,
+              hd(opts[:parent_stack]),
+              Keyword.update!(opts, :parent_stack, &tl/1),
+              cache
+            )
+
+          {%{parent | expr: expr}, cache}
         else
-          parent
+          {parent, cache}
         end
 
-      %Ash.Query.Exists{} = exists ->
+      %Ash.Query.Exists{} = exists, cache ->
         if resource do
           exists_resource =
             if exists.related? do
@@ -2534,128 +2563,173 @@ defmodule Ash.Actions.Read do
               exists.resource
             end
 
-          %{
-            exists
-            | expr:
-                add_calc_context_to_filter(
-                  exists.expr,
-                  actor,
-                  authorize?,
-                  tenant,
-                  tracer,
-                  domain,
-                  exists_resource,
-                  Keyword.update(opts, :parent_stack, [resource], &[resource | &1])
-                )
-          }
+          {expr, cache} =
+            add_calc_context_to_filter_cached(
+              exists.expr,
+              actor,
+              authorize?,
+              tenant,
+              tracer,
+              domain,
+              exists_resource,
+              Keyword.update(opts, :parent_stack, [resource], &[resource | &1]),
+              cache
+            )
+
+          {%{exists | expr: expr}, cache}
         else
-          exists
+          {exists, cache}
         end
 
-      %Ash.Query.Ref{attribute: %Ash.Resource.Calculation{}} = ref ->
+      %Ash.Query.Ref{attribute: %Ash.Resource.Calculation{}} = ref, _cache ->
         raise Ash.Error.Framework.AssumptionFailed,
           message: "unhandled calculation in filter statement #{inspect(ref)}"
 
-      %Ash.Query.Ref{attribute: %Ash.Resource.Aggregate{}} = ref ->
+      %Ash.Query.Ref{attribute: %Ash.Resource.Aggregate{}} = ref, _cache ->
         raise Ash.Error.Framework.AssumptionFailed,
           message: "unhandled calculation in filter statement #{inspect(ref)}"
 
       %Ash.Query.Ref{
         attribute: %Ash.Query.Calculation{} = calc,
         relationship_path: relationship_path
-      } = ref ->
+      } = ref,
+      cache ->
         calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts)
 
         if Keyword.get(opts, :expand?, false) &&
              Ash.Resource.Calculation.has_expression?(calc.module) do
-          expr =
-            case Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context) do
-              %Ash.Query.Function.Type{} = expr ->
-                expr
+          key = {ref.resource, calc, actor, authorize?, tenant, tracer, domain, opts}
 
-              %Ash.Query.Call{name: :type} = expr ->
-                expr
-
-              expr ->
-                if calc.type do
-                  {:ok, expr} =
-                    Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
-
-                  expr
-                else
-                  expr
-                end
-            end
-
-          {:ok, expr} =
-            Ash.Filter.hydrate_refs(
-              expr,
-              %{
-                resource: ref.resource,
-                parent_stack: opts[:parent_stack] || [],
-                public?: false
-              }
-            )
-
-          expr =
-            Ash.Expr.fill_template(
-              expr,
-              actor: actor,
-              tenant: tenant,
-              args: calc.context.arguments,
-              context: opts[:source_context] || %{}
-            )
-
-          {calc, expr} =
-            RelatedAuthorization.authorize_calculation(calc, expr, ref.resource,
-              parent_stack: opts[:parent_stack],
-              domain: domain
-            )
-
-          expr =
-            add_calc_context_to_filter(
-              expr,
-              actor,
-              authorize?,
-              tenant,
-              tracer,
-              domain,
-              ref.resource,
-              opts
-            )
-
-          expanded_calc = %Ash.Query.Calculation{
-            name: calc.name,
-            module: Ash.Resource.Calculation.Expression,
-            opts: [expr: expr],
-            type: calc.type,
-            constraints: calc.constraints,
-            filterable?: calc.filterable?,
-            sortable?: calc.sortable?,
-            sensitive?: calc.sensitive?,
-            authorize?: calc.authorize?,
-            allow_nil?: calc.allow_nil?,
-            load: calc.load,
-            select: calc.select,
-            context: calc.context
-          }
+          {expanded_calc, cache} =
+            fetch_or_put_expansion(cache, {ref.resource, calc.name}, key, fn cache ->
+              expand_calculation_ref(
+                calc,
+                ref,
+                actor,
+                authorize?,
+                tenant,
+                tracer,
+                domain,
+                opts,
+                cache
+              )
+            end)
 
           # Return a Ref at the relationship path with the expanded calculation
-          %{ref | attribute: expanded_calc, relationship_path: relationship_path}
+          {%{ref | attribute: expanded_calc, relationship_path: relationship_path}, cache}
         else
-          %{ref | attribute: calc}
+          {%{ref | attribute: calc}, cache}
         end
 
-      %Ash.Query.Ref{attribute: %Ash.Query.Aggregate{} = agg} = ref ->
-        %{
-          ref
-          | attribute:
-              add_calc_context(agg, actor, authorize?, tenant, tracer, domain, ref.resource, opts)
-        }
+      %Ash.Query.Ref{attribute: %Ash.Query.Aggregate{} = agg} = ref, cache ->
+        {%{
+           ref
+           | attribute:
+               add_calc_context(
+                 agg,
+                 actor,
+                 authorize?,
+                 tenant,
+                 tracer,
+                 domain,
+                 ref.resource,
+                 opts
+               )
+         }, cache}
 
-      other ->
-        other
+      other, cache ->
+        {other, cache}
     end)
+  end
+
+  defp expand_calculation_ref(calc, ref, actor, authorize?, tenant, tracer, domain, opts, cache) do
+    expr =
+      case Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context) do
+        %Ash.Query.Function.Type{} = expr ->
+          expr
+
+        %Ash.Query.Call{name: :type} = expr ->
+          expr
+
+        expr ->
+          if calc.type do
+            {:ok, expr} =
+              Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+
+            expr
+          else
+            expr
+          end
+      end
+
+    {:ok, expr} =
+      Ash.Filter.hydrate_refs(
+        expr,
+        %{
+          resource: ref.resource,
+          parent_stack: opts[:parent_stack] || [],
+          public?: false
+        }
+      )
+
+    expr =
+      Ash.Expr.fill_template(
+        expr,
+        actor: actor,
+        tenant: tenant,
+        args: calc.context.arguments,
+        context: opts[:source_context] || %{}
+      )
+
+    {calc, expr} =
+      RelatedAuthorization.authorize_calculation(calc, expr, ref.resource,
+        parent_stack: opts[:parent_stack],
+        domain: domain
+      )
+
+    {expr, cache} =
+      add_calc_context_to_filter_cached(
+        expr,
+        actor,
+        authorize?,
+        tenant,
+        tracer,
+        domain,
+        ref.resource,
+        opts,
+        cache
+      )
+
+    expanded_calc = %Ash.Query.Calculation{
+      name: calc.name,
+      module: Ash.Resource.Calculation.Expression,
+      opts: [expr: expr],
+      type: calc.type,
+      constraints: calc.constraints,
+      filterable?: calc.filterable?,
+      sortable?: calc.sortable?,
+      sensitive?: calc.sensitive?,
+      authorize?: calc.authorize?,
+      allow_nil?: calc.allow_nil?,
+      load: calc.load,
+      select: calc.select,
+      context: calc.context
+    }
+
+    {expanded_calc, cache}
+  end
+
+  defp fetch_or_put_expansion(cache, bucket, key, fun) do
+    entries = Map.get(cache, bucket, [])
+
+    case Enum.find(entries, fn {entry_key, _} -> entry_key === key end) do
+      {_, value} ->
+        {value, cache}
+
+      nil ->
+        {value, cache} = fun.(cache)
+        {value, Map.update(cache, bucket, [{key, value}], &[{key, value} | &1])}
+    end
   end
 
   defp add_calc_context_to_sort(empty, _, _, _, _, _, _, _opts) when empty in [[], nil],
@@ -4481,7 +4555,8 @@ defmodule Ash.Actions.Read do
          query,
          calculations_to_add
        ) do
-    Enum.reduce_while(calculations_to_add, {:ok, []}, fn calculation, {:ok, calculations} ->
+    calculations_to_add
+    |> Enum.reduce_while({:ok, [], %{}}, fn calculation, {:ok, calculations, cache} ->
       if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
         expression =
           Ash.Resource.Calculation.expression(
@@ -4515,8 +4590,8 @@ defmodule Ash.Actions.Read do
                 domain: query.domain
               )
 
-            expression =
-              add_calc_context_to_filter(
+            {expression, cache} =
+              add_calc_context_to_filter_cached(
                 expression,
                 calculation.context.actor,
                 calculation.context.authorize?,
@@ -4524,12 +4599,15 @@ defmodule Ash.Actions.Read do
                 calculation.context.tracer,
                 query.domain,
                 query.resource,
-                expand?: true,
-                parent_stack: parent_stack_from_context(query.context),
-                source_context: query.context
+                [
+                  expand?: true,
+                  parent_stack: parent_stack_from_context(query.context),
+                  source_context: query.context
+                ],
+                cache
               )
 
-            {:cont, {:ok, [{calculation, expression} | calculations]}}
+            {:cont, {:ok, [{calculation, expression} | calculations], cache}}
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -4540,6 +4618,10 @@ defmodule Ash.Actions.Read do
           "Expression calculations are not supported by #{Ash.Resource.Info.data_layer(query.resource)}"}}
       end
     end)
+    |> case do
+      {:ok, calculations, _cache} -> {:ok, calculations}
+      {:error, error} -> {:error, error}
+    end
   end
 
   @doc false

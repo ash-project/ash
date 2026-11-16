@@ -519,6 +519,7 @@ defmodule Ash.Query.Operator do
       end
 
       @behaviour Ash.Query.Operator
+      @before_compile Ash.Query.Signatures
 
       alias Ash.Query.Ref
       import Inspect.Algebra
@@ -529,12 +530,14 @@ defmodule Ash.Query.Operator do
       @impl Ash.Query.Operator
       def predicate?, do: unquote(opts[:predicate?] || false)
 
-      @impl Ash.Query.Operator
       if unquote(opts[:predicate?]) do
-        def returns do
-          Enum.map(List.wrap(unquote(opts[:types])), fn _ -> :boolean end)
-        end
+        # an attribute, so that `returns/0` is defined as a literal (see `Ash.Query.Signatures`)
+        @ash_predicate_returns Enum.map(List.wrap(unquote(opts[:types])), fn _ -> :boolean end)
+
+        @impl Ash.Query.Operator
+        def returns, do: @ash_predicate_returns
       else
+        @impl Ash.Query.Operator
         def returns do
           unquote(opts[:returns] || :unknown)
         end

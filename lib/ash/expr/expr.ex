@@ -1191,14 +1191,57 @@ defmodule Ash.Expr do
   end
 
   def determine_types(mod, values, known_result, true) do
-    do_determine_types(mod, values, known_result, false)
+    resolve_types(mod, values, fn -> Enum.map(values, &determine_type/1) end, known_result, false)
   end
 
   def determine_types(mod, values, known_result, _nested?) do
-    case do_determine_types(mod, values, known_result, false) do
+    with_literal_fallback(
+      mod,
+      values,
+      fn -> Enum.map(values, &determine_type/1) end,
+      known_result
+    )
+  end
+
+  @doc """
+  Determines the types for an operator or function module and its arguments, like
+  `determine_types/4`, given the types of the arguments.
+
+  `operand_types` has one entry per argument, as `determine_type/1` returns it for that
+  argument: `{:ok, {type, constraints}}` or `:error`. `determine_types/4` works these out
+  itself, by walking each argument's whole subtree. A caller that types an expression
+  top down, calling this at every node (as a data layer compiling an expression does),
+  would repeat that walk for each level above a node and so take time proportional to
+  the size of the tree times its depth. Instead, it can type the tree once with
+  `determine_type_tree/1`, and at each node pass the types of its operands from there.
+  """
+  @spec determine_types_with_operand_types(
+          module,
+          list(term),
+          list({:ok, {Ash.Type.t(), Keyword.t()}} | :error),
+          term
+        ) :: {list({Ash.Type.t(), Keyword.t()} | nil), {Ash.Type.t(), Keyword.t()} | nil}
+  def determine_types_with_operand_types(mod, values, operand_types, returns \\ nil)
+
+  def determine_types_with_operand_types(mod, values, operand_types, _returns)
+      when length(values) != length(operand_types) do
+    raise ArgumentError,
+          "expected one operand type per value for #{inspect(mod)}, got #{length(operand_types)} for #{length(values)} values"
+  end
+
+  def determine_types_with_operand_types(Ash.Query.Function.Type, values, _operand_types, returns) do
+    determine_types(Ash.Query.Function.Type, values, returns)
+  end
+
+  def determine_types_with_operand_types(mod, values, operand_types, returns) do
+    with_literal_fallback(mod, values, fn -> operand_types end, returns)
+  end
+
+  defp with_literal_fallback(mod, values, operand_types_fun, known_result) do
+    case resolve_types(mod, values, operand_types_fun, known_result, false) do
       {types, returns} = result when is_list(types) ->
         if is_nil(returns) or Enum.any?(types, &is_nil/1) do
-          case do_determine_types(mod, values, known_result, true) do
+          case resolve_types(mod, values, operand_types_fun, known_result, true) do
             {literal_types, literal_returns} = literal_result when is_list(literal_types) ->
               if consistent_types?(types, literal_types) and
                    (is_nil(returns) or returns == literal_returns) do
@@ -1226,14 +1269,11 @@ defmodule Ash.Expr do
       |> Enum.all?(fn {type, literal_type} -> is_nil(type) or type == literal_type end)
   end
 
-  defp determine_type_with_literals(value) do
-    case determine_type(value) do
-      {:ok, type} ->
-        {:ok, type}
-
-      :error ->
-        literal_type(value)
-    end
+  defp with_literal_types(operand_types, values) do
+    Enum.zip_with(operand_types, values, fn
+      {:ok, _} = type, _value -> type
+      :error, value -> literal_type(value)
+    end)
   end
 
   defp literal_type(value) when is_boolean(value), do: {:ok, {Ash.Type.Boolean, []}}
@@ -1251,173 +1291,137 @@ defmodule Ash.Expr do
   end
 
   defp literal_type(%mod{__predicate__?: _, arguments: arguments}) do
-    case do_determine_types(mod, arguments, nil, true) do
-      {_, nil} -> :error
-      {_, type} -> {:ok, type}
-    end
+    literal_operator_type(mod, arguments)
   end
 
   defp literal_type(%mod{__predicate__?: _, left: left, right: right}) do
-    case do_determine_types(mod, [left, right], nil, true) do
-      {_, nil} -> :error
-      {_, type} -> {:ok, type}
-    end
+    literal_operator_type(mod, [left, right])
   end
 
   defp literal_type(_), do: :error
 
-  defp do_determine_types(mod, values, known_result, literals?) do
+  defp literal_operator_type(mod, values) do
+    mod
+    |> resolve_types(values, fn -> Enum.map(values, &determine_type/1) end, nil, true)
+    |> operator_result()
+  end
+
+  defp resolve_types(mod, values, operand_types_fun, known_result, literals?) do
+    known_result = normalize_known_result(known_result)
+
+    case signatures(mod) do
+      {[], _generic_signature?} ->
+        resolve_signatures([], values, {}, known_result, false)
+
+      {signatures, generic_signature?} ->
+        operand_types = operand_types_fun.()
+
+        operand_types =
+          if literals?, do: with_literal_types(operand_types, values), else: operand_types
+
+        resolve_signatures(
+          signatures,
+          values,
+          List.to_tuple(operand_types),
+          known_result,
+          generic_signature?
+        )
+    end
+  end
+
+  defp normalize_known_result(nil), do: nil
+  defp normalize_known_result({:array, type}), do: {{:array, type}, []}
+  defp normalize_known_result({type, constraints}), do: {type, constraints}
+  defp normalize_known_result(type), do: {type, []}
+
+  # The candidate signatures of an operator or function, with any operator overloads that
+  # known types declare for it first, and whether the function's own signatures are generic
+  # (see `unsupported_signature?/3`). The module's own signatures are usually worked out when
+  # it is compiled (see `Ash.Query.Signatures`), so only the overloads are added here.
+  defp signatures(mod) do
     Code.ensure_compiled(mod)
 
-    known_result =
-      case known_result do
-        nil -> nil
-        {:array, type} -> {{:array, type}, []}
-        {type, constraints} -> {type, constraints}
-        type -> {type, []}
+    own =
+      case function_exported?(mod, :__signatures__, 0) && mod.__signatures__() do
+        own when own in [false, :runtime] -> Ash.Query.Signatures.from_module(mod)
+        own -> own
       end
 
-    name =
-      cond do
-        function_exported?(mod, :operator, 0) ->
-          mod.operator()
+    case own do
+      :none ->
+        {[], false}
 
-        function_exported?(mod, :name, 0) ->
-          mod.name()
-
-        true ->
-          nil
-      end
-
-    {types, returns} =
-      cond do
-        :erlang.function_exported(mod, :types, 0) ->
-          {mod.types(), mod.returns()}
-
-        :erlang.function_exported(mod, :args, 0) ->
-          {mod.args(), mod.returns()}
-
-        true ->
-          {[:any], [:any]}
-      end
-
-    overloads =
-      for {declarer, signatures} <- Ash.Query.Operator.operator_overloads_by_type(name),
-          {match_types, value} <- signatures do
-        {match_types, value, declarer}
-      end
-
-    no_signatures? = types == :var_args || returns == :no_return || returns == :unknown
-
-    generic_signature? =
-      is_list(types) &&
-        Enum.any?(types, fn
-          :same -> true
-          signature when is_list(signature) -> !Enum.any?(signature, &concrete_signature_type?/1)
-          _ -> false
-        end)
-
-    # `determine_type/1` is a pure function of the operand: it does not depend on
-    # which candidate signature is being considered. Calling it from inside the
-    # loop over signatures below re-derived every operand once per signature, and
-    # because an operand may itself be an operator, the cost compounded with
-    # nesting depth as `signature_count ^ depth`.
-    #
-    # That stayed invisible while `+` and `-` had one signature each, but they now
-    # declare 16 (the duration overloads), which made a plain chain of integer
-    # additions unusable: a 6-term sum took ~0.3s, 7 took ~5s and 8 took ~83s.
-    # `/` (9 signatures) has had the same behaviour all along.
-    #
-    # Resolving each operand once here and indexing into the result keeps the walk
-    # linear in the size of the expression tree. Skipped when there are no
-    # signatures to consider, so operands of `:var_args` functions such as
-    # `fragment/1` are still never inspected.
-    value_types =
-      if no_signatures? do
-        {}
-      else
-        if literals? do
-          values |> Enum.map(&determine_type_with_literals/1) |> List.to_tuple()
-        else
-          values |> Enum.map(&determine_type/1) |> List.to_tuple()
+      {own, generic_signature?} ->
+        # Overloads come first so they have priority over built-in types like `:same`.
+        case overload_signatures(signature_name(mod)) do
+          [] -> {own, generic_signature?}
+          overloads -> {overloads ++ own, generic_signature?}
         end
-      end
-
-    if no_signatures? do
-      []
-    else
-      {more_match_types, overload_cast_as_types, overload_returns, overload_declarers} =
-        overloads
-        |> Enum.reduce({[], [], [], []}, fn {match_types, value, declarer},
-                                            {match_acc, cast_acc, return_acc, declarer_acc} ->
-          case value do
-            {cast_as_types, return_type} when is_list(cast_as_types) ->
-              {[match_types | match_acc], [cast_as_types | cast_acc], [return_type | return_acc],
-               [declarer | declarer_acc]}
-
-            return_type ->
-              {[match_types | match_acc], [nil | cast_acc], [return_type | return_acc],
-               [declarer | declarer_acc]}
-          end
-        end)
-        |> then(fn {m, c, r, d} ->
-          {Enum.reverse(m), Enum.reverse(c), Enum.reverse(r), Enum.reverse(d)}
-        end)
-
-      # Put overloads first so they have priority over built-in types like :same
-      types = Enum.concat(more_match_types, types)
-
-      cast_as_types_list =
-        Enum.concat(
-          overload_cast_as_types,
-          Stream.duplicate(nil, length(types))
-        )
-
-      returns = Enum.concat(overload_returns, returns)
-
-      declarers = Enum.concat(overload_declarers, Stream.duplicate(nil, length(types)))
-
-      returns =
-        Enum.map(returns, fn
-          {:array, any} when any in [:same, :any] -> {:array, any}
-          {type, any} when any in [:same, :any] -> {Ash.Type.get_type(type), any}
-          any when any in [:same, :any] -> any
-          {:referenced_type, _via} = referenced -> referenced
-          {type, constraints} -> get_type({type, constraints})
-          type -> get_type({type, []})
-        end)
-
-      normalize_types = fn types ->
-        Enum.map(types, fn
-          {:array, any} when any in [:same, :any] -> {:array, any}
-          {type, any} when any in [:same, :any] -> {Ash.Type.get_type(type), any}
-          any when any in [:same, :any] -> any
-          {type, constraints} -> get_type({type, constraints})
-          type -> get_type({type, []})
-        end)
-      end
-
-      types =
-        Enum.map(types, fn
-          types when is_list(types) -> normalize_types.(types)
-          types -> types
-        end)
-
-      cast_as_types_list =
-        Enum.map(cast_as_types_list, fn
-          types when is_list(types) -> normalize_types.(types)
-          types -> types
-        end)
-
-      [types, cast_as_types_list, returns, declarers]
-      |> Enum.zip()
     end
-    |> Enum.reject(fn {match_types, _, _, _} -> match_types == :any end)
-    |> Enum.filter(fn {match_types, _, _, _} = overload ->
-      (match_types == :same || length(match_types) == length(values)) &&
-        overload_grounded?(overload, values, value_types)
+  end
+
+  defp signature_name(mod) do
+    cond do
+      function_exported?(mod, :operator, 0) -> mod.operator()
+      function_exported?(mod, :name, 0) -> mod.name()
+      true -> nil
+    end
+  end
+
+  defp overload_signatures(nil), do: []
+
+  defp overload_signatures(name) do
+    for {declarer, signatures} <- Ash.Query.Operator.operator_overloads_by_type(name),
+        {match_types, value} <- signatures,
+        match_types != :any do
+      match_types = Ash.Query.Signatures.resolve_types(match_types)
+
+      case value do
+        {cast_as_types, returns} when is_list(cast_as_types) ->
+          {match_types, Ash.Query.Signatures.resolve_types(cast_as_types),
+           Ash.Query.Signatures.resolve_return(returns), declarer,
+           declarer_positions(match_types, declarer)}
+
+        returns ->
+          {match_types, nil, Ash.Query.Signatures.resolve_return(returns), declarer,
+           declarer_positions(match_types, declarer)}
+      end
+    end
+  end
+
+  # The positions at which an overload's signature names the type that declares it,
+  # with the constraints it names there. See `overload_grounded?/3`.
+  defp declarer_positions(_match_types, nil), do: nil
+
+  defp declarer_positions(match_types, declarer) when is_list(match_types) do
+    declarer = Ash.Type.get_type(declarer)
+
+    positions =
+      match_types
+      |> Enum.with_index()
+      |> Enum.flat_map(fn
+        {{^declarer, constraints}, index} -> [{index, constraints}]
+        _ -> []
+      end)
+
+    {declarer, positions}
+  end
+
+  defp declarer_positions(_match_types, declarer), do: {declarer, []}
+
+  defp resolve_signatures(signatures, values, value_types, known_result, generic_signature?) do
+    value_count = length(values)
+
+    exprs = values |> Enum.map(&Ash.Expr.expr?/1) |> List.to_tuple()
+
+    signatures
+    |> Enum.filter(fn {match_types, _, _, _, declarer_positions} ->
+      (match_types == :same ||
+         (length(match_types) == value_count &&
+            not contradicted?(match_types, 0, value_types, exprs))) &&
+        overload_grounded?(declarer_positions, values, value_types)
     end)
-    |> Enum.map(fn {match_types, cast_as_types, returns, declarer} ->
+    |> Enum.map(fn {match_types, cast_as_types, returns, declarer, _declarer_positions} ->
       is_overload? = not is_nil(declarer)
 
       # An overload that declares `cast_as_types` is forcibly converting
@@ -1784,38 +1788,66 @@ defmodule Ash.Expr do
 
     !supported? and
       Enum.any?(positions, fn {{type, value}, index} ->
-        concrete_signature_type?(type) and Ash.Expr.expr?(value) and
+        Ash.Query.Signatures.concrete_type?(type) and Ash.Expr.expr?(value) and
           elem(value_types, index) == :error
       end)
   end
 
-  defp concrete_signature_type?(vague) when vague in [:any, :same], do: false
-  defp concrete_signature_type?({_, vague}) when vague in [:any, :same], do: false
-  defp concrete_signature_type?(_), do: true
+  # Whether a signature names a specific type for an operand that is an expression known
+  # to be of some other type. Matching that signature against the operands below would
+  # give up at that operand, so this rules it out up front, without the work of setting
+  # that up for each of an operator's (possibly many) signatures. The clauses mirror the
+  # ones that match operands against a signature in `resolve_signatures/5`.
+  defp contradicted?([], _index, _value_types, _exprs), do: false
+
+  defp contradicted?([vague | rest], index, value_types, exprs) when vague in [:any, :same],
+    do: contradicted?(rest, index + 1, value_types, exprs)
+
+  defp contradicted?([{:array, vague} | rest], index, value_types, exprs)
+       when vague in [:any, :same],
+       do: contradicted?(rest, index + 1, value_types, exprs)
+
+  defp contradicted?([{param_type, vague} | rest], index, value_types, exprs)
+       when is_atom(param_type) and param_type != :array and vague in [:any, :same],
+       do: contradicted?(rest, index + 1, value_types, exprs)
+
+  defp contradicted?([match_type | rest], index, value_types, exprs) do
+    type =
+      case match_type do
+        {type, _constraints} -> type
+        type -> type
+      end
+
+    case elem(value_types, index) do
+      {:ok, {determined_type, _}} when determined_type != type ->
+        elem(exprs, index) or contradicted?(rest, index + 1, value_types, exprs)
+
+      _ ->
+        contradicted?(rest, index + 1, value_types, exprs)
+    end
+  end
 
   # An overload belongs to the type that declares it, and only applies once an operand is
   # known to be of that type: a literal of it, or an expression that resolves to it.
   # Otherwise it would claim operands of unknown type, so that with a money type
   # declaring `[money, :decimal]`, `fragment("...") < 0` would compare as money.
-  defp overload_grounded?({_match_types, _cast_as_types, _returns, nil}, _values, _value_types),
-    do: true
+  #
+  # Takes the declarer and the positions its signature names it at, as worked out by
+  # `declarer_positions/2`.
+  defp overload_grounded?(nil, _values, _value_types), do: true
+  defp overload_grounded?({_declarer, []}, _values, _value_types), do: true
 
-  defp overload_grounded?({match_types, _cast_as_types, _returns, declarer}, values, value_types) do
-    declarer = Ash.Type.get_type(declarer)
+  defp overload_grounded?({declarer, positions}, values, value_types) do
+    Enum.any?(positions, fn {index, constraints} ->
+      case elem(value_types, index) do
+        {:ok, {^declarer, _}} ->
+          true
 
-    declarer_positions =
-      match_types
-      |> Enum.zip(values)
-      |> Enum.with_index()
-      |> Enum.filter(&match?({{{^declarer, _}, _value}, _index}, &1))
-
-    declarer_positions == [] or
-      Enum.any?(declarer_positions, fn {{{_, constraints}, value}, index} ->
-        case elem(value_types, index) do
-          {:ok, {^declarer, _}} -> true
-          _ -> !Ash.Expr.expr?(value) && matches_type?(declarer, value, constraints)
-        end
-      end)
+        _ ->
+          value = Enum.at(values, index)
+          !Ash.Expr.expr?(value) && matches_type?(declarer, value, constraints)
+      end
+    end)
   end
 
   defp unwrap_new_type({type, constraints}) do
@@ -1966,7 +1998,78 @@ defmodule Ash.Expr do
 
   defp referenced_type(_basis, _via), do: nil
 
+  @doc """
+  Determines the type of an expression, as `{:ok, {type, constraints}}`, or `:error` if
+  it can't be determined.
+
+  The type of an operator or function call is resolved from the types of its operands,
+  so this walks the whole expression below it.
+  """
   def determine_type(value) do
+    case typed_operands(value) do
+      {mod, operands} ->
+        operator_result(determine_types(mod, operands, nil, true))
+
+      nil ->
+        determine_leaf_type(value)
+    end
+  end
+
+  @doc """
+  Determines the type of an expression like `determine_type/1`, along with the type of
+  every operand it was resolved from, and theirs, and so on.
+
+  Takes time linear in the size of the expression. See
+  `determine_types_with_operand_types/4` for what it is for.
+  """
+  @spec determine_type_tree(term) :: Ash.Expr.TypeTree.t()
+  def determine_type_tree(value) do
+    case typed_operands(value) do
+      {mod, operands} ->
+        case signatures(mod) do
+          {[], _generic_signature?} ->
+            %Ash.Expr.TypeTree{
+              expr: value,
+              type: operator_result(resolve_signatures([], operands, {}, nil, false))
+            }
+
+          {signatures, generic_signature?} ->
+            operand_trees = Enum.map(operands, &determine_type_tree/1)
+
+            operand_types =
+              operand_trees
+              |> Enum.map(& &1.type)
+              |> List.to_tuple()
+
+            %Ash.Expr.TypeTree{
+              expr: value,
+              type:
+                operator_result(
+                  resolve_signatures(signatures, operands, operand_types, nil, generic_signature?)
+                ),
+              operands: operand_trees
+            }
+        end
+
+      nil ->
+        %Ash.Expr.TypeTree{expr: value, type: determine_leaf_type(value)}
+    end
+  end
+
+  # The operator or function module and operands that an expression's type is
+  # resolved from, if it is resolved from its operands.
+  defp typed_operands(%{__predicate__?: true}), do: nil
+  defp typed_operands(%{__struct__: Ash.Query.Function.Type, arguments: [_, _]}), do: nil
+  defp typed_operands(%{__struct__: Ash.Query.Function.Type, arguments: [_, _, _]}), do: nil
+  defp typed_operands(%{__struct__: Ash.Query.Function.GetPath, arguments: [_, _]}), do: nil
+  defp typed_operands(%mod{__predicate__?: _, arguments: arguments}), do: {mod, arguments}
+  defp typed_operands(%mod{__predicate__?: _, left: left, right: right}), do: {mod, [left, right]}
+  defp typed_operands(_), do: nil
+
+  defp operator_result({_, nil}), do: :error
+  defp operator_result({_, type}), do: {:ok, type}
+
+  defp determine_leaf_type(value) do
     case value do
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type, constraints]} ->
         if res = get_type({type, constraints}) do
@@ -2047,18 +2150,6 @@ defmodule Ash.Expr do
 
       %{__struct__: Ash.Query.Function.GetPath, arguments: [left, path]} ->
         determine_get_path_type(left, path)
-
-      %mod{__predicate__?: _, arguments: arguments} ->
-        case determine_types(mod, arguments, nil, true) do
-          {_, nil} -> :error
-          {_, type} -> {:ok, type}
-        end
-
-      %mod{__predicate__?: _, left: left, right: right} ->
-        case determine_types(mod, [left, right], nil, true) do
-          {_, nil} -> :error
-          {_, type} -> {:ok, type}
-        end
 
       value when is_map(value) and not is_struct(value) and value != %{} ->
         determine_map_type(value)
