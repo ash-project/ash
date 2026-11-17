@@ -891,6 +891,33 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsTransactionEntry do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :accounts
+    end
+
+    actions do
+      defaults [:read]
+
+      create :create do
+        primary? true
+        accept [:id, :email]
+      end
+
+      create :create_outside_transaction do
+        accept [:id, :email]
+        transaction? false
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id, writable?: true, public?: true
+      attribute :email, :string, public?: true
+    end
+  end
+
   defmodule EtsTransactionTag do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -962,6 +989,7 @@ defmodule Ash.DataLayer.EtsTest do
       on_exit(fn ->
         for resource <- [
               EtsTransactionAccount,
+              EtsTransactionEntry,
               EtsTransactionLeft,
               EtsTransactionRight,
               EtsTransactionNote,
@@ -1263,6 +1291,39 @@ defmodule Ash.DataLayer.EtsTest do
       assert {:ok, _} = Task.await(first)
       assert {:error, %Ash.Error.Invalid{}} = Task.await(second)
       assert [_] = Ash.read!(EtsTransactionTenantAccount, tenant: "org_1")
+    end
+
+    test "a write outside any transaction waits for the transaction holding its table" do
+      parent = self()
+      id = Ash.UUID.generate()
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionEntry, fn ->
+            Ash.create!(EtsTransactionEntry, %{id: id, email: "inside@example.com"})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+
+      outside =
+        Task.async(fn ->
+          Ash.create(EtsTransactionEntry, %{id: id, email: "outside@example.com"},
+            action: :create_outside_transaction
+          )
+        end)
+
+      refute Task.yield(outside, 100)
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+      assert {:error, _} = Task.await(outside)
+      assert [%{email: "inside@example.com"}] = Ash.read!(EtsTransactionEntry)
     end
 
     test "a create nested in a transaction locks the table its identity check reads" do

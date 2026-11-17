@@ -31,7 +31,7 @@ defmodule Ash.DataLayer.Ets do
       transaction_group: [
         type: :atom,
         doc:
-          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. A transaction locks each shared table of its group it reads or writes until it ends. A transaction's timeout is checked at each table it reads or writes and when it commits."
+          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. A transaction locks each shared table of its group it reads or writes until it ends, and a write made outside any transaction runs in one of its own. A transaction's timeout is checked at each table it reads or writes and when it commits."
       ],
       table: [
         type: :atom,
@@ -517,6 +517,23 @@ defmodule Ash.DataLayer.Ets do
   def in_transaction?(resource) do
     Process.get({:ash_ets_transaction, Ash.DataLayer.Ets.Info.transaction_group(resource)}) !=
       nil
+  end
+
+  # A write to a group's shared table made outside any transaction runs in one of its own, as
+  # Ash's Mnesia data layer runs a write outside a transaction in one, so it waits for the
+  # transactions holding the table and lands before or after them. An update or destroy of a
+  # tenant with no table has no transaction to wait for.
+  defp transact_write(resource, tenant, create?, func) do
+    if shared_table?(resource) and not is_nil(Ash.DataLayer.Ets.Info.transaction_group(resource)) and
+         not in_transaction?(resource) and
+         (create? or match?({:ok, _}, wrap_or_create_table(resource, tenant, false))) do
+      case transaction(resource, func, :infinity, %{tenant: tenant}) do
+        {:ok, result} -> result
+        {:error, error} -> {:error, error}
+      end
+    else
+      func.()
+    end
   end
 
   # The locks taken before the transaction runs anything, each a write lock, as Ash's Mnesia
@@ -2134,7 +2151,9 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def upsert(resource, changeset, keys, identity \\ nil) do
-    do_upsert(resource, changeset, keys, identity)
+    transact_write(resource, changeset.tenant, true, fn ->
+      do_upsert(resource, changeset, keys, identity)
+    end)
   end
 
   defp do_upsert(resource, changeset, keys, identity, from_bulk_create? \\ false) do
@@ -2307,110 +2326,118 @@ defmodule Ash.DataLayer.Ets do
     stream = Enum.to_list(stream)
     log_bulk_create(resource, stream, options)
 
-    if options[:upsert?] do
-      # This is not optimized, but that's okay for now
-      stream
-      |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
-        changeset =
-          Ash.Changeset.set_context(changeset, %{
-            private: %{
-              upsert_fields: options[:upsert_fields] || [],
-              touch_update_defaults?: Map.get(options, :touch_update_defaults?, true)
-            }
-          })
+    transact_write(resource, options.tenant, true, fn ->
+      if options[:upsert?] do
+        # This is not optimized, but that's okay for now
+        stream
+        |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
+          changeset =
+            Ash.Changeset.set_context(changeset, %{
+              private: %{
+                upsert_fields: options[:upsert_fields] || [],
+                touch_update_defaults?: Map.get(options, :touch_update_defaults?, true)
+              }
+            })
 
-        case do_upsert(
-               resource,
-               changeset,
-               options.upsert_keys,
-               options.identity,
-               true
-             ) do
-          {:ok, result} ->
-            if Ash.Resource.get_metadata(result, :upsert_skipped) do
-              {:cont, {:ok, results}}
-            else
-              result = Ash.Actions.Helpers.Bulk.put_metadata(result, changeset)
+          case do_upsert(
+                 resource,
+                 changeset,
+                 options.upsert_keys,
+                 options.identity,
+                 true
+               ) do
+            {:ok, result} ->
+              if Ash.Resource.get_metadata(result, :upsert_skipped) do
+                {:cont, {:ok, results}}
+              else
+                result = Ash.Actions.Helpers.Bulk.put_metadata(result, changeset)
 
-              {:cont, {:ok, [result | results]}}
-            end
+                {:cont, {:ok, [result | results]}}
+              end
 
-          {:error, error} ->
-            {:halt, {:error, error}}
-        end
-      end)
-      |> case do
-        {:ok, result} -> {:ok, Enum.reverse(result)}
-        other -> other
-      end
-    else
-      with {:ok, table} <- wrap_or_create_table(resource, options.tenant),
-           :ok <- lock_touched(table, resource, options.tenant, :write),
-           {:ok, stored} <- stored_index(table, resource) do
-        Enum.reduce_while(stream, {:ok, [], stored}, fn changeset, {:ok, results, known} ->
-          with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
-               {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
-               {:ok, record} <- apply_atomics(changeset, resource, record),
-               {:ok, record} <- establish_period(record, resource, changeset),
-               record <- unload_relationships(resource, record),
-               :ok <- check_non_empty(resource, record),
-               :ok <- check_non_overlapping(resource, record, known) do
-            {:cont,
-             {:ok,
-              [
-                {create_key(resource, record, valid_pkey), changeset.context.bulk_create.index,
-                 changeset.context.bulk_create.ref, record}
-                | results
-              ], remember_period(known, resource, record)}}
-          else
             {:error, error} ->
               {:halt, {:error, error}}
           end
         end)
         |> case do
-          {:ok, records, _known} ->
-            case put_or_insert_new_batch(table, records, resource, options.return_records?) do
-              :ok ->
-                :ok
-
-              {:ok, records} ->
-                records
-                |> Enum.reduce([], fn record, records ->
-                  [set_loaded(record) | records]
-                end)
-                |> then(&{:ok, &1})
-
+          {:ok, result} -> {:ok, Enum.reverse(result)}
+          other -> other
+        end
+      else
+        with {:ok, table} <- wrap_or_create_table(resource, options.tenant),
+             :ok <- lock_touched(table, resource, options.tenant, :write),
+             {:ok, stored} <- stored_index(table, resource) do
+          Enum.reduce_while(stream, {:ok, [], stored}, fn changeset, {:ok, results, known} ->
+            with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
+                 {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+                 {:ok, record} <- apply_atomics(changeset, resource, record),
+                 {:ok, record} <- establish_period(record, resource, changeset),
+                 record <- unload_relationships(resource, record),
+                 :ok <- check_non_empty(resource, record),
+                 :ok <- check_non_overlapping(resource, record, known) do
+              {:cont,
+               {:ok,
+                [
+                  {create_key(resource, record, valid_pkey), changeset.context.bulk_create.index,
+                   changeset.context.bulk_create.ref, record}
+                  | results
+                ], remember_period(known, resource, record)}}
+            else
               {:error, error} ->
-                {:error, error}
+                {:halt, {:error, error}}
             end
+          end)
+          |> case do
+            {:ok, records, _known} ->
+              case put_or_insert_new_batch(table, records, resource, options.return_records?) do
+                :ok ->
+                  :ok
 
-          {:error, error} ->
-            {:error, error}
+                {:ok, records} ->
+                  records
+                  |> Enum.reduce([], fn record, records ->
+                    [set_loaded(record) | records]
+                  end)
+                  |> then(&{:ok, &1})
+
+                {:error, error} ->
+                  {:error, error}
+              end
+
+            {:error, error} ->
+              {:error, error}
+          end
         end
       end
-    end
+    end)
   end
 
   @doc false
   @impl true
   def create(resource, changeset, from_bulk_create? \\ false) do
-    with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
-         {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
-         :ok <- lock_touched(table, resource, changeset.tenant, :write),
-         _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
-         {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
-         {:ok, record} <- apply_atomics(changeset, resource, record),
-         {:ok, record} <- establish_period(record, resource, changeset),
-         record <- unload_relationships(resource, record),
-         :ok <- check_non_empty(resource, record),
-         {:ok, stored} <- stored_periods(table, resource, record),
-         :ok <- check_non_overlapping(resource, record, stored),
-         {:ok, record} <-
-           put_or_insert_new(table, {create_key(resource, record, valid_pkey), record}, resource) do
-      {:ok, set_loaded(record)}
-    else
-      {:error, error} -> {:error, error}
-    end
+    transact_write(resource, changeset.tenant, true, fn ->
+      with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
+           {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+           :ok <- lock_touched(table, resource, changeset.tenant, :write),
+           _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
+           {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+           {:ok, record} <- apply_atomics(changeset, resource, record),
+           {:ok, record} <- establish_period(record, resource, changeset),
+           record <- unload_relationships(resource, record),
+           :ok <- check_non_empty(resource, record),
+           {:ok, stored} <- stored_periods(table, resource, record),
+           :ok <- check_non_overlapping(resource, record, stored),
+           {:ok, record} <-
+             put_or_insert_new(
+               table,
+               {create_key(resource, record, valid_pkey), record},
+               resource
+             ) do
+        {:ok, set_loaded(record)}
+      else
+        {:error, error} -> {:error, error}
+      end
+    end)
   end
 
   defp apply_atomics(%{create_atomics: create_atomics} = changeset, resource, record)
@@ -2750,16 +2777,18 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def destroy(resource, %{data: record, filter: filter} = changeset) do
-    do_destroy(
-      resource,
-      record,
-      changeset.tenant,
-      filter,
-      changeset.domain,
-      changeset.context[:private][:actor],
-      supersession(resource, changeset),
-      match?(%Ash.Range{}, changeset.as_of)
-    )
+    transact_write(resource, changeset.tenant, false, fn ->
+      do_destroy(
+        resource,
+        record,
+        changeset.tenant,
+        filter,
+        changeset.domain,
+        changeset.context[:private][:actor],
+        supersession(resource, changeset),
+        match?(%Ash.Range{}, changeset.as_of)
+      )
+    end)
   end
 
   defp do_destroy(resource, record, tenant, filter, domain, actor, supersede, range?) do
@@ -3047,51 +3076,53 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def update(resource, changeset, pkey \\ nil, from_bulk? \\ false) do
-    supersede = supersession(resource, changeset)
-    range? = match?(%Ash.Range{}, changeset.as_of)
+    transact_write(resource, changeset.tenant, false, fn ->
+      supersede = supersession(resource, changeset)
+      range? = match?(%Ash.Range{}, changeset.as_of)
 
-    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant, false),
-         :ok <- lock_touched(table, resource, changeset.tenant, :write),
-         pkey = pkey || holding_key(table, resource, changeset.data, supersede, range?),
-         _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
-         {:ok, record} <-
-           do_update(
-             table,
-             {pkey, changeset.attributes, changeset.atomics, changeset.filter},
-             changeset.domain,
-             changeset.tenant,
-             resource,
-             changeset.context[:private][:actor],
-             supersede
-           ),
-         {:ok, record} <- cast_record(record, resource),
-         record <- retain_fields(record, changeset) do
-      new_pkey = pkey_map(resource, record)
+      with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant, false),
+           :ok <- lock_touched(table, resource, changeset.tenant, :write),
+           pkey = pkey || holding_key(table, resource, changeset.data, supersede, range?),
+           _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
+           {:ok, record} <-
+             do_update(
+               table,
+               {pkey, changeset.attributes, changeset.atomics, changeset.filter},
+               changeset.domain,
+               changeset.tenant,
+               resource,
+               changeset.context[:private][:actor],
+               supersede
+             ),
+           {:ok, record} <- cast_record(record, resource),
+           record <- retain_fields(record, changeset) do
+        new_pkey = pkey_map(resource, record)
 
-      # A supersession has already retired the old key, so it must not be destroyed.
-      if is_nil(supersede) && new_pkey != pkey do
-        case destroy(resource, changeset) do
-          :ok ->
-            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+        # A supersession has already retired the old key, so it must not be destroyed.
+        if is_nil(supersede) && new_pkey != pkey do
+          case destroy(resource, changeset) do
+            :ok ->
+              {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
-          {:error, error} ->
-            {:error, error}
+            {:error, error} ->
+              {:error, error}
+          end
+        else
+          {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
         end
       else
-        {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
-      end
-    else
-      # Nothing has ever been written for this tenant, so the record cannot exist.
-      :no_table ->
-        {:error,
-         Ash.Error.Changes.StaleRecord.exception(
-           resource: resource,
-           filter: changeset.filter
-         )}
+        # Nothing has ever been written for this tenant, so the record cannot exist.
+        :no_table ->
+          {:error,
+           Ash.Error.Changes.StaleRecord.exception(
+             resource: resource,
+             filter: changeset.filter
+           )}
 
-      {:error, error} ->
-        {:error, error}
-    end
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
   end
 
   # `nil` writes in place: no period, or a period with no now to supersede at.
