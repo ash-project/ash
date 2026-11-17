@@ -33,7 +33,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`private?`](#ets-private?){: #ets-private? } | `boolean` | `false` | Sets the ets table protection to private, and scopes it to only this process. The table name will not be used directly if this is true, to allow multiple processes to use this resource separately. |
-| [`transaction_group`](#ets-transaction_group){: #ets-transaction_group } | `atom` |  | Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. A transaction locks each shared table of its group it reads or writes until it ends. |
+| [`transaction_group`](#ets-transaction_group){: #ets-transaction_group } | `atom` |  | Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. A transaction locks each shared table of its group it reads or writes until it ends. A transaction's timeout is checked at each table it reads or writes and when it commits. |
 | [`table`](#ets-table){: #ets-table } | `atom` |  | The name of the table. Defaults to the resource name. |
 
 

@@ -741,6 +741,17 @@ defmodule Ash.DataLayer.EtsTest do
                  {:ok, record}
                end)
       end
+
+      create :create_then_read_late do
+        accept [:email]
+
+        change after_action(fn _changeset, record, _context ->
+                 Process.sleep(100)
+                 Ash.read!(Ash.DataLayer.EtsTest.EtsTransactionAccount)
+                 Process.sleep(1_000)
+                 {:ok, record}
+               end)
+      end
     end
 
     attributes do
@@ -1308,6 +1319,60 @@ defmodule Ash.DataLayer.EtsTest do
 
       send(reader.pid, :finish)
       assert {:ok, :finished} = Task.await(reader)
+    end
+
+    test "an action past its timeout stops at the next table it reads" do
+      {micros, result} =
+        :timer.tc(fn ->
+          Ash.create(EtsTransactionAccount, %{email: "late@example.com"},
+            action: :create_then_read_late,
+            timeout: 50
+          )
+        end)
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.Timeout{}]}} = result
+      assert micros < 1_000_000
+      assert [] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a transaction past its timeout while waiting for a table returns a timeout" do
+      parent = self()
+
+      older =
+        Task.async(fn ->
+          Ash.transaction(
+            EtsTransactionLeft,
+            fn ->
+              send(parent, :older_started)
+
+              receive do
+                :write -> Ash.create(EtsTransactionNote, %{})
+              end
+            end,
+            timeout: 200
+          )
+        end)
+
+      assert_receive :older_started
+
+      younger =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionRight, fn ->
+            Ash.create!(EtsTransactionNote, %{})
+            send(parent, :younger_holds)
+
+            receive do
+              :finish -> :younger_finished
+            end
+          end)
+        end)
+
+      assert_receive :younger_holds
+      send(older.pid, :write)
+      assert {:error, %Ash.Error.Invalid.Timeout{}} = Task.await(older)
+
+      send(younger.pid, :finish)
+      assert {:ok, :younger_finished} = Task.await(younger)
     end
   end
 

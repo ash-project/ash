@@ -31,7 +31,7 @@ defmodule Ash.DataLayer.Ets do
       transaction_group: [
         type: :atom,
         doc:
-          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. A transaction locks each shared table of its group it reads or writes until it ends."
+          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. A transaction locks each shared table of its group it reads or writes until it ends. A transaction's timeout is checked at each table it reads or writes and when it commits."
       ],
       table: [
         type: :atom,
@@ -465,30 +465,35 @@ defmodule Ash.DataLayer.Ets do
   # ordered by age, as Mnesia orders them
   # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia_locker.erl): a
   # transaction waits for a younger one and is refused by an older one, so none waits in a
-  # cycle.
+  # cycle. Its timeout is checked at each table it reads or writes and when it commits.
   @doc false
   @impl true
   def transaction(resource, func, timeout, reason) do
     group = Ash.DataLayer.Ets.Info.transaction_group(resource)
-    deadline = deadline(timeout)
-    age = System.unique_integer([:monotonic, :positive])
-    Process.put({:ash_ets_transaction, group}, {age, deadline})
+
+    transaction = %{
+      age: System.unique_integer([:monotonic, :positive]),
+      deadline: deadline(timeout),
+      timeout: timeout,
+      name: name(reason, resource)
+    }
+
+    Process.put({:ash_ets_transaction, group}, transaction)
 
     try do
-      with :ok <-
-             lock_up_front(transaction_locks(resource, reason, group), group, age, deadline, 1) do
+      with :ok <- lock_up_front(transaction_locks(resource, reason, group), group, transaction, 1) do
         try do
           result = func.()
 
-          if past?(deadline) do
-            :timeout
+          if past?(transaction.deadline) do
+            {:error, timeout_error(transaction)}
           else
             for {tid, ops} <- Process.get({:ash_ets_store, group}, %{}) do
               for {key, :delete} <- ops, do: :ets.delete(tid, key)
               :ets.insert(tid, for({_key, {:write, object}} <- ops, do: object))
             end
 
-            {:res, result}
+            {:ok, result}
           end
         catch
           {{:ash_ets_rollback, ^group}, value} -> {:error, value}
@@ -498,20 +503,6 @@ defmodule Ash.DataLayer.Ets do
       release(group)
       Process.delete({:ash_ets_store, group})
       Process.delete({:ash_ets_transaction, group})
-    end
-    |> case do
-      {:res, result} ->
-        {:ok, result}
-
-      {:error, error} ->
-        {:error, error}
-
-      :timeout ->
-        {:error,
-         Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: name(reason, resource))}
-
-      :busy ->
-        {:error, busy(resource)}
     end
   end
 
@@ -533,10 +524,10 @@ defmodule Ash.DataLayer.Ets do
   # took and try again, waiting longer each time, as Mnesia restarts a transaction
   # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia_tm.erl, restart, with
   # mnesia_lib's random_time), until its timeout.
-  defp lock_up_front(locks, group, age, deadline, attempt) do
+  defp lock_up_front(locks, group, transaction, attempt) do
     locks
     |> Enum.reduce_while(:ok, fn {_table, tenant, locked}, :ok ->
-      case lock_table(locked, tenant, group, age, deadline, :write) do
+      case lock_table(locked, tenant, group, transaction, :write) do
         :ok -> {:cont, :ok}
         refused -> {:halt, refused}
       end
@@ -547,14 +538,17 @@ defmodule Ash.DataLayer.Ets do
         squared = attempt * attempt
         wait = squared + :rand.uniform(trunc(500 * (1 - 50 / (squared + 50))))
 
-        case remaining(deadline) do
+        case remaining(transaction.deadline) do
           left when left == :infinity or left > wait ->
             Process.sleep(wait)
-            lock_up_front(locks, group, age, deadline, attempt + 1)
+            lock_up_front(locks, group, transaction, attempt + 1)
 
           _ ->
-            :timeout
+            {:error, timeout_error(transaction)}
         end
+
+      :timeout ->
+        {:error, timeout_error(transaction)}
 
       locked ->
         locked
@@ -562,8 +556,14 @@ defmodule Ash.DataLayer.Ets do
   end
 
   # Takes a table's lock for the group, which holds it until its transaction ends.
-  defp lock_table(resource, tenant, group, age, deadline, mode) do
-    case TableManager.lock(resource, tenant, age, mode, remaining(deadline)) do
+  defp lock_table(resource, tenant, group, transaction, mode) do
+    case TableManager.lock(
+           resource,
+           tenant,
+           transaction.age,
+           mode,
+           remaining(transaction.deadline)
+         ) do
       :ok ->
         {:ok, name} = table_name(resource, tenant, true)
         hold(:ets.whereis(name), group, {resource, tenant, mode})
@@ -578,7 +578,8 @@ defmodule Ash.DataLayer.Ets do
   # mnesia:read takes a read lock, and alone for a write, as mnesia:write takes a write lock.
   # Once the transaction has run, an older one holding the table fails it, as Ash's Mnesia
   # data layer aborts a transaction that would restart after its work began. A private table,
-  # which no other process reaches, needs no lock.
+  # which no other process reaches, needs no lock. Past its deadline, the transaction rolls
+  # back at the next table it reads or writes.
   defp lock_touched(table, resource, tenant, mode) do
     group = Ash.DataLayer.Ets.Info.transaction_group(resource)
 
@@ -586,7 +587,9 @@ defmodule Ash.DataLayer.Ets do
       nil ->
         :ok
 
-      {age, deadline} ->
+      transaction ->
+        if past?(transaction.deadline), do: rollback(resource, timeout_error(transaction))
+
         case Process.get({:ash_ets_held, table.table}) do
           {_group, held} when held == :write or held == mode ->
             :ok
@@ -595,10 +598,11 @@ defmodule Ash.DataLayer.Ets do
             if Ash.DataLayer.Ets.Info.private?(resource) do
               hold(table.table, group, {resource, tenant, :write})
             else
-              case lock_table(resource, tenant, group, age, deadline, mode) do
+              case lock_table(resource, tenant, group, transaction, mode) do
                 :ok -> :ok
+                :busy -> {:error, busy(resource)}
+                :timeout -> rollback(resource, timeout_error(transaction))
                 {:error, error} -> {:error, error}
-                _busy_or_timeout -> {:error, busy(resource)}
               end
             end
         end
@@ -616,7 +620,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp release(group) do
-    {age, _deadline} = Process.get({:ash_ets_transaction, group})
+    %{age: age} = Process.get({:ash_ets_transaction, group})
 
     for {resource, tenant, tid} <- Process.get({:ash_ets_locks, group}, []) do
       Process.delete({:ash_ets_held, tid})
@@ -629,6 +633,9 @@ defmodule Ash.DataLayer.Ets do
   defp busy(resource),
     do:
       "could not lock the table of #{inspect(resource)}: an older transaction holds it or waits for it"
+
+  defp timeout_error(transaction),
+    do: Ash.Error.Invalid.Timeout.exception(timeout: transaction.timeout, name: transaction.name)
 
   defp deadline(timeout) when is_integer(timeout),
     do: System.monotonic_time(:millisecond) + timeout
