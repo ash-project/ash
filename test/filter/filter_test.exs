@@ -6,6 +6,7 @@ defmodule Ash.Test.Filter.FilterTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Expr
   import Ash.Test
 
   alias Ash.Filter
@@ -144,6 +145,43 @@ defmodule Ash.Test.Filter.FilterTest do
 
       calculate :name_plus_text, :string, expr(name <> ^arg(:text)) do
         argument :text, :string, allow_nil?: false
+      end
+    end
+  end
+
+  # `postz` is intentionally invalid to exercise error handling in FilterCheck.
+  defmodule InvalidExistsFilterCheck do
+    use Ash.Policy.FilterCheck
+
+    @impl true
+    def describe(_opts), do: "contains an invalid exists expression"
+
+    @impl true
+    def filter(_actor, _context, _opts), do: expr(exists(postz, true))
+  end
+
+  defmodule PolicyUser do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:read]
+    end
+
+    policies do
+      policy action_type(:read) do
+        authorize_if InvalidExistsFilterCheck
       end
     end
   end
@@ -333,6 +371,64 @@ defmodule Ash.Test.Filter.FilterTest do
                Post
                |> Ash.Query.filter(^"5" < points)
                |> Ash.read!()
+    end
+  end
+
+  describe "exists/2 errors" do
+    test "returns a helpful error for invalid exists syntax" do
+      expression = Ash.Expr.expr(exists(posts.title == "bar"))
+
+      assert {:error, error} = Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "exists(foo.bar == \"bar\")"
+      assert message =~ "exists(foo, bar == \"bar\")"
+    end
+
+    test "returns a helpful error for an unknown relationship" do
+      expression = Ash.Expr.expr(exists(postz, true))
+
+      assert {:error, error} = Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "Could not find a related resource at path [:postz]"
+      assert message =~ "Ensure the relationship name is spelled correctly"
+    end
+
+    test "returns a helpful error for an unknown nested relationship" do
+      expression = Ash.Expr.expr(exists(posts.comentz, true))
+
+      assert {:error, error} = Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "Could not find a related resource at path [:posts, :comentz]"
+    end
+  end
+
+  describe "exists/2" do
+    test "hydrates valid exists syntax" do
+      expression = Ash.Expr.expr(exists(posts, title == "bar"))
+
+      assert {:ok, %Ash.Query.Exists{path: [:posts], expr: hydrated_expr}} =
+               Ash.Filter.hydrate_refs(expression, %{resource: User})
+
+      refute hydrated_expr == expression.expr
+    end
+
+    test "returns exists errors from filter policy checks" do
+      assert {:error, error} = Ash.can({PolicyUser, :read}, nil)
+
+      message = error_message(error)
+
+      assert message =~ "Invalid `exists/2` expression"
+      assert message =~ "Could not find a related resource at path [:postz]"
+      assert message =~ "PolicyUser"
     end
   end
 
@@ -1567,6 +1663,67 @@ defmodule Ash.Test.Filter.FilterTest do
     end
   end
 
+  describe "map_reduce/3" do
+    test "threads the accumulator through every expression" do
+      filter = Filter.parse!(Post, expr(title == "foo" and (points > 1 or contents == "bar")))
+
+      {mapped, visited} =
+        Filter.map_reduce(filter, [], fn
+          %Ash.Query.Ref{attribute: %{name: name}} = ref, acc -> {ref, [name | acc]}
+          other, acc -> {other, acc}
+        end)
+
+      assert mapped == filter
+      assert Enum.sort(visited) == [:contents, :points, :title]
+    end
+
+    test "replaces expressions like map/2" do
+      filter = Filter.parse!(Post, expr(points > 1 and points < 10))
+
+      {mapped, count} =
+        Filter.map_reduce(filter, 0, fn
+          %Ash.Query.Operator.GreaterThan{} = op, count -> {%{op | right: 5}, count + 1}
+          other, count -> {other, count}
+        end)
+
+      assert count == 1
+
+      assert mapped ==
+               Filter.map(filter, fn
+                 %Ash.Query.Operator.GreaterThan{} = op -> %{op | right: 5}
+                 other -> other
+               end)
+
+      assert %Ash.Query.BooleanExpression{left: %Ash.Query.Operator.GreaterThan{right: 5}} =
+               mapped.expression
+    end
+
+    test "does not traverse into the result of {:halt, expr}" do
+      filter = Filter.parse!(Post, expr(not (points > 1)))
+
+      {mapped, visited} =
+        Filter.map_reduce(filter, [], fn
+          %Ash.Query.Not{} = not_expr, acc -> {{:halt, not_expr}, [:not | acc]}
+          other, acc -> {other, [other.__struct__ | acc]}
+        end)
+
+      assert mapped == filter
+      refute Ash.Query.Operator.GreaterThan in visited
+      assert :not in visited
+    end
+
+    test "works on bare expressions and empty filters" do
+      empty = %Filter{resource: Post, expression: nil}
+      assert {^empty, :untouched} = Filter.map_reduce(empty, :untouched, &{&1, &2})
+
+      assert {[1, {2, 3}], 6} =
+               Filter.map_reduce([1, {2, 3}], 0, fn
+                 value, acc when is_integer(value) -> {value, acc + value}
+                 other, acc -> {other, acc}
+               end)
+    end
+  end
+
   describe "data layers that cannot join" do
     test "one ref through a relationship is allowed" do
       assert %{valid?: true} = Ash.Query.filter(NoJoinPost, comments.title == "foo")
@@ -1580,4 +1737,7 @@ defmodule Ash.Test.Filter.FilterTest do
       assert %{valid?: false} = Ash.Query.filter(NoJoinPost, comments.title == author.name)
     end
   end
+
+  defp error_message(error) when is_binary(error), do: error
+  defp error_message(error), do: Exception.message(error)
 end

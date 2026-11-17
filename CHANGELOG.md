@@ -8,6 +8,123 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.6](https://github.com/ash-project/ash/compare/v3.37.5...v3.37.6) (2026-11-16)
+
+
+
+
+### Improvements:
+
+* expand and type repeated calculations once by [@zachdaniel](https://github.com/zachdaniel)
+
+* derive operator signatures at compile time by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* cleanup any_success? pdict key for bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.37.5](https://github.com/ash-project/ash/compare/v3.37.4...v3.37.5) (2026-11-15)
+
+
+
+
+### Improvements:
+
+* add `Ash.Filter.map_reduce` by [@zachdaniel](https://github.com/zachdaniel)
+
+* compile-time checks for attribute vs argument validations (#3118) by TravelCurry02 [(#3118)](https://github.com/ash-project/ash/pull/3118)
+
+### Bug Fixes:
+
+* resolve repeated calculations with different arguments at runtime and type untyped literals in expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* drop notifications for no notifiers in Ash.Notifier.notify/1 (#3124) by Stefan Luptak [(#3124)](https://github.com/ash-project/ash/pull/3124)
+
+* return error tuple from stream_strategy when offset streaming is impossible (#3125) by [@emadshaaban92](https://github.com/emadshaaban92) [(#3125)](https://github.com/ash-project/ash/pull/3125)
+
+* set accessing_from before running preparations on relationship loads (#3123) by Ahatch3 [(#3123)](https://github.com/ash-project/ash/pull/3123)
+
+* keep unrelated exists scoped to its resource in can_read by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.37.4](https://github.com/ash-project/ash/compare/v3.37.3...v3.37.4) (2026-11-11)
+
+
+
+
+### Bug Fixes:
+
+* properly transform bulk errors into Ash errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* set source context in after action hook for cascade destroy by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve `parent()` relationship filters in managed lookups and cascades (#3056) by [@jimsynz](https://github.com/jimsynz) [(#3056)](https://github.com/ash-project/ash/pull/3056)
+
+* use accessing_from for related field policies in filter input (#3116) by [@emadshaaban92](https://github.com/emadshaaban92) [(#3116)](https://github.com/ash-project/ash/pull/3116)
+
+* only apply generic action argument defaults when the argument is omitted by [@zachdaniel](https://github.com/zachdaniel)
+
+* avoid applying filter mappers twice (#3114) by Jechol Lee [(#3114)](https://github.com/ash-project/ash/pull/3114)
+
+## [v3.37.3](https://github.com/ash-project/ash/compare/v3.37.2...v3.37.3) (2026-11-05)
+
+
+
+
+### Improvements:
+
+* speed up runtime filtering and sorting (#3092) by [@etareduction](https://github.com/etareduction) [(#3092)](https://github.com/ash-project/ash/pull/3092)
+
+* render more consolidated signals mermaid by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* give warn_missed! the action in atomic bulk updates (#3111) by Stefan Luptak [(#3111)](https://github.com/ash-project/ash/pull/3111)
+
+* pass forbidden and not loaded values through Ash.Type.load/5 lists by [@zachdaniel](https://github.com/zachdaniel)
+
+* avoid traversing execution context in parent expression checks (#3108) by Jechol Lee [(#3108)](https://github.com/ash-project/ash/pull/3108)
+
+* detect `parent/1` in calculations that a relationship sorts on by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't treat `parent/1` inside `exists` or aggregates as referencing the relationship source by [@zachdaniel](https://github.com/zachdaniel)
+
+* accept scopes in generated can_* code interface helpers (#3106) by [@barnabasJ](https://github.com/barnabasJ) [(#3106)](https://github.com/ash-project/ash/pull/3106)
+
+* validate generic action loads against the returns type (#3101) by [@Torkan](https://github.com/Torkan) [(#3101)](https://github.com/ash-project/ash/pull/3101)
+
+* defer per-record validations in bulk creates (#3098) by jeffhuen [(#3098)](https://github.com/ash-project/ash/pull/3098)
+
+* pass batch_change/3 a list in streamed bulk destroys (#3100) by leonqadirie [(#3100)](https://github.com/ash-project/ash/pull/3100)
+
+* only give a new type the change hooks its subtype has (#3096) by jeroen11dijk [(#3096)](https://github.com/ash-project/ash/pull/3096)
+
+* don't crash update_many when return_records? isn't given (#3094) by jeroen11dijk [(#3094)](https://github.com/ash-project/ash/pull/3094)
+
+* give update_many's after_batch hooks each row's own changeset (#3095) by jeroen11dijk [(#3095)](https://github.com/ash-project/ash/pull/3095)
+
+* drop inactive policy conflict expansion (#3093) by leonqadirie [(#3093)](https://github.com/ash-project/ash/pull/3093)
+
+* load mixed records by their start instance by [@zachdaniel](https://github.com/zachdaniel)
+
+* give query around_transaction hooks their two-argument type (#3088) by [@etareduction](https://github.com/etareduction) [(#3088)](https://github.com/ash-project/ash/pull/3088)
+
+## Unreleased
+
+### Bug Fixes:
+
+* Restore `before_action?` deferral for per-record validations in bulk creates, including their conditions.
+
+## [v3.37.2](https://github.com/ash-project/ash/compare/v3.37.1...v3.37.2) (2026-10-26)
+
+
+
+
+### Bug Fixes:
+
+* don't crash a bulk create when an upsert it runs singly is skipped by [@zachdaniel](https://github.com/zachdaniel)
+
+* [security] scope upserts to the tenant under attribute multitenancy ([CVE-2026-96581](https://cna.erlef.org/cves/CVE-2026-96581.html), [GHSA-vw7c-67pf-gh96](https://github.com/ash-project/ash/security/advisories/GHSA-vw7c-67pf-gh96)) by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.37.1](https://github.com/ash-project/ash/compare/v3.37.0...v3.37.1) (2026-10-25)
 
 
@@ -49,7 +166,7 @@ SPDX-License-Identifier: MIT
 
 * honor requested strategies when bulk update authorization needs initial data by [@zachdaniel](https://github.com/zachdaniel)
 
-* always lateral join through relationships by [@zachdaniel](https://github.com/zachdaniel)
+* [security] always lateral join through relationships ([CVE-2026-114214](https://cna.erlef.org/cves/CVE-2026-114214.html), [GHSA-g2h4-xp57-q863](https://github.com/ash-project/ash/security/advisories/GHSA-g2h4-xp57-q863)) by [@zachdaniel](https://github.com/zachdaniel)
 
 * do not choose `atomic_batches` strategy incorrectly by [@zachdaniel](https://github.com/zachdaniel)
 

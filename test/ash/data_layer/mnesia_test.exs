@@ -18,11 +18,16 @@ defmodule Ash.DataLayer.MnesiaTest do
   end
 
   @no_pkey_test_table :test_events
+  @tenant_test_table :test_tenant_tickets
   @lock_test_tables [:test_lock_posts, :test_lock_notes]
 
   setup do
     # Clean up any existing tables before each test
-    for table <- [@default_test_table, @no_pkey_test_table | @lock_test_tables] do
+    for table <- [
+          @default_test_table,
+          @no_pkey_test_table,
+          @tenant_test_table | @lock_test_tables
+        ] do
       try do
         :mnesia.delete_table(table)
       catch
@@ -33,6 +38,7 @@ defmodule Ash.DataLayer.MnesiaTest do
     # Create fresh tables for each test
     :mnesia.create_table(@default_test_table, attributes: [:id, :val])
     :mnesia.create_table(@no_pkey_test_table, attributes: [:id, :val])
+    :mnesia.create_table(@tenant_test_table, attributes: [:id, :val])
 
     for table <- @lock_test_tables do
       :mnesia.create_table(table, attributes: [:id, :val])
@@ -70,6 +76,35 @@ defmodule Ash.DataLayer.MnesiaTest do
       attribute :roles, {:array, :atom}, public?: true
       create_timestamp :inserted_at
       update_timestamp :updated_at, writable?: true, public?: true
+    end
+  end
+
+  defmodule MnesiaTenantTicket do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
+
+    mnesia do
+      table :test_tenant_tickets
+    end
+
+    multitenancy do
+      strategy :attribute
+      attribute :org_id
+    end
+
+    actions do
+      defaults [:read, :destroy, create: [:subject], update: [:subject]]
+
+      create :save do
+        accept [:id, :subject]
+        upsert? true
+        upsert_fields [:subject]
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id, writable?: true
+      attribute :org_id, :string, allow_nil?: false, public?: true
+      attribute :subject, :string, public?: true
     end
   end
 
@@ -273,6 +308,58 @@ defmodule Ash.DataLayer.MnesiaTest do
 
       assert updated.name == "Johnny"
       assert DateTime.compare(updated.updated_at, explicit_time) == :eq
+    end
+
+    test "an upsert on the primary key doesn't update or return a record in another tenant" do
+      victim = Ash.create!(MnesiaTenantTicket, %{subject: "theirs"}, tenant: "org2")
+
+      for opts <- [[], [return_skipped_upsert?: true]] do
+        assert {:error, %{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+                 Ash.create(
+                   MnesiaTenantTicket,
+                   %{id: victim.id, subject: "hello"},
+                   [action: :save, tenant: "org1"] ++ opts
+                 )
+      end
+
+      assert %{org_id: "org2", subject: "theirs"} =
+               Ash.get!(MnesiaTenantTicket, victim.id, tenant: "org2")
+
+      assert %{org_id: "org2", subject: "hello"} =
+               Ash.create!(MnesiaTenantTicket, %{id: victim.id, subject: "hello"},
+                 action: :save,
+                 tenant: "org2"
+               )
+    end
+  end
+
+  describe "changeset filters" do
+    test "an update or destroy whose filter the record doesn't match is stale" do
+      ticket = Ash.create!(MnesiaTenantTicket, %{subject: "mine"}, tenant: "org1")
+
+      assert {:error, %{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+               ticket
+               |> Ash.Changeset.for_update(:update, %{subject: "changed"})
+               |> Ash.Changeset.filter(subject: "other")
+               |> Ash.update()
+
+      assert {:error, %{errors: [%Ash.Error.Changes.StaleRecord{}]}} =
+               ticket
+               |> Ash.Changeset.for_destroy(:destroy)
+               |> Ash.Changeset.filter(subject: "other")
+               |> Ash.destroy()
+
+      assert %{subject: "changed"} =
+               ticket
+               |> Ash.Changeset.for_update(:update, %{subject: "changed"})
+               |> Ash.Changeset.filter(subject: "mine")
+               |> Ash.update!()
+
+      assert :ok =
+               ticket
+               |> Ash.Changeset.for_destroy(:destroy)
+               |> Ash.Changeset.filter(subject: "changed")
+               |> Ash.destroy()
     end
   end
 

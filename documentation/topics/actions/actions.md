@@ -134,6 +134,39 @@ This is set on queries when they are being run for a "special" purpose. The valu
 
 You can use this to adjust the behavior of your query preparations as needed.
 
+## `:accessing_from`
+
+This is set on queries and changesets when they are being run through a relationship. The value is a map with the following keys:
+
+- `:source`, the resource the relationship is defined on
+- `:name`, the name of the relationship
+
+It is set when:
+
+- loading a relationship, e.g. `Ash.load(post, :comments)`
+- managing related records with `manage_relationship`. When a record is being unrelated, the map also contains `unrelating?: true`
+- updating or destroying related records with `cascade_update` or `cascade_destroy`
+
+When loading a `many_to_many` relationship, the join resource is read with `:name` set to the relationship's `join_relationship`.
+
+You can use this to adjust the behavior of your preparations and changes when a resource is accessed through a particular relationship. For example, to hide spam comments only when they are loaded through a post:
+
+```elixir
+preparations do
+  prepare fn query, _context ->
+    case query.context[:accessing_from] do
+      %{source: MyApp.Post, name: :comments} ->
+        Ash.Query.filter(query, spam? == false)
+
+      _ ->
+        query
+    end
+  end
+end
+```
+
+To authorize based on it, use the `accessing_from/2` policy check.
+
 ## `:bulk_create`, `:bulk_update`, `:bulk_destroy`
 
 This is set on changesets/queries/action inputs when they are being run in bulk. The value will be a map with the following keys (more may be added in the future):

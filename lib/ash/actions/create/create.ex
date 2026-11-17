@@ -333,6 +333,13 @@ defmodule Ash.Actions.Create do
 
     changeset = set_tenant(changeset)
 
+    changeset =
+      if opts[:upsert?] do
+        Ash.Changeset.filter(changeset, Helpers.upsert_tenant_filter(changeset))
+      else
+        changeset
+      end
+
     is_upsert? = changeset.context[:private][:upsert?]
 
     can_atomic_create? =
@@ -717,7 +724,8 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp handle_attribute_multitenancy(changeset) do
+  @doc false
+  def handle_attribute_multitenancy(changeset) do
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
       attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)

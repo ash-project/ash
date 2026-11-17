@@ -2965,8 +2965,43 @@ defmodule Ash do
   def load([record | _] = data, query, opts) do
     Ash.Helpers.expect_options!(opts)
     resource = Ash.Helpers.resource_from_data!(data, query, opts)
-    opts = Keyword.delete(opts, :resource)
 
+    if load_at_each_instant?(data, resource, query, opts) do
+      load_at_each_instant(data, query, Keyword.put(opts, :resource, resource))
+    else
+      do_load(data, record, resource, query, Keyword.delete(opts, :resource))
+    end
+  end
+
+  # Records of a temporal resource are loaded as of the instant each was read or written at,
+  # so records held at different instants can't share one query, unless `as_of` says otherwise.
+  defp load_at_each_instant?([record | rest], resource, query, opts) do
+    first_as_of = Map.get(record.__metadata__, :as_of)
+
+    is_nil(opts[:as_of]) and not match?(%Ash.Query{as_of: as_of} when not is_nil(as_of), query) and
+      Ash.Resource.Info.temporal?(resource) and
+      Enum.any?(rest, &(Map.get(&1.__metadata__, :as_of) != first_as_of))
+  end
+
+  defp load_at_each_instant(data, query, opts) do
+    data
+    |> Enum.with_index()
+    |> Enum.group_by(fn {record, _} -> Map.get(record.__metadata__, :as_of) end)
+    |> Enum.reduce_while({:ok, []}, fn {_as_of, indexed}, {:ok, acc} ->
+      {records, indices} = Enum.unzip(indexed)
+
+      case load(records, query, opts) do
+        {:ok, loaded} -> {:cont, {:ok, Enum.zip(indices, loaded) ++ acc}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, loaded} -> {:ok, loaded |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp do_load(data, record, resource, query, opts) do
     query =
       case query do
         %Ash.Query{} = query ->

@@ -25,7 +25,8 @@ defmodule Ash.Reactor.ChangeStep do
     changeset = %{changeset | arguments: Map.merge(original_arguments, step_arguments)}
 
     result =
-      with {:ok, changeset} <- maybe_must_be_valid(changeset, options[:only_when_valid?], :bypass),
+      with {:ok, changeset} <-
+             maybe_must_be_valid(changeset, options[:only_when_valid?], :bypass),
            {:ok, changeset} <- apply_where_clauses(changeset, options[:where], context),
            {:ok, changeset} <- apply_change(changeset, options[:change], context) do
         fail_if_invalid? = Keyword.get(options, :fail_if_invalid?, false)

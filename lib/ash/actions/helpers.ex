@@ -1227,6 +1227,22 @@ defmodule Ash.Actions.Helpers do
 
   def get_multitenancy_from_context(_), do: nil
 
+  @doc false
+  # An upsert's keys don't always include the multitenancy attribute (the primary key, or an
+  # `all_tenants?` identity), so the record it conflicts with may be in another tenant. This is
+  # the filter that record must match to be updated or returned, or `nil` if it needn't.
+  @spec upsert_tenant_filter(Ash.Changeset.t()) :: Keyword.t() | nil
+  def upsert_tenant_filter(changeset) do
+    if changeset.tenant &&
+         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute &&
+         get_multitenancy_from_context(changeset) not in [:bypass, :bypass_all] do
+      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
+      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
+
+      [{attribute, apply(m, f, [changeset.to_tenant | a])}]
+    end
+  end
+
   @doc """
   Validates that a changeset has a tenant when required by the resource.
 

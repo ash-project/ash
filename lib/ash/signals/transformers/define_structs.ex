@@ -9,6 +9,7 @@ defmodule Ash.Signals.Transformers.DefineStructs do
 
   alias Spark.Dsl.Transformer
 
+  # sobelow_skip ["DOS.ModuleConcat"]
   def transform(dsl_state) do
     module = Transformer.get_persisted(dsl_state, :module)
 

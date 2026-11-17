@@ -453,9 +453,17 @@ defmodule Ash.Actions.Update.Bulk do
                       {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
 
                       %{result | errors: errors, error_count: error_count}
+                  after
+                    Process.delete({:any_success?, ref})
+                    Process.delete({:bulk_notifications, ref})
                   end
               end
-              |> handle_atomic_notifications(atomic_changeset.resource, action, notify?, opts)
+              |> handle_atomic_notifications(
+                atomic_changeset.resource,
+                atomic_changeset.action,
+                notify?,
+                opts
+              )
             catch
               kind, reason ->
                 if notify?,
@@ -1115,13 +1123,28 @@ defmodule Ash.Actions.Update.Bulk do
         conditional_after_batch_hooks,
         context
       ) do
-    atomic_changeset = %{atomic_changeset | phase: :after_action}
+    results
+    |> Enum.map(&{atomic_changeset, &1})
+    |> run_after_batch_hooks(all_changes, conditional_after_batch_hooks, context)
+  end
+
+  @doc false
+  def run_after_batch_hooks(
+        changesets_and_results,
+        all_changes,
+        conditional_after_batch_hooks,
+        context
+      ) do
+    changesets =
+      changesets_and_results
+      |> Enum.map(fn {changeset, _result} -> %{changeset | phase: :after_action} end)
+      |> List.to_tuple()
 
     results =
-      results
+      changesets_and_results
       |> Stream.with_index()
-      |> Enum.map(fn {result, index} ->
-        {atomic_changeset, Ash.Resource.set_metadata(result, %{atomic_index: index})}
+      |> Enum.map(fn {{_changeset, result}, index} ->
+        {elem(changesets, index), Ash.Resource.set_metadata(result, %{atomic_index: index})}
       end)
 
     {records_with_changesets, notifications, errors} =
@@ -1164,8 +1187,10 @@ defmodule Ash.Actions.Update.Bulk do
                         {[], additional_notifications, errors},
                         fn
                           {:ok, record}, {records, additional_notifications, errors} ->
-                            {[{atomic_changeset, record} | records], additional_notifications,
-                             errors}
+                            {[
+                               {elem(changesets, record.__metadata__.atomic_index), record}
+                               | records
+                             ], additional_notifications, errors}
 
                           {:error, error}, {records, additional_notifications, errors} ->
                             {records, additional_notifications, [error | errors]}
@@ -2110,6 +2135,7 @@ defmodule Ash.Actions.Update.Bulk do
 
       notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
       queued_notifications = Process.get(:ash_notifications)
+      bulk_notifications = Process.get({:bulk_notifications, ref}, [])
 
       try do
         Ash.DataLayer.transaction(
@@ -2176,6 +2202,9 @@ defmodule Ash.Actions.Update.Bulk do
 
           {:error, error} ->
             Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
+            # Earlier batches may have committed; discard only this batch's notifications.
+            Process.put({:bulk_notifications, ref}, bulk_notifications)
 
             # Convert batch changesets to error tuples for after_transaction processing
             error_tagged_results =
@@ -3934,14 +3963,7 @@ defmodule Ash.Actions.Update.Bulk do
             changeset
 
           {:error, error} ->
-            error =
-              if validation.message do
-                Ash.Error.override_validation_message(error, validation.message)
-              else
-                error
-              end
-
-            Ash.Changeset.add_error(changeset, error)
+            Ash.Changeset.add_validation_error(changeset, error, validation.message)
         end
       else
         changeset

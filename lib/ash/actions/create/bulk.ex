@@ -903,6 +903,7 @@ defmodule Ash.Actions.Create.Bulk do
       |> set_lazy_non_matching_defaults()
       |> set_lazy_matching_defaults(lazy_matching_default_values)
       |> set_tenant(action)
+      |> filter_upsert_by_tenant()
 
     case opts[:transform_changeset] do
       nil -> changeset
@@ -919,6 +920,14 @@ defmodule Ash.Actions.Create.Bulk do
         Ash.Changeset.set_context(changeset, %{
           shared: %{private: %{multitenancy: :bypass_all}}
         })
+    end
+  end
+
+  defp filter_upsert_by_tenant(changeset) do
+    if changeset.context.private[:upsert?] do
+      Ash.Changeset.filter(changeset, Ash.Actions.Helpers.upsert_tenant_filter(changeset))
+    else
+      changeset
     end
   end
 
@@ -1434,10 +1443,10 @@ defmodule Ash.Actions.Create.Bulk do
                              ]}
 
                           _ ->
-                            []
+                            {:ok, []}
                         end
                       else
-                        []
+                        {:ok, []}
                       end
 
                     {:ok, %{__metadata__: %{upsert_skipped: true}} = record} ->
@@ -1449,7 +1458,7 @@ defmodule Ash.Actions.Create.Bulk do
                            })
                          ]}
                       else
-                        []
+                        {:ok, []}
                       end
 
                     {:ok, result} ->
@@ -1910,94 +1919,12 @@ defmodule Ash.Actions.Create.Bulk do
               )
             else
               Enum.map(batch, fn changeset ->
-                cond do
-                  !module.has_validate?() ->
-                    Ash.Changeset.add_error(
-                      changeset,
-                      Ash.Error.Framework.CanNotBeAtomic.exception(
-                        resource: changeset.resource,
-                        change: module,
-                        reason: "Create actions cannot be made atomic"
-                      )
-                    )
-
-                  invalid =
-                      Enum.find(validation.where, fn {where_mod, _} ->
-                        !where_mod.has_validate?()
-                      end) ->
-                    {invalid_mod, _} = invalid
-
-                    Ash.Changeset.add_error(
-                      changeset,
-                      Ash.Error.Framework.CanNotBeAtomic.exception(
-                        resource: changeset.resource,
-                        change: invalid_mod,
-                        reason: "Create actions cannot be made atomic"
-                      )
-                    )
-
-                  validation.only_when_valid? && !changeset.valid? ->
-                    changeset
-
-                  Enum.all?(validation.where || [], fn {where_mod, where_opts} ->
-                    where_opts =
-                        templated_opts(
-                          where_opts,
-                          actor,
-                          changeset.to_tenant,
-                          changeset.arguments,
-                          changeset.context,
-                          changeset
-                        )
-
-                    {:ok, where_opts} = Ash.Resource.Validation.init(where_mod, where_opts)
-
-                    Ash.Resource.Validation.validate(
-                      where_mod,
-                      changeset,
-                      where_opts,
-                      struct(Ash.Resource.Validation.Context, context)
-                    ) == :ok
-                  end) ->
-                    opts =
-                      templated_opts(
-                        opts,
-                        actor,
-                        changeset.to_tenant,
-                        changeset.arguments,
-                        changeset.context,
-                        changeset
-                      )
-
-                    {:ok, opts} = Ash.Resource.Validation.init(module, opts)
-
-                    case Ash.Resource.Validation.validate(
-                           module,
-                           changeset,
-                           opts,
-                           struct(
-                             Ash.Resource.Validation.Context,
-                             Map.put(context, :message, validation.message)
-                           )
-                         ) do
-                      :ok ->
-                        changeset
-
-                      {:error, error} ->
-                        error = Ash.Error.to_ash_error(error)
-
-                        if validation.message do
-                          error =
-                            Ash.Error.override_validation_message(error, validation.message)
-
-                          Ash.Changeset.add_error(changeset, error)
-                        else
-                          Ash.Changeset.add_error(changeset, error)
-                        end
-                    end
-
-                  true ->
-                    changeset
+                if validation.before_action? do
+                  Ash.Changeset.before_action(changeset, fn changeset ->
+                    validate_changeset(changeset, validation, actor, context)
+                  end)
+                else
+                  validate_changeset(changeset, validation, actor, context)
                 end
               end)
             end
@@ -2233,5 +2160,88 @@ defmodule Ash.Actions.Create.Bulk do
           changeset
       end
     end)
+  end
+
+  defp validate_changeset(changeset, %{validation: {module, opts}} = validation, actor, context) do
+    cond do
+      !module.has_validate?() ->
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Framework.CanNotBeAtomic.exception(
+            resource: changeset.resource,
+            change: module,
+            reason: "Create actions cannot be made atomic"
+          )
+        )
+
+      invalid =
+          Enum.find(validation.where, fn {where_mod, _} ->
+            !where_mod.has_validate?()
+          end) ->
+        {invalid_mod, _} = invalid
+
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Framework.CanNotBeAtomic.exception(
+            resource: changeset.resource,
+            change: invalid_mod,
+            reason: "Create actions cannot be made atomic"
+          )
+        )
+
+      validation.only_when_valid? && !changeset.valid? ->
+        changeset
+
+      Enum.all?(validation.where || [], fn {where_mod, where_opts} ->
+        where_opts =
+            templated_opts(
+              where_opts,
+              actor,
+              changeset.to_tenant,
+              changeset.arguments,
+              changeset.context,
+              changeset
+            )
+
+        {:ok, where_opts} = Ash.Resource.Validation.init(where_mod, where_opts)
+
+        Ash.Resource.Validation.validate(
+          where_mod,
+          changeset,
+          where_opts,
+          struct(Ash.Resource.Validation.Context, context)
+        ) == :ok
+      end) ->
+        opts =
+          templated_opts(
+            opts,
+            actor,
+            changeset.to_tenant,
+            changeset.arguments,
+            changeset.context,
+            changeset
+          )
+
+        {:ok, opts} = Ash.Resource.Validation.init(module, opts)
+
+        case Ash.Resource.Validation.validate(
+               module,
+               changeset,
+               opts,
+               struct(
+                 Ash.Resource.Validation.Context,
+                 Map.put(context, :message, validation.message)
+               )
+             ) do
+          :ok ->
+            changeset
+
+          {:error, error} ->
+            Ash.Changeset.add_validation_error(changeset, error, validation.message)
+        end
+
+      true ->
+        changeset
+    end
   end
 end

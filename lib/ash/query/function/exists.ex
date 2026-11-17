@@ -15,8 +15,10 @@ defmodule Ash.Query.Exists do
     raise "Cannot construct an exists query with an empty path, at #{inspect(%__MODULE__{path: [], expr: expr})}"
   end
 
-  def new(path, %__MODULE__{at_path: [], expr: inner_expr, path: inner_path}, at_path) do
-    %__MODULE__{at_path: at_path, expr: inner_expr, path: path ++ inner_path}
+  # Only a related `exists` can be folded into the outer path. An unrelated `exists` is
+  # scoped to its own resource, so its body must not be moved onto the relationship path.
+  def new(path, %__MODULE__{related?: true, at_path: [], path: inner_path} = inner, at_path) do
+    %{inner | at_path: at_path, path: path ++ inner_path}
   end
 
   def new(path, expr, at_path) do

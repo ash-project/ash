@@ -152,11 +152,25 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule ValidateCodeArgument do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_argument(changeset, :code) do
+        "bad" -> {:error, field: :code, message: "code cannot be bad"}
+        _ -> :ok
+      end
+    end
+  end
+
   defmodule PostWithBulkValidationOrdering do
     @moduledoc false
     use Ash.Resource,
       domain: Domain,
-      data_layer: Ash.DataLayer.Ets
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private?(true)
@@ -170,6 +184,41 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         primary? true
         accept [:title]
       end
+
+      create :with_deferred_validation do
+        accept [:title]
+        argument :refuse?, :boolean, default: false
+
+        change before_transaction(fn changeset, _context ->
+                 if Ash.Changeset.get_argument(changeset, :refuse?) do
+                   Ash.Changeset.add_error(changeset, "transaction guard rejected")
+                 else
+                   Ash.Changeset.force_change_attribute(changeset, :status, "admitted")
+                 end
+               end)
+
+        validate attribute_equals(:status, "admitted"), before_action?: true
+      end
+
+      create :with_deferred_global_validation do
+        accept [:title]
+
+        change before_action(fn changeset, _context ->
+                 Ash.Changeset.force_change_attribute(changeset, :status, "ugly")
+               end)
+      end
+
+      create :with_code_argument do
+        accept [:title]
+        argument :code, :string
+        validate ValidateCodeArgument
+      end
+
+      create :with_code_argument_message do
+        accept [:title]
+        argument :code, :string
+        validate ValidateCodeArgument, message: "code is overridden"
+      end
     end
 
     changes do
@@ -179,6 +228,12 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     validations do
       validate ValidateStatusPresenceAndNotBad
       validate ValidateStatusNotUgly, before_action?: true
+    end
+
+    policies do
+      policy always() do
+        authorize_if actor_attribute_equals(:allowed?, true)
+      end
     end
 
     attributes do
@@ -2701,7 +2756,14 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  authorize?: false
                )
 
-      assert Exception.message(error) =~ "status cannot be bad"
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: :status,
+                   message: "status cannot be bad"
+                 }
+               ]
+             } = error
     end
 
     test "before_action? global validation rejects with correct error" do
@@ -2714,7 +2776,122 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  authorize?: false
                )
 
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: :status,
+                   message: "status cannot be ugly"
+                 }
+               ]
+             } = error
+    end
+
+    test "keyword errors on arguments become InvalidArgument, matching Ash.create" do
+      assert %Ash.BulkResult{status: :error, errors: [bulk_error]} =
+               Ash.bulk_create(
+                 [%{title: "good", code: "bad"}],
+                 PostWithBulkValidationOrdering,
+                 :with_code_argument,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert {:error, single_error} =
+               PostWithBulkValidationOrdering
+               |> Ash.Changeset.for_create(:with_code_argument, %{title: "good", code: "bad"},
+                 authorize?: false
+               )
+               |> Ash.create()
+
+      for error <- [bulk_error, single_error] do
+        assert %Ash.Error.Invalid{
+                 errors: [
+                   %Ash.Error.Changes.InvalidArgument{field: :code, message: "code cannot be bad"}
+                 ]
+               } = error
+      end
+    end
+
+    test "validation message overrides keyword errors, matching Ash.create" do
+      assert %Ash.BulkResult{status: :error, errors: [bulk_error]} =
+               Ash.bulk_create(
+                 [%{title: "good", code: "bad"}],
+                 PostWithBulkValidationOrdering,
+                 :with_code_argument_message,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert {:error, single_error} =
+               PostWithBulkValidationOrdering
+               |> Ash.Changeset.for_create(
+                 :with_code_argument_message,
+                 %{title: "good", code: "bad"},
+                 authorize?: false
+               )
+               |> Ash.create()
+
+      for error <- [bulk_error, single_error] do
+        assert %Ash.Error.Invalid{
+                 errors: [
+                   %Ash.Error.Changes.InvalidArgument{field: :code, message: "code is overridden"}
+                 ]
+               } = error
+      end
+    end
+
+    test "deferred action validation sees before_transaction changes" do
+      assert %Ash.BulkResult{status: :success, records: [%{status: "admitted"}]} =
+               Ash.bulk_create(
+                 [%{title: "good"}],
+                 PostWithBulkValidationOrdering,
+                 :with_deferred_validation,
+                 actor: %{allowed?: true},
+                 authorize?: true,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "deferred global validation sees before_action changes" do
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_create(
+                 [%{title: "good"}],
+                 PostWithBulkValidationOrdering,
+                 :with_deferred_global_validation,
+                 actor: %{allowed?: true},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
       assert Exception.message(error) =~ "status cannot be ugly"
+    end
+
+    test "policy denial precedes deferred validation errors" do
+      assert %Ash.BulkResult{status: :error, errors: [%Ash.Error.Forbidden{}]} =
+               Ash.bulk_create(
+                 [%{title: "good"}],
+                 PostWithBulkValidationOrdering,
+                 :with_deferred_validation,
+                 actor: %{allowed?: false},
+                 authorize?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "before_transaction rejection precedes deferred validation errors" do
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_create(
+                 [%{title: "good", refuse?: true}],
+                 PostWithBulkValidationOrdering,
+                 :with_deferred_validation,
+                 actor: %{allowed?: true},
+                 authorize?: true,
+                 return_errors?: true
+               )
+
+      assert Exception.message(error) =~ "transaction guard rejected"
+      refute Exception.message(error) =~ "must equal"
     end
   end
 

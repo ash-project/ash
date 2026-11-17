@@ -450,10 +450,10 @@ defmodule Ash.Actions.Destroy.Bulk do
 
                       {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
 
-                      # Clean up process dictionary
-                      Process.delete({:any_success?, ref})
-
                       %{result | errors: errors, error_count: error_count}
+                  after
+                    Process.delete({:any_success?, ref})
+                    Process.delete({:bulk_notifications, ref})
                   end
               end
               |> handle_atomic_notifications(atomic_changeset.resource, action, notify?, opts)
@@ -1255,7 +1255,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
           try do
             batch
-            |> Stream.map(
+            |> Enum.map(
               &setup_changeset(
                 &1,
                 action,

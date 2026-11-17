@@ -350,6 +350,10 @@ defmodule Ash.Actions.Read.Relationships do
       })
       |> Ash.Query.set_tenant(query.tenant || related_query.tenant)
       |> Ash.Query.set_context(Map.take(query.context, [:shared]))
+      # set before `for_read`, so that the destination's preparations can see it
+      |> Ash.Query.set_context(%{
+        accessing_from: %{source: relationship.source, name: relationship.name}
+      })
       |> Ash.Actions.Read.for_read(read_action, nil, arguments,
         domain: domain,
         authorize?: query.context[:private][:authorize?],
@@ -384,7 +388,7 @@ defmodule Ash.Actions.Read.Relationships do
         # `parent/1` in this filter refers to the record the destination is reached from, not
         # the source record, so such a filter gets a step of its own in the lateral join.
         if last_through_relationship &&
-             !do_has_parent_expr?(last_through_relationship.filter) do
+             !Ash.Filter.has_parent_expr?(last_through_relationship.filter) do
           Ash.Query.do_filter(
             related_query,
             RelatedAuthorization.trusted_filter(
@@ -616,7 +620,7 @@ defmodule Ash.Actions.Read.Relationships do
   defp through_destination_steps(relationship, source_query, related_query) do
     last = last_through_relationship(relationship)
 
-    if do_has_parent_expr?(last.filter) || relationship_limit(last) ||
+    if Ash.Filter.has_parent_expr?(last.filter) || relationship_limit(last) ||
          Map.get(last, :offset) do
       case Ash.Resource.Info.primary_key(last.destination) do
         [primary_key] ->
@@ -1209,7 +1213,8 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
-  defp resolve_parent_in_filter(filter, parent_record, source_resource) do
+  @doc false
+  def resolve_parent_in_filter(filter, parent_record, source_resource) do
     {:ok,
      Ash.Filter.map(filter, fn
        %Ash.Query.Parent{expr: expr} ->
@@ -1236,6 +1241,99 @@ defmodule Ash.Actions.Read.Relationships do
       {:error,
        "could not resolve a `parent/1` expression in a relationship filter; the referenced " <>
          "parent field(s) must be selected on the source query"}
+  end
+
+  @doc false
+  # Cascades query a relationship for many source records at once, with no parent
+  # binding. This resolves the `parent()` references once for each record, and records
+  # with equal resolved filters share one clause. It returns an error when one query for
+  # all the source records cannot select the same rows as a query for each of them.
+  def filter_by_parents(query, relationship, records) do
+    with :ok <- check_one_query_for_all_parents(query, relationship, records),
+         {:ok, groups} <- group_by_resolved_filter(query.filter, relationship, records) do
+      filter =
+        Enum.reduce(groups, false, fn {resolved, group}, acc ->
+          expr(^acc or ^group_filter(relationship, resolved, group))
+        end)
+
+      # `related_query/4` makes a parent-filtered query a lateral join of its source. With
+      # the parents resolved, the query does not need that, and SQL data layers cannot use
+      # a lateral join query for a bulk update or destroy.
+      query =
+        %{query | filter: nil}
+        |> Ash.Query.do_filter(filter)
+        |> Ash.Query.set_context(%{data_layer: %{lateral_join_source: nil}})
+
+      {:ok, query}
+    end
+  end
+
+  # Only the lateral join applies a through path or a manual relationship. A limit, an
+  # offset and a distinct apply to each source record, so they need it too when there is
+  # more than one.
+  defp check_one_query_for_all_parents(query, relationship, records) do
+    cond do
+      is_list(Map.get(relationship, :through)) ->
+        cannot_filter_by_parents("the relationship has a through path")
+
+      Map.get(relationship, :manual) ->
+        cannot_filter_by_parents("the relationship is manual")
+
+      sort_has_parent_expr?(query) ->
+        cannot_filter_by_parents("the relationship sort references `parent/1`")
+
+      match?([_, _ | _], records) and
+          (not is_nil(query.limit) or query.offset not in [nil, 0] or
+             query.distinct not in [nil, []]) ->
+        cannot_filter_by_parents(
+          "the relationship has a limit, offset or distinct, and there is more than one source record"
+        )
+
+      true ->
+        :ok
+    end
+  end
+
+  defp cannot_filter_by_parents(reason) do
+    {:error,
+     Ash.Error.to_ash_error(
+       "could not resolve the `parent/1` expressions of a relationship without a parent binding: " <>
+         reason
+     )}
+  end
+
+  defp group_by_resolved_filter(filter, relationship, records) do
+    Enum.reduce_while(records, {:ok, %{}}, fn record, {:ok, groups} ->
+      with {:ok, resolved} <- resolve_parent_in_filter(filter, record, relationship.source),
+           false <- Ash.Filter.has_parent_expr?(resolved) do
+        {:cont, {:ok, Map.update(groups, resolved, [record], &[record | &1])}}
+      else
+        true ->
+          {:halt,
+           {:error,
+            Ash.Error.to_ash_error(
+              "could not resolve a nested `parent/1` expression in a relationship filter"
+            )}}
+
+        {:error, error} ->
+          {:halt, {:error, Ash.Error.to_ash_error(error)}}
+      end
+    end)
+  end
+
+  defp group_filter(%{no_attributes?: true}, resolved, _records), do: resolved.expression
+
+  defp group_filter(relationship, resolved, records) do
+    values = Enum.map(records, &Map.get(&1, relationship.source_attribute))
+
+    expr(^ref(relationship.destination_attribute) in ^values and ^resolved.expression)
+  end
+
+  defp sort_has_parent_expr?(%Ash.Query{resource: resource, sort: sort, context: context}) do
+    case Ash.Actions.Sort.process(resource, sort, %{}, context) do
+      {:ok, sort} -> has_parent_expr_in_sort?(sort)
+      _ -> false
+    end
   end
 
   defp regroup_manual_results(records, %{cardinality: :many}, count) do
@@ -2126,7 +2224,7 @@ defmodule Ash.Actions.Read.Relationships do
       %{type: :many_to_many} ->
         # `parent/1` in a many_to_many's filter refers to its source record, which is two
         # steps back once the join resource is a step of its own.
-        if do_has_parent_expr?(relationship.filter) do
+        if Ash.Filter.has_parent_expr?(relationship.filter) do
           raise ArgumentError,
                 "The filter of many_to_many relationship `#{relationship.name}` on " <>
                   "#{inspect(resource)} uses `parent/1`, so it can't be a step in a through path."
@@ -2180,7 +2278,7 @@ defmodule Ash.Actions.Read.Relationships do
       end
 
     has_parent_expr_in_sort?(sort) ||
-      do_has_parent_expr?(filter)
+      Ash.Filter.has_parent_expr?(filter)
   end
 
   @doc false
@@ -2195,13 +2293,14 @@ defmodule Ash.Actions.Read.Relationships do
         context,
         domain
       ) do
-    case Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
-      {:ok, sort} ->
-        sort
+    sort =
+      case Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
+        {:ok, sort} ->
+          sort
 
-      _ ->
-        nil
-    end
+        _ ->
+          nil
+      end
 
     parent_stack = [source | Ash.Actions.Read.parent_stack_from_context(context)]
 
@@ -2223,7 +2322,7 @@ defmodule Ash.Actions.Read.Relationships do
         parent_stack: parent_stack,
         source_context: context
       )
-      |> do_has_parent_expr?()
+      |> Ash.Filter.has_parent_expr?()
   end
 
   defp has_parent_expr_in_sort?(sort) do
@@ -2244,7 +2343,7 @@ defmodule Ash.Actions.Read.Relationships do
             calculation.context
           )
 
-        do_has_parent_expr?(expression)
+        Ash.Filter.has_parent_expr?(expression)
 
       {%Ash.Query.Calculation{} = calculation, _} ->
         expression =
@@ -2254,53 +2353,8 @@ defmodule Ash.Actions.Read.Relationships do
             calculation.context
           )
 
-        do_has_parent_expr?(expression)
+        Ash.Filter.has_parent_expr?(expression)
     end)
-  end
-
-  @doc false
-  def do_has_parent_expr?(filter, depth \\ 0) do
-    not is_nil(
-      Ash.Filter.find(
-        filter,
-        fn
-          %Ash.Query.Call{name: :parent, args: [expr]} ->
-            if depth == 0 do
-              true
-            else
-              do_has_parent_expr?(expr, depth - 1)
-            end
-
-          %Ash.Query.Exists{expr: expr} ->
-            do_has_parent_expr?(expr, depth + 1)
-
-          %Ash.Query.Parent{expr: expr} ->
-            if depth == 0 do
-              true
-            else
-              do_has_parent_expr?(expr, depth - 1)
-            end
-
-          %Ash.Query.Ref{
-            attribute: %Ash.Query.Aggregate{
-              field: %Ash.Query.Calculation{module: module, opts: opts, context: context}
-            }
-          } ->
-            if Ash.Resource.Calculation.has_expression?(module) do
-              Ash.Resource.Calculation.expression(module, opts, context)
-              |> do_has_parent_expr?(depth + 1)
-            else
-              false
-            end
-
-          _other ->
-            false
-        end,
-        true,
-        true,
-        true
-      )
-    )
   end
 
   defp apply_relationship_offset(query, relationship) do

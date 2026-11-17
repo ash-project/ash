@@ -1055,6 +1055,7 @@ defmodule Ash.Type do
     def ecto_type(unquote(name)), do: ecto_type(unquote(mod))
   end
 
+  # sobelow_skip ["DOS.ModuleConcat"]
   def ecto_type(type) do
     if Ash.Resource.Info.resource?(type) do
       Module.concat(type, EctoType)
@@ -1827,6 +1828,10 @@ defmodule Ash.Type do
   This is used for types that can be "loaded through". For example, maps, unions and structs.
   If they have keys that are embedded types, for example, we want to be able to apply a load
   statements to their contents.
+
+  `nil`, `%Ash.ForbiddenField{}` and `%Ash.NotLoaded{}` values are returned as they are,
+  whether passed alone or inside the list of values. Only the remaining values reach the
+  type's `c:load/4`.
   """
   @spec load(
           type :: Ash.Type.t(),
@@ -1839,6 +1844,7 @@ defmodule Ash.Type do
   def load(_, [], _, _, _), do: {:ok, []}
   def load(_, nil, _, _, _), do: {:ok, nil}
   def load(_, %Ash.ForbiddenField{} = value, _, _, _), do: {:ok, value}
+  def load(_, %Ash.NotLoaded{} = value, _, _, _), do: {:ok, value}
 
   def load({:array, type}, values, loads, constraints, context) do
     load(type, values, loads, item_constraints(constraints), context)
@@ -1853,14 +1859,57 @@ defmodule Ash.Type do
       ) do
     type = get_type(type)
 
-    splice_with_type(type, values, fn values ->
-      if can_load?(type, constraints) do
-        type.load(values, loads, constraints, context)
-      else
-        {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
-      end
+    splice_unloadable_values(values, fn values ->
+      splice_with_type(type, values, fn values ->
+        if can_load?(type, constraints) do
+          type.load(values, loads, constraints, context)
+        else
+          {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
+        end
+      end)
     end)
   end
+
+  # Sets aside `%Ash.ForbiddenField{}` and `%Ash.NotLoaded{}` values, which have
+  # nothing to load through, and puts them back in their original positions.
+  # This happens here rather than in `c:splice_nil_values/2` so that types
+  # overriding that callback don't each have to repeat it.
+  defp splice_unloadable_values(values, callback) when is_list(values) do
+    {loadable, set_aside} =
+      values
+      |> Enum.with_index()
+      |> Enum.reduce({[], []}, fn {value, index}, {loadable, set_aside} ->
+        if unloadable_value?(value) do
+          {loadable, [{index, value} | set_aside]}
+        else
+          {[value | loadable], set_aside}
+        end
+      end)
+
+    case {loadable, set_aside} do
+      {_, []} ->
+        callback.(values)
+
+      {[], _} ->
+        {:ok, values}
+
+      {loadable, set_aside} ->
+        with {:ok, loaded} <- callback.(Enum.reverse(loadable)) do
+          {:ok,
+           set_aside
+           |> Enum.reverse()
+           |> Enum.reduce(loaded, fn {index, value}, loaded ->
+             List.insert_at(loaded, index, value)
+           end)}
+        end
+    end
+  end
+
+  defp splice_unloadable_values(value, callback), do: callback.(value)
+
+  defp unloadable_value?(%Ash.ForbiddenField{}), do: true
+  defp unloadable_value?(%Ash.NotLoaded{}), do: true
+  defp unloadable_value?(_), do: false
 
   defp splice_with_type(type, values, callback) do
     # `function_exported?/3` does not load the module; without ensuring the

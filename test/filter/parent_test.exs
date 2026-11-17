@@ -6,6 +6,7 @@ defmodule Ash.Test.Filter.ParentTest do
   use ExUnit.Case, async: false
 
   require Ash.Query
+  import Ash.Expr, only: [expr: 1]
   alias Ash.Test.Domain, as: Domain
 
   defmodule User do
@@ -195,6 +196,27 @@ defmodule Ash.Test.Filter.ParentTest do
         public? true
         attribute_writable? true
       end
+    end
+  end
+
+  describe "Ash.Filter.has_parent_expr?/1" do
+    test "finds `parent/1` in the expression's own scope" do
+      assert Ash.Filter.has_parent_expr?(expr(title == parent(name)))
+    end
+
+    test "ignores `parent/1` that refers to the scope of an `exists`" do
+      refute Ash.Filter.has_parent_expr?(expr(exists(posts, title == parent(name))))
+    end
+
+    test "finds `parent/1` that escapes an `exists`" do
+      assert Ash.Filter.has_parent_expr?(expr(exists(posts, title == parent(parent(name)))))
+    end
+
+    test "ignores `parent/1` that refers to the scope of a referenced aggregate" do
+      query =
+        Ash.Query.filter(User, count(posts, query: [filter: expr(title == parent(name))]) > 0)
+
+      refute Ash.Filter.has_parent_expr?(query.filter)
     end
   end
 

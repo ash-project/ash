@@ -1965,6 +1965,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateThroughRelationships,
     Ash.Resource.Verifiers.NoReservedFieldNames,
     Ash.Resource.Verifiers.ValidateAccept,
+    Ash.Resource.Verifiers.ValidateAttributeArgumentValidations,
     Ash.Resource.Verifiers.ValidateActionTypesSupported,
     Ash.Resource.Verifiers.ValidateAggregatesSupported,
     Ash.Resource.Verifiers.ValidateEagerIdentities,

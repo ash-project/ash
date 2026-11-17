@@ -100,6 +100,7 @@ defmodule Ash.DataLayer.Ets do
       end
     end
 
+    # sobelow_skip ["DOS.ModuleConcat"]
     defp start_table(resource, table, true) do
       if Ash.DataLayer.Ets.Info.private?(resource) do
         do_wrap_existing(resource, table)
@@ -368,7 +369,7 @@ defmodule Ash.DataLayer.Ets do
   # collected, so we only intern a new table name when we are actually going to create
   # the table. Otherwise we look the atom up, and treat a name that was never interned
   # the same as a table that doesn't exist.
-  # sobelow_skip ["DOS.StringToAtom"]
+  # sobelow_skip ["DOS.StringToAtom", "DOS.ModuleConcat"]
   def table_name(resource, tenant, create?) do
     table = Ash.DataLayer.Ets.Info.table(resource)
 
@@ -394,6 +395,7 @@ defmodule Ash.DataLayer.Ets do
   processes holding any of its locks have ended, and writes asking for it meanwhile wait until
   it is gone.
   """
+  # sobelow_skip ["DOS.ModuleConcat"]
   def stop(resource, tenant \\ nil) do
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
@@ -1419,51 +1421,77 @@ defmodule Ash.DataLayer.Ets do
 
   def do_add_calculations(records, _resource, [], _domain), do: {:ok, records}
 
+  def do_add_calculations([], _resource, _calculations, _domain), do: {:ok, []}
+
+  # Everything the calculations refer to is loaded up front, for all records at once, and the
+  # calculations are then evaluated against the loaded records without loading anything lazily.
+  # Calculations that the expressions refer to are loaded under names scoped to the evaluation
+  # (see `Ash.Filter.Runtime.runtime_calculation_name/1`), so that each reference gets the value
+  # for its own arguments. The loaded records are only used to evaluate the expressions: the
+  # values are put on the records as they were given.
   def do_add_calculations(records, resource, calculations, domain) do
-    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
+    with {:ok, calculations} <- hydrate_calculation_expressions(calculations, resource) do
+      calculations
+      |> Enum.group_by(fn {calculation, _expression} ->
+        {calculation.context.actor, calculation.context.tenant}
+      end)
+      |> Enum.reduce_while({:ok, records}, fn {{actor, tenant}, calculations}, {:ok, records} ->
+        expressions = Enum.map(calculations, &elem(&1, 1))
+
+        with {:ok, loaded_records} <-
+               Ash.Filter.Runtime.load_for_expressions(
+                 records,
+                 expressions,
+                 resource,
+                 domain,
+                 actor,
+                 tenant
+               ),
+             {:ok, records} <-
+               add_calculation_values(records, loaded_records, resource, calculations) do
+          {:cont, {:ok, records}}
+        else
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+    end
+  end
+
+  defp hydrate_calculation_expressions(calculations, resource) do
+    calculations
+    |> Enum.reduce_while({:ok, []}, fn {calculation, expression}, {:ok, calculations} ->
+      case Ash.Filter.hydrate_refs(expression, %{resource: resource, public?: false}) do
+        {:ok, expression} ->
+          {:cont, {:ok, [{calculation, expression} | calculations]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, calculations} -> {:ok, Enum.reverse(calculations)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp add_calculation_values(records, loaded_records, resource, calculations) do
+    records
+    |> Enum.zip(loaded_records)
+    |> Enum.reduce_while({:ok, []}, fn {record, loaded_record}, {:ok, records} ->
       calculations
       |> Enum.reduce_while({:ok, record}, fn {calculation, expression}, {:ok, record} ->
-        case Ash.Filter.hydrate_refs(expression, %{
+        case Ash.Expr.eval_hydrated(expression,
+               record: loaded_record,
                resource: resource,
-               public?: false
-             }) do
-          {:ok, expression} ->
-            case Ash.Expr.eval_hydrated(expression,
-                   record: record,
-                   resource: resource,
-                   domain: domain,
-                   actor: calculation.context.actor,
-                   tenant: calculation.context.tenant
-                 ) do
-              {:ok, value} ->
-                if calculation.load do
-                  {:cont, {:ok, Map.put(record, calculation.load, value)}}
-                else
-                  {:cont,
-                   {:ok,
-                    Map.update!(
-                      record,
-                      :calculations,
-                      &Map.put(&1, calculation.name, value)
-                    )}}
-                end
+               actor: calculation.context.actor,
+               tenant: calculation.context.tenant
+             ) do
+          {:ok, value} ->
+            {:cont, {:ok, put_calculation_value(record, calculation, value)}}
 
-              :unknown ->
-                if calculation.load do
-                  {:cont, {:ok, Map.put(record, calculation.load, nil)}}
-                else
-                  {:cont,
-                   {:ok,
-                    Map.update!(
-                      record,
-                      :calculations,
-                      &Map.put(&1, calculation.name, nil)
-                    )}}
-                end
-
-              {:error, error} ->
-                {:halt, {:error, error}}
-            end
+          :unknown ->
+            {:cont, {:ok, put_calculation_value(record, calculation, nil)}}
 
           {:error, error} ->
             {:halt, {:error, error}}
@@ -1484,6 +1512,14 @@ defmodule Ash.DataLayer.Ets do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp put_calculation_value(record, %{load: load}, value) when not is_nil(load) do
+    Map.put(record, load, value)
+  end
+
+  defp put_calculation_value(record, calculation, value) do
+    Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))
   end
 
   @doc false
@@ -2271,7 +2307,7 @@ defmodule Ash.DataLayer.Ets do
             |> set_upsert_action(:update)
           else
             {:ok, []} ->
-              {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+              skipped_upsert(resource, changeset, result)
 
             {:error, reason} ->
               {:error, reason}
@@ -2280,6 +2316,29 @@ defmodule Ash.DataLayer.Ets do
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
       end
+    end
+  end
+
+  @doc false
+  # The record an upsert skipped is only returned from the changeset's tenant: an upsert on the
+  # primary key or an `all_tenants?` identity can conflict with a record in another tenant
+  def skipped_upsert(resource, changeset, result) do
+    tenant_filter =
+      case Ash.Actions.Helpers.upsert_tenant_filter(changeset) do
+        nil -> nil
+        tenant_filter -> Ash.Filter.parse!(resource, tenant_filter)
+      end
+
+    case filter_matches([result], tenant_filter, changeset.domain, changeset.tenant, nil) do
+      {:ok, [result]} ->
+        {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+
+      {:ok, []} ->
+        {:error,
+         Ash.Error.Changes.StaleRecord.exception(resource: resource, filter: changeset.filter)}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

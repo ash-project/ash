@@ -260,7 +260,8 @@ defmodule Ash.Temporal do
   """
   @spec write_instant(Ash.Resource.t(), as_of()) :: {:ok, DateTime.t()} | :error
   def write_instant(resource, as_of) do
-    with inner_type when not is_nil(inner_type) <- Ash.Resource.Info.temporal_inner_type(resource),
+    with inner_type when not is_nil(inner_type) <-
+           Ash.Resource.Info.temporal_inner_type(resource),
          {:ok, raw} <- raw_instant(as_of),
          {:ok, instant} <-
            Ash.Type.cast_input(

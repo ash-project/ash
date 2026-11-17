@@ -88,6 +88,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
+               %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false}
              ] =
                Ash.Policy.Info.field_policies(User)
@@ -110,6 +111,99 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(id == ^post.id)
                |> Ash.read_one!(authorize?: true, actor: admin)
                |> Map.get(:admin_notes)
+    end
+  end
+
+  describe "loading a record whose embedded field is forbidden (#3109)" do
+    defmodule ShopSettings do
+      @moduledoc false
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :theme, :string, public?: true
+      end
+    end
+
+    defmodule Shop do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.Domain,
+        data_layer: Ash.DataLayer.Ets,
+        authorizers: [Ash.Policy.Authorizer]
+
+      ets do
+        private? true
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+        attribute :settings, ShopSettings, public?: true
+      end
+
+      actions do
+        defaults [:read, :destroy, create: [:name, :settings], update: [:name]]
+      end
+
+      policies do
+        policy always() do
+          authorize_if always()
+        end
+      end
+
+      field_policies do
+        field_policy :settings do
+          authorize_if actor_present()
+        end
+
+        field_policy :* do
+          authorize_if always()
+        end
+      end
+    end
+
+    # Read without an actor, `settings` is %Ash.ForbiddenField{}. Loading the record again
+    # must leave it alone the way it leaves `nil` alone.
+    setup do
+      shop =
+        Shop
+        |> Ash.Changeset.for_create(:create, %{name: "shop", settings: %{theme: "dark"}})
+        |> Ash.create!(authorize?: false)
+
+      shop = Ash.get!(Shop, shop.id, authorize?: true)
+      assert %Ash.ForbiddenField{field: :settings} = shop.settings
+
+      [shop: shop]
+    end
+
+    test "an update that changes nothing", %{shop: shop} do
+      assert {:ok, %{settings: %Ash.ForbiddenField{field: :settings}}} =
+               shop
+               |> Ash.Changeset.for_update(:update, %{})
+               |> Ash.update(authorize?: true)
+    end
+
+    test "a streamed bulk update", %{shop: shop} do
+      assert %Ash.BulkResult{
+               status: :success,
+               records: [%{settings: %Ash.ForbiddenField{field: :settings}}]
+             } =
+               Ash.bulk_update([shop], :update, %{},
+                 authorize?: true,
+                 strategy: :stream,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "a destroy returning the record", %{shop: shop} do
+      assert {:ok, %{settings: %Ash.ForbiddenField{field: :settings}}} =
+               Ash.destroy(shop, return_destroyed?: true, authorize?: true)
+    end
+
+    test "loading onto the record", %{shop: shop} do
+      assert {:ok, %{settings: %Ash.ForbiddenField{field: :settings}}} =
+               Ash.load(shop, [:name], reuse_values?: true, authorize?: true)
     end
   end
 
@@ -448,6 +542,83 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.read!(authorize?: true)
 
       assert id == ticket.id
+    end
+
+    test "filter input on a related field checks its field policies as a read through the relationship",
+         %{representative: representative, user: user} do
+      read = fn filter, actor ->
+        Ticket
+        |> Ash.Query.filter_input(filter)
+        |> Ash.read!(actor: actor)
+      end
+
+      assert [_, _] = read.(%{reporter: %{ticket_count: 1}}, representative)
+      assert [_, _] = read.(Ash.Query.Exists.new([:reporter], %{ticket_count: 1}), representative)
+
+      # the field policy doesn't name these, or fails for this actor
+      assert [] = read.(%{representative: %{ticket_count: 0}}, representative)
+      assert [] = read.(%{reporter: %{ticket_count: 1}}, user)
+
+      assert [] =
+               User
+               |> Ash.Query.filter_input(ticket_count: 0)
+               |> Ash.read!(actor: representative)
+
+      # both orders, to catch a cache key without accessing_from
+      assert [_, _] =
+               read.(
+                 %{or: [%{representative: %{ticket_count: 0}}, %{reporter: %{ticket_count: 1}}]},
+                 representative
+               )
+
+      assert [] =
+               read.(
+                 %{and: [%{reporter: %{ticket_count: 1}}, %{representative: %{ticket_count: 0}}]},
+                 representative
+               )
+    end
+
+    test "filter input in `parent/1` checks field policies against the outer frame",
+         %{representative: representative} do
+      assert [_, _] =
+               Ticket
+               |> Ash.Query.filter_input(
+                 Ash.Query.Exists.new(
+                   [:representative],
+                   Ash.Expr.expr(parent(reporter.ticket_count) == 1)
+                 )
+               )
+               |> Ash.read!(actor: representative)
+
+      assert [] =
+               User
+               |> Ash.Query.filter_input(
+                 Ash.Query.Exists.new([:tickets], Ash.Expr.expr(parent(ticket_count) == 1))
+               )
+               |> Ash.read!(actor: representative)
+    end
+
+    test "filter input through a relationship to the same resource checks field policies as a read through it",
+         %{representative: representative, user: user} do
+      %{id: managed_id} =
+        Ash.create!(User, %{role: :user, manager_id: user.id}, authorize?: false)
+
+      Ash.create!(Ticket, %{representative_id: representative.id, reporter_id: managed_id})
+
+      read = fn filter ->
+        User
+        |> Ash.Query.filter_input(filter)
+        |> Ash.read!(actor: representative)
+      end
+
+      assert [%{id: ^managed_id}] = read.(%{manager: %{ticket_count: 1}})
+      assert [] = read.(%{ticket_count: 1})
+
+      # both orders, to catch a cache key without accessing_from
+      assert [%{id: ^managed_id}] =
+               read.(%{or: [%{ticket_count: 1}, %{manager: %{ticket_count: 1}}]})
+
+      assert [] = read.(%{and: [%{manager: %{ticket_count: 1}}, %{ticket_count: 1}]})
     end
   end
 
