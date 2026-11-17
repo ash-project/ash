@@ -179,7 +179,7 @@ defmodule Resource.RequireValidArgumentsInCodeInterfaceTest do
         end
       end)
 
-    refute String.contains?(output, "Cannot accept")
+    refute String.contains?(output, "calculation or fields on the resource")
   end
 
   test "define_calculation fails if a domain calculation interface arg is invalid" do
