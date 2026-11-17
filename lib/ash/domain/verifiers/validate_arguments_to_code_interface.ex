@@ -5,7 +5,8 @@
 defmodule Ash.Domain.Verifiers.ValidateArgumentsToCodeInterface do
   @moduledoc """
   Validate the arguments defined in the code interface
-  and reject arguments that are not action attributes/arguments
+  and reject arguments that are not action attributes/arguments,
+  or, for calculation interfaces, not calculation arguments or resource fields
   """
   use Spark.Dsl.Verifier
 
