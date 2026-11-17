@@ -597,10 +597,11 @@ defmodule Ash.DataLayer.Ets do
     |> Enum.uniq_by(fn {table, tenant, _} -> {table, tenant} end)
   end
 
+  # The tenant a write names its table by is the one Ash.ToTenant converts it to.
   defp lock(resource, reason) do
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
-        reason[:tenant]
+        Ash.ToTenant.to_tenant(reason[:tenant], resource)
       end
 
     {Ash.DataLayer.Ets.Info.table(resource), tenant, resource}

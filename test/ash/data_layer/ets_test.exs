@@ -880,6 +880,51 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsTransactionTenant do
+    defstruct [:id]
+
+    defimpl Ash.ToTenant do
+      def to_tenant(%{id: id}, _resource), do: "org_#{id}"
+    end
+  end
+
+  defmodule EtsTransactionPrintableTenant do
+    defstruct [:id]
+
+    defimpl Ash.ToTenant do
+      def to_tenant(%{id: id}, _resource), do: "org_#{id}"
+    end
+
+    defimpl String.Chars do
+      def to_string(%{id: id}), do: "printed_#{id}"
+    end
+  end
+
+  defmodule EtsTransactionTenantAccount do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :tenant_accounts
+    end
+
+    multitenancy do
+      strategy :context
+    end
+
+    actions do
+      defaults [:read, create: [:email]]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :email, :string, public?: true
+    end
+
+    identities do
+      identity :unique_email, [:email], pre_check_with: Domain
+    end
+  end
+
   describe "transactions on a shared table" do
     setup do
       on_exit(fn ->
@@ -894,6 +939,8 @@ defmodule Ash.DataLayer.EtsTest do
             ] do
           Ash.DataLayer.Ets.stop(resource)
         end
+
+        Ash.DataLayer.Ets.stop(EtsTransactionTenantAccount, "org_1")
       end)
     end
 
@@ -1140,6 +1187,49 @@ defmodule Ash.DataLayer.EtsTest do
         end
 
       assert Enum.all?(List.flatten(results), &match?({:ok, _}, &1))
+    end
+
+    test "a tenant that Ash.ToTenant converts transacts" do
+      assert {:ok, _} =
+               Ash.create(EtsTransactionTenantAccount, %{email: "a@example.com"},
+                 tenant: %EtsTransactionTenant{id: 1}
+               )
+
+      assert [_] = Ash.read!(EtsTransactionTenantAccount, tenant: "org_1")
+    end
+
+    test "callers naming one tenant differently lock the table they write" do
+      parent = self()
+
+      first =
+        Task.async(fn ->
+          EtsTransactionTenantAccount
+          |> Ash.Changeset.for_create(:create, %{email: "same@example.com"},
+            tenant: %EtsTransactionPrintableTenant{id: 1}
+          )
+          |> Ash.Changeset.before_action(fn changeset ->
+            send(parent, :pre_checked)
+
+            receive do
+              :insert -> changeset
+            end
+          end)
+          |> Ash.create()
+        end)
+
+      assert_receive :pre_checked
+
+      second =
+        Task.async(fn ->
+          Ash.create(EtsTransactionTenantAccount, %{email: "same@example.com"}, tenant: "org_1")
+        end)
+
+      refute Task.yield(second, 300)
+
+      send(first.pid, :insert)
+      assert {:ok, _} = Task.await(first)
+      assert {:error, %Ash.Error.Invalid{}} = Task.await(second)
+      assert [_] = Ash.read!(EtsTransactionTenantAccount, tenant: "org_1")
     end
   end
 
