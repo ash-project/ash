@@ -431,15 +431,10 @@ defmodule Ash.DataLayer.Ets do
           if past?(deadline) do
             :timeout
           else
-            {:ash_ets_store, group}
-            |> Process.get(%{})
-            |> Enum.group_by(fn {{tid, _key}, _op} -> tid end, fn {{_tid, key}, op} ->
-              {key, op}
-            end)
-            |> Enum.each(fn {tid, ops} ->
+            for {tid, ops} <- Process.get({:ash_ets_store, group}, %{}) do
               for {key, :delete} <- ops, do: :ets.delete(tid, key)
               :ets.insert(tid, for({_key, {:write, object}} <- ops, do: object))
-            end)
+            end
 
             {:res, result}
           end
@@ -627,17 +622,22 @@ defmodule Ash.DataLayer.Ets do
 
   defp touched_resources(_), do: []
 
-  # The store of the open transaction holding a table, whose writes wait there until it
-  # commits. A table no open transaction holds is read and written directly.
+  # The writes of the open transaction holding a table, waiting in its store until it commits,
+  # which keeps them by table. A table no open transaction holds is read and written directly.
   defp store_of(table) do
     with group when not is_nil(group) <- Process.get({:ash_ets_held, table.table}),
-         do: {group, Process.get({:ash_ets_store, group}, %{})}
+         do: {group, Map.get(Process.get({:ash_ets_store, group}, %{}), table.table, %{})}
+  end
+
+  defp write_to_store(table, group, ops) do
+    store = Process.get({:ash_ets_store, group}, %{})
+    Process.put({:ash_ets_store, group}, Map.update(store, table.table, ops, &Map.merge(&1, ops)))
   end
 
   # A transaction reads what it wrote over what the table holds, as Mnesia's add_written.
   defp get_object(table, key) do
-    with {_group, store} <- store_of(table),
-         {:ok, op} <- Map.fetch(store, {table.table, key}) do
+    with {_group, ops} <- store_of(table),
+         {:ok, op} <- Map.fetch(ops, key) do
       case op do
         {:write, object} -> {:ok, object}
         :delete -> {:ok, nil}
@@ -654,30 +654,30 @@ defmodule Ash.DataLayer.Ets do
   # The match spec runs over what the transaction wrote too, as Mnesia's add_written_match.
   defp select_objects(table, spec) do
     case store_of(table) do
-      nil ->
-        ETS.Set.select(table, spec)
-
-      _ ->
+      {_group, ops} when ops != %{} ->
         heads = for {head, guards, _body} <- spec, do: {head, guards, [:"$_"]}
 
         with {:ok, objects} <- ETS.Set.select(table, heads) do
           {:ok, :ets.match_spec_run(merge(objects, table), :ets.match_spec_compile(spec))}
         end
+
+      _ ->
+        ETS.Set.select(table, spec)
     end
   end
 
   # A scan sees what the transaction wrote over what the table holds, in key order, as
   # Mnesia's add_match keeps an ordered set's.
   defp merge(objects, table) do
-    with {_group, store} <- store_of(table),
-         ops when ops != %{} <-
-           for({{tid, key}, op} <- store, tid == table.table, into: %{}, do: {key, op}) do
-      objects
-      |> Enum.reject(&Map.has_key?(ops, elem(&1, 0)))
-      |> Enum.concat(for {_key, {:write, object}} <- ops, do: object)
-      |> Enum.sort_by(&elem(&1, 0))
-    else
-      _ -> objects
+    case store_of(table) do
+      {_group, ops} when ops != %{} ->
+        objects
+        |> Enum.reject(&Map.has_key?(ops, elem(&1, 0)))
+        |> Enum.concat(for {_key, {:write, object}} <- ops, do: object)
+        |> Enum.sort_by(&elem(&1, 0))
+
+      _ ->
+        objects
     end
   end
 
@@ -687,9 +687,9 @@ defmodule Ash.DataLayer.Ets do
       nil ->
         :ets.insert_new(table.table, object)
 
-      {group, store} ->
+      {group, ops} ->
         taken =
-          case Map.fetch(store, {table.table, key}) do
+          case Map.fetch(ops, key) do
             {:ok, {:write, _}} -> true
             {:ok, :delete} -> false
             :error -> :ets.member(table.table, key)
@@ -698,11 +698,7 @@ defmodule Ash.DataLayer.Ets do
         if taken do
           false
         else
-          Process.put(
-            {:ash_ets_store, group},
-            Map.put(store, {table.table, key}, {:write, object})
-          )
-
+          write_to_store(table, group, %{key => {:write, object}})
           true
         end
     end
@@ -713,15 +709,13 @@ defmodule Ash.DataLayer.Ets do
       nil ->
         ETS.Set.put(table, objects)
 
-      {group, store} ->
-        store =
-          objects
-          |> List.wrap()
-          |> Enum.reduce(store, fn {key, _} = object, store ->
-            Map.put(store, {table.table, key}, {:write, object})
-          end)
+      {group, _ops} ->
+        write_to_store(
+          table,
+          group,
+          Map.new(List.wrap(objects), fn {key, _} = object -> {key, {:write, object}} end)
+        )
 
-        Process.put({:ash_ets_store, group}, store)
         {:ok, table}
     end
   end
@@ -731,8 +725,8 @@ defmodule Ash.DataLayer.Ets do
       nil ->
         ETS.Set.delete(table, key)
 
-      {group, store} ->
-        Process.put({:ash_ets_store, group}, Map.put(store, {table.table, key}, :delete))
+      {group, _ops} ->
+        write_to_store(table, group, %{key => :delete})
         {:ok, table}
     end
   end
