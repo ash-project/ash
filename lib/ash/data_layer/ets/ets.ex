@@ -31,7 +31,7 @@ defmodule Ash.DataLayer.Ets do
       transaction_group: [
         type: :atom,
         doc:
-          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. A transaction holds the lock of each shared table of its group it touches until it ends."
+          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. A transaction locks each shared table of its group it reads or writes until it ends."
       ],
       table: [
         type: :atom,
@@ -132,34 +132,36 @@ defmodule Ash.DataLayer.Ets do
     def init({resource, table}) do
       case do_wrap_existing(resource, table) do
         {:ok, table} ->
-          {:ok, %{resource: resource, table: table, holder: nil, waiting: []}, :hibernate}
+          {:ok, %{resource: resource, table: table, holders: %{}, waiting: []}, :hibernate}
 
         {:error, error} ->
           {:error, error}
       end
     end
 
-    # The manager also holds the table's transaction lock, one transaction at a time, in the
-    # order Mnesia's lock manager keeps
-    # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia_locker.erl): a
-    # transaction waits for a younger holder and is refused by an older one, so none waits in
-    # a cycle, and a released lock goes to the youngest waiting.
-    def lock(resource, tenant, ref, age, timeout) do
+    # The manager also holds the table's transaction locks, as Mnesia's lock manager holds a
+    # table's (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia_locker.erl): a
+    # read lock is shared with other readers and a write lock is held alone. A transaction,
+    # named by its age, waits for younger holders and is refused by an older one, and a request
+    # that finds transactions waiting queues behind them only when one of them is younger, so
+    # none waits in a cycle. A released lock goes to the youngest waiting.
+    def lock(resource, tenant, age, mode, timeout) do
       {:ok, table} = Ash.DataLayer.Ets.table_name(resource, tenant, true)
       name = Module.concat(table, TableManager)
 
       case GenServer.start(__MODULE__, {resource, table}, name: name) do
-        {:error, {:already_started, _pid}} -> call_lock(name, ref, age, timeout)
+        {:error, {:already_started, _pid}} -> call_lock(name, age, mode, timeout)
         {:error, error} -> {:error, error}
-        {:ok, _pid} -> call_lock(name, ref, age, timeout)
+        {:ok, _pid} -> call_lock(name, age, mode, timeout)
       end
     end
 
-    defp call_lock(name, ref, age, timeout) do
-      GenServer.call(name, {:lock, ref, age}, timeout)
+    defp call_lock(name, age, mode, timeout) do
+      GenServer.call(name, {:lock, age, mode}, timeout)
     catch
+      # Only a transaction past its deadline gives up, and it ends, so it lets go of the table.
       :exit, {:timeout, _} ->
-        GenServer.cast(name, {:cancel, ref})
+        GenServer.cast(name, {:cancel, age})
         :timeout
 
       # The table was stopped while the transaction waited for it.
@@ -167,62 +169,112 @@ defmodule Ash.DataLayer.Ets do
         {:error, Exception.format_exit(reason)}
     end
 
-    def unlock(resource, tenant, ref) do
+    def unlock(resource, tenant, age) do
       {:ok, table} = Ash.DataLayer.Ets.table_name(resource, tenant, true)
-      GenServer.call(Module.concat(table, TableManager), {:unlock, ref})
+      GenServer.call(Module.concat(table, TableManager), {:unlock, age})
     catch
-      # The table was stopped, and its lock with it.
+      # The table was stopped, and its locks with it.
       :exit, _ -> :ok
     end
 
     def handle_call(:wait, _, state), do: {:reply, :ok, state}
 
-    def handle_call({:lock, ref, age}, {pid, _} = from, state) do
-      case state.holder do
-        nil ->
-          {:reply, :ok, hold(state, pid, ref, age)}
-
-        {_pid, _monitor, _ref, holder} when holder > age ->
-          {:noreply, %{state | waiting: [{from, ref, age} | state.waiting]}}
-
-        _older ->
-          {:reply, :busy, state}
+    def handle_call({:lock, age, mode}, {pid, _} = from, state) do
+      case {conflict(state.holders, age, mode), queue(state.waiting, age)} do
+        {:older, _} -> {:reply, :busy, state}
+        {_, :older} -> {:reply, :busy, state}
+        {:none, :none} -> {:reply, :ok, hold(state, pid, age, mode)}
+        _younger -> {:noreply, %{state | waiting: [{from, age, mode} | state.waiting]}}
       end
     end
 
-    def handle_call({:unlock, ref}, _from, state), do: {:reply, :ok, release(state, ref)}
-
-    # A waiter that gave up: forgotten if still waiting, released if granted meanwhile.
-    def handle_cast({:cancel, ref}, state) do
-      waiting = Enum.reject(state.waiting, fn {_from, waiting, _age} -> waiting == ref end)
-      {:noreply, release(%{state | waiting: waiting}, ref)}
+    def handle_call({:unlock, age}, from, state) do
+      GenServer.reply(from, :ok)
+      continue(release(state, age))
     end
 
-    def handle_info({:DOWN, monitor, :process, _, _}, %{holder: {_, monitor, ref, _}} = state),
-      do: {:noreply, release(state, ref)}
+    def handle_cast({:cancel, age}, state) do
+      waiting = Enum.reject(state.waiting, fn {_from, waiting, _mode} -> waiting == age end)
+      continue(release(%{state | waiting: waiting}, age))
+    end
+
+    def handle_info({:DOWN, monitor, :process, _, _}, state) do
+      case Enum.find(state.holders, fn {_age, {_pid, holding, _mode}} -> holding == monitor end) do
+        {age, _holder} -> continue(release(state, age))
+        nil -> {:noreply, state}
+      end
+    end
 
     def handle_info(_, state), do: {:noreply, state}
 
-    defp hold(state, pid, ref, age), do: %{state | holder: {pid, Process.monitor(pid), ref, age}}
+    defp conflict(holders, age, mode) do
+      conflicting =
+        for {holder, {_pid, _monitor, held}} <- holders,
+            holder != age and (mode == :write or held == :write),
+            do: holder
 
-    defp release(%{holder: {_pid, monitor, ref, _age}} = state, ref) do
-      Process.demonitor(monitor, [:flush])
-      grant_next(%{state | holder: nil})
+      cond do
+        conflicting == [] -> :none
+        Enum.min(conflicting) < age -> :older
+        true -> :younger
+      end
     end
 
-    defp release(state, _ref), do: state
+    defp queue([], _age), do: :none
 
-    defp grant_next(%{waiting: []} = state), do: state
+    defp queue(waiting, age) do
+      if Enum.any?(waiting, fn {_from, waiter, _mode} -> waiter > age end),
+        do: :younger,
+        else: :older
+    end
 
-    defp grant_next(state) do
-      {{pid, _} = from, ref, age} = youngest = Enum.max_by(state.waiting, &elem(&1, 2))
-      state = %{state | waiting: List.delete(state.waiting, youngest)}
+    defp hold(state, pid, age, mode) do
+      holders =
+        Map.update(state.holders, age, {pid, Process.monitor(pid), mode}, fn
+          {pid, monitor, :write} -> {pid, monitor, :write}
+          {pid, monitor, _read} -> {pid, monitor, mode}
+        end)
 
-      if Process.alive?(pid) do
-        GenServer.reply(from, :ok)
-        hold(state, pid, ref, age)
-      else
-        grant_next(state)
+      %{state | holders: holders}
+    end
+
+    defp release(state, age) do
+      case Map.pop(state.holders, age) do
+        {nil, _holders} ->
+          state
+
+        {{_pid, monitor, _mode}, holders} ->
+          Process.demonitor(monitor, [:flush])
+          %{state | holders: holders}
+      end
+    end
+
+    # Waiting requests are tried youngest first, as Mnesia's try_waiters_tab tries them, up
+    # to the first that still has to wait; one an older holder now blocks is refused.
+    defp continue(state) do
+      state.waiting
+      |> Enum.sort_by(fn {_from, age, _mode} -> age end, :desc)
+      |> grant_waiting(%{state | waiting: []})
+      |> then(&{:noreply, &1})
+    end
+
+    defp grant_waiting([], state), do: state
+
+    defp grant_waiting([{{pid, _} = from, age, mode} | rest] = waiting, state) do
+      case Process.alive?(pid) && conflict(state.holders, age, mode) do
+        false ->
+          grant_waiting(rest, state)
+
+        :none ->
+          GenServer.reply(from, :ok)
+          grant_waiting(rest, hold(state, pid, age, mode))
+
+        :younger ->
+          %{state | waiting: waiting}
+
+        :older ->
+          GenServer.reply(from, :busy)
+          grant_waiting(rest, state)
       end
     end
 
@@ -409,8 +461,8 @@ defmodule Ash.DataLayer.Ets do
   # process reads only what was committed, and a rollback or a timeout leaves the tables as
   # they were. It locks each shared table of the group it touches and holds the lock until it
   # ends: the tables of the group's resources an action touches before anything runs, as
-  # Ash's Mnesia data layer locks them, and any other at its first write. Locks are ordered
-  # by age, as Mnesia orders them
+  # Ash's Mnesia data layer locks them, and any other at its first read or write. Locks are
+  # ordered by age, as Mnesia orders them
   # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia_locker.erl): a
   # transaction waits for a younger one and is refused by an older one, so none waits in a
   # cycle.
@@ -476,15 +528,15 @@ defmodule Ash.DataLayer.Ets do
       nil
   end
 
-  # The locks taken before the transaction runs anything. An older transaction holding one
-  # sends it back to let go of what it took and try again, waiting longer each time, as Mnesia
-  # restarts a transaction
+  # The locks taken before the transaction runs anything, each a write lock, as Ash's Mnesia
+  # data layer takes them. An older transaction holding one sends it back to let go of what it
+  # took and try again, waiting longer each time, as Mnesia restarts a transaction
   # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia_tm.erl, restart, with
   # mnesia_lib's random_time), until its timeout.
   defp lock_up_front(locks, group, age, deadline, attempt) do
     locks
     |> Enum.reduce_while(:ok, fn {_table, tenant, locked}, :ok ->
-      case lock_table(locked, tenant, group, age, deadline) do
+      case lock_table(locked, tenant, group, age, deadline, :write) do
         :ok -> {:cont, :ok}
         refused -> {:halt, refused}
       end
@@ -510,64 +562,73 @@ defmodule Ash.DataLayer.Ets do
   end
 
   # Takes a table's lock for the group, which holds it until its transaction ends.
-  defp lock_table(resource, tenant, group, age, deadline) do
-    ref = make_ref()
-
-    case TableManager.lock(resource, tenant, ref, age, remaining(deadline)) do
+  defp lock_table(resource, tenant, group, age, deadline, mode) do
+    case TableManager.lock(resource, tenant, age, mode, remaining(deadline)) do
       :ok ->
         {:ok, name} = table_name(resource, tenant, true)
-        hold(:ets.whereis(name), group, {resource, tenant, ref})
+        hold(:ets.whereis(name), group, {resource, tenant, mode})
 
       refused ->
         refused
     end
   end
 
-  # A table of an open group, first written after its transaction began, is locked at that
-  # write and held until the group's transaction ends, as mnesia:write takes its lock. Once
-  # the transaction has run, an older one holding the table fails the write, as Ash's Mnesia
+  # A table of an open group, first read or written after its transaction began, is locked
+  # then and held until the transaction ends: shared with other readers for a read, as
+  # mnesia:read takes a read lock, and alone for a write, as mnesia:write takes a write lock.
+  # Once the transaction has run, an older one holding the table fails it, as Ash's Mnesia
   # data layer aborts a transaction that would restart after its work began. A private table,
   # which no other process reaches, needs no lock.
-  defp lock_written(table, resource, tenant) do
+  defp lock_touched(table, resource, tenant, mode) do
     group = Ash.DataLayer.Ets.Info.transaction_group(resource)
 
-    with {age, deadline} <- Process.get({:ash_ets_transaction, group}),
-         nil <- Process.get({:ash_ets_held, table.table}) do
-      if Ash.DataLayer.Ets.Info.private?(resource) do
-        hold(table.table, group, {resource, tenant, nil})
-      else
-        case lock_table(resource, tenant, group, age, deadline) do
-          :ok -> :ok
-          {:error, error} -> {:error, error}
-          _busy_or_timeout -> {:error, busy(resource)}
+    case Process.get({:ash_ets_transaction, group}) do
+      nil ->
+        :ok
+
+      {age, deadline} ->
+        case Process.get({:ash_ets_held, table.table}) do
+          {_group, held} when held == :write or held == mode ->
+            :ok
+
+          _not_held_for_this ->
+            if Ash.DataLayer.Ets.Info.private?(resource) do
+              hold(table.table, group, {resource, tenant, :write})
+            else
+              case lock_table(resource, tenant, group, age, deadline, mode) do
+                :ok -> :ok
+                {:error, error} -> {:error, error}
+                _busy_or_timeout -> {:error, busy(resource)}
+              end
+            end
         end
-      end
-    else
-      _ -> :ok
     end
   end
 
-  defp hold(tid, group, {resource, tenant, ref}) do
-    Process.put({:ash_ets_held, tid}, group)
-
-    Process.put({:ash_ets_locks, group}, [
-      {resource, tenant, ref, tid} | Process.get({:ash_ets_locks, group}, [])
-    ])
+  defp hold(tid, group, {resource, tenant, mode}) do
+    if !Process.put({:ash_ets_held, tid}, {group, mode}) do
+      Process.put({:ash_ets_locks, group}, [
+        {resource, tenant, tid} | Process.get({:ash_ets_locks, group}, [])
+      ])
+    end
 
     :ok
   end
 
   defp release(group) do
-    for {resource, tenant, ref, tid} <- Process.get({:ash_ets_locks, group}, []) do
+    {age, _deadline} = Process.get({:ash_ets_transaction, group})
+
+    for {resource, tenant, tid} <- Process.get({:ash_ets_locks, group}, []) do
       Process.delete({:ash_ets_held, tid})
-      if ref, do: TableManager.unlock(resource, tenant, ref)
+      if shared_table?(resource), do: TableManager.unlock(resource, tenant, age)
     end
 
     Process.delete({:ash_ets_locks, group})
   end
 
   defp busy(resource),
-    do: "could not lock the table of #{inspect(resource)}: an older transaction holds it"
+    do:
+      "could not lock the table of #{inspect(resource)}: an older transaction holds it or waits for it"
 
   defp deadline(timeout) when is_integer(timeout),
     do: System.monotonic_time(:millisecond) + timeout
@@ -625,7 +686,7 @@ defmodule Ash.DataLayer.Ets do
   # The writes of the open transaction holding a table, waiting in its store until it commits,
   # which keeps them by table. A table no open transaction holds is read and written directly.
   defp store_of(table) do
-    with group when not is_nil(group) <- Process.get({:ash_ets_held, table.table}),
+    with {group, _mode} <- Process.get({:ash_ets_held, table.table}),
          do: {group, Map.get(Process.get({:ash_ets_store, group}, %{}), table.table, %{})}
   end
 
@@ -1709,19 +1770,16 @@ defmodule Ash.DataLayer.Ets do
     Map.get(record, name)
   end
 
+  # A table read in a transaction of its group is created if it has none yet, so the
+  # transaction has a lock to hold.
   defp get_records(resource, [], _parent, tenant) do
-    case wrap_or_create_table(resource, tenant, false) do
-      :no_table ->
-        {:ok, []}
-
-      {:ok, table} ->
-        with {:ok, record_tuples} <- all_objects(table),
-             records <- Enum.map(record_tuples, &elem(&1, 1)) do
-          cast_records(records, resource)
-        end
-
-      {:error, error} ->
-        {:error, error}
+    with {:ok, table} <- wrap_or_create_table(resource, tenant, in_transaction?(resource)),
+         :ok <- lock_touched(table, resource, tenant, :read),
+         {:ok, record_tuples} <- all_objects(table) do
+      cast_records(Enum.map(record_tuples, &elem(&1, 1)), resource)
+    else
+      :no_table -> {:ok, []}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -2280,7 +2338,7 @@ defmodule Ash.DataLayer.Ets do
       end
     else
       with {:ok, table} <- wrap_or_create_table(resource, options.tenant),
-           :ok <- lock_written(table, resource, options.tenant),
+           :ok <- lock_touched(table, resource, options.tenant, :write),
            {:ok, stored} <- stored_index(table, resource) do
         Enum.reduce_while(stream, {:ok, [], stored}, fn changeset, {:ok, results, known} ->
           with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
@@ -2331,7 +2389,7 @@ defmodule Ash.DataLayer.Ets do
   def create(resource, changeset, from_bulk_create? \\ false) do
     with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
          {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
-         :ok <- lock_written(table, resource, changeset.tenant),
+         :ok <- lock_touched(table, resource, changeset.tenant, :write),
          _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          {:ok, record} <- apply_atomics(changeset, resource, record),
@@ -2700,7 +2758,7 @@ defmodule Ash.DataLayer.Ets do
   defp do_destroy(resource, record, tenant, filter, domain, actor, supersede, range?) do
     case wrap_or_create_table(resource, tenant, false) do
       {:ok, table} ->
-        with :ok <- lock_written(table, resource, tenant),
+        with :ok <- lock_touched(table, resource, tenant, :write),
              do:
                do_destroy(
                  table,
@@ -2986,7 +3044,7 @@ defmodule Ash.DataLayer.Ets do
     range? = match?(%Ash.Range{}, changeset.as_of)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant, false),
-         :ok <- lock_written(table, resource, changeset.tenant),
+         :ok <- lock_touched(table, resource, changeset.tenant, :write),
          pkey = pkey || holding_key(table, resource, changeset.data, supersede, range?),
          _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
          {:ok, record} <-

@@ -880,6 +880,27 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsTransactionTag do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :sides
+    end
+
+    actions do
+      defaults [:read, create: [:name]]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    identities do
+      identity :unique_name, [:name], pre_check_with: Domain
+    end
+  end
+
   defmodule EtsTransactionTenant do
     defstruct [:id]
 
@@ -933,6 +954,7 @@ defmodule Ash.DataLayer.EtsTest do
               EtsTransactionLeft,
               EtsTransactionRight,
               EtsTransactionNote,
+              EtsTransactionTag,
               EtsTransactionOrganization,
               EtsTransactionPost,
               EtsSharedTableTestEvent
@@ -1230,6 +1252,62 @@ defmodule Ash.DataLayer.EtsTest do
       assert {:ok, _} = Task.await(first)
       assert {:error, %Ash.Error.Invalid{}} = Task.await(second)
       assert [_] = Ash.read!(EtsTransactionTenantAccount, tenant: "org_1")
+    end
+
+    test "a create nested in a transaction locks the table its identity check reads" do
+      parent = self()
+
+      first =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionLeft, fn ->
+            Ash.create!(EtsTransactionLeft, %{})
+
+            EtsTransactionTag
+            |> Ash.Changeset.for_create(:create, %{name: "elixir"})
+            |> Ash.Changeset.before_action(fn changeset ->
+              send(parent, :pre_checked)
+
+              receive do
+                :insert -> changeset
+              end
+            end)
+            |> Ash.create!()
+          end)
+        end)
+
+      assert_receive :pre_checked
+
+      second = Task.async(fn -> Ash.create(EtsTransactionTag, %{name: "elixir"}) end)
+      refute Task.yield(second, 300)
+
+      send(first.pid, :insert)
+      assert {:ok, _} = Task.await(first)
+      assert {:error, %Ash.Error.Invalid{}} = Task.await(second)
+      assert [_] = Ash.read!(EtsTransactionTag)
+    end
+
+    test "transactions reading one table do not wait for each other" do
+      parent = self()
+
+      reader =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionLeft, fn ->
+            Ash.read!(EtsTransactionTag)
+            send(parent, :read)
+
+            receive do
+              :finish -> :finished
+            end
+          end)
+        end)
+
+      assert_receive :read
+
+      assert {:ok, []} =
+               Ash.transaction(EtsTransactionRight, fn -> Ash.read!(EtsTransactionTag) end)
+
+      send(reader.pid, :finish)
+      assert {:ok, :finished} = Task.await(reader)
     end
   end
 
