@@ -1435,6 +1435,45 @@ defmodule Ash.DataLayer.EtsTest do
       send(younger.pid, :finish)
       assert {:ok, :younger_finished} = Task.await(younger)
     end
+
+    test "stopping a table a transaction holds waits for the transaction to end" do
+      parent = self()
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction([EtsTransactionLeft, EtsTransactionRight], fn ->
+            Ash.create!(EtsTransactionLeft, %{})
+            Ash.create!(EtsTransactionRight, %{})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+
+      stopper = Task.async(fn -> Ash.DataLayer.Ets.stop(EtsTransactionRight) end)
+      refute Task.yield(stopper, 100)
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+      assert :ok = Task.await(stopper)
+      assert [_] = Ash.read!(EtsTransactionLeft)
+      assert [] = Ash.read!(EtsTransactionRight)
+    end
+
+    test "a transaction whose table its own process stops commits none of its writes" do
+      assert {:error, _} =
+               Ash.transaction([EtsTransactionLeft, EtsTransactionRight], fn ->
+                 Ash.create!(EtsTransactionLeft, %{})
+                 Ash.create!(EtsTransactionRight, %{})
+                 Ash.DataLayer.Ets.stop(EtsTransactionRight)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionLeft)
+    end
   end
 
   # Runs `fun` for 1..count in as many processes released together, giving each three

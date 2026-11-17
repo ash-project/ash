@@ -132,7 +132,8 @@ defmodule Ash.DataLayer.Ets do
     def init({resource, table}) do
       case do_wrap_existing(resource, table) do
         {:ok, table} ->
-          {:ok, %{resource: resource, table: table, holders: %{}, waiting: []}, :hibernate}
+          {:ok, %{resource: resource, table: table, holders: %{}, waiting: [], stopping: []},
+           :hibernate}
 
         {:error, error} ->
           {:error, error}
@@ -179,6 +180,10 @@ defmodule Ash.DataLayer.Ets do
 
     def handle_call(:wait, _, state), do: {:reply, :ok, state}
 
+    # A request made while the table is being stopped fails when it stops.
+    def handle_call({:lock, age, mode}, from, %{stopping: [_ | _]} = state),
+      do: {:noreply, %{state | waiting: [{from, age, mode} | state.waiting]}}
+
     def handle_call({:lock, age, mode}, {pid, _} = from, state) do
       case {conflict(state.holders, age, mode), queue(state.waiting, age)} do
         {:older, _} -> {:reply, :busy, state}
@@ -191,6 +196,15 @@ defmodule Ash.DataLayer.Ets do
     def handle_call({:unlock, age}, from, state) do
       GenServer.reply(from, :ok)
       continue(release(state, age))
+    end
+
+    # The manager exits once no other process holds the table, and takes the table with it.
+    def handle_call(:stop, {pid, _} = from, state) do
+      if Enum.all?(state.holders, fn {_age, {holder, _monitor, _mode}} -> holder == pid end) do
+        {:stop, :shutdown, :ok, state}
+      else
+        {:noreply, %{state | stopping: [from | state.stopping]}}
+      end
     end
 
     def handle_cast({:cancel, age}, state) do
@@ -248,6 +262,13 @@ defmodule Ash.DataLayer.Ets do
           %{state | holders: holders}
       end
     end
+
+    defp continue(%{stopping: [_ | _], holders: holders} = state) when holders == %{} do
+      Enum.each(state.stopping, &GenServer.reply(&1, :ok))
+      {:stop, :shutdown, state}
+    end
+
+    defp continue(%{stopping: [_ | _]} = state), do: {:noreply, state}
 
     # Waiting requests are tried youngest first, as Mnesia's try_waiters_tab tries them, up
     # to the first that still has to wait; one an older holder now blocks is refused.
@@ -356,9 +377,15 @@ defmodule Ash.DataLayer.Ets do
               :ok
 
             pid ->
-              # Wait for the manager to exit, so its table is gone by the time this returns
+              # The manager exits once no transaction of another process holds the table, and
+              # this waits for it, so its table is gone by the time this returns
               ref = Process.monitor(pid)
-              Process.exit(pid, :shutdown)
+
+              try do
+                GenServer.call(pid, :stop, :infinity)
+              catch
+                :exit, _ -> :ok
+              end
 
               receive do
                 {:DOWN, ^ref, :process, _, _} -> :ok
@@ -484,16 +511,23 @@ defmodule Ash.DataLayer.Ets do
       with :ok <- lock_up_front(transaction_locks(resource, reason, group), group, transaction, 1) do
         try do
           result = func.()
+          store = Process.get({:ash_ets_store, group}, %{})
 
-          if past?(transaction.deadline) do
-            {:error, timeout_error(transaction)}
-          else
-            for {tid, ops} <- Process.get({:ash_ets_store, group}, %{}) do
-              for {key, :delete} <- ops, do: :ets.delete(tid, key)
-              :ets.insert(tid, for({_key, {:write, object}} <- ops, do: object))
-            end
+          cond do
+            past?(transaction.deadline) ->
+              {:error, timeout_error(transaction)}
 
-            {:ok, result}
+            # A commit lands one table at a time, so it starts only once every table is there.
+            Enum.any?(Map.keys(store), &(:ets.info(&1, :id) == :undefined)) ->
+              {:error, "a table written in the transaction was stopped before it committed"}
+
+            true ->
+              for {tid, ops} <- store do
+                for {key, :delete} <- ops, do: :ets.delete(tid, key)
+                :ets.insert(tid, for({_key, {:write, object}} <- ops, do: object))
+              end
+
+              {:ok, result}
           end
         catch
           {{:ash_ets_rollback, ^group}, value} -> {:error, value}
