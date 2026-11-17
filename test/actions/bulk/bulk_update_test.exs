@@ -594,6 +594,27 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule MnesiaComment do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Mnesia,
+      notifiers: [Notifier]
+
+    attributes do
+      uuid_primary_key :id
+      attribute :body, :string, public?: true
+    end
+
+    relationships do
+      belongs_to :post, Ash.Test.Actions.BulkUpdateTest.MnesiaPost, public?: true
+    end
+
+    actions do
+      defaults [:read, create: [:body, :post_id]]
+    end
+  end
+
   defmodule MnesiaPost do
     @doc false
 
@@ -611,9 +632,28 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       timestamps()
     end
 
+    relationships do
+      has_many :comments, MnesiaComment, destination_attribute: :post_id, public?: true
+    end
+
+    code_interface do
+      define :add_comments, args: [:comments]
+    end
+
     actions do
       default_accept :*
       defaults [:read, :destroy, :create, :update]
+
+      update :add_comments do
+        require_atomic? false
+        touches_resources [MnesiaComment]
+        argument :comments, {:array, :map}, allow_nil?: false
+        change manage_relationship(:comments, :comments, type: :create)
+
+        change after_action(fn _changeset, record, _context ->
+                 if record.title == "fail", do: {:error, "boom"}, else: {:ok, record}
+               end)
+      end
 
       update :error_in_before_action_on_title2 do
         atomic_upgrade? false
@@ -787,7 +827,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end)
 
     capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Domain, [MnesiaPost])
+      Ash.DataLayer.Mnesia.start(Domain, [MnesiaPost, MnesiaComment])
     end)
 
     :ok
@@ -2537,6 +2577,128 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       assert is_list(notifications)
       refute Enum.empty?(notifications)
     end
+  end
+
+  describe "notifications from rolled-back managed relationships" do
+    test "single-record code interface updates discard rolled-back relationship notifications" do
+      post = Ash.create!(MnesiaPost, %{title: "fail"}, notify?: false)
+
+      assert {:error, _} = MnesiaPost.add_comments(post, [%{body: "rolled back"}])
+      assert [] = Ash.read!(MnesiaComment)
+      refute_received {:notification, %{resource: MnesiaComment}}
+    end
+
+    test "code interface updates by id discard rolled-back relationship notifications" do
+      post = Ash.create!(MnesiaPost, %{title: "fail"}, notify?: false)
+
+      assert {:error, _} = MnesiaPost.add_comments(post.id, [%{body: "rolled back"}])
+      assert [] = Ash.read!(MnesiaComment)
+      refute_received {:notification, %{resource: MnesiaComment}}
+    end
+
+    test "bulk updates do not send notifications from a rolled-back batch" do
+      post = Ash.create!(MnesiaPost, %{title: "fail"}, notify?: false)
+
+      result = bulk_update_with_comments([post], notify?: true)
+
+      assert result.status == :error
+      assert [] = Ash.read!(MnesiaComment)
+      refute_received {:notification, %{resource: MnesiaComment}}
+    end
+
+    test "bulk updates do not return notifications from a rolled-back batch" do
+      post = Ash.create!(MnesiaPost, %{title: "fail"}, notify?: false)
+
+      result = bulk_update_with_comments([post], return_notifications?: true)
+
+      assert result.status == :error
+      assert result.notifications == []
+      assert [] = Ash.read!(MnesiaComment)
+      refute_received {:notification, %{resource: MnesiaComment}}
+    end
+
+    test "a failed batch preserves returned notifications from earlier committed batches" do
+      successful = Ash.create!(MnesiaPost, %{title: "success"}, notify?: false)
+      failing = Ash.create!(MnesiaPost, %{title: "fail"}, notify?: false)
+
+      result =
+        bulk_update_with_comments([successful, failing],
+          batch_size: 1,
+          return_notifications?: true
+        )
+
+      assert result.error_count == 1
+      assert [%{post_id: post_id, id: comment_id}] = Ash.read!(MnesiaComment)
+      assert post_id == successful.id
+
+      assert [%{resource: MnesiaComment, data: %{id: ^comment_id}}] =
+               Enum.filter(result.notifications, &(&1.resource == MnesiaComment))
+
+      refute_received {:notification, %{resource: MnesiaComment}}
+    end
+
+    test "a later failure discards relationship notifications for the entire batch" do
+      successful = Ash.create!(MnesiaPost, %{title: "success"}, notify?: false)
+      failing = Ash.create!(MnesiaPost, %{title: "fail"}, notify?: false)
+
+      result = bulk_update_with_comments([successful, failing], batch_size: 2, notify?: true)
+
+      assert result.error_count == 2
+      assert [] = Ash.read!(MnesiaComment)
+      refute_received {:notification, %{resource: MnesiaComment}}
+    end
+
+    test "streamed results do not send notifications from a rolled-back batch" do
+      post = Ash.create!(MnesiaPost, %{title: "fail"}, notify?: false)
+
+      results =
+        [post]
+        |> bulk_update_with_comments(return_stream?: true, notify?: true)
+        |> Enum.to_list()
+
+      assert [{:error, _}] = results
+      assert [] = Ash.read!(MnesiaComment)
+      refute_received {:notification, %{resource: MnesiaComment}}
+    end
+
+    test "successful batches send notifications for committed relationships" do
+      post = Ash.create!(MnesiaPost, %{title: "success"}, notify?: false)
+
+      result = bulk_update_with_comments([post], notify?: true)
+
+      assert result.status == :success
+      assert [%{id: comment_id}] = Ash.read!(MnesiaComment)
+      assert_received {:notification, %{resource: MnesiaComment, data: %{id: ^comment_id}}}
+    end
+
+    test "notifications are preserved when rollback is disabled and relationships persist" do
+      post = Ash.create!(MnesiaPost, %{title: "fail"}, notify?: false)
+
+      result = bulk_update_with_comments([post], rollback_on_error?: false, notify?: true)
+
+      assert result.status == :error
+      assert [%{id: comment_id}] = Ash.read!(MnesiaComment)
+      assert_received {:notification, %{resource: MnesiaComment, data: %{id: ^comment_id}}}
+    end
+  end
+
+  defp bulk_update_with_comments(posts, opts) do
+    Ash.bulk_update(
+      posts,
+      :add_comments,
+      %{comments: [%{body: "created by relationship"}]},
+      Keyword.merge(
+        [
+          resource: MnesiaPost,
+          strategy: [:stream],
+          transaction: :batch,
+          stop_on_error?: false,
+          return_errors?: true,
+          authorize?: false
+        ],
+        opts
+      )
+    )
   end
 
   describe "bulk update with manage_relationship" do
