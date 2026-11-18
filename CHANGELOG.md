@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.7](https://github.com/ash-project/ash/compare/v3.37.6...v3.37.7) (2026-11-18)
+
+
+
+
+### Bug Fixes:
+
+* properly separate prepended and non-prepended hooks for atomic transfer by [@zachdaniel](https://github.com/zachdaniel)
+
+* discard bulk update notifications on batch rollback (#3128) by Ashu3208 [(#3128)](https://github.com/ash-project/ash/pull/3128)
+
 ## [v3.37.6](https://github.com/ash-project/ash/compare/v3.37.5...v3.37.6) (2026-11-16)
 
 
