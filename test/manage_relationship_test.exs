@@ -5,6 +5,7 @@
 defmodule Ash.Test.ManageRelationshipTest do
   @moduledoc false
   use ExUnit.Case, async: true
+  require Ash.Query
 
   defmodule ParentResource do
     use Ash.Resource,
@@ -172,6 +173,17 @@ defmodule Ash.Test.ManageRelationshipTest do
         change manage_relationship(:other_resource_id, :other_resources,
                  on_no_match: :error,
                  on_match: {:update, :update}
+               )
+      end
+
+      update :add_filtered_many_to_many do
+        require_atomic? false
+        argument :many_to_many_resources, {:array, :map}
+
+        change manage_relationship(:many_to_many_resources,
+                 type: :append_and_remove,
+                 on_lookup: {:relate, :create, expr(name == "Allowed"), []},
+                 on_no_match: :error
                )
       end
 
@@ -1564,6 +1576,21 @@ defmodule Ash.Test.ManageRelationshipTest do
                    on_no_match: :error
                  )
         end
+
+        create :create_with_lookup_filter do
+          accept [:title]
+          argument :author, :map, public?: true
+
+          change manage_relationship(:author,
+                   type: :append_and_remove,
+                   on_lookup: {:relate, :create, expr(name == "Allowed")},
+                   on_no_match: :error
+                 )
+        end
+
+        create :create_with_query do
+          accept [:title]
+        end
       end
 
       attributes do
@@ -1642,6 +1669,168 @@ defmodule Ash.Test.ManageRelationshipTest do
           refute Exception.message(error) =~ "at most one",
                  "match-count oracle leaked via read_one error"
       end
+    end
+  end
+
+  describe "on_lookup filters" do
+    defmodule FilteredProduct do
+      @moduledoc false
+      use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+        attribute :published, :boolean, public?: true
+        attribute :filtered_order_id, :uuid
+      end
+
+      actions do
+        defaults [:read, create: :*, update: :*]
+      end
+    end
+
+    defmodule FilteredOrder do
+      @moduledoc false
+      use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+      end
+
+      relationships do
+        has_many :products, FilteredProduct
+      end
+
+      actions do
+        defaults [:read, create: :*]
+
+        update :add_products do
+          require_atomic? false
+          argument :products, {:array, :map}
+
+          change manage_relationship(:products, :products,
+                   type: :append_and_remove,
+                   on_lookup: {:relate, :update, expr(published == true)},
+                   on_no_match: :error
+                 )
+        end
+      end
+    end
+
+    test "on_lookup accepts a filter for belongs_to relationships" do
+      author =
+        Ash.Test.ManageRelationshipTest.LookupAuthor
+        |> Ash.Changeset.for_create(:create, %{name: "Allowed"})
+        |> Ash.create!()
+
+      assert {:ok, post} =
+               Ash.Test.ManageRelationshipTest.LookupPost
+               |> Ash.Changeset.for_create(:create_with_lookup_filter, %{
+                 title: "Filtered post",
+                 author: %{id: author.id}
+               })
+               |> Ash.create()
+
+      assert post.author_id == author.id
+    end
+
+    test "on_lookup accepts a filter for has_many relationships" do
+      product =
+        FilteredProduct
+        |> Ash.Changeset.for_create(:create, %{name: "Published", published: true})
+        |> Ash.create!()
+
+      order =
+        FilteredOrder
+        |> Ash.Changeset.for_create(:create, %{name: "Order"})
+        |> Ash.create!()
+
+      assert {:ok, _order} =
+               order
+               |> Ash.Changeset.for_update(:add_products, %{
+                 products: [%{id: product.id}]
+               })
+               |> Ash.update()
+    end
+
+    test "on_lookup filter rejects a nonmatching belongs_to record" do
+      author =
+        Ash.Test.ManageRelationshipTest.LookupAuthor
+        |> Ash.Changeset.for_create(:create, %{name: "Not Allowed"})
+        |> Ash.create!()
+
+      assert {:error, _error} =
+               Ash.Test.ManageRelationshipTest.LookupPost
+               |> Ash.Changeset.for_create(:create_with_lookup_filter, %{
+                 title: "Rejected post",
+                 author: %{id: author.id}
+               })
+               |> Ash.create()
+    end
+
+    test "on_lookup filter rejects an unpublished has_many record" do
+      product =
+        FilteredProduct
+        |> Ash.Changeset.for_create(:create, %{name: "Unpublished", published: false})
+        |> Ash.create!()
+
+      order =
+        FilteredOrder
+        |> Ash.Changeset.for_create(:create, %{name: "Order"})
+        |> Ash.create!()
+
+      assert {:error, _error} =
+               order
+               |> Ash.Changeset.for_update(:add_products, %{
+                 products: [%{id: product.id}]
+               })
+               |> Ash.update()
+    end
+
+    test "on_lookup accepts a prebuilt query" do
+      author =
+        Ash.Test.ManageRelationshipTest.LookupAuthor
+        |> Ash.Changeset.for_create(:create, %{name: "Allowed"})
+        |> Ash.create!()
+
+      query =
+        Ash.Test.ManageRelationshipTest.LookupAuthor
+        |> Ash.Query.for_read(:read)
+        |> Ash.Query.filter(name == "Allowed")
+
+      changeset =
+        Ash.Test.ManageRelationshipTest.LookupPost
+        |> Ash.Changeset.for_create(:create_with_query, %{title: "Query post"})
+        |> Ash.Changeset.manage_relationship(
+          :author,
+          %{id: author.id},
+          type: :append_and_remove,
+          on_lookup: {:relate, :create, query},
+          on_no_match: :error
+        )
+
+      assert {:ok, post} = Ash.create(changeset)
+      assert post.author_id == author.id
+    end
+
+    test "on_lookup accepts a filter for the four-element many_to_many form" do
+      resource =
+        ManyToManyResource
+        |> Ash.Changeset.for_create(:create, %{name: "Allowed"})
+        |> Ash.create!()
+
+      parent =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{name: "Parent"})
+        |> Ash.create!()
+
+      assert {:ok, _parent} =
+               parent
+               |> Ash.Changeset.for_update(:add_filtered_many_to_many, %{
+                 many_to_many_resources: [%{id: resource.id}]
+               })
+               |> Ash.update()
     end
   end
 end
