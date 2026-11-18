@@ -25,6 +25,20 @@ defmodule Ash.Test.AuthorizationTracerTest do
     def match?(_, _, _), do: raise("authorization failed")
   end
 
+  defmodule ObservedExpression do
+    @moduledoc false
+    use Ash.Resource.Calculation
+
+    def expression(_opts, context) do
+      if observer = context.source_context[:expansion_observer] do
+        {pid, ref} = observer
+        send(pid, {:calculation_expanded, ref})
+      end
+
+      expr(allowed)
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
@@ -77,6 +91,10 @@ defmodule Ash.Test.AuthorizationTracerTest do
       read :runtime
       read :raising
       read :denied
+    end
+
+    calculations do
+      calculate :expanded_allowed, :boolean, ObservedExpression
     end
 
     policies do
@@ -136,6 +154,28 @@ defmodule Ash.Test.AuthorizationTracerTest do
     defdelegate set_span_context(context), to: Ash.Tracer.Simple
   end
 
+  defmodule BoundaryTracer do
+    @moduledoc false
+    use Ash.Tracer
+
+    defdelegate trace_type?(type), to: RelatedOnlyTracer
+    defdelegate set_metadata(type, metadata), to: Ash.Tracer.Simple
+    defdelegate set_error(error), to: Ash.Tracer.Simple
+    defdelegate get_span_context(), to: Ash.Tracer.Simple
+    defdelegate set_span_context(context), to: Ash.Tracer.Simple
+
+    def start_span(type, name) do
+      send(self(), {:authorization_boundary, :tracer_start})
+      Ash.Tracer.Simple.start_span(type, name)
+    end
+
+    def stop_span do
+      Ash.Tracer.Simple.stop_span()
+      send(self(), {:authorization_boundary, :tracer_stop})
+      :ok
+    end
+  end
+
   setup do
     handler = {__MODULE__, make_ref()}
 
@@ -184,6 +224,35 @@ defmodule Ash.Test.AuthorizationTracerTest do
 
       assert duration >= 0
     end
+  end
+
+  test "related authorization excludes surrounding calculation expansion" do
+    ref = make_ref()
+
+    query =
+      Post
+      |> Ash.Query.for_read(:read)
+      |> Ash.Query.filter(expanded_allowed == true)
+      |> Ash.Query.set_context(%{expansion_observer: {self(), ref}})
+
+    assert {:ok, _query, [], _path_filters} =
+             Ash.Actions.Read.authorize_related(query, query, [],
+               authorize?: true,
+               tracer: BoundaryTracer
+             )
+
+    events =
+      for _ <- 1..6 do
+        receive do
+          {:calculation_expanded, ^ref} -> :expand
+          {:authorization_boundary, event} -> event
+          {:authorization, [:ash, :authorization, :authorize_related, event], _, _} -> event
+        after
+          1000 -> flunk("missing calculation expansion or authorization boundary")
+        end
+      end
+
+    assert events == [:expand, :tracer_start, :start, :stop, :tracer_stop, :expand]
   end
 
   test "related paths are grouped without tracing each policy solve" do
