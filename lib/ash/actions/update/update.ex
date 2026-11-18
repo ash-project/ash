@@ -128,24 +128,16 @@ defmodule Ash.Actions.Update do
               |> then(fn
                 %Ash.Changeset{} = atomic_changeset ->
                   atomic_changeset
-                  |> then(fn atomic_changeset ->
-                    Enum.reduce(
-                      changeset.atomic_after_action,
-                      atomic_changeset,
-                      fn after_action, atomic_changeset ->
-                        Ash.Changeset.after_action(atomic_changeset, after_action)
-                      end
-                    )
-                  end)
-                  |> then(fn atomic_changeset ->
-                    Enum.reduce(
-                      changeset.atomic_after_transaction,
-                      atomic_changeset,
-                      fn after_transaction, atomic_changeset ->
-                        Ash.Changeset.after_transaction(atomic_changeset, after_transaction)
-                      end
-                    )
-                  end)
+                  |> restore_hooks(
+                    &Ash.Changeset.after_action/3,
+                    changeset.atomic_after_action_prepend,
+                    changeset.atomic_after_action
+                  )
+                  |> restore_hooks(
+                    &Ash.Changeset.after_transaction/3,
+                    changeset.atomic_after_transaction_prepend,
+                    changeset.atomic_after_transaction
+                  )
 
                 other ->
                   other
@@ -390,6 +382,18 @@ defmodule Ash.Actions.Update do
         errors = Helpers.process_errors(changeset, List.wrap(error))
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
     end
+  end
+
+  # Adds the hooks that were added to the original changeset outside of its
+  # action's changes to the atomic changeset rebuilt from those changes, in the
+  # same place relative to the action's hooks (see `Ash.Changeset.after_action/3`).
+  defp restore_hooks(atomic_changeset, add_hook, prepended, appended) do
+    atomic_changeset =
+      prepended
+      |> Enum.reverse()
+      |> Enum.reduce(atomic_changeset, &add_hook.(&2, &1, prepend?: true))
+
+    Enum.reduce(appended, atomic_changeset, &add_hook.(&2, &1, []))
   end
 
   defp authorize(changeset, opts) do

@@ -93,7 +93,9 @@ defmodule Ash.Changeset do
     params: %{},
     action_select: [],
     atomic_after_action: [],
+    atomic_after_action_prepend: [],
     atomic_after_transaction: [],
+    atomic_after_transaction_prepend: [],
     attribute_changes: %{},
     atomic_changes: [],
     casted_attributes: %{},
@@ -7530,26 +7532,28 @@ defmodule Ash.Changeset do
   def after_action(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :after_action)
 
-    if opts[:prepend?] do
-      if changeset.phase == :pending do
-        %{
-          changeset
-          | after_action: [func | changeset.after_action],
-            atomic_after_action: [func | changeset.atomic_after_action]
-        }
-      else
+    changeset =
+      if opts[:prepend?] do
         %{changeset | after_action: [func | changeset.after_action]}
-      end
-    else
-      if changeset.phase == :pending do
-        %{
-          changeset
-          | after_action: changeset.after_action ++ [func],
-            atomic_after_action: changeset.atomic_after_action ++ [func]
-        }
       else
         %{changeset | after_action: changeset.after_action ++ [func]}
       end
+
+    case atomic_hook_placement(changeset, opts[:prepend?]) do
+      :prepend ->
+        %{changeset | atomic_after_action_prepend: [func | changeset.atomic_after_action_prepend]}
+
+      :before_action ->
+        %{
+          changeset
+          | atomic_after_action_prepend: changeset.atomic_after_action_prepend ++ [func]
+        }
+
+      :after_action ->
+        %{changeset | atomic_after_action: changeset.atomic_after_action ++ [func]}
+
+      :none ->
+        changeset
     end
   end
 
@@ -7666,28 +7670,50 @@ defmodule Ash.Changeset do
   def after_transaction(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :after_transaction)
 
-    if opts[:prepend?] do
-      if changeset.phase == :pending do
-        %{
-          changeset
-          | after_transaction: [func | changeset.after_transaction],
-            atomic_after_transaction: [func | changeset.atomic_after_transaction]
-        }
-      else
+    changeset =
+      if opts[:prepend?] do
         %{changeset | after_transaction: [func | changeset.after_transaction]}
-      end
-    else
-      if changeset.phase == :pending do
-        %{
-          changeset
-          | after_transaction: changeset.after_transaction ++ [func],
-            atomic_after_transaction: changeset.atomic_after_transaction ++ [func]
-        }
       else
         %{changeset | after_transaction: changeset.after_transaction ++ [func]}
       end
+
+    case atomic_hook_placement(changeset, opts[:prepend?]) do
+      :prepend ->
+        %{
+          changeset
+          | atomic_after_transaction_prepend: [func | changeset.atomic_after_transaction_prepend]
+        }
+
+      :before_action ->
+        %{
+          changeset
+          | atomic_after_transaction_prepend: changeset.atomic_after_transaction_prepend ++ [func]
+        }
+
+      :after_action ->
+        %{changeset | atomic_after_transaction: changeset.atomic_after_transaction ++ [func]}
+
+      :none ->
+        changeset
     end
   end
+
+  # An update upgraded to an atomic one is rebuilt from its action's changes,
+  # which add the action's hooks again. Hooks added outside those changes (while
+  # the changeset is `:pending`) are also stored in `atomic_*` lists, so the
+  # rebuilt changeset can get them back in the same place relative to the
+  # action's hooks. The `atomic_*_prepend` lists hold the hooks that run before
+  # them: those prepended (`:prepend`) and those added before the action ran
+  # (`:before_action`). The other lists hold the rest (`:after_action`).
+  defp atomic_hook_placement(%{phase: :pending} = changeset, prepend?) do
+    cond do
+      prepend? -> :prepend
+      is_nil(changeset.__validated_for_action__) -> :before_action
+      true -> :after_action
+    end
+  end
+
+  defp atomic_hook_placement(_changeset, _prepend?), do: :none
 
   @doc """
   Adds an around_action hook to the changeset.
