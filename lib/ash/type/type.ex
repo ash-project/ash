@@ -2544,9 +2544,20 @@ defmodule Ash.Type do
   end
 
   defp ash_type_module?(module) do
-    module.ash_type?()
-  rescue
-    _ -> false
+    cond do
+      :erlang.function_exported(module, :ash_type?, 0) ->
+        module.ash_type?()
+
+      :erlang.module_loaded(module) ->
+        false
+
+      String.starts_with?(Atom.to_string(module), "Elixir.") ->
+        match?({:module, _}, Code.ensure_compiled(module)) and
+          function_exported?(module, :ash_type?, 0) and module.ash_type?()
+
+      true ->
+        false
+    end
   end
 
   @deprecated "Use Ash.Expr.determine_types/4 instead"
