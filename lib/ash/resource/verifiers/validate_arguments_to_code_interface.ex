@@ -5,7 +5,8 @@
 defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
   @moduledoc """
   Validate the arguments defined in the code interface
-  and reject arguments that are not action attributes/arguments
+  and reject arguments that are not action attributes/arguments,
+  or, for calculation interfaces, not calculation arguments or resource fields
   """
   use Spark.Dsl.Verifier
 
@@ -25,6 +26,12 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
 
       verify_interface!(interface, action, attributes, module)
     end)
+
+    module = Spark.Dsl.Verifier.get_persisted(dsl, :module)
+
+    dsl
+    |> Ash.Resource.Info.calculation_interfaces()
+    |> Enum.each(&verify_calculation_interface!(&1, dsl, module))
 
     :ok
   end
@@ -112,9 +119,61 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
     end
   end
 
+  def verify_calculation_interface!(interface, resource, module) do
+    case Ash.Resource.Info.calculation(resource, interface.calculation) do
+      nil ->
+        :ok
+
+      calculation ->
+        argument_names = MapSet.new(calculation.arguments, & &1.name)
+        field_names = resource |> Ash.Resource.Info.fields() |> MapSet.new(& &1.name)
+        custom_input_names = MapSet.new(interface.custom_inputs, & &1.name)
+
+        invalid_args =
+          interface.args
+          |> List.wrap()
+          |> Enum.map(&to_non_optional_calc_arg/1)
+          |> Enum.reject(&valid_calc_arg?(&1, argument_names, field_names, custom_input_names))
+
+        if invalid_args == [] do
+          :ok
+        else
+          raise DslError,
+            module: module,
+            message:
+              message(
+                "args",
+                invalid_args,
+                "because they are not arguments of the `#{inspect(interface.calculation)}` calculation or fields on the resource, and are not listed as a custom input",
+                [:code_interface, interface.name]
+              ),
+            path: []
+        end
+    end
+  end
+
   defp to_non_optional_arg({:optional, interface_arg}), do: interface_arg
 
   defp to_non_optional_arg(interface_arg), do: interface_arg
+
+  defp to_non_optional_calc_arg({:optional, interface_arg}), do: interface_arg
+  defp to_non_optional_calc_arg({:optional, interface_arg, _default}), do: interface_arg
+  defp to_non_optional_calc_arg(interface_arg), do: interface_arg
+
+  defp valid_calc_arg?(:_record, _argument_names, _field_names, _custom_input_names), do: true
+
+  defp valid_calc_arg?({:arg, name}, argument_names, _field_names, _custom_input_names) do
+    MapSet.member?(argument_names, name)
+  end
+
+  defp valid_calc_arg?({:ref, name}, _argument_names, field_names, _custom_input_names) do
+    MapSet.member?(field_names, name)
+  end
+
+  defp valid_calc_arg?(name, argument_names, field_names, custom_input_names) do
+    MapSet.member?(argument_names, name) or MapSet.member?(field_names, name) or
+      MapSet.member?(custom_input_names, name)
+  end
 
   defp is_attribute?(action_attributes, interface_arg) do
     MapSet.member?(action_attributes, interface_arg)
