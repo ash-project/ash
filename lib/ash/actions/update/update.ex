@@ -17,6 +17,7 @@ defmodule Ash.Actions.Update do
           | {:error, Ash.Changeset.t()}
           | {:error, term}
   def run(domain, %{valid?: false, errors: errors} = changeset, action, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     changeset = changeset(changeset, domain, action, opts)
     errors = Helpers.process_errors(changeset, errors)
 
@@ -33,6 +34,8 @@ defmodule Ash.Actions.Update do
   end
 
   def run(domain, changeset, action, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
+
     if changeset.atomics != [] &&
          !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :update}) do
       {:error,

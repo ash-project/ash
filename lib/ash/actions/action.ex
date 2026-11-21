@@ -8,10 +8,12 @@ defmodule Ash.Actions.Action do
   require Ash.Tracer
 
   def run(_domain, %{valid?: false, errors: errors}, _opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     {:error, Ash.Error.to_error_class(errors)}
   end
 
   def run(domain, input, opts) do
+    Ash.Resource.Change.warn_on_action_in_change()
     {input, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, input, opts)
     input = Ash.Actions.Helpers.apply_opts_load(input, opts)
 
