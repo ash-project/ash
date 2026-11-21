@@ -135,15 +135,18 @@ As of an instant, a temporal write makes something true *from `as_of` onward*. T
   `Ash.Changeset.as_of/2`. Pass neither, and a single `now` is pinned for the whole write, so
   the period, any `&DateTime.utc_now/0` defaults (like `create_timestamp`), and the stamped
   `as_of` all share the exact same instant.
-- **An update splits the period.** Updating as of an instant cuts the currently valid version
-  off at that instant, and writes a new one with the new values from there **to wherever the
-  old version ended**. That's only `[as_of, ∞)` when the version it split was open-ended itself.
-  Split at the exact instant a version began, and there's nothing left before it, so the update
-  works like an ordinary overwrite.
-- **A destroy ends validity. It doesn't delete history.** Destroying as of an instant cuts the
-  currently valid version down to `[lower, as_of)`. The record is gone from that instant on,
-  and untouched before it. Destroy at the exact instant the version began, and it's removed
-  entirely.
+- **An update splits the period and carries forward.** Updating as of an instant cuts the
+  currently valid version off at that instant, writes a new one with the new values from there
+  to wherever the old version ended, and carries each changed attribute into later versions
+  until the first version whose value for that attribute differs from the version before it, or
+  until a gap in validity. Split at the exact instant a version began, and there's nothing left
+  before it, so that version is updated in place. Only a write as of an instant carries; an
+  update as of a range writes over that range only.
+- **A destroy ends validity. It doesn't delete history before `as_of`.** Destroying as of an
+  instant cuts the currently valid version down to `[lower, as_of)` (or removes it when
+  `lower == as_of`) and removes later versions up to the first gap in validity. The record is
+  gone from that instant on, untouched before it, and any re-creation after a gap is left alone.
+  A destroy as of a range removes validity over that range only.
 - **A record's own instant is for loading, not writing.** A record keeps the instant it was
   read or written at, so loading on it or reloading it sees that same moment. Writes don't use
   it. Update or destroy a record without `as_of`, and the write happens now, on the version
