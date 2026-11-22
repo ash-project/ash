@@ -763,7 +763,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Ensure the the specified attributes are `nil` in the changeset results.
+  Ensure the specified attributes are `nil` in the changeset results.
   """
   @spec deselect(t(), list(atom()) | atom()) :: t()
   def deselect(changeset, fields) do

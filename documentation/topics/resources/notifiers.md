@@ -116,7 +116,7 @@ If multiple notifiers on the same resource request the same fields, Ash deduplic
 
 ## Transactions
 
-Domain calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the domain call below ultimately results in many many database calls.
+Domain calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the domain call below ultimately results in many database calls.
 
 ```elixir
 Post
