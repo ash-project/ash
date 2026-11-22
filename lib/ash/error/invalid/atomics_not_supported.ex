@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Error.Invalid.AtomicsNotSupported do
-  @moduledoc "Used when atomics for the given action type are not not supported by the data layer, but one is used."
+  @moduledoc "Used when atomics for the given action type are not supported by the data layer, but one is used."
 
   use Splode.Error, fields: [:resource, :action_type], class: :invalid
 
