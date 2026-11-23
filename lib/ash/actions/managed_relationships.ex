@@ -227,20 +227,16 @@ defmodule Ash.Actions.ManagedRelationships do
                           case Ash.Filter.get_filter(relationship.destination, keys) do
                             {:ok, keys} ->
                               query =
-                                if is_struct(read, Ash.Query) do
-                                  read
-                                else
-                                  Ash.Query.for_read(
-                                    relationship.destination,
-                                    read,
-                                    %{},
-                                    actor: actor,
-                                    context: Map.take(changeset.context, [:shared]),
-                                    authorize?: opts[:authorize?],
-                                    domain: domain(changeset, relationship),
-                                    tenant: changeset.tenant
-                                  )
-                                end
+                                Ash.Query.for_read(
+                                  relationship.destination,
+                                  read,
+                                  %{},
+                                  actor: actor,
+                                  context: Map.take(changeset.context, [:shared]),
+                                  authorize?: opts[:authorize?],
+                                  domain: domain(changeset, relationship),
+                                  tenant: changeset.tenant
+                                )
 
                               query =
                                 if is_nil(lookup_filter) do
@@ -1913,20 +1909,16 @@ defmodule Ash.Actions.ManagedRelationships do
                   {:ok, input}
                 else
                   query =
-                    if is_struct(read, Ash.Query) do
-                      read
-                    else
-                      Ash.Query.for_read(
-                        relationship.destination,
-                        read,
-                        %{},
-                        actor: actor,
-                        context: Map.take(changeset.context, [:shared]),
-                        authorize?: opts[:authorize?],
-                        domain: domain(changeset, relationship),
-                        tenant: changeset.tenant
-                      )
-                    end
+                    Ash.Query.for_read(
+                      relationship.destination,
+                      read,
+                      %{},
+                      actor: actor,
+                      context: Map.take(changeset.context, [:shared]),
+                      authorize?: opts[:authorize?],
+                      domain: domain(changeset, relationship),
+                      tenant: changeset.tenant
+                    )
 
                   query =
                     if is_nil(lookup_filter) do

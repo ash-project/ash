@@ -143,11 +143,6 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
       when is_many_to_many and key in [:relate, :relate_and_update] and is_atom(read) ->
         {key, join_create, read, join_keys, nil}
 
-      {key, join_create, query, join_keys}
-      when is_many_to_many and key in [:relate, :relate_and_update] and
-             is_struct(query, Ash.Query) ->
-        {key, join_create, query, join_keys, nil}
-
       {key, join_create, filter, join_keys}
       when is_many_to_many and key in [:relate, :relate_and_update] ->
         read = primary_action_name!(relationship.destination, :read)
@@ -156,11 +151,6 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
       {key, join_create, read}
       when is_many_to_many and key in [:relate, :relate_and_update] and is_atom(read) ->
         {key, join_create, read, join_keys, nil}
-
-      {key, join_create, query}
-      when is_many_to_many and key in [:relate, :relate_and_update] and
-             is_struct(query, Ash.Query) ->
-        {key, join_create, query, join_keys, nil}
 
       {key, join_create, filter}
       when is_many_to_many and key in [:relate, :relate_and_update] ->
@@ -181,10 +171,6 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
       {key, update, read}
       when key in [:relate, :relate_and_update] and is_atom(read) ->
         {key, update, read, nil}
-
-      {key, update, query}
-      when key in [:relate, :relate_and_update] and is_struct(query, Ash.Query) ->
-        {key, update, query, nil}
 
       {key, update, filter} when key in [:relate, :relate_and_update] ->
         read = primary_action_name!(relationship.destination, :read)

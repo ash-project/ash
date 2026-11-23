@@ -5,7 +5,6 @@
 defmodule Ash.Test.ManageRelationshipTest do
   @moduledoc false
   use ExUnit.Case, async: true
-  require Ash.Query
 
   defmodule ParentResource do
     use Ash.Resource,
@@ -1786,32 +1785,6 @@ defmodule Ash.Test.ManageRelationshipTest do
                  products: [%{id: product.id}]
                })
                |> Ash.update()
-    end
-
-    test "on_lookup accepts a prebuilt query" do
-      author =
-        Ash.Test.ManageRelationshipTest.LookupAuthor
-        |> Ash.Changeset.for_create(:create, %{name: "Allowed"})
-        |> Ash.create!()
-
-      query =
-        Ash.Test.ManageRelationshipTest.LookupAuthor
-        |> Ash.Query.for_read(:read)
-        |> Ash.Query.filter(name == "Allowed")
-
-      changeset =
-        Ash.Test.ManageRelationshipTest.LookupPost
-        |> Ash.Changeset.for_create(:create_with_query, %{title: "Query post"})
-        |> Ash.Changeset.manage_relationship(
-          :author,
-          %{id: author.id},
-          type: :append_and_remove,
-          on_lookup: {:relate, :create, query},
-          on_no_match: :error
-        )
-
-      assert {:ok, post} = Ash.create(changeset)
-      assert post.author_id == author.id
     end
 
     test "on_lookup accepts a filter for the four-element many_to_many form" do
