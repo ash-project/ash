@@ -503,20 +503,15 @@ defmodule Ash.ActionInput do
     end)
   end
 
+  # Defaults apply only to omitted arguments. An explicit `nil` (or a value that
+  # casts to `nil`) stays `nil`, matching `Ash.Changeset` and `Ash.Query`.
   defp set_defaults(input) do
     input.action.arguments
     |> Enum.reject(&is_nil(&1.default))
     |> Enum.reduce(input, fn argument, input ->
       case fetch_argument(input, argument.name) do
-        {:ok, value} when not is_nil(value) ->
-          input
-
-        _ ->
-          if argument.name in input.invalid_keys do
-            input
-          else
-            set_argument(input, argument.name, default(argument))
-          end
+        :error -> set_argument(input, argument.name, default(argument))
+        {:ok, _} -> input
       end
     end)
   end

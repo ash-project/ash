@@ -724,7 +724,8 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp handle_attribute_multitenancy(changeset) do
+  @doc false
+  def handle_attribute_multitenancy(changeset) do
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
       attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)

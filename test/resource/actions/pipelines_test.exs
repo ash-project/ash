@@ -292,6 +292,32 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
     end
   end
 
+  describe "builtins shared by changes and preparations" do
+    test "change after_action in a pipeline builds the change builtin" do
+      defresource ChangeAfterAction do
+        pipelines do
+          pipeline :hook do
+            change after_action(fn _changeset, record, _context ->
+                     {:ok, %{record | score: 1}}
+                   end)
+          end
+        end
+
+        actions do
+          create :piped do
+            pipe_through [:hook]
+            accept [:name]
+          end
+        end
+      end
+
+      assert [%{change: {Ash.Resource.Change.AfterAction, _}}] =
+               Info.action(ChangeAfterAction, :piped).changes
+
+      assert %{score: 1} = Ash.create!(ChangeAfterAction, %{name: "a"}, action: :piped)
+    end
+  end
+
   describe "introspection" do
     test "Info.pipelines/1 and Info.pipeline/2" do
       defresource IntrospectPipelines do

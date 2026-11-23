@@ -93,7 +93,9 @@ defmodule Ash.Changeset do
     params: %{},
     action_select: [],
     atomic_after_action: [],
+    atomic_after_action_prepend: [],
     atomic_after_transaction: [],
+    atomic_after_transaction_prepend: [],
     attribute_changes: %{},
     atomic_changes: [],
     casted_attributes: %{},
@@ -761,7 +763,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Ensure the the specified attributes are `nil` in the changeset results.
+  Ensure the specified attributes are `nil` in the changeset results.
   """
   @spec deselect(t(), list(atom()) | atom()) :: t()
   def deselect(changeset, fields) do
@@ -1330,12 +1332,7 @@ defmodule Ash.Changeset do
             changeset
 
           [{:error, error}] ->
-            if message do
-              error = Ash.Error.override_validation_message(error, message)
-              add_error(changeset, error)
-            else
-              add_error(changeset, error)
-            end
+            add_validation_error(changeset, error, message)
 
           [{:not_atomic, error}] ->
             {:not_atomic, error}
@@ -4536,43 +4533,8 @@ defmodule Ash.Changeset do
                 :ok ->
                   changeset
 
-                {:error, error} when is_binary(error) ->
-                  Ash.Changeset.add_error(changeset, validation.message || error)
-
-                {:error, error} when is_exception(error) ->
-                  if validation.message do
-                    error = Ash.Error.override_validation_message(error, validation.message)
-                    add_error(changeset, error)
-                  else
-                    add_error(changeset, error)
-                  end
-
-                {:error, errors} when is_list(errors) ->
-                  cond do
-                    validation.message ->
-                      errors =
-                        Enum.map(errors, fn error ->
-                          Ash.Error.override_validation_message(error, validation.message)
-                        end)
-
-                      add_error(changeset, errors)
-
-                    Keyword.keyword?(errors) ->
-                      add_error(changeset, keyword_to_validation_change_error(changeset, errors))
-
-                    true ->
-                      add_error(changeset, errors)
-                  end
-
                 {:error, error} ->
-                  error =
-                    if Keyword.keyword?(error) do
-                      Keyword.put(error, :message, validation.message || error[:message])
-                    else
-                      validation.message || error
-                    end
-
-                  Ash.Changeset.add_error(changeset, error)
+                  add_validation_error(changeset, error, validation.message)
               end
           end
         end
@@ -7572,26 +7534,28 @@ defmodule Ash.Changeset do
   def after_action(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :after_action)
 
-    if opts[:prepend?] do
-      if changeset.phase == :pending do
-        %{
-          changeset
-          | after_action: [func | changeset.after_action],
-            atomic_after_action: [func | changeset.atomic_after_action]
-        }
-      else
+    changeset =
+      if opts[:prepend?] do
         %{changeset | after_action: [func | changeset.after_action]}
-      end
-    else
-      if changeset.phase == :pending do
-        %{
-          changeset
-          | after_action: changeset.after_action ++ [func],
-            atomic_after_action: changeset.atomic_after_action ++ [func]
-        }
       else
         %{changeset | after_action: changeset.after_action ++ [func]}
       end
+
+    case atomic_hook_placement(changeset, opts[:prepend?]) do
+      :prepend ->
+        %{changeset | atomic_after_action_prepend: [func | changeset.atomic_after_action_prepend]}
+
+      :before_action ->
+        %{
+          changeset
+          | atomic_after_action_prepend: changeset.atomic_after_action_prepend ++ [func]
+        }
+
+      :after_action ->
+        %{changeset | atomic_after_action: changeset.atomic_after_action ++ [func]}
+
+      :none ->
+        changeset
     end
   end
 
@@ -7708,28 +7672,50 @@ defmodule Ash.Changeset do
   def after_transaction(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :after_transaction)
 
-    if opts[:prepend?] do
-      if changeset.phase == :pending do
-        %{
-          changeset
-          | after_transaction: [func | changeset.after_transaction],
-            atomic_after_transaction: [func | changeset.atomic_after_transaction]
-        }
-      else
+    changeset =
+      if opts[:prepend?] do
         %{changeset | after_transaction: [func | changeset.after_transaction]}
-      end
-    else
-      if changeset.phase == :pending do
-        %{
-          changeset
-          | after_transaction: changeset.after_transaction ++ [func],
-            atomic_after_transaction: changeset.atomic_after_transaction ++ [func]
-        }
       else
         %{changeset | after_transaction: changeset.after_transaction ++ [func]}
       end
+
+    case atomic_hook_placement(changeset, opts[:prepend?]) do
+      :prepend ->
+        %{
+          changeset
+          | atomic_after_transaction_prepend: [func | changeset.atomic_after_transaction_prepend]
+        }
+
+      :before_action ->
+        %{
+          changeset
+          | atomic_after_transaction_prepend: changeset.atomic_after_transaction_prepend ++ [func]
+        }
+
+      :after_action ->
+        %{changeset | atomic_after_transaction: changeset.atomic_after_transaction ++ [func]}
+
+      :none ->
+        changeset
     end
   end
+
+  # An update upgraded to an atomic one is rebuilt from its action's changes,
+  # which add the action's hooks again. Hooks added outside those changes (while
+  # the changeset is `:pending`) are also stored in `atomic_*` lists, so the
+  # rebuilt changeset can get them back in the same place relative to the
+  # action's hooks. The `atomic_*_prepend` lists hold the hooks that run before
+  # them: those prepended (`:prepend`) and those added before the action ran
+  # (`:before_action`). The other lists hold the rest (`:after_action`).
+  defp atomic_hook_placement(%{phase: :pending} = changeset, prepend?) do
+    cond do
+      prepend? -> :prepend
+      is_nil(changeset.__validated_for_action__) -> :before_action
+      true -> :after_action
+    end
+  end
+
+  defp atomic_hook_placement(_changeset, _prepend?), do: :none
 
   @doc """
   Adds an around_action hook to the changeset.
@@ -8092,6 +8078,38 @@ defmodule Ash.Changeset do
     else
       error
     end
+  end
+
+  @doc false
+  # Adds the error returned by a validation to the changeset, applying the
+  # validation's `message` override if present. Keyword list errors are resolved
+  # against the action so `field:` becomes `InvalidArgument` or `InvalidAttribute`.
+  # Shared by the single, atomic and bulk validation paths so they produce the same errors.
+  def add_validation_error(changeset, [], _message), do: changeset
+
+  def add_validation_error(changeset, error, message) when is_list(error) do
+    if Keyword.keyword?(error) do
+      error =
+        if message do
+          Keyword.put(error, :message, message)
+        else
+          error
+        end
+
+      add_error(changeset, keyword_to_validation_change_error(changeset, error))
+    else
+      Enum.reduce(error, changeset, &add_validation_error(&2, &1, message))
+    end
+  end
+
+  def add_validation_error(changeset, error, message) when is_binary(error) do
+    add_error(changeset, message || error)
+  end
+
+  def add_validation_error(changeset, error, nil), do: add_error(changeset, error)
+
+  def add_validation_error(changeset, error, message) do
+    add_error(changeset, Ash.Error.override_validation_message(error, message))
   end
 
   defp keyword_to_validation_change_error(changeset, keyword) do

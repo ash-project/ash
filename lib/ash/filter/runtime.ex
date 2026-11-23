@@ -374,6 +374,38 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
+  @doc false
+  def load_for_expressions(records, expressions, resource, domain, actor, tenant) do
+    refs_to_load =
+      expressions
+      |> Enum.flat_map(&paths_to_load(&1, resource, records))
+      |> Enum.uniq()
+
+    case refs_to_load do
+      [] ->
+        {:ok, records}
+
+      refs_to_load ->
+        load =
+          resource
+          |> load_all(refs_to_load)
+          |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+        Ash.load(records, load,
+          domain: domain,
+          authorize?: false,
+          tenant: tenant,
+          actor: actor
+        )
+    end
+  end
+
+  @doc false
+  def runtime_calculation_name(%Ash.Query.Calculation{} = calculation) do
+    {__MODULE__,
+     {calculation.name, calculation.module, calculation.opts, calculation.context.arguments}}
+  end
+
   # Relationships referenced by refs are loaded along with the referenced field.
   # `exists/2` expressions whose inner expression contains no refs (e.g `exists(posts, true)`)
   # still need their relationship path loaded in order to be evaluated.
@@ -381,7 +413,14 @@ defmodule Ash.Filter.Runtime do
     ref_paths =
       expression
       |> Ash.Filter.list_refs(false, false, true)
-      |> Enum.map(&(&1.relationship_path ++ [&1.attribute]))
+      |> Enum.map(fn
+        %{attribute: %Ash.Query.Calculation{} = calculation} = ref ->
+          ref.relationship_path ++
+            [%{calculation | name: runtime_calculation_name(calculation), load: nil}]
+
+        ref ->
+          ref.relationship_path ++ [ref.attribute]
+      end)
 
     exists_paths =
       expression
@@ -938,28 +977,36 @@ defmodule Ash.Filter.Runtime do
           {:ok, nil}
 
         [record | _] ->
-          if load do
-            case Map.fetch(record || %{}, load) do
-              :error ->
-                :unknown
+          calculations = Map.get(record || %{}, :calculations, %{})
 
-              {:ok, %Ash.NotLoaded{}} ->
-                :unknown
+          case Map.fetch(calculations, runtime_calculation_name(calculation)) do
+            {:ok, value} ->
+              {:ok, value}
 
-              {:ok, %Ash.ForbiddenField{}} ->
-                :unknown
+            :error ->
+              if load do
+                case Map.fetch(record || %{}, load) do
+                  :error ->
+                    :unknown
 
-              {:ok, other} ->
-                {:ok, other}
-            end
-          else
-            case Map.fetch(Map.get(record || %{}, :calculations, %{}), name) do
-              {:ok, value} ->
-                {:ok, value}
+                  {:ok, %Ash.NotLoaded{}} ->
+                    :unknown
 
-              :error ->
-                :unknown
-            end
+                  {:ok, %Ash.ForbiddenField{}} ->
+                    :unknown
+
+                  {:ok, other} ->
+                    {:ok, other}
+                end
+              else
+                case Map.fetch(calculations, name) do
+                  {:ok, value} ->
+                    {:ok, value}
+
+                  :error ->
+                    :unknown
+                end
+              end
           end
       end
 

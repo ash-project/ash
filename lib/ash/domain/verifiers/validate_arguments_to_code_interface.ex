@@ -5,7 +5,8 @@
 defmodule Ash.Domain.Verifiers.ValidateArgumentsToCodeInterface do
   @moduledoc """
   Validate the arguments defined in the code interface
-  and reject arguments that are not action attributes/arguments
+  and reject arguments that are not action attributes/arguments,
+  or, for calculation interfaces, not calculation arguments or resource fields
   """
   use Spark.Dsl.Verifier
 
@@ -28,6 +29,15 @@ defmodule Ash.Domain.Verifiers.ValidateArgumentsToCodeInterface do
           action,
           resource_attributes,
           resource
+        )
+      end
+
+      for interface <- reference.definitions,
+          match?(%Ash.Resource.CalculationInterface{}, interface) do
+        ValidateArgumentsToCodeInterface.verify_calculation_interface!(
+          interface,
+          reference.resource,
+          reference.resource
         )
       end
     end

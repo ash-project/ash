@@ -49,6 +49,10 @@ defmodule Ash.Test.Support.PolicyField.User do
       source_attribute :id
       destination_attribute :reporter_id
     end
+
+    belongs_to :manager, __MODULE__ do
+      public?(true)
+    end
   end
 
   aggregates do
@@ -85,6 +89,13 @@ defmodule Ash.Test.Support.PolicyField.User do
     field_policy :ticket_count, [
       actor_attribute_equals(:role, :representative),
       accessing_from(Ash.Test.Support.PolicyField.Ticket, :reporter)
+    ] do
+      authorize_if always()
+    end
+
+    field_policy :ticket_count, [
+      actor_attribute_equals(:role, :representative),
+      accessing_from(__MODULE__, :manager)
     ] do
       authorize_if always()
     end

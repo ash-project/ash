@@ -21,6 +21,11 @@ defmodule Ash.Test.ExprTest do
       uuid_primary_key :id
       attribute :roles, {:array, Role}
       attribute :on_hand, :integer, constraints: [min: 0]
+      attribute :price, :decimal
+      attribute :name, :string
+      attribute :due_at, :utc_datetime
+      attribute :grace, :duration
+      attribute :tags, {:array, :string}
     end
   end
 
@@ -183,6 +188,116 @@ defmodule Ash.Test.ExprTest do
       assert microseconds < 1_000_000
     end
 
+    test "untyped expressions are not claimed by a signature nothing supports" do
+      {:ok, %op{left: left, right: right}} =
+        expr(fragment("1") + fragment("2"))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[nil, nil], nil} = determine_types(op, [left, right])
+    end
+
+    test "literals give their types when nothing else does" do
+      {:ok, %op{left: left, right: right}} =
+        expr(if(fragment("true"), do: 1, else: 0) + if(fragment("true"), do: 10, else: 0))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[{Ash.Type.Integer, []}, {Ash.Type.Integer, []}], {Ash.Type.Integer, []}} =
+               determine_types(op, [left, right])
+
+      {:ok, %func{arguments: args}} =
+        expr(if(fragment("true"), do: 1, else: 0))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[_, {Ash.Type.Integer, []}, {Ash.Type.Integer, []}], {Ash.Type.Integer, []}} =
+               determine_types(func, args)
+    end
+
+    test "literals don't override a type the expression gives" do
+      {:ok, %op{left: left, right: right}} =
+        expr(type(fragment("1"), :decimal) == if(fragment("true"), do: 1, else: 0))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[{Ash.Type.Decimal, []}, {Ash.Type.Decimal, []}], {Ash.Type.Boolean, []}} =
+               determine_types(op, [left, right])
+
+      {:ok, %func{arguments: args}} =
+        expr(if(fragment("true"), do: 1, else: 0))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[_, {Ash.Type.Decimal, []}, {Ash.Type.Decimal, []}], {Ash.Type.Decimal, []}} =
+               determine_types(func, args, Ash.Type.Decimal)
+    end
+
+    test "an untyped expression still takes a signature that another operand supports" do
+      {:ok, %op{left: left, right: right}} =
+        expr(fragment("now()") + ^Duration.new!(day: 1))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[{Ash.Type.Duration, []}, {Ash.Type.Duration, []}], {Ash.Type.Duration, []}} =
+               determine_types(op, [left, right])
+    end
+
+    test "an untyped expression still takes the only signature there is" do
+      {:ok, %func{arguments: args}} =
+        expr(string_length(fragment("'foo'")))
+        |> Ash.Filter.hydrate_refs(%{})
+
+      assert {[{Ash.Type.String, []}], {Ash.Type.Integer, []}} = determine_types(func, args)
+    end
+
+    test "typing every node from type trees agrees with determine_types/4" do
+      exprs = [
+        expr(on_hand + 1 + on_hand * 2 - 3),
+        expr(price / 2 + on_hand),
+        expr(if price > 100, do: price - 1, else: price + on_hand),
+        expr(
+          cond do
+            is_nil(price) -> 0
+            price >= 10 and on_hand > 1 -> price * on_hand
+            true -> -price
+          end
+        ),
+        expr(due_at + grace > now()),
+        expr(due_at - grace),
+        expr(name <> "-" <> string_downcase(name)),
+        expr(fragment("? + 1", on_hand) + on_hand),
+        expr("a" in tags),
+        expr((price || 0) + type(on_hand, :decimal)),
+        expr(if on_hand > 0, do: %{a: on_hand + 1, b: name}, else: %{a: 0, b: "none"}),
+        expr(if(fragment("true"), do: 1, else: 0) + if(fragment("true"), do: 10, else: 0)),
+        expr(type(fragment("1"), :decimal) == if(fragment("true"), do: 1, else: 0)),
+        expr(fragment("1") + fragment("2")),
+        expr(fragment("now()") + ^Duration.new!(day: 1))
+      ]
+
+      for expr <- exprs do
+        {:ok, expr} = Ash.Filter.hydrate_refs(expr, %{resource: Resource})
+
+        assert type_top_down(expr, nil) == type_top_down_with_trees(expr, nil),
+               "typing #{inspect(expr)} from type trees gave different types"
+
+        assert Ash.Expr.determine_type_tree(expr).type == Ash.Expr.determine_type(expr)
+      end
+    end
+
+    test "typing a deep expression top down from type trees takes linear time" do
+      on_hand = Ash.Resource.Info.attribute(Resource, :on_hand)
+
+      chain =
+        Enum.reduce(1..3000, %Ash.Query.Ref{attribute: on_hand, resource: Resource}, fn n, acc ->
+          %Ash.Query.Operator.Basic.Plus{left: acc, right: n, operator: :+}
+        end)
+
+      # Without the trees, each node re-derives the types of its operands from their
+      # whole subtrees, taking time quadratic in the depth: about 4.5 million nodes typed
+      # here, against 6000 with them.
+      {microseconds, types} = :timer.tc(fn -> type_top_down_with_trees(chain, nil) end)
+
+      assert length(types) == 3000
+      assert Enum.all?(types, &match?({_, {Ash.Type.Integer, _}}, &1))
+      assert microseconds < 1_000_000
+    end
+
     test "upsert_conflict/1 has the type of the attribute it refers to" do
       {:ok, conflict} =
         expr(upsert_conflict(:on_hand))
@@ -315,4 +430,70 @@ defmodule Ash.Test.ExprTest do
                filled_calc.opts[:expr]
     end
   end
+
+  # Types an expression the way a data layer compiling it does: from the top down,
+  # calling `determine_types/4` at each operator and function call, and passing the
+  # types it resolves for the operands down as their expected types.
+  defp type_top_down(expr, known) do
+    case operands(expr) do
+      {:typed, mod, operands} ->
+        {types, returns} = Ash.Expr.determine_types(mod, operands, known)
+        [{types, returns} | type_operands(operands, types, returns, &type_top_down/2)]
+
+      {:untyped, operands} ->
+        Enum.flat_map(operands, &type_top_down(&1, nil))
+    end
+  end
+
+  # The same, taking the types of each node's operands from type trees.
+  defp type_top_down_with_trees(expr, known) do
+    do_type_top_down_with_trees(Ash.Expr.determine_type_tree(expr), known)
+  end
+
+  defp do_type_top_down_with_trees(%Ash.Expr.TypeTree{expr: expr} = tree, known) do
+    case operands(expr) do
+      {:typed, mod, operands} ->
+        operand_trees = tree.operands || Enum.map(operands, &Ash.Expr.determine_type_tree/1)
+
+        {types, returns} =
+          Ash.Expr.determine_types_with_operand_types(
+            mod,
+            operands,
+            Enum.map(operand_trees, & &1.type),
+            known
+          )
+
+        [
+          {types, returns}
+          | type_operands(operand_trees, types, returns, &do_type_top_down_with_trees/2)
+        ]
+
+      {:untyped, operands} ->
+        Enum.flat_map(operands, &type_top_down_with_trees(&1, nil))
+    end
+  end
+
+  defp type_operands(operands, types, returns, fun) do
+    types = if is_list(types), do: types, else: []
+
+    operands
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {operand, index} -> fun.(operand, Enum.at(types, index) || returns) end)
+  end
+
+  defp operands(%Ash.Query.Function.Type{arguments: [expr | _]}), do: {:untyped, [expr]}
+  defp operands(%mod{__predicate__?: _, arguments: arguments}), do: {:typed, mod, arguments}
+
+  defp operands(%mod{__predicate__?: _, left: left, right: right}),
+    do: {:typed, mod, [left, right]}
+
+  defp operands(%Ash.Query.BooleanExpression{left: left, right: right}),
+    do: {:untyped, [left, right]}
+
+  defp operands(%Ash.Query.Not{expression: expression}), do: {:untyped, [expression]}
+
+  defp operands(map) when is_map(map) and not is_struct(map),
+    do: {:untyped, Map.values(map)}
+
+  defp operands(_), do: {:untyped, []}
 end

@@ -36,6 +36,10 @@ defmodule Ash.Test.Policy.CanReadTest do
       uuid_primary_key :id
       attribute :admin, :boolean, default: false, public?: true
     end
+
+    relationships do
+      has_many :memberships, Ash.Test.Policy.CanReadTest.Membership, public?: true
+    end
   end
 
   defmodule Organization do
@@ -427,6 +431,68 @@ defmodule Ash.Test.Policy.CanReadTest do
     end
   end
 
+  defmodule MembersOnlyNote do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    policies do
+      policy action_type(:read) do
+        # an unrelated `exists` that follows one of its own resource's relationships
+        authorize_if expr(
+                       exists(
+                         Ash.Test.Policy.CanReadTest.User,
+                         id == ^actor(:id) and exists(memberships, true)
+                       )
+                     )
+      end
+    end
+  end
+
+  defmodule MembersOnlyNoteReply do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    relationships do
+      belongs_to :note, Ash.Test.Policy.CanReadTest.MembersOnlyNote, public?: true
+    end
+
+    policies do
+      policy action_type(:read) do
+        authorize_if can_read(:note)
+      end
+    end
+  end
+
   setup do
     actor = Ash.create!(User, %{}, authorize?: false)
     other = Ash.create!(User, %{}, authorize?: false)
@@ -686,6 +752,20 @@ defmodule Ash.Test.Policy.CanReadTest do
                unreadable
                |> Ash.Changeset.for_destroy(:destroy, %{}, actor: actor)
                |> Ash.destroy()
+    end
+  end
+
+  describe "unrelated exists in the related resource's policies" do
+    test "stays scoped to its own resource", %{actor: actor, other: other} do
+      Ash.create!(Membership, %{user_id: actor.id}, authorize?: false)
+      note = Ash.create!(MembersOnlyNote, %{}, authorize?: false)
+      reply = Ash.create!(MembersOnlyNoteReply, %{note_id: note.id}, authorize?: false)
+
+      assert ids(Ash.read!(MembersOnlyNote, actor: actor)) == [note.id]
+      assert Ash.read!(MembersOnlyNote, actor: other) == []
+
+      assert ids(Ash.read!(MembersOnlyNoteReply, actor: actor)) == [reply.id]
+      assert Ash.read!(MembersOnlyNoteReply, actor: other) == []
     end
   end
 

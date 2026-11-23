@@ -109,6 +109,81 @@ defmodule Ash.Test.Actions.StreamTest do
     end
   end
 
+  defmodule NoLimitOffsetEts do
+    @moduledoc false
+    @behaviour Ash.DataLayer
+
+    def can?(_resource, :limit), do: false
+    def can?(_resource, :offset), do: false
+    def can?(resource, feature), do: Ash.DataLayer.Ets.can?(resource, feature)
+
+    for {name, arity} <- Ash.DataLayer.Ets.__info__(:functions),
+        name not in [:can?, :spark_dsl_config, :explain] and
+          not String.starts_with?(Atom.to_string(name), "__") do
+      args = Macro.generate_arguments(arity, __MODULE__)
+      defdelegate unquote(name)(unquote_splicing(args)), to: Ash.DataLayer.Ets
+    end
+  end
+
+  defmodule UnpaginatedPost do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: NoLimitOffsetEts
+
+    actions do
+      defaults [:destroy, create: [:title], update: [:title]]
+
+      read :read do
+        primary? true
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true
+    end
+  end
+
+  describe "action that can't be streamed with keyset or offset" do
+    setup do
+      Ash.bulk_create!([%{title: "a"}, %{title: "b"}], UnpaginatedPost, :create)
+      :ok
+    end
+
+    test "stream_strategy returns an error tuple when offset is allowed" do
+      query = Ash.Query.for_read(UnpaginatedPost, :read)
+
+      assert {:error, %Ash.Error.Invalid.NonStreamableAction{types: [:keyset, :offset]}} =
+               Ash.Actions.Read.Stream.stream_strategy(query, nil, :offset)
+    end
+
+    test "Ash.stream! raises NonStreamableAction when offset is allowed" do
+      assert_raise Ash.Error.Invalid.NonStreamableAction, fn ->
+        UnpaginatedPost |> Ash.stream!(allow_stream_with: :offset) |> Enum.to_list()
+      end
+    end
+
+    test "full_read still streams every record" do
+      streamed = UnpaginatedPost |> Ash.stream!(allow_stream_with: :full_read) |> Enum.to_list()
+
+      assert length(streamed) >= 2
+      assert Enum.sort_by(streamed, & &1.id) == Enum.sort_by(Ash.read!(UnpaginatedPost), & &1.id)
+    end
+
+    test "bulk update and destroy return NoMatchingBulkStrategy when offset is allowed" do
+      opts = [strategy: :stream, allow_stream_with: :offset, return_errors?: true]
+
+      assert %Ash.BulkResult{
+               status: :error,
+               errors: [%Ash.Error.Invalid{errors: [%Ash.Error.Invalid.NoMatchingBulkStrategy{}]}]
+             } = Ash.bulk_update(UnpaginatedPost, :update, %{title: "z"}, opts)
+
+      assert %Ash.BulkResult{
+               status: :error,
+               errors: [%Ash.Error.Invalid{errors: [%Ash.Error.Invalid.NoMatchingBulkStrategy{}]}]
+             } = Ash.bulk_destroy(UnpaginatedPost, :destroy, %{}, opts)
+    end
+  end
+
   test "a batch_size above the action's max_page_size still streams every record" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})

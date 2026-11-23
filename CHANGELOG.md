@@ -8,6 +8,74 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.37.7](https://github.com/ash-project/ash/compare/v3.37.6...v3.37.7) (2026-11-18)
+
+
+
+
+### Bug Fixes:
+
+* properly separate prepended and non-prepended hooks for atomic transfer by [@zachdaniel](https://github.com/zachdaniel)
+
+* discard bulk update notifications on batch rollback (#3128) by Ashu3208 [(#3128)](https://github.com/ash-project/ash/pull/3128)
+
+## [v3.37.6](https://github.com/ash-project/ash/compare/v3.37.5...v3.37.6) (2026-11-16)
+
+
+
+
+### Improvements:
+
+* expand and type repeated calculations once by [@zachdaniel](https://github.com/zachdaniel)
+
+* derive operator signatures at compile time by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* cleanup any_success? pdict key for bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.37.5](https://github.com/ash-project/ash/compare/v3.37.4...v3.37.5) (2026-11-15)
+
+
+
+
+### Improvements:
+
+* add `Ash.Filter.map_reduce` by [@zachdaniel](https://github.com/zachdaniel)
+
+* compile-time checks for attribute vs argument validations (#3118) by TravelCurry02 [(#3118)](https://github.com/ash-project/ash/pull/3118)
+
+### Bug Fixes:
+
+* resolve repeated calculations with different arguments at runtime and type untyped literals in expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* drop notifications for no notifiers in Ash.Notifier.notify/1 (#3124) by Stefan Luptak [(#3124)](https://github.com/ash-project/ash/pull/3124)
+
+* return error tuple from stream_strategy when offset streaming is impossible (#3125) by [@emadshaaban92](https://github.com/emadshaaban92) [(#3125)](https://github.com/ash-project/ash/pull/3125)
+
+* set accessing_from before running preparations on relationship loads (#3123) by Ahatch3 [(#3123)](https://github.com/ash-project/ash/pull/3123)
+
+* keep unrelated exists scoped to its resource in can_read by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.37.4](https://github.com/ash-project/ash/compare/v3.37.3...v3.37.4) (2026-11-11)
+
+
+
+
+### Bug Fixes:
+
+* properly transform bulk errors into Ash errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* set source context in after action hook for cascade destroy by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve `parent()` relationship filters in managed lookups and cascades (#3056) by [@jimsynz](https://github.com/jimsynz) [(#3056)](https://github.com/ash-project/ash/pull/3056)
+
+* use accessing_from for related field policies in filter input (#3116) by [@emadshaaban92](https://github.com/emadshaaban92) [(#3116)](https://github.com/ash-project/ash/pull/3116)
+
+* only apply generic action argument defaults when the argument is omitted by [@zachdaniel](https://github.com/zachdaniel)
+
+* avoid applying filter mappers twice (#3114) by Jechol Lee [(#3114)](https://github.com/ash-project/ash/pull/3114)
+
 ## [v3.37.3](https://github.com/ash-project/ash/compare/v3.37.2...v3.37.3) (2026-11-05)
 
 

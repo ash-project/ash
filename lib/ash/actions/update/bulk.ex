@@ -453,6 +453,9 @@ defmodule Ash.Actions.Update.Bulk do
                       {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
 
                       %{result | errors: errors, error_count: error_count}
+                  after
+                    Process.delete({:any_success?, ref})
+                    Process.delete({:bulk_notifications, ref})
                   end
               end
               |> handle_atomic_notifications(
@@ -2132,6 +2135,7 @@ defmodule Ash.Actions.Update.Bulk do
 
       notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
       queued_notifications = Process.get(:ash_notifications)
+      bulk_notifications = Process.get({:bulk_notifications, ref}, [])
 
       try do
         Ash.DataLayer.transaction(
@@ -2198,6 +2202,9 @@ defmodule Ash.Actions.Update.Bulk do
 
           {:error, error} ->
             Ash.Actions.Helpers.restore_queued_notifications(queued_notifications)
+
+            # Earlier batches may have committed; discard only this batch's notifications.
+            Process.put({:bulk_notifications, ref}, bulk_notifications)
 
             # Convert batch changesets to error tuples for after_transaction processing
             error_tagged_results =
@@ -3956,14 +3963,7 @@ defmodule Ash.Actions.Update.Bulk do
             changeset
 
           {:error, error} ->
-            error =
-              if validation.message do
-                Ash.Error.override_validation_message(error, validation.message)
-              else
-                error
-              end
-
-            Ash.Changeset.add_error(changeset, error)
+            Ash.Changeset.add_validation_error(changeset, error, validation.message)
         end
       else
         changeset

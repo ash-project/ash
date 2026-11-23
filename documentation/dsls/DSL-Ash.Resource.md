@@ -1032,7 +1032,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-action-argument-allow_nil?){: #actions-action-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-action-argument-public?){: #actions-action-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-action-argument-sensitive?){: #actions-action-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-action-argument-default){: #actions-action-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-action-argument-default){: #actions-action-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 
@@ -1549,7 +1549,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-create-argument-allow_nil?){: #actions-create-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-create-argument-public?){: #actions-create-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-create-argument-sensitive?){: #actions-create-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-create-argument-default){: #actions-create-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-create-argument-default){: #actions-create-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 
@@ -1700,7 +1700,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-read-argument-allow_nil?){: #actions-read-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-read-argument-public?){: #actions-read-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-read-argument-sensitive?){: #actions-read-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-read-argument-default){: #actions-read-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-read-argument-default){: #actions-read-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 
@@ -2304,7 +2304,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-update-argument-allow_nil?){: #actions-update-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-update-argument-public?){: #actions-update-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-update-argument-sensitive?){: #actions-update-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-update-argument-default){: #actions-update-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-update-argument-default){: #actions-update-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 
@@ -2668,7 +2668,7 @@ argument :password_confirmation, :string
 | [`allow_nil?`](#actions-destroy-argument-allow_nil?){: #actions-destroy-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-destroy-argument-public?){: #actions-destroy-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
 | [`sensitive?`](#actions-destroy-argument-sensitive?){: #actions-destroy-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#actions-destroy-argument-default){: #actions-destroy-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+| [`default`](#actions-destroy-argument-default){: #actions-destroy-argument-default } | `any` |  | The default value for the argument to take when it is not provided. An explicitly provided `nil` is not replaced by the default. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
 

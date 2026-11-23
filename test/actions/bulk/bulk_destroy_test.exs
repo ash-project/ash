@@ -163,6 +163,19 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
   end
 
+  defmodule ValidateCodeArgument do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_argument(changeset, :code) do
+        "bad" -> {:error, field: :code, message: "code cannot be bad"}
+        _ -> :ok
+      end
+    end
+  end
+
   defmodule PostWithBulkValidationOrdering do
     @moduledoc false
     use Ash.Resource,
@@ -180,6 +193,12 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       destroy :destroy do
         primary? true
         require_atomic? false
+      end
+
+      destroy :destroy_with_code_argument do
+        argument :code, :string
+        require_atomic? false
+        validate ValidateCodeArgument
       end
     end
 
@@ -520,6 +539,31 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end)
   end
 
+  test "an atomic bulk destroy does not report a notification for no notifiers as missed" do
+    post = Ash.create!(Post, %{title: "title1"}, authorize?: false)
+
+    for_no_notifiers = %Ash.Notifier.Notification{resource: MnesiaPost, domain: Domain, for: []}
+    missed = %{for_no_notifiers | for: [Notifier]}
+
+    log =
+      capture_log(fn ->
+        assert {:atomic, %Ash.BulkResult{status: :success, notifications: [^missed]}} =
+                 :mnesia.transaction(fn ->
+                   Ash.Actions.Helpers.queue_notifications([for_no_notifiers, missed])
+
+                   Post
+                   |> Ash.Query.filter(id == ^post.id)
+                   |> Ash.bulk_destroy(:destroy, %{},
+                     strategy: :atomic,
+                     notify?: true,
+                     authorize?: false
+                   )
+                 end)
+      end)
+
+    assert log =~ "Missed 1 notifications in action"
+  end
+
   test "returns destroyed records" do
     assert %Ash.BulkResult{records: [%{}, %{}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -537,6 +581,27 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              )
 
     assert [] = Ash.read!(Post)
+  end
+
+  test "atomic destroys that return records leave nothing in the process dictionary" do
+    for strategy <- [:atomic, :atomic_batches] do
+      Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create)
+
+      assert %Ash.BulkResult{status: :success, records: [_, _]} =
+               Ash.bulk_destroy!(Post, :destroy, %{},
+                 strategy: strategy,
+                 return_records?: true
+               )
+
+      assert leftover_bulk_keys() == []
+    end
+  end
+
+  defp leftover_bulk_keys do
+    Enum.filter(
+      Process.get_keys(),
+      &match?({key, _} when key in [:any_success?, :bulk_notifications], &1)
+    )
   end
 
   test "passes batch_change/3 a list with the stream strategy" do
@@ -1730,7 +1795,38 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                  authorize?: false
                )
 
-      assert Exception.message(error) =~ "status cannot be bad"
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidAttribute{
+                   field: :status,
+                   message: "status cannot be bad"
+                 }
+               ]
+             } = error
+    end
+
+    test "keyword errors on arguments become InvalidArgument" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "good"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_destroy(
+                 [post],
+                 :destroy_with_code_argument,
+                 %{code: "bad"},
+                 resource: PostWithBulkValidationOrdering,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+
+      assert %Ash.Error.Invalid{
+               errors: [
+                 %Ash.Error.Changes.InvalidArgument{field: :code, message: "code cannot be bad"}
+               ]
+             } = error
     end
   end
 

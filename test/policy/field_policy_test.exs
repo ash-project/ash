@@ -88,6 +88,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
+               %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false}
              ] =
                Ash.Policy.Info.field_policies(User)
@@ -541,6 +542,83 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.read!(authorize?: true)
 
       assert id == ticket.id
+    end
+
+    test "filter input on a related field checks its field policies as a read through the relationship",
+         %{representative: representative, user: user} do
+      read = fn filter, actor ->
+        Ticket
+        |> Ash.Query.filter_input(filter)
+        |> Ash.read!(actor: actor)
+      end
+
+      assert [_, _] = read.(%{reporter: %{ticket_count: 1}}, representative)
+      assert [_, _] = read.(Ash.Query.Exists.new([:reporter], %{ticket_count: 1}), representative)
+
+      # the field policy doesn't name these, or fails for this actor
+      assert [] = read.(%{representative: %{ticket_count: 0}}, representative)
+      assert [] = read.(%{reporter: %{ticket_count: 1}}, user)
+
+      assert [] =
+               User
+               |> Ash.Query.filter_input(ticket_count: 0)
+               |> Ash.read!(actor: representative)
+
+      # both orders, to catch a cache key without accessing_from
+      assert [_, _] =
+               read.(
+                 %{or: [%{representative: %{ticket_count: 0}}, %{reporter: %{ticket_count: 1}}]},
+                 representative
+               )
+
+      assert [] =
+               read.(
+                 %{and: [%{reporter: %{ticket_count: 1}}, %{representative: %{ticket_count: 0}}]},
+                 representative
+               )
+    end
+
+    test "filter input in `parent/1` checks field policies against the outer frame",
+         %{representative: representative} do
+      assert [_, _] =
+               Ticket
+               |> Ash.Query.filter_input(
+                 Ash.Query.Exists.new(
+                   [:representative],
+                   Ash.Expr.expr(parent(reporter.ticket_count) == 1)
+                 )
+               )
+               |> Ash.read!(actor: representative)
+
+      assert [] =
+               User
+               |> Ash.Query.filter_input(
+                 Ash.Query.Exists.new([:tickets], Ash.Expr.expr(parent(ticket_count) == 1))
+               )
+               |> Ash.read!(actor: representative)
+    end
+
+    test "filter input through a relationship to the same resource checks field policies as a read through it",
+         %{representative: representative, user: user} do
+      %{id: managed_id} =
+        Ash.create!(User, %{role: :user, manager_id: user.id}, authorize?: false)
+
+      Ash.create!(Ticket, %{representative_id: representative.id, reporter_id: managed_id})
+
+      read = fn filter ->
+        User
+        |> Ash.Query.filter_input(filter)
+        |> Ash.read!(actor: representative)
+      end
+
+      assert [%{id: ^managed_id}] = read.(%{manager: %{ticket_count: 1}})
+      assert [] = read.(%{ticket_count: 1})
+
+      # both orders, to catch a cache key without accessing_from
+      assert [%{id: ^managed_id}] =
+               read.(%{or: [%{ticket_count: 1}, %{manager: %{ticket_count: 1}}]})
+
+      assert [] = read.(%{and: [%{manager: %{ticket_count: 1}}, %{ticket_count: 1}]})
     end
   end
 

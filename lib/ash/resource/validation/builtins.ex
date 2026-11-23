@@ -432,7 +432,7 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
-  Validates that an argument is being changed to one of a set of specific values, or is in the the given list if it is not being changed.
+  Validates that an argument is being changed to one of a set of specific values, or is in the given list if it is not being changed.
 
   ## Examples
 

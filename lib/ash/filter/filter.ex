@@ -881,49 +881,9 @@ defmodule Ash.Filter do
         _aggregates \\ %{},
         return_refs? \\ false
       ) do
-    filter
-    |> list_refs()
-    |> Enum.filter(fn
-      %{attribute: %Calculation{}} ->
-        true
+    {refs, _cache} = do_used_calculations(filter, resource, %{})
 
-      _ ->
-        false
-    end)
-    |> Enum.flat_map(fn %{attribute: calculation} = calculation_ref ->
-      if Ash.Resource.Calculation.has_expression?(calculation.module) do
-        expression =
-          Ash.Resource.Calculation.expression(
-            calculation.module,
-            calculation.opts,
-            calculation.context
-          )
-
-        case hydrate_refs(expression, %{
-               resource: Ash.Resource.Info.related(resource, calculation_ref.relationship_path),
-               relationship_path: [],
-               public?: false
-             }) do
-          {:ok, expression} ->
-            [
-              calculation_ref
-              | used_calculations(
-                  expression,
-                  Ash.Resource.Info.related(resource, calculation_ref.relationship_path),
-                  :*,
-                  %{},
-                  %{},
-                  true
-                )
-            ]
-
-          _ ->
-            [calculation_ref]
-        end
-      else
-        [calculation_ref]
-      end
-    end)
+    refs
     |> Enum.filter(fn
       %Ref{attribute: %Calculation{}, relationship_path: ref_relationship_path} ->
         relationship_path == :* ||
@@ -938,6 +898,60 @@ defmodule Ash.Filter do
         refs
       else
         Enum.map(refs, & &1.attribute)
+      end
+    end)
+  end
+
+  # The calculations referenced in `filter`, and in the expressions of those calculations, and so
+  # on. `cache` holds the calculations used by each calculation visited so far, because a
+  # calculation can be reached through many others. Entries are found by comparing with `===`
+  # instead of hashing, for the reasons given in `calculation_refs/4`.
+  defp do_used_calculations(filter, resource, cache) do
+    filter
+    |> list_refs()
+    |> Enum.filter(fn
+      %{attribute: %Calculation{}} ->
+        true
+
+      _ ->
+        false
+    end)
+    |> Enum.flat_map_reduce(cache, fn %{attribute: calculation} = calculation_ref, cache ->
+      if Ash.Resource.Calculation.has_expression?(calculation.module) do
+        resource = Ash.Resource.Info.related(resource, calculation_ref.relationship_path)
+        bucket = {resource, calculation.name}
+        key = {resource, calculation}
+        entries = Map.get(cache, bucket, [])
+
+        {nested, cache} =
+          case Enum.find(entries, fn {entry_key, _} -> entry_key === key end) do
+            {_, nested} ->
+              {nested, cache}
+
+            nil ->
+              expression =
+                Ash.Resource.Calculation.expression(
+                  calculation.module,
+                  calculation.opts,
+                  calculation.context
+                )
+
+              {nested, cache} =
+                case hydrate_refs(expression, %{
+                       resource: resource,
+                       relationship_path: [],
+                       public?: false
+                     }) do
+                  {:ok, expression} -> do_used_calculations(expression, resource, cache)
+                  _ -> {[], cache}
+                end
+
+              {nested, Map.update(cache, bucket, [{key, nested}], &[{key, nested} | &1])}
+          end
+
+        {[calculation_ref | nested], cache}
+      else
+        {[calculation_ref], cache}
       end
     end)
   end
@@ -1740,7 +1754,7 @@ defmodule Ash.Filter do
 
       %Ash.Query.Parent{} = this ->
         # you have to map over the internals of this yourself
-        func.(this)
+        this
 
       %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} =
           custom_expression ->
@@ -1752,7 +1766,7 @@ defmodule Ash.Filter do
 
       %Ash.Query.Exists{} = expr ->
         # you have to map over the internals of exists yourself
-        func.(expr)
+        expr
 
       %Ash.Query.Call{args: args} = op ->
         %{op | args: map(args, func)}
@@ -1775,7 +1789,7 @@ defmodule Ash.Filter do
 
       %Ash.Query.Ref{} = expr ->
         # you have to map over the internals of exists yourself
-        func.(expr)
+        expr
 
       value when is_map(value) ->
         value
@@ -1784,7 +1798,115 @@ defmodule Ash.Filter do
         |> Map.new()
 
       other ->
-        func.(other)
+        other
+    end
+  end
+
+  @doc """
+  Like `map/2`, but threads an accumulator through the traversal.
+
+  `func` is called with each expression (parents before their children) and the current
+  accumulator, and must return `{new_expression, acc}`. Return `{{:halt, new_expression}, acc}`
+  to replace an expression without traversing into the result.
+
+  As with `map/2`, the internals of `parent/1`, `exists/2` and refs are not traversed;
+  handle those in `func` yourself if needed.
+
+  ```elixir
+  Ash.Filter.map_reduce(expression, 0, fn
+    %Ash.Query.Ref{} = ref, count -> {ref, count + 1}
+    other, count -> {other, count}
+  end)
+  ```
+  """
+  @spec map_reduce(term, acc, (term, acc -> {term, acc})) :: {term, acc} when acc: term
+  def map_reduce(%__MODULE__{expression: nil} = filter, acc, _) do
+    {filter, acc}
+  end
+
+  def map_reduce(%__MODULE__{expression: expression} = filter, acc, func) do
+    {expression, acc} = func.(expression, acc)
+    {expression, acc} = do_map_reduce(expression, acc, func)
+    {%{filter | expression: expression}, acc}
+  end
+
+  def map_reduce(expression, acc, func) do
+    {expression, acc} = func.(expression, acc)
+    do_map_reduce(expression, acc, func)
+  end
+
+  defp do_map_reduce(expression, acc, func) do
+    case expression do
+      {:halt, expr} ->
+        {expr, acc}
+
+      value when is_tuple(value) ->
+        {list, acc} = value |> Tuple.to_list() |> map_reduce(acc, func)
+        {List.to_tuple(list), acc}
+
+      value when is_list(value) ->
+        Enum.map_reduce(value, acc, &map_reduce(&1, &2, func))
+
+      %MapSet{} = value ->
+        {list, acc} = Enum.map_reduce(value, acc, &map_reduce(&1, &2, func))
+        {MapSet.new(list), acc}
+
+      %BooleanExpression{left: left, right: right} = expr ->
+        {left, acc} = map_reduce(left, acc, func)
+        {right, acc} = map_reduce(right, acc, func)
+        {%{expr | left: left, right: right}, acc}
+
+      %Not{expression: not_expr} = expr ->
+        {not_expr, acc} = map_reduce(not_expr, acc, func)
+        {%{expr | expression: not_expr}, acc}
+
+      %Ash.Query.Parent{} = this ->
+        # you have to map over the internals of this yourself
+        {this, acc}
+
+      %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} =
+          custom_expression ->
+        {expression, acc} = map_reduce(expression, acc, func)
+        {simple_expression, acc} = map_reduce(simple_expression, acc, func)
+
+        {%{custom_expression | expression: expression, simple_expression: simple_expression}, acc}
+
+      %Ash.Query.Exists{} = expr ->
+        # you have to map over the internals of exists yourself
+        {expr, acc}
+
+      %Ash.Query.Call{args: args} = op ->
+        {args, acc} = map_reduce(args, acc, func)
+        {%{op | args: args}, acc}
+
+      %{__operator__?: true, left: left, right: right} = op ->
+        {left, acc} = map_reduce(left, acc, func)
+        {right, acc} = map_reduce(right, acc, func)
+        {%{op | left: left, right: right}, acc}
+
+      %{__function__?: true, arguments: arguments} = function ->
+        {arguments, acc} =
+          Enum.map_reduce(arguments, acc, fn
+            {key, arg}, acc when is_atom(key) ->
+              {arg, acc} = map_reduce(arg, acc, func)
+              {{key, arg}, acc}
+
+            arg, acc ->
+              map_reduce(arg, acc, func)
+          end)
+
+        {%{function | arguments: arguments}, acc}
+
+      %Ash.Query.Ref{} = expr ->
+        # you have to map over the internals of refs yourself
+        {expr, acc}
+
+      value when is_map(value) ->
+        {list, acc} = value |> Map.to_list() |> map_reduce(acc, func)
+        {Map.new(list), acc}
+
+      other ->
+        {other, acc}
     end
   end
 
@@ -1845,134 +1967,185 @@ defmodule Ash.Filter do
   end
 
   @doc false
+  def update_aggregates(filter, resource, mapper, nested_path, parent_paths) do
+    {filter, _cache} =
+      do_update_aggregates(filter, resource, mapper, nested_path, parent_paths, %{})
 
-  def update_aggregates(
-        %__MODULE__{expression: expression} = filter,
-        resource,
-        mapper,
-        nested_path,
-        parent_paths
-      ) do
-    %{
-      filter
-      | expression: update_aggregates(expression, resource, mapper, nested_path, parent_paths)
-    }
+    filter
   end
 
-  def update_aggregates(expression, resource, mapper, nested_path, parent_paths) do
+  # `cache` holds the result for each calculation visited so far, because a calculation can be
+  # reached through many others (see `calculation_refs/4`).
+  defp do_update_aggregates(
+         %__MODULE__{expression: expression} = filter,
+         resource,
+         mapper,
+         nested_path,
+         parent_paths,
+         cache
+       ) do
+    {expression, cache} =
+      do_update_aggregates(expression, resource, mapper, nested_path, parent_paths, cache)
+
+    {%{filter | expression: expression}, cache}
+  end
+
+  defp do_update_aggregates(expression, resource, mapper, nested_path, parent_paths, cache) do
     case expression do
       {key, value} when is_atom(key) ->
-        {key, update_aggregates(value, resource, mapper, nested_path, parent_paths)}
+        {value, cache} =
+          do_update_aggregates(value, resource, mapper, nested_path, parent_paths, cache)
+
+        {{key, value}, cache}
 
       %Ash.Query.Exists{expr: expr, path: path, at_path: at_path} = exists ->
         related = Ash.Resource.Info.related(resource, nested_path)
 
-        %{
-          exists
-          | expr:
-              update_aggregates(
-                expr,
-                related,
-                mapper,
-                at_path ++ path,
-                [
-                  {related, nested_path} | parent_paths
-                ]
-              )
-        }
+        {expr, cache} =
+          do_update_aggregates(
+            expr,
+            related,
+            mapper,
+            at_path ++ path,
+            [
+              {related, nested_path} | parent_paths
+            ],
+            cache
+          )
+
+        {%{exists | expr: expr}, cache}
 
       %Ash.Query.Parent{expr: expr} = exists ->
         {resource, parent_path} = Enum.at(parent_paths, 0) || []
 
-        %{
-          exists
-          | expr:
-              update_aggregates(
-                expr,
-                resource,
-                mapper,
-                parent_path,
-                Enum.drop(parent_paths, 1)
-              )
-        }
+        {expr, cache} =
+          do_update_aggregates(
+            expr,
+            resource,
+            mapper,
+            parent_path,
+            Enum.drop(parent_paths, 1),
+            cache
+          )
+
+        {%{exists | expr: expr}, cache}
 
       %Not{expression: expression} = not_expr ->
-        %{
-          not_expr
-          | expression: update_aggregates(expression, resource, mapper, nested_path, parent_paths)
-        }
+        {expression, cache} =
+          do_update_aggregates(expression, resource, mapper, nested_path, parent_paths, cache)
+
+        {%{not_expr | expression: expression}, cache}
 
       %BooleanExpression{left: left, right: right} = expression ->
-        %{
-          expression
-          | left: update_aggregates(left, resource, mapper, nested_path, parent_paths),
-            right: update_aggregates(right, resource, mapper, nested_path, parent_paths)
-        }
+        {left, cache} =
+          do_update_aggregates(left, resource, mapper, nested_path, parent_paths, cache)
+
+        {right, cache} =
+          do_update_aggregates(right, resource, mapper, nested_path, parent_paths, cache)
+
+        {%{expression | left: left, right: right}, cache}
 
       %{__operator__?: true, left: left, right: right} = op ->
-        left = update_aggregates(left, resource, mapper, nested_path, parent_paths)
-        right = update_aggregates(right, resource, mapper, nested_path, parent_paths)
-        %{op | left: left, right: right}
+        {left, cache} =
+          do_update_aggregates(left, resource, mapper, nested_path, parent_paths, cache)
+
+        {right, cache} =
+          do_update_aggregates(right, resource, mapper, nested_path, parent_paths, cache)
+
+        {%{op | left: left, right: right}, cache}
 
       %{__function__?: true, arguments: args} = func ->
-        %{
-          func
-          | arguments:
-              Enum.map(args, &update_aggregates(&1, resource, mapper, nested_path, parent_paths))
-        }
+        {args, cache} =
+          Enum.map_reduce(
+            args,
+            cache,
+            &do_update_aggregates(&1, resource, mapper, nested_path, parent_paths, &2)
+          )
+
+        {%{func | arguments: args}, cache}
 
       %Ref{attribute: %Aggregate{} = agg} = ref ->
-        %{
-          ref
-          | attribute:
-              mapper.(
-                agg,
-                %{ref | relationship_path: nested_path ++ ref.relationship_path},
-                Enum.map(parent_paths, &elem(&1, 0))
-              )
-        }
+        {%{
+           ref
+           | attribute:
+               mapper.(
+                 agg,
+                 %{ref | relationship_path: nested_path ++ ref.relationship_path},
+                 Enum.map(parent_paths, &elem(&1, 0))
+               )
+         }, cache}
 
-      %Ref{attribute: %Calculation{module: module, opts: opts, context: context} = calc} = ref ->
+      %Ref{attribute: %Calculation{module: module} = calc} = ref ->
         if Ash.Resource.Calculation.has_expression?(module) do
-          expr =
-            module
-            |> Ash.Resource.Calculation.expression(opts, context)
-            |> Ash.Expr.fill_template(
-              actor: context.actor,
-              tenant: context.tenant,
-              args: context.arguments,
-              context: context.source_context
-            )
+          nested_path = nested_path ++ ref.relationship_path
+          bucket = {ref.resource, calc.name}
+          key = {ref.resource, calc, resource, nested_path, parent_paths}
+          entries = Map.get(cache, bucket, [])
 
-          case hydrate_refs(expr, %{resource: ref.resource, public?: false}) do
-            {:ok, expr} ->
-              new_expr =
-                update_aggregates(
-                  expr,
+          case Enum.find(entries, fn {entry_key, _} -> entry_key === key end) do
+            {_, nil} ->
+              {ref, cache}
+
+            {_, calc} ->
+              {%{ref | attribute: calc}, cache}
+
+            nil ->
+              {new_calc, cache} =
+                update_calculation_aggregates(
+                  calc,
+                  ref.resource,
                   resource,
                   mapper,
-                  nested_path ++ ref.relationship_path,
-                  parent_paths
+                  nested_path,
+                  parent_paths,
+                  cache
                 )
 
-              %{
-                ref
-                | attribute: %{
-                    calc
-                    | module: Ash.Resource.Calculation.Expression,
-                      opts: [expr: new_expr]
-                  }
-              }
+              cache = Map.update(cache, bucket, [{key, new_calc}], &[{key, new_calc} | &1])
 
-            _ ->
-              ref
+              if new_calc do
+                {%{ref | attribute: new_calc}, cache}
+              else
+                {ref, cache}
+              end
           end
         else
-          ref
+          {ref, cache}
         end
 
       other ->
-        other
+        {other, cache}
+    end
+  end
+
+  defp update_calculation_aggregates(
+         %Calculation{module: module, opts: opts, context: context} = calc,
+         calc_resource,
+         resource,
+         mapper,
+         nested_path,
+         parent_paths,
+         cache
+       ) do
+    expr =
+      module
+      |> Ash.Resource.Calculation.expression(opts, context)
+      |> Ash.Expr.fill_template(
+        actor: context.actor,
+        tenant: context.tenant,
+        args: context.arguments,
+        context: context.source_context
+      )
+
+    case hydrate_refs(expr, %{resource: calc_resource, public?: false}) do
+      {:ok, expr} ->
+        {new_expr, cache} =
+          do_update_aggregates(expr, resource, mapper, nested_path, parent_paths, cache)
+
+        {%{calc | module: Ash.Resource.Calculation.Expression, opts: [expr: new_expr]}, cache}
+
+      _ ->
+        {nil, cache}
     end
   end
 
@@ -2419,9 +2592,11 @@ defmodule Ash.Filter do
       do: relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?)
 
   def relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?) do
+    {paths, _cache} =
+      do_relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?, %{})
+
     paths =
-      expression
-      |> do_relationship_paths(include_exists?, with_refs?, expand_aggregates?)
+      paths
       |> List.wrap()
       |> List.flatten()
 
@@ -2438,38 +2613,34 @@ defmodule Ash.Filter do
     end
   end
 
+  # `cache` holds the paths inside of each calculation visited so far (see
+  # `calculation_relationship_paths/5`).
   defp do_relationship_paths(
          %Ref{
            relationship_path: path,
-           resource: resource,
-           attribute: %Ash.Query.Calculation{module: module, opts: opts, context: context}
+           attribute: %Ash.Query.Calculation{module: module}
          } = ref,
          include_exists?,
          with_references?,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
+    path_and_ref =
+      if with_references? do
+        {path, ref}
+      else
+        {path}
+      end
+
     if Ash.Resource.Calculation.has_expression?(module) do
-      expression = Ash.Resource.Calculation.expression(module, opts, context)
-
-      case hydrate_refs(expression, %{
-             resource: resource,
-             relationship_path: [],
-             public?: false
-           }) do
-        {:ok, expression} ->
-          path_and_ref =
-            if with_references? do
-              {path, ref}
-            else
-              {path}
-            end
-
-          nested =
-            expression
-            |> do_relationship_paths(include_exists?, with_references?, expand_aggregates?)
-            |> List.wrap()
-            |> List.flatten()
-
+      case calculation_relationship_paths(
+             ref,
+             include_exists?,
+             with_references?,
+             expand_aggregates?,
+             cache
+           ) do
+        {:ok, nested, cache} ->
           # This validation needs to be added back in at some point
           # it was removed because we currently can't tell the difference between relationship paths
           # that appear inside of the path to `exists`, i.e `exists(to_many, ....)`.
@@ -2507,21 +2678,13 @@ defmodule Ash.Filter do
                 {path ++ nested_path}
             end)
 
-          [path_and_ref | nested]
+          {[path_and_ref | nested], cache}
 
-        _ ->
-          if with_references? do
-            [{path, ref}]
-          else
-            [{path}]
-          end
+        {:error, cache} ->
+          {[path_and_ref], cache}
       end
     else
-      if with_references? do
-        [{path, ref}]
-      else
-        [{path}]
-      end
+      {[path_and_ref], cache}
     end
   end
 
@@ -2532,7 +2695,8 @@ defmodule Ash.Filter do
          } = ref,
          include_exists?,
          with_refs?,
-         true
+         true,
+         cache
        ) do
     this_agg_ref =
       if with_refs? do
@@ -2541,59 +2705,76 @@ defmodule Ash.Filter do
         {path}
       end
 
-    [this_agg_ref | aggregate_refs(path, aggregate, include_exists?, with_refs?)]
+    {agg_refs, cache} = aggregate_refs(path, aggregate, include_exists?, with_refs?, cache)
+    {[this_agg_ref | agg_refs], cache}
   end
 
-  defp do_relationship_paths(%Ref{relationship_path: path} = ref, _, true, _) do
-    [{path, ref}]
+  defp do_relationship_paths(%Ref{relationship_path: path} = ref, _, true, _, cache) do
+    {[{path, ref}], cache}
   end
 
-  defp do_relationship_paths(%Ref{relationship_path: path}, _, false, _) do
-    [{path}]
+  defp do_relationship_paths(%Ref{relationship_path: path}, _, false, _, cache) do
+    {[{path}], cache}
   end
 
   defp do_relationship_paths(
          %BooleanExpression{left: left, right: right},
          include_exists?,
          with_refs?,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
-    do_relationship_paths(left, include_exists?, with_refs?, expand_aggregates?) ++
-      do_relationship_paths(right, include_exists?, with_refs?, expand_aggregates?)
+    {left, cache} =
+      do_relationship_paths(left, include_exists?, with_refs?, expand_aggregates?, cache)
+
+    {right, cache} =
+      do_relationship_paths(right, include_exists?, with_refs?, expand_aggregates?, cache)
+
+    {left ++ right, cache}
   end
 
   defp do_relationship_paths(
          %Not{expression: expression},
          include_exists?,
          with_refs?,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
-    do_relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?)
+    do_relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?, cache)
   end
 
   defp do_relationship_paths(
          %Ash.CustomExpression{expression: expression},
          include_exists?,
          with_refs?,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
-    do_relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?)
+    do_relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?, cache)
   end
 
   defp do_relationship_paths(
          %Ash.Query.Exists{at_path: at_path, related?: related?, expr: expression},
          false,
          with_refs?,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
-    if related? && !with_refs? do
-      [{at_path}]
-    else
-      []
-    end
-    |> Kernel.++(
-      parent_relationship_paths(expression, at_path, false, with_refs?, expand_aggregates?)
-    )
+    {if related? && !with_refs? do
+       [{at_path}]
+     else
+       []
+     end
+     |> Kernel.++(
+       parent_relationship_paths(
+         expression,
+         at_path,
+         false,
+         with_refs?,
+         expand_aggregates?,
+         cache
+       )
+     ), cache}
   end
 
   defp do_relationship_paths(
@@ -2605,21 +2786,31 @@ defmodule Ash.Filter do
          },
          include_exists?,
          false,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
     if related? do
-      expression
-      |> do_relationship_paths(include_exists?, false, expand_aggregates?)
-      |> List.flatten()
-      |> Enum.flat_map(fn {rel_path} ->
-        [{at_path ++ path ++ rel_path}]
-      end)
-      |> then(&[{at_path} | &1])
-      |> Kernel.++(
-        parent_relationship_paths(expression, at_path, include_exists?, false, expand_aggregates?)
-      )
+      {paths, cache} =
+        do_relationship_paths(expression, include_exists?, false, expand_aggregates?, cache)
+
+      {paths
+       |> List.flatten()
+       |> Enum.flat_map(fn {rel_path} ->
+         [{at_path ++ path ++ rel_path}]
+       end)
+       |> then(&[{at_path} | &1])
+       |> Kernel.++(
+         parent_relationship_paths(
+           expression,
+           at_path,
+           include_exists?,
+           false,
+           expand_aggregates?,
+           cache
+         )
+       ), cache}
     else
-      []
+      {[], cache}
     end
   end
 
@@ -2632,20 +2823,30 @@ defmodule Ash.Filter do
          },
          include_exists?,
          true,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
     if related? do
-      expression
-      |> do_relationship_paths(include_exists?, true, expand_aggregates?)
-      |> List.flatten()
-      |> Enum.flat_map(fn {rel_path, ref} ->
-        [{at_path ++ path ++ rel_path, ref}]
-      end)
-      |> Kernel.++(
-        parent_relationship_paths(expression, at_path, include_exists?, true, expand_aggregates?)
-      )
+      {paths, cache} =
+        do_relationship_paths(expression, include_exists?, true, expand_aggregates?, cache)
+
+      {paths
+       |> List.flatten()
+       |> Enum.flat_map(fn {rel_path, ref} ->
+         [{at_path ++ path ++ rel_path, ref}]
+       end)
+       |> Kernel.++(
+         parent_relationship_paths(
+           expression,
+           at_path,
+           include_exists?,
+           true,
+           expand_aggregates?,
+           cache
+         )
+       ), cache}
     else
-      []
+      {[], cache}
     end
   end
 
@@ -2653,88 +2854,158 @@ defmodule Ash.Filter do
          %{__operator__?: true, left: left, right: right},
          include_exists?,
          with_refs?,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
-    Enum.flat_map(
+    Enum.flat_map_reduce(
       [left, right],
-      &do_relationship_paths(&1, include_exists?, with_refs?, expand_aggregates?)
+      cache,
+      &do_relationship_paths(&1, include_exists?, with_refs?, expand_aggregates?, &2)
     )
   end
 
-  defp do_relationship_paths({key, value}, include_exists?, with_refs?, expand_aggregates?)
+  defp do_relationship_paths({key, value}, include_exists?, with_refs?, expand_aggregates?, cache)
        when is_atom(key) do
-    do_relationship_paths(value, include_exists?, with_refs?, expand_aggregates?)
+    do_relationship_paths(value, include_exists?, with_refs?, expand_aggregates?, cache)
   end
 
   defp do_relationship_paths(
          %{__function__?: true, arguments: arguments},
          include_exists?,
          with_refs?,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
-    Enum.flat_map(
+    Enum.flat_map_reduce(
       arguments,
-      &do_relationship_paths(&1, include_exists?, with_refs?, expand_aggregates?)
+      cache,
+      &do_relationship_paths(&1, include_exists?, with_refs?, expand_aggregates?, &2)
     )
   end
 
-  defp do_relationship_paths(value, include_exists?, with_refs?, expand_aggregates?)
+  defp do_relationship_paths(value, include_exists?, with_refs?, expand_aggregates?, cache)
        when is_list(value) do
-    Enum.flat_map(
+    Enum.flat_map_reduce(
       value,
-      &do_relationship_paths(&1, include_exists?, with_refs?, expand_aggregates?)
+      cache,
+      &do_relationship_paths(&1, include_exists?, with_refs?, expand_aggregates?, &2)
     )
   end
 
-  defp do_relationship_paths(value, include_exists?, with_references?, expand_aggregates?)
+  defp do_relationship_paths(value, include_exists?, with_references?, expand_aggregates?, cache)
        when is_map(value) and not is_struct(value) do
-    Enum.flat_map(value, fn {key, value} ->
-      do_relationship_paths(key, include_exists?, with_references?, expand_aggregates?) ++
-        do_relationship_paths(value, include_exists?, with_references?, expand_aggregates?)
+    Enum.flat_map_reduce(value, cache, fn {key, value}, cache ->
+      {key_paths, cache} =
+        do_relationship_paths(key, include_exists?, with_references?, expand_aggregates?, cache)
+
+      {value_paths, cache} =
+        do_relationship_paths(value, include_exists?, with_references?, expand_aggregates?, cache)
+
+      {key_paths ++ value_paths, cache}
     end)
   end
 
-  defp do_relationship_paths(_, _, _, _), do: []
+  defp do_relationship_paths(_, _, _, _, cache), do: {[], cache}
 
-  defp aggregate_refs(path, aggregate, include_exists?, with_refs?) do
-    query_rel_paths =
+  # The paths inside of the expression of the calculation of `ref`, relative to `ref`. They are
+  # cached, deduplicated, and found by comparing with `===`, for the reasons given in
+  # `calculation_refs/4`.
+  defp calculation_relationship_paths(
+         %Ref{resource: resource, attribute: %Ash.Query.Calculation{} = calc},
+         include_exists?,
+         with_references?,
+         expand_aggregates?,
+         cache
+       ) do
+    bucket = {resource, calc.name}
+    key = {resource, calc}
+    entries = Map.get(cache, bucket, [])
+
+    case Enum.find(entries, fn {entry_key, _} -> entry_key === key end) do
+      {_, nil} ->
+        {:error, cache}
+
+      {_, nested} ->
+        {:ok, nested, cache}
+
+      nil ->
+        expression = Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context)
+
+        {nested, cache} =
+          case hydrate_refs(expression, %{
+                 resource: resource,
+                 relationship_path: [],
+                 public?: false
+               }) do
+            {:ok, expression} ->
+              {nested, cache} =
+                do_relationship_paths(
+                  expression,
+                  include_exists?,
+                  with_references?,
+                  expand_aggregates?,
+                  cache
+                )
+
+              {nested |> List.wrap() |> List.flatten() |> Enum.uniq(), cache}
+
+            _ ->
+              {nil, cache}
+          end
+
+        cache = Map.update(cache, bucket, [{key, nested}], &[{key, nested} | &1])
+
+        if nested do
+          {:ok, nested, cache}
+        else
+          {:error, cache}
+        end
+    end
+  end
+
+  defp aggregate_refs(path, aggregate, include_exists?, with_refs?, cache) do
+    {query_rel_paths, cache} =
       if aggregate.query && aggregate.query.filter do
-        aggregate.query.filter
-        |> do_relationship_paths(include_exists?, with_refs?, true)
+        do_relationship_paths(aggregate.query.filter, include_exists?, with_refs?, true, cache)
       else
-        []
+        {[], cache}
       end
 
-    if aggregate.field do
-      related = Ash.Resource.Info.related(aggregate.resource, aggregate.relationship_path)
+    {paths, cache} =
+      if aggregate.field do
+        related = Ash.Resource.Info.related(aggregate.resource, aggregate.relationship_path)
 
-      field_ref =
-        case aggregate.field do
-          field when is_atom(field) ->
-            Ash.Resource.Info.field(related, aggregate.field)
+        field_ref =
+          case aggregate.field do
+            field when is_atom(field) ->
+              Ash.Resource.Info.field(related, aggregate.field)
 
-          field ->
-            field
-        end
+            field ->
+              field
+          end
 
-      field_ref = field_to_ref(related, field_ref)
+        field_ref = field_to_ref(related, field_ref)
 
-      query_rel_paths ++ do_relationship_paths(field_ref, include_exists?, with_refs?, true)
-    else
-      query_rel_paths
-    end
-    |> Enum.map(fn
-      {agg_path} ->
-        {path ++ aggregate.relationship_path ++ agg_path}
+        {field_paths, cache} =
+          do_relationship_paths(field_ref, include_exists?, with_refs?, true, cache)
 
-      {agg_path, ref} ->
-        {path ++ aggregate.relationship_path ++ agg_path,
-         %{
-           ref
-           | relationship_path: path ++ aggregate.relationship_path ++ ref.relationship_path,
-             input?: true
-         }}
-    end)
+        {query_rel_paths ++ field_paths, cache}
+      else
+        {query_rel_paths, cache}
+      end
+
+    {Enum.map(paths, fn
+       {agg_path} ->
+         {path ++ aggregate.relationship_path ++ agg_path}
+
+       {agg_path, ref} ->
+         {path ++ aggregate.relationship_path ++ agg_path,
+          %{
+            ref
+            | relationship_path: path ++ aggregate.relationship_path ++ ref.relationship_path,
+              input?: true
+          }}
+     end), cache}
   end
 
   defp field_to_ref(resource, %Ash.Resource.Attribute{} = attr) do
@@ -2816,13 +3087,16 @@ defmodule Ash.Filter do
          at_path,
          include_exists?,
          with_refs?,
-         expand_aggregates?
+         expand_aggregates?,
+         cache
        ) do
     expression
     |> flat_map(fn
       %Ash.Query.Parent{expr: expr} ->
-        expr
-        |> do_relationship_paths(include_exists?, with_refs?, expand_aggregates?)
+        {paths, _cache} =
+          do_relationship_paths(expr, include_exists?, with_refs?, expand_aggregates?, cache)
+
+        paths
         |> Enum.flat_map(fn
           {rel_path, ref} ->
             [{at_path ++ rel_path, ref}]
@@ -2872,17 +3146,35 @@ defmodule Ash.Filter do
         expand_calculations? \\ false,
         expand_get_path? \\ false
       ) do
-    expression
-    |> do_list_refs(no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?)
+    {refs, _cache} =
+      do_list_refs(
+        expression,
+        no_longer_simple?,
+        in_an_eq?,
+        expand_calculations?,
+        expand_get_path?,
+        %{}
+      )
+
+    refs
     |> Enum.uniq()
     |> Enum.reject(& &1.combinations?)
   end
 
-  defp do_list_refs(list, no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?)
+  # `cache` holds the refs inside of each calculation expanded so far (see `calculation_refs/4`).
+  defp do_list_refs(
+         list,
+         no_longer_simple?,
+         in_an_eq?,
+         expand_calculations?,
+         expand_get_path?,
+         cache
+       )
        when is_list(list) do
-    Enum.flat_map(
+    Enum.flat_map_reduce(
       list,
-      &do_list_refs(&1, no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?)
+      cache,
+      &do_list_refs(&1, no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?, &2)
     )
   end
 
@@ -2891,20 +3183,36 @@ defmodule Ash.Filter do
          no_longer_simple?,
          in_an_eq?,
          expand_calculations?,
-         expand_get_path?
+         expand_get_path?,
+         cache
        )
        when is_atom(key),
        do:
-         do_list_refs(value, no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?)
+         do_list_refs(
+           value,
+           no_longer_simple?,
+           in_an_eq?,
+           expand_calculations?,
+           expand_get_path?,
+           cache
+         )
 
   defp do_list_refs(
          %__MODULE__{expression: expression},
          no_longer_simple?,
          in_an_eq?,
          expand_calculations?,
-         expand_get_path?
+         expand_get_path?,
+         cache
        ) do
-    do_list_refs(expression, no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?)
+    do_list_refs(
+      expression,
+      no_longer_simple?,
+      in_an_eq?,
+      expand_calculations?,
+      expand_get_path?,
+      cache
+    )
   end
 
   defp do_list_refs(
@@ -2912,111 +3220,222 @@ defmodule Ash.Filter do
          no_longer_simple?,
          in_an_eq?,
          expand_calculations?,
-         expand_get_path?
+         expand_get_path?,
+         cache
        ) do
     case expression do
       %Call{name: :get_path, args: [%Ref{} = ref, path]} when expand_get_path? == true ->
-        expand_get_path_refs(ref, path, expand_calculations?)
+        expand_get_path_refs(ref, path, expand_calculations?, cache)
 
       %Ash.Query.Function.GetPath{arguments: [%Ref{} = ref, path]}
       when expand_get_path? == true ->
-        expand_get_path_refs(ref, path, expand_calculations?)
+        expand_get_path_refs(ref, path, expand_calculations?, cache)
 
       %BooleanExpression{left: left, right: right, op: op} ->
         no_longer_simple? = no_longer_simple? || op == :or
 
-        do_list_refs(left, no_longer_simple?, false, expand_calculations?, expand_get_path?) ++
-          do_list_refs(right, no_longer_simple?, false, expand_calculations?, expand_get_path?)
+        {left_refs, cache} =
+          do_list_refs(
+            left,
+            no_longer_simple?,
+            false,
+            expand_calculations?,
+            expand_get_path?,
+            cache
+          )
+
+        {right_refs, cache} =
+          do_list_refs(
+            right,
+            no_longer_simple?,
+            false,
+            expand_calculations?,
+            expand_get_path?,
+            cache
+          )
+
+        {left_refs ++ right_refs, cache}
 
       %Not{expression: not_expr} ->
-        do_list_refs(not_expr, true, false, expand_calculations?, expand_get_path?)
+        do_list_refs(not_expr, true, false, expand_calculations?, expand_get_path?, cache)
 
       %struct{__predicate__?: _, left: left, right: right} ->
         in_an_eq? = struct == Ash.Query.Operator.Eq
 
-        do_list_refs(left, no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?) ++
+        {left_refs, cache} =
+          do_list_refs(
+            left,
+            no_longer_simple?,
+            in_an_eq?,
+            expand_calculations?,
+            expand_get_path?,
+            cache
+          )
+
+        {right_refs, cache} =
           do_list_refs(
             right,
             no_longer_simple?,
             in_an_eq?,
             expand_calculations?,
-            expand_get_path?
+            expand_get_path?,
+            cache
           )
 
+        {left_refs ++ right_refs, cache}
+
       %Ash.CustomExpression{expression: expression} ->
-        do_list_refs(expression, no_longer_simple?, false, expand_calculations?, expand_get_path?)
+        do_list_refs(
+          expression,
+          no_longer_simple?,
+          false,
+          expand_calculations?,
+          expand_get_path?,
+          cache
+        )
 
       %{__predicate__?: _, arguments: args} ->
-        Enum.flat_map(
+        Enum.flat_map_reduce(
           args,
-          &do_list_refs(&1, true, false, expand_calculations?, expand_get_path?)
+          cache,
+          &do_list_refs(&1, true, false, expand_calculations?, expand_get_path?, &2)
         )
 
       value when is_map(value) and not is_struct(value) ->
-        Enum.flat_map(value, fn {key, value} ->
-          do_list_refs(key, true, false, expand_calculations?, expand_get_path?) ++
-            do_list_refs(value, true, false, expand_calculations?, expand_get_path?)
+        Enum.flat_map_reduce(value, cache, fn {key, value}, cache ->
+          {key_refs, cache} =
+            do_list_refs(key, true, false, expand_calculations?, expand_get_path?, cache)
+
+          {value_refs, cache} =
+            do_list_refs(value, true, false, expand_calculations?, expand_get_path?, cache)
+
+          {key_refs ++ value_refs, cache}
         end)
 
       %Ash.Query.Exists{related?: false} ->
-        []
+        {[], cache}
 
       %Ash.Query.Exists{at_path: at_path, path: path, expr: expr} ->
         parent_refs_inside_of_exists =
           flat_map(expr, fn
             %Ash.Query.Parent{expr: expr} ->
-              expr
-              |> do_list_refs(true, false, expand_calculations?, expand_get_path?)
-              |> Enum.map(&%{&1 | relationship_path: at_path ++ &1.relationship_path})
+              {refs, _cache} =
+                do_list_refs(expr, true, false, expand_calculations?, expand_get_path?, cache)
+
+              Enum.map(refs, &%{&1 | relationship_path: at_path ++ &1.relationship_path})
 
             _ ->
               []
           end)
 
-        expr
-        |> do_list_refs(true, false, expand_calculations?, expand_get_path?)
-        |> Enum.map(&%{&1 | relationship_path: at_path ++ path ++ &1.relationship_path})
-        |> Enum.concat(parent_refs_inside_of_exists)
+        {refs, cache} =
+          do_list_refs(expr, true, false, expand_calculations?, expand_get_path?, cache)
+
+        {refs
+         |> Enum.map(&%{&1 | relationship_path: at_path ++ path ++ &1.relationship_path})
+         |> Enum.concat(parent_refs_inside_of_exists), cache}
 
       %Call{args: args, relationship_path: relationship_path} ->
-        args
-        |> Enum.flat_map(&do_list_refs(&1, true, false, expand_calculations?, expand_get_path?))
-        |> Enum.map(&%{&1 | relationship_path: relationship_path ++ &1.relationship_path})
+        {refs, cache} =
+          Enum.flat_map_reduce(
+            args,
+            cache,
+            &do_list_refs(&1, true, false, expand_calculations?, expand_get_path?, &2)
+          )
+
+        {Enum.map(refs, &%{&1 | relationship_path: relationship_path ++ &1.relationship_path}),
+         cache}
 
       %Ref{
-        attribute: %Calculation{module: module, opts: opts, context: context},
+        attribute: %Calculation{module: module},
         relationship_path: calc_relationship_path
       } = ref ->
         if expand_calculations? && Ash.Resource.Calculation.has_expression?(module) do
-          expression = Ash.Resource.Calculation.expression(module, opts, context)
+          case calculation_refs(ref, expand_calculations?, expand_get_path?, cache) do
+            {:ok, nested_refs, cache} ->
+              nested_refs =
+                Enum.map(nested_refs, fn ref ->
+                  %{ref | relationship_path: calc_relationship_path ++ ref.relationship_path}
+                end)
 
+              {[%{ref | simple_equality?: !no_longer_simple? && in_an_eq?} | nested_refs], cache}
+
+            {:error, cache} ->
+              {[%{ref | simple_equality?: !no_longer_simple? && in_an_eq?}], cache}
+          end
+        else
+          {[%{ref | simple_equality?: !no_longer_simple? && in_an_eq?}], cache}
+        end
+
+      %Ref{} = ref ->
+        {[%{ref | simple_equality?: !no_longer_simple? && in_an_eq?}], cache}
+
+      _ ->
+        {[], cache}
+    end
+  end
+
+  # The refs inside of the expression of the calculation of `ref`, relative to `ref`.
+  #
+  # An expression calculation can reference other calculations, and when it was expanded (see
+  # `Ash.Actions.Read.add_calc_context_to_filter_cached/9`) its expression contains them, and so on.
+  # A calculation referenced from several places is listed once per path to it, so this is cached
+  # in `cache`. Only the first occurrence of each ref matters (refs are deduplicated), so the cached
+  # refs are deduplicated, which keeps them as small as the number of distinct refs.
+  #
+  # Entries are grouped by a small bucket key and found by comparing the calculation with `===`,
+  # instead of hashing it, because an expanded calculation can be large, while references to the
+  # same calculation usually share the same term, which compares equal immediately.
+  defp calculation_refs(
+         %Ref{attribute: %Calculation{} = calc, resource: resource},
+         expand_calculations?,
+         expand_get_path?,
+         cache
+       ) do
+    bucket = {resource, calc.name}
+    key = {resource, calc}
+    entries = Map.get(cache, bucket, [])
+
+    case Enum.find(entries, fn {entry_key, _} -> entry_key === key end) do
+      {_, nil} ->
+        {:error, cache}
+
+      {_, refs} ->
+        {:ok, refs, cache}
+
+      nil ->
+        expression = Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context)
+
+        {refs, cache} =
           case hydrate_refs(expression, %{
-                 resource: ref.resource,
+                 resource: resource,
                  relationship_path: [],
                  public?: false
                }) do
             {:ok, expression} ->
-              nested_refs =
-                expression
-                |> do_list_refs(true, false, expand_calculations?, expand_get_path?)
-                |> Enum.map(fn ref ->
-                  %{ref | relationship_path: calc_relationship_path ++ ref.relationship_path}
-                end)
+              {refs, cache} =
+                do_list_refs(
+                  expression,
+                  true,
+                  false,
+                  expand_calculations?,
+                  expand_get_path?,
+                  cache
+                )
 
-              [%{ref | simple_equality?: !no_longer_simple? && in_an_eq?} | nested_refs]
+              {Enum.uniq(refs), cache}
 
             _ ->
-              [%{ref | simple_equality?: !no_longer_simple? && in_an_eq?}]
+              {nil, cache}
           end
+
+        cache = Map.update(cache, bucket, [{key, refs}], &[{key, refs} | &1])
+
+        if refs do
+          {:ok, refs, cache}
         else
-          [%{ref | simple_equality?: !no_longer_simple? && in_an_eq?}]
+          {:error, cache}
         end
-
-      %Ref{} = ref ->
-        [%{ref | simple_equality?: !no_longer_simple? && in_an_eq?}]
-
-      _ ->
-        []
     end
   end
 
@@ -3043,20 +3462,20 @@ defmodule Ash.Filter do
     end
   end
 
-  defp expand_get_path_refs(ref, path, expand_calculations?) do
+  defp expand_get_path_refs(ref, path, expand_calculations?, cache) do
     if is_list(path) && Enum.all?(path, &(is_atom(&1) || is_binary(&1))) do
       attribute = List.last(path)
       path = :lists.droplast(path)
 
-      [
-        %{
-          ref
-          | relationship_path: ref.relationship_path ++ [ref.attribute] ++ path,
-            attribute: attribute
-        }
-      ]
+      {[
+         %{
+           ref
+           | relationship_path: ref.relationship_path ++ [ref.attribute] ++ path,
+             attribute: attribute
+         }
+       ], cache}
     else
-      do_list_refs(ref, true, false, expand_calculations?, false)
+      do_list_refs(ref, true, false, expand_calculations?, false, cache)
     end
   end
 

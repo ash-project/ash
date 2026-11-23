@@ -7,8 +7,11 @@ defmodule Ash.Tracer do
   A behaviour for implementing tracing for an Ash application.
   """
 
+  @type authorization_operation() :: :run_checks | :authorize_related | :runtime_check
+
   @type span_type() ::
           :action
+          | [:authorization | authorization_operation()]
           | :bulk_create
           | :bulk_update
           | :bulk_destroy
@@ -47,7 +50,7 @@ defmodule Ash.Tracer do
   @callback get_span_context() :: term()
   @callback set_span_context(term()) :: :ok
   @callback set_error(Exception.t(), Keyword.t()) :: :ok
-  @callback trace_type?(atom) :: boolean()
+  @callback trace_type?(span_type()) :: boolean()
   @callback set_handled_error(Exception.t(), Keyword.t()) :: :ok
 
   @doc """
@@ -99,16 +102,22 @@ defmodule Ash.Tracer do
   @fast_handler_lookup? Code.ensure_loaded?(:telemetry_handler_table) and
                           function_exported?(:telemetry_handler_table, :list_for_event, 1)
 
+  #
+  # The compilation check comes first because telemetry < 1.4.1 can crash or warn when invoked
+  # before the telemetry application has started, e.g. during compile time.
   @doc false
-  @spec telemetry_handlers?([atom()]) :: boolean()
+  @spec telemetry_handlers?([atom()], [atom()]) :: boolean()
   if @fast_handler_lookup? do
-    def telemetry_handlers?(telemetry_name) do
-      :telemetry_handler_table.list_for_event(telemetry_name ++ [:start]) != [] or
-        :telemetry_handler_table.list_for_event(telemetry_name ++ [:stop]) != []
+    def telemetry_handlers?(start_name, stop_name) do
+      not Code.can_await_module_compilation?() and
+        (:telemetry_handler_table.list_for_event(start_name) != [] or
+           :telemetry_handler_table.list_for_event(stop_name) != [])
     end
   else
-    def telemetry_handlers?(telemetry_name) do
-      :telemetry.list_handlers(telemetry_name) != []
+    def telemetry_handlers?(start_name, stop_name) do
+      not Code.can_await_module_compilation?() and
+        (:telemetry.list_handlers(start_name) != [] or
+           :telemetry.list_handlers(stop_name) != [])
     end
   end
 
@@ -118,39 +127,31 @@ defmodule Ash.Tracer do
         unquote(block_opts[:do])
       else
         telemetry_name = unquote(name)
+        start_name = telemetry_name ++ [:start]
+        stop_name = telemetry_name ++ [:stop]
 
-        metadata = unquote(metadata)
+        # When nothing is listening, skip the clock reads, metadata construction and
+        # both `:telemetry.execute/3` calls (each of which repeats the handler lookup).
+        emit? = Ash.Tracer.telemetry_handlers?(start_name, stop_name)
 
-        compiling? = Code.can_await_module_compilation?()
-
-        metadata =
-          if !compiling? do
-            if Ash.Tracer.telemetry_handlers?(telemetry_name) do
-              if is_function(metadata), do: apply(metadata, []), else: metadata
-            else
-              %{}
-            end
+        {metadata, start} =
+          if emit? do
+            metadata = unquote(metadata)
+            metadata = if is_function(metadata), do: apply(metadata, []), else: metadata
+            start = System.monotonic_time()
+            :telemetry.execute(start_name, %{system_time: System.system_time()}, metadata)
+            {metadata, start}
+          else
+            {nil, nil}
           end
-
-        start = System.monotonic_time()
-
-        if !compiling? do
-          :telemetry.execute(
-            telemetry_name ++ [:start],
-            %{system_time: System.system_time()},
-            metadata
-          )
-        end
 
         try do
           unquote(block_opts[:do])
         after
-          duration = System.monotonic_time() - start
-
-          if !compiling? do
+          if emit? do
             :telemetry.execute(
-              telemetry_name ++ [:stop],
-              %{system_time: System.system_time(), duration: duration},
+              stop_name,
+              %{system_time: System.system_time(), duration: System.monotonic_time() - start},
               metadata
             )
           end
@@ -181,7 +182,7 @@ defmodule Ash.Tracer do
     end
   end
 
-  @spec trace_type?(module(), atom()) :: boolean()
+  @spec trace_type?(module(), span_type()) :: boolean()
   def trace_type?(tracer, type) do
     if function_exported?(tracer, :trace_type?, 1) do
       result = apply(tracer, :trace_type?, [type])

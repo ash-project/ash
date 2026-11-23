@@ -404,6 +404,7 @@ defmodule Ash.Query.Function do
   defmacro __using__(opts) do
     quote do
       @before_compile Ash.Query.Function
+      @before_compile Ash.Query.Signatures
       @behaviour Ash.Query.Function
       if unquote(opts[:predicate?] || false) do
         @behaviour Ash.Filter.Predicate

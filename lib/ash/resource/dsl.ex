@@ -429,6 +429,11 @@ defmodule Ash.Resource.Dsl do
       "change {MyCustomChange, :foo}"
     ],
     no_depend_modules: [:change],
+    imports: [
+      Ash.Resource.Validation.Builtins,
+      Ash.Resource.Change.Builtins,
+      Ash.Expr
+    ],
     target: Ash.Resource.Change,
     schema: Ash.Resource.Change.action_schema(),
     args: [:change]
@@ -631,6 +636,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Preparation,
     schema: Ash.Resource.Preparation.schema(),
     no_depend_modules: [:preparation],
+    imports: [Ash.Resource.Preparation.Builtins, Ash.Resource.Validation.Builtins, Ash.Expr],
     args: [:preparation]
   }
 
@@ -1965,6 +1971,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateThroughRelationships,
     Ash.Resource.Verifiers.NoReservedFieldNames,
     Ash.Resource.Verifiers.ValidateAccept,
+    Ash.Resource.Verifiers.ValidateAttributeArgumentValidations,
     Ash.Resource.Verifiers.ValidateActionTypesSupported,
     Ash.Resource.Verifiers.ValidateAggregatesSupported,
     Ash.Resource.Verifiers.ValidateEagerIdentities,

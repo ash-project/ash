@@ -178,7 +178,8 @@ defmodule Ash.Notifier do
   Sends any notifications that can be sent, and returns the rest.
 
   A notification can only be sent if you are not currently in a transaction
-  for the resource in question.
+  for the resource in question. A notification with `for: []` has no notifiers
+  to send to, so it is neither sent nor returned.
   """
   @spec notify(list(Ash.Notifier.Notification.t()) | Ash.Notifier.Notification.t()) ::
           list(Ash.Notifier.Notification.t())
@@ -188,6 +189,7 @@ defmodule Ash.Notifier do
     {unsent, to_send} =
       resource_notifications
       |> List.wrap()
+      |> Enum.reject(&(&1.for == []))
       |> Enum.group_by(& &1.resource)
       |> Enum.split_with(fn {resource, _} ->
         resource && Ash.DataLayer.in_transaction?(resource)

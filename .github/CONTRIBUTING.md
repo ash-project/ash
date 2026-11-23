@@ -25,7 +25,7 @@ The best way to contribute to documentation is often through GitHub's web interf
 - While viewing any guide on the documentation website, look for the `</>` button in the top right of the page
 - Clicking this button will take you directly to GitHub's editing interface for that file
 
-![Guide Edit Button](documentation/assets/images/guides-link.png)
+![Guide Edit Button](https://raw.githubusercontent.com/ash-project/ash/main/documentation/assets/images/guides-link.png)
 
 **For Module Documentation:**
 - When viewing module documentation, the `</>` button will also be in the top right of the page
@@ -33,7 +33,7 @@ The best way to contribute to documentation is often through GitHub's web interf
 **For Function Documentation:**
 - When viewing individual functions, you'll find the `</>` button next to the function header
 
-![Function Edit Button](documentation/assets/images/functions-link.png)
+![Function Edit Button](https://raw.githubusercontent.com/ash-project/ash/main/documentation/assets/images/functions-link.png)
 
 Once you click the `</>` button, GitHub will:
 1. Fork the repository for you (if you haven't already)
