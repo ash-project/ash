@@ -13,6 +13,10 @@ defmodule Ash.Resource.Change do
   when this change was configured on a resource, and the context, which currently only has
   the actor.
   """
+  require Logger
+
+  @change_callback_process_key {__MODULE__, :change_callback}
+
   defstruct [
     :change,
     :on,
@@ -102,14 +106,54 @@ defmodule Ash.Resource.Change do
   def change(module, changeset, opts, context) do
     Ash.Temporal.assert_temporal_safe!(:change, module, opts, changeset)
 
-    Ash.BehaviourHelpers.call_and_validate_return(
-      module,
-      :change,
-      [changeset, opts, context],
-      [%Ash.Changeset{}],
-      behaviour: __MODULE__,
-      callback_name: "change/3"
-    )
+    previous_callback = Process.get(@change_callback_process_key)
+
+    Process.put(@change_callback_process_key, %{
+      module: module,
+      resource: changeset.resource,
+      action: changeset.action && changeset.action.name,
+      warn?: changeset.context[:warn_on_actions_in_change?] != false,
+      warned?: false
+    })
+
+    try do
+      Ash.BehaviourHelpers.call_and_validate_return(
+        module,
+        :change,
+        [changeset, opts, context],
+        [%Ash.Changeset{}],
+        behaviour: __MODULE__,
+        callback_name: "change/3"
+      )
+    after
+      if previous_callback do
+        Process.put(@change_callback_process_key, previous_callback)
+      else
+        Process.delete(@change_callback_process_key)
+      end
+    end
+  end
+
+  @doc false
+  def warn_on_action_in_change do
+    case Process.get(@change_callback_process_key) do
+      %{warn?: true, warned?: false} = callback ->
+        if Application.get_env(:ash, :warn_on_actions_in_change?, true) != false do
+          Process.put(@change_callback_process_key, %{callback | warned?: true})
+
+          Logger.warning("""
+          An Ash action was called from inside the `change/3` callback for #{inspect(callback.resource)}.#{callback.action}.
+
+          Actions called in a change callback run while the changeset is being built. Move the action call into a lifecycle hook such as `before_action/2` or `after_action/2` when appropriate.
+
+          To silence this warning for all actions, set `config :ash, :warn_on_actions_in_change?, false`.
+          To silence it for this action, set `warn_on_actions_in_change?: false` in the changeset context before this change runs.
+          """)
+        end
+
+      _ ->
+        :ok
+    end
   end
 
   @doc false

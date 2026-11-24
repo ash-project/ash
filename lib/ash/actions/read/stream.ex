@@ -12,6 +12,8 @@ defmodule Ash.Actions.Read.Stream do
   # Like `run!/3`, but when a read fails, the stream emits whatever `on_error` returns for the
   # error and then ends, instead of raising. `:raise` raises, as `run!/3` does.
   def run(domain, query, opts, on_error) do
+    Ash.Resource.Change.warn_on_action_in_change()
+
     query = Ash.Query.new(query)
 
     {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
