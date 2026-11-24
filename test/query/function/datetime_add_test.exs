@@ -100,4 +100,40 @@ defmodule Ash.Query.Function.DateTimeAddTest do
     assert {:ok, ~N[2024-02-07 12:00:00]} =
              Ash.Expr.eval(expr(datetime_add(^~N[2024-01-31 12:00:00], ^Duration.new!(week: 1))))
   end
+
+  describe "with every argument known" do
+    test "is computed before it reaches the data layer" do
+      query =
+        Ash.Query.filter(Event, recorded_at > datetime_add(^~U[2024-01-31 12:00:00Z], 2, :day))
+
+      assert %Ash.Query.Operator.GreaterThan{right: %DateTime{} = bound} = query.filter.expression
+      assert DateTime.compare(bound, ~U[2024-02-02 12:00:00Z]) == :eq
+    end
+
+    test "is computed once an argument template is filled" do
+      filter =
+        expr(recorded_at > datetime_add(^arg(:at), -1, :day))
+        |> Ash.Expr.fill_template(args: %{at: ~U[2024-01-31 12:00:00Z]})
+        |> then(&Ash.Filter.parse!(Event, &1))
+
+      assert %Ash.Query.Operator.GreaterThan{right: %DateTime{} = bound} = filter.expression
+      assert DateTime.compare(bound, ~U[2024-01-30 12:00:00Z]) == :eq
+    end
+
+    test "stays an expression when an argument isn't known" do
+      query = Ash.Query.filter(Event, recorded_at > datetime_add(now(), 2, :day))
+
+      assert %Ash.Query.Operator.GreaterThan{right: %DateTimeAdd{}} = query.filter.expression
+    end
+  end
+
+  test "29 February plus a year is 28 February, as in postgres and DateTime.shift/2" do
+    assert {:known, ~U[2025-02-28 12:00:00Z]} =
+             DateTimeAdd.evaluate(%{arguments: [~U[2024-02-29 12:00:00Z], 1, :year]})
+
+    assert {:known, ~U[2028-02-29 12:00:00Z]} =
+             DateTimeAdd.evaluate(%{arguments: [~U[2024-02-29 12:00:00Z], 4, :year]})
+
+    assert DateTime.shift(~U[2024-02-29 12:00:00Z], year: 1) == ~U[2025-02-28 12:00:00Z]
+  end
 end

@@ -4,18 +4,19 @@
 
 defmodule Ash.Query.Function.DateAdd do
   @moduledoc """
-  Adds the given interval or Duration to the current time in UTC
-  Adds the given interval or Duration to the current time in UTC
+  Adds the given interval or Duration to a date
 
   For example:
      activates_at < date_add(today(), 7, :day)
      activates_at < date_add(today(), Duration.new!(day: 7))
-     activates_at < date_add(today(), Duration.new!(day: 7))
+
+  When every argument is known (no references, no `today()`), the result is computed
+  before the expression reaches the data layer, so it is sent as a plain value.
 
   Documentation + available intervals inspired by the corresponding ecto interval implementation
   """
 
-  use Ash.Query.Function, name: :date_add, eager_evaluate?: false
+  use Ash.Query.Function, name: :date_add
 
   @beginning_of_day Time.new!(0, 0, 0)
 
