@@ -18,9 +18,8 @@ defmodule Ash.Page.Keyset do
   * Without a secret, the values are dumped with `Ash.Type.dump_to_embedded/3` and
     encoded as JSON. Decoding JSON can only produce plain data, never structs,
     functions or atoms, and each value is cast back with `Ash.Type.coerce/3`, the same
-    way values in a client-supplied filter are cast. Values that don't come back equal
-    to the original after that round trip can't be encoded, so a record sorted by them
-    has no keyset.
+    way values in a client-supplied filter are cast. A record sorted by values that
+    can't be encoded as JSON has no keyset.
   """
 
   # Upper bound on the size (in bytes) of an unsigned keyset. Keysets
@@ -124,9 +123,9 @@ defmodule Ash.Page.Keyset do
         raise ArgumentError, """
         Cannot build a keyset for #{inspect(resource)} sorted by #{inspect(field)}.
 
-        The value of #{inspect(field)} (of type #{inspect(type)}) has no JSON form that
-        comes back unchanged through `Ash.Type.dump_to_embedded/3`, JSON and
-        `Ash.Type.coerce/3`. Either make the type's values survive that round trip, or set
+        The value of #{inspect(field)} (of type #{inspect(type)}) couldn't be encoded as JSON
+        with `Ash.Type.dump_to_embedded/3`. Either make the type's `dump_to_embedded/2`
+        return a value that can be encoded as JSON, or set
         `config :ash, :keyset_signing_secret`, which encodes keysets as signed terms.
 
         See https://hexdocs.pm/ash/pagination.html for more.
@@ -519,7 +518,7 @@ defmodule Ash.Page.Keyset do
   defp resolve_field(field, _resource), do: field
 
   # With a signing key, encodes a record's sort values as a signed term. Otherwise
-  # encodes them as JSON, if every value survives the round trip, or returns the
+  # encodes them as JSON, if every value can be encoded, or returns the
   # first field whose value doesn't.
   defp encode(record, resource, sort, signing_key) do
     values = field_values(record, sort)
@@ -551,17 +550,12 @@ defmodule Ash.Page.Keyset do
     end
   end
 
-  # Returns the value encoded as JSON, after checking that it decodes and casts
-  # back to a value equal to the original
   defp encode_json_value(_resource, _field, nil), do: {:ok, "null"}
 
   defp encode_json_value(resource, field, value) do
     with {type, constraints} <- field_type(resource, field),
          {:ok, dumped} <- Ash.Type.dump_to_embedded(type, value, constraints),
-         {:ok, json} <- Jason.encode(dumped),
-         {:ok, decoded} <- Jason.decode(json),
-         {:ok, casted} <- cast_value(resource, field, decoded, :json),
-         true <- Ash.Type.equal?(type, value, casted, constraints) do
+         {:ok, json} <- Jason.encode(dumped) do
       {:ok, json}
     else
       _ -> :error

@@ -102,11 +102,9 @@ application uses Phoenix, you can derive it from `SECRET_KEY_BASE` instead; see
 **Without a signing secret**, Ash encodes the record's sort values as JSON, after dumping
 them with `Ash.Type.dump_to_embedded/3`. Decoding JSON can only produce plain data, never
 structs, functions or atoms, and each value is cast back to its field's type with
-`Ash.Type.coerce/3`, the same way values in a client-supplied filter are cast. Ash only
-encodes a record this way when every one of its sort values comes back equal to the
-original after that round trip. Values that don't, such as tuples stored in a `:term`
-attribute, can't be encoded, so building a keyset page sorted by them raises an error that
-names the field. Reads that don't build a keyset page are unaffected; those records just
+`Ash.Type.coerce/3`, the same way values in a client-supplied filter are cast. Values that
+can't be encoded as JSON, such as tuples stored in a `:term` attribute, can't be encoded
+this way, so building a keyset page sorted by them raises an error that names the field. Reads that don't build a keyset page are unaffected; those records just
 have no keyset.
 
 Unsigned keysets are limited in size, defaulting to 10 KiB. Legitimate keysets only
