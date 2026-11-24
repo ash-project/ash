@@ -8,6 +8,23 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.38.1](https://github.com/ash-project/ash/compare/v3.38.0...v3.38.1) (2026-11-24)
+
+
+
+
+### Improvements:
+
+* name the expression of an anonymous sort in keyset errors by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* [security] don't cast keyword input fields with storage casting ([CVE-2026-120299](https://cna.erlef.org/cves/CVE-2026-120299.html), [GHSA-rwmx-99mc-qr2x](https://github.com/ash-project/ash/security/advisories/GHSA-rwmx-99mc-qr2x)) by [@zachdaniel](https://github.com/zachdaniel)
+
+* correct misspelled deprecated key in Ash.SatSolver moduledoc (#3133) by kayaal34 [(#3133)](https://github.com/ash-project/ash/pull/3133)
+
+* encode keyset values whose type can't be determined as JSON by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.38.0](https://github.com/ash-project/ash/compare/v3.37.7...v3.38.0) (2026-11-24)
 
 
