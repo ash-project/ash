@@ -82,7 +82,7 @@ defmodule Ash.Test.Policy.FieldPolicy.KeysetPaginationTest do
       Enum.map(page.results, fn record ->
         record.__metadata__.keyset
         |> Base.decode64!()
-        |> Ash.Helpers.non_executable_binary_to_term([:safe])
+        |> Jason.decode!()
         |> List.first()
       end)
 

@@ -33,6 +33,8 @@ defmodule ThisTest.Obj do
   attributes do
     uuid_v7_primary_key :id
     attribute :name, :string, allow_nil?: false, public?: true
+    attribute :email, :ci_string, public?: true
+    attribute :data, :term, public?: true
   end
 end
 
@@ -160,7 +162,7 @@ defmodule Ash.Test.PageTest do
     end
   end
 
-  describe "keyset cursor input validation (GHSA-j35q-v8h8-7mwq)" do
+  describe "keyset cursor input validation (GHSA-j35q-v8h8-7mwq, GHSA-m5v6-3qwf-6w9r)" do
     alias Ash.Page.Keyset
 
     setup do
@@ -168,41 +170,48 @@ defmodule Ash.Test.PageTest do
     end
 
     test "accepts a normal, small cursor", %{query: query, sort: sort} do
-      cursor = Base.encode64(:erlang.term_to_binary([Ash.UUID.generate()]))
-      assert {:ok, _} = Keyset.filter(query, cursor, sort, :after)
+      assert {:ok, _} = Keyset.filter(query, json_keyset([Ash.UUID.generate()]), sort, :after)
     end
 
-    test "rejects an oversized uncompressed cursor", %{query: query, sort: sort} do
-      # A single sort value (matching the one sort field) large enough to exceed
-      # the byte-size cap, so this exercises the size guard rather than a shape
-      # mismatch.
-      cursor = Base.encode64(:erlang.term_to_binary([List.duplicate(0, 20_000)]))
+    test "rejects an oversized cursor", %{query: query, sort: sort} do
+      cursor = json_keyset([String.duplicate("a", 20_000)])
 
       assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
                Keyset.filter(query, cursor, sort, :after)
     end
 
-    test "rejects the reported keyset bomb (compressed list of integers)",
-         %{query: query, sort: sort} do
-      # Ash never emits compressed cursors, so any compressed payload is hostile
-      # and is rejected without inflating it. The compressed form is tiny on the
-      # wire yet would inflate to tens of MB.
-      bomb =
-        List.duplicate(0, 2_000_000)
-        |> :erlang.term_to_binary([{:compressed, 9}])
-        |> Base.encode64()
+    test "rejects a JSON cursor that isn't a list", %{query: query, sort: sort} do
+      cursor = json_keyset(%{"id" => Ash.UUID.generate()})
 
-      assert byte_size(bomb) < 10_000
-      assert {:error, %Ash.Error.Page.InvalidKeyset{}} = Keyset.filter(query, bomb, sort, :after)
+      assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
+               Keyset.filter(query, cursor, sort, :after)
     end
 
-    test "rejects a cursor whose decoded value contains an expression (GHSA-3gq3-9xm3-c8v3)",
-         %{query: query, sort: sort} do
-      # A forged cursor whose sort value is an `Ash.Query.Call` (an expression),
-      # which would otherwise be spliced into the filter as a value and evaluated
-      # as a fragment -> SQL injection / RCE depending on the data layer.
-      call = %Ash.Query.Call{name: :fragment, args: ["arbitrary"], relationship_path: []}
-      cursor = Base.encode64(:erlang.term_to_binary([call]))
+    test "rejects a term cursor without a signing secret", %{query: query, sort: sort} do
+      cursor = Base.encode64(:erlang.term_to_binary([Ash.UUID.generate()]))
+
+      assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
+               Keyset.filter(query, cursor, sort, :after)
+    end
+
+    test "rejects a term cursor containing a gadget struct", %{query: query} do
+      # `[:safe]` deserialization produces structs built from atoms that already
+      # exist, so a term cursor must never be decoded unless it is signed. Here an
+      # Ecto dynamic wrapped in an `Ash.CiString`, which `:ci_string` casting
+      # passes through.
+      sort = [{:email, :asc}, {:id, :asc}]
+      gadget = struct(Ecto.Query.DynamicExpr, binding: :gadget)
+      term = [struct(Ash.CiString, string: {gadget}), Ash.UUID.generate()]
+      cursor = Base.encode64(:erlang.term_to_binary(term))
+
+      assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
+               Keyset.filter(query, cursor, sort, :after)
+    end
+
+    test "a JSON cursor can't express a struct", %{query: query} do
+      # The closest JSON gets to a struct is a map, which `:ci_string` won't cast
+      sort = [{:email, :asc}, {:id, :asc}]
+      cursor = json_keyset([%{"__struct__" => "Elixir.Ash.CiString"}, Ash.UUID.generate()])
 
       assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
                Keyset.filter(query, cursor, sort, :after)
@@ -212,10 +221,48 @@ defmodule Ash.Test.PageTest do
          %{query: query, sort: sort} do
       # `:id` is a uuid; a value that isn't a valid uuid can never be a legitimate
       # keyset value for that field and is rejected on ingest.
-      cursor = Base.encode64(:erlang.term_to_binary([%{not: "a uuid"}]))
+      cursor = json_keyset([%{"not" => "a uuid"}])
 
       assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
                Keyset.filter(query, cursor, sort, :after)
+    end
+  end
+
+  describe "keyset encoding" do
+    alias Ash.Page.Keyset
+
+    defp obj(attrs) do
+      struct(
+        ThisTest.Obj,
+        Map.merge(%{id: Ash.UUID.generate(), name: "a", __metadata__: %{}}, attrs)
+      )
+    end
+
+    defp keyset_of(record, sort) do
+      [%{__metadata__: %{keyset: keyset}}] =
+        Keyset.data_with_keyset([record], ThisTest.Obj, sort)
+
+      keyset
+    end
+
+    test "values that survive a JSON round trip are encoded as JSON" do
+      record = obj(%{email: Ash.CiString.new("Some@Example.com")})
+      sort = [{:email, :asc}, {:id, :asc}]
+      keyset = keyset_of(record, sort)
+
+      assert keyset == json_keyset(["Some@Example.com", record.id])
+      assert {:ok, _} = Keyset.filter(Ash.Query.new(ThisTest.Obj), keyset, sort, :after)
+    end
+
+    test "values with no JSON form have no keyset without a signing secret" do
+      record = obj(%{data: {:a, 1}})
+      sort = [{:data, :asc}, {:id, :asc}]
+
+      assert keyset_of(record, sort) == nil
+
+      assert_raise ArgumentError, ~r/sorted by :data.*keyset_signing_secret/s, fn ->
+        Keyset.ensure_keysets!([%{record | __metadata__: %{keyset: nil}}], ThisTest.Obj, sort)
+      end
     end
   end
 
@@ -224,7 +271,7 @@ defmodule Ash.Test.PageTest do
     require Ash.Expr
 
     defp keyset_filter(query) do
-      cursor = Base.encode64(:erlang.term_to_binary([5]))
+      cursor = json_keyset([5])
       {:ok, filter} = Keyset.filter(query, cursor, query.sort, :after)
       filter
     end
@@ -461,5 +508,9 @@ defmodule Ash.Test.PageTest do
 
       assert Enum.map(results, & &1.id) == Enum.take(ids, 5)
     end
+  end
+
+  defp json_keyset(values) do
+    Base.encode64(Jason.encode!(values))
   end
 end

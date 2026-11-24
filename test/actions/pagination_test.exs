@@ -135,6 +135,10 @@ defmodule Ash.Actions.PaginationTest do
         public?(true)
         sensitive?(true)
       end
+
+      attribute :data, :term do
+        public?(true)
+      end
     end
 
     aggregates do
@@ -639,13 +643,12 @@ defmodule Ash.Actions.PaginationTest do
       query = Ash.Query.new(User)
       sort = [{:name, :asc}]
 
+      put_keyset_signing_secret("secret")
+
       # A keyset for a single short sort value is only a few bytes, and is
-      # otherwise valid, so the length check is the only thing that rejects it
+      # otherwise a valid term, so the length check is the only thing that rejects it
       short = Base.encode64(:erlang.term_to_binary(["0"]))
       assert byte_size(Base.decode64!(short)) < 32
-      assert {:ok, _} = Ash.Page.Keyset.filter(query, short, sort, :after)
-
-      put_keyset_signing_secret("secret")
 
       assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
                Ash.Page.Keyset.filter(query, short, sort, :after)
@@ -657,9 +660,9 @@ defmodule Ash.Actions.PaginationTest do
         |> Ash.Query.sort(name: :asc)
         |> Ash.read!(action: :keyset, page: [limit: 1])
 
-      # with no signature appended, the keyset is just the encoded sort values
+      # with no signature, the keyset is just the sort values as JSON
       assert Base.decode64!(record.__metadata__.keyset) ==
-               :erlang.term_to_binary([record.name, record.id])
+               Jason.encode!([record.name, record.id])
     end
 
     test "an empty signing secret raises when generating keysets" do
@@ -739,6 +742,50 @@ defmodule Ash.Actions.PaginationTest do
       assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
         Ash.read!(User, action: :keyset, page: [limit: 1, after: keyset])
       end)
+    end
+
+    test "a keyset page sorted by values with no JSON form raises without a signing secret" do
+      Ash.create!(Ash.Changeset.for_create(User, :create, %{name: "term", data: {:a, 1}}))
+
+      assert_raise(Ash.Error.Unknown, ~r/sorted by :data.*keyset_signing_secret/s, fn ->
+        User
+        |> Ash.Query.sort(data: :asc)
+        |> Ash.read!(action: :keyset, page: [limit: 1])
+      end)
+
+      # reads that only compute keysets are unaffected, the record just has no keyset
+      results = User |> Ash.Query.sort(data: :asc) |> Ash.read!(action: :optional_keyset)
+      assert %{__metadata__: %{keyset: nil}} = Enum.find(results, &(&1.name == "term"))
+    end
+
+    test "a keyset page sorted by values with no JSON form pages with a signing secret" do
+      put_keyset_signing_secret("secret")
+
+      for data <- [{:a, 1}, {:b, 2}] do
+        Ash.create!(Ash.Changeset.for_create(User, :create, %{name: "term", data: data}))
+      end
+
+      page =
+        User
+        |> Ash.Query.filter(name == "term")
+        |> Ash.Query.sort(data: :asc)
+        |> Ash.read!(action: :keyset, page: [limit: 1])
+
+      assert [%{data: {:a, 1}}] = page.results
+      assert [%{data: {:b, 2}}] = Ash.page!(page, :next).results
+    end
+
+    test "values with no JSON form are encoded as signed terms with a signing secret" do
+      put_keyset_signing_secret("secret")
+
+      sort = [{:data, :asc}, {:id, :asc}]
+      record = %{Ash.read_first!(User) | data: {:not, "json"}}
+
+      [%{__metadata__: %{keyset: keyset}}] =
+        Ash.Page.Keyset.data_with_keyset([record], User, sort)
+
+      assert is_binary(keyset)
+      assert {:ok, _} = Ash.Page.Keyset.filter(Ash.Query.new(User), keyset, sort, :after)
     end
 
     test "can ask for records before a specific keyset" do

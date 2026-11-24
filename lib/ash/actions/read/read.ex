@@ -3097,12 +3097,12 @@ defmodule Ash.Actions.Read do
     else
       cond do
         action.pagination.keyset? && (page_opts[:after] || page_opts[:before]) ->
-          Ash.Page.Keyset.new(data, count, sort, original_query, more?, opts)
+          keyset_page(data, count, sort, original_query, more?, opts, action)
 
         action.pagination.offset? && action.pagination.keyset? ->
           case Application.get_env(:ash, :default_page_type, :offset) do
             :keyset ->
-              Ash.Page.Keyset.new(data, count, sort, original_query, more?, opts)
+              keyset_page(data, count, sort, original_query, more?, opts, action)
 
             :offset ->
               Ash.Page.Offset.new(data, count, original_query, more?, opts)
@@ -3112,9 +3112,19 @@ defmodule Ash.Actions.Read do
           Ash.Page.Offset.new(data, count, original_query, more?, opts)
 
         true ->
-          Ash.Page.Keyset.new(data, count, sort, original_query, more?, opts)
+          keyset_page(data, count, sort, original_query, more?, opts, action)
       end
     end
+  end
+
+  defp keyset_page(data, count, sort, original_query, more?, opts, action) do
+    # Keysets Ash computed itself are `nil` for records whose sort values it
+    # couldn't encode, which a keyset page can't be built with
+    if !use_data_layer_keyset?(original_query, action.pagination) do
+      Ash.Page.Keyset.ensure_keysets!(data, original_query.resource, sort)
+    end
+
+    Ash.Page.Keyset.new(data, count, sort, original_query, more?, opts)
   end
 
   defp add_keysets(original_query, data, sort) do

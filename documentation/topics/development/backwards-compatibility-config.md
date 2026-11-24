@@ -392,9 +392,8 @@ end
 
 ### Old Behavior
 
-Keysets returned by Ash were plain encoded values. Ash accepted any keyset passed
-to `after`/`before` that decoded to the right shape, including ones constructed
-by a client.
+Keysets returned by Ash were not signed. Ash accepted any keyset passed to
+`after`/`before` that decoded to the right shape, including ones constructed by a client.
 
 ### New Behavior
 
@@ -403,6 +402,10 @@ signature. Keysets that were not signed, were signed with a different secret, or
 modified are rejected with an `Ash.Error.Page.InvalidKeyset` error, before they are
 decoded. Because a signed keyset can only have come from your application, signed
 keysets are not limited by `max_keyset_byte_size`.
+
+Without this setting, keysets are encoded as JSON, so keyset pages sorted by values that
+have no JSON form, such as tuples stored in a `:term` attribute, require it. See
+[how keysets are encoded](/documentation/topics/advanced/pagination.livemd#how-keysets-are-encoded).
 
 The secret must be a non-empty string. If it is set to anything else, such as an
 empty string or a number, Ash raises an `ArgumentError` naming the setting rather

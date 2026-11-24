@@ -63,27 +63,60 @@ Keyset pagination, also known as cursor pagination, is done via providing an `af
 
 > ### Keysets are opaque, don't construct them yourself
 >
-> A keyset is an encoded, serialized snapshot of a record's sort values. Always pass back a keyset that Ash previously returned (from a record's `__metadata__.keyset`) — treat it as an opaque token. Ash validates and decodes incoming `after`/`before` cursors and rejects anything malformed with an `Ash.Error.Page.InvalidKeyset` error.
->
-> Because `after`/`before` come straight from client input on public paginated endpoints, Ash guards cursor deserialization against memory exhaustion: compressed payloads are rejected outright (Ash never produces them), and unsigned cursors are capped in size (defaulting to 10 KiB). Legitimate cursors only encode a single record's sort values and are far smaller than this. If you sort on unusually large values and hit the limit, raise it with:
->
-> ```elixir
-> # config/config.exs
-> config :ash, max_keyset_byte_size: 20_480
-> ```
->
-> These checks still require Ash to decode input that anyone can send. To have Ash reject
-> anything it didn't generate itself before decoding it, configure a secret for signing
-> keysets. Ash then rejects any keyset that is unsigned, signed with a different secret,
-> or modified, without decoding it. Because a signed keyset can only have come from your
-> application, signed keysets are not limited by `max_keyset_byte_size`. New applications
-> have this configured by the installer. See
-> [`keyset_signing_secret`](/documentation/topics/development/backwards-compatibility-config.md#keyset_signing_secret)
-> for details.
->
-> ```elixir
-> config :ash, keyset_signing_secret: "a-long-random-string"
-> ```
+> A keyset is an encoded snapshot of a record's sort values. Always pass back a keyset that Ash previously returned (from a record's `__metadata__.keyset`) — treat it as an opaque token. Ash validates and decodes incoming `after`/`before` cursors and rejects anything malformed with an `Ash.Error.Page.InvalidKeyset` error.
+
+### How keysets are encoded
+
+Because `after`/`before` usually come straight from client input, Ash never deserializes
+Erlang terms from a keyset unless it can prove that it generated that keyset. How keysets
+are encoded depends on whether a
+[`keyset_signing_secret`](/documentation/topics/development/backwards-compatibility-config.md#keyset_signing_secret)
+is configured.
+
+**With a signing secret** (recommended, and configured by the installer for new
+applications), Ash encodes the record's sort values as an Erlang term and signs it with
+an HMAC. Ash only accepts keysets with a valid signature, and rejects any keyset that is
+unsigned, signed with a different secret, or modified, without decoding it. This works for
+values of any type, and also stops clients from paginating from sort values that they made
+up, which matters if you sort on fields that clients can't otherwise filter on.
+
+```elixir
+# config/dev.exs and config/test.exs
+config :ash, keyset_signing_secret: "a-long-random-string"
+
+# config/runtime.exs
+if config_env() == :prod do
+  config :ash,
+    keyset_signing_secret:
+      System.get_env("ASH_KEYSET_SIGNING_SECRET") ||
+        raise("environment variable ASH_KEYSET_SIGNING_SECRET is missing")
+end
+```
+
+Use a different secret in each environment, and keep the production secret out of source
+control. You can generate one with `mix phx.gen.secret` or
+`elixir -e ':crypto.strong_rand_bytes(32) |> Base.encode64() |> IO.puts()'`. If your
+application uses Phoenix, you can derive it from `SECRET_KEY_BASE` instead; see
+[`keyset_signing_secret`](/documentation/topics/development/backwards-compatibility-config.md#keyset_signing_secret).
+
+**Without a signing secret**, Ash encodes the record's sort values as JSON, after dumping
+them with `Ash.Type.dump_to_embedded/3`. Decoding JSON can only produce plain data, never
+structs, functions or atoms, and each value is cast back to its field's type with
+`Ash.Type.coerce/3`, the same way values in a client-supplied filter are cast. Ash only
+encodes a record this way when every one of its sort values comes back equal to the
+original after that round trip. Values that don't, such as tuples stored in a `:term`
+attribute, can't be encoded, so building a keyset page sorted by them raises an error that
+names the field. Reads that don't build a keyset page are unaffected; those records just
+have no keyset.
+
+Unsigned keysets are limited in size, defaulting to 10 KiB. Legitimate keysets only
+encode a single record's sort values and are far smaller than this. If you sort on
+unusually large values and hit the limit, raise it with:
+
+```elixir
+# config/config.exs
+config :ash, max_keyset_byte_size: 20_480
+```
 
 ### Pros of keyset pagination
 
