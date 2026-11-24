@@ -118,18 +118,28 @@ defmodule Ash.Page.Keyset do
   def ensure_keysets!(results, resource, sort) do
     Enum.each(results, fn
       %{__metadata__: %{keyset: nil}} = record ->
-        {:error, {field, type}} = encode(record, resource, sort, nil)
+        case encode(record, resource, sort, nil) do
+          {:error, {field, type}} ->
+            raise ArgumentError, """
+            Cannot build a keyset for #{inspect(resource)} sorted by #{inspect(field)}.
 
-        raise ArgumentError, """
-        Cannot build a keyset for #{inspect(resource)} sorted by #{inspect(field)}.
+            The value of #{inspect(field)} (of type #{inspect(type)}) couldn't be encoded as JSON
+            with `Ash.Type.dump_to_embedded/3`. Either make the type's `dump_to_embedded/2`
+            return a value that can be encoded as JSON, or set
+            `config :ash, :keyset_signing_secret`, which encodes keysets as signed terms.
 
-        The value of #{inspect(field)} (of type #{inspect(type)}) couldn't be encoded as JSON
-        with `Ash.Type.dump_to_embedded/3`. Either make the type's `dump_to_embedded/2`
-        return a value that can be encoded as JSON, or set
-        `config :ash, :keyset_signing_secret`, which encodes keysets as signed terms.
+            See https://hexdocs.pm/ash/pagination.html for more.
+            """
 
-        See https://hexdocs.pm/ash/pagination.html for more.
-        """
+          _ ->
+            raise ArgumentError, """
+            Cannot build a keyset for #{inspect(resource)}, because its sort values couldn't
+            be encoded as JSON. Set `config :ash, :keyset_signing_secret`, which encodes
+            keysets as signed terms.
+
+            See https://hexdocs.pm/ash/pagination.html for more.
+            """
+        end
 
       _ ->
         :ok
@@ -538,25 +548,25 @@ defmodule Ash.Page.Keyset do
     |> Enum.zip(values)
     |> Enum.reduce_while({:ok, []}, fn {{field, _direction}, value}, {:ok, acc} ->
       case encode_json_value(resource, field, value) do
-        {:ok, json} -> {:cont, {:ok, [json | acc]}}
+        {:ok, fragment} -> {:cont, {:ok, [fragment | acc]}}
         :error -> {:halt, {:error, {field_name(field), field_type_name(resource, field)}}}
       end
     end)
     |> case do
-      # Each value was already encoded on its own, so the array is built from those
-      # encodings rather than encoding again, which could fail
-      {:ok, jsons} -> {:ok, "[" <> Enum.join(Enum.reverse(jsons), ",") <> "]"}
+      {:ok, fragments} -> Jason.encode(Enum.reverse(fragments))
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp encode_json_value(_resource, _field, nil), do: {:ok, "null"}
+  # Each value is encoded on its own, so that a value that can't be encoded is
+  # attributed to its field, and kept as a fragment that the list is encoded with
+  defp encode_json_value(_resource, _field, nil), do: {:ok, nil}
 
   defp encode_json_value(resource, field, value) do
     with {type, constraints} <- field_type(resource, field),
          {:ok, dumped} <- Ash.Type.dump_to_embedded(type, value, constraints),
          {:ok, json} <- Jason.encode(dumped) do
-      {:ok, json}
+      {:ok, Jason.Fragment.new(json)}
     else
       _ -> :error
     end
