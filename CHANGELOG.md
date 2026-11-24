@@ -23,6 +23,8 @@ SPDX-License-Identifier: MIT
 
 ### Bug Fixes:
 
+* [security] encode keysets as JSON unless `keyset_signing_secret` is set, so forged keysets are never deserialized as Erlang terms ([CVE-2026-124283](https://cna.erlef.org/cves/CVE-2026-124283.html), [GHSA-m5v6-3qwf-6w9r](https://github.com/ash-project/ash/security/advisories/GHSA-m5v6-3qwf-6w9r)) by [@zachdaniel](https://github.com/zachdaniel)
+
 * encode each keyset value as a JSON fragment by [@zachdaniel](https://github.com/zachdaniel)
 
 * don't check that JSON keyset values round trip when encoding by [@zachdaniel](https://github.com/zachdaniel)
