@@ -8,6 +8,27 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.38.0](https://github.com/ash-project/ash/compare/v3.37.7...v3.38.0) (2026-11-24)
+
+
+
+
+### Features:
+
+* trace authorization phases and emit telemetry events (#3117) by Ashu3208 [(#3117)](https://github.com/ash-project/ash/pull/3117)
+
+### Improvements:
+
+* validate args in define_calculation code interfaces (#3130) by porterbrien [(#3130)](https://github.com/ash-project/ash/pull/3130)
+
+### Bug Fixes:
+
+* encode each keyset value as a JSON fragment by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't check that JSON keyset values round trip when encoding by [@zachdaniel](https://github.com/zachdaniel)
+
+* build JSON keysets from per-value encodings instead of re-encoding by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.37.7](https://github.com/ash-project/ash/compare/v3.37.6...v3.37.7) (2026-11-18)
 
 
