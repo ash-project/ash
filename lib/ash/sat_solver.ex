@@ -6,7 +6,7 @@ defmodule Ash.SatSolver do
   alias Crux.Expression
   require Crux.Expression
 
-  @moduledoc deprectated: """
+  @moduledoc deprecated: """
              This module is deprecated and will be removed in Ash 4.0.0.
              Please use `Crux` directly instead.
              """
