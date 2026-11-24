@@ -25,8 +25,8 @@ defmodule Ash.Query.Function.AgoTest do
   end
 
   describe "datetime_add helper" do
-    test "Add 3 years to 29 Feb" do
-      assert %DateTime{year: 2023, month: 3, day: 1} =
+    test "Add 3 years to 29 Feb clamps to 28 Feb, as postgres and DateTime.shift/2 do" do
+      assert %DateTime{year: 2023, month: 2, day: 28} =
                Ago.datetime_add(~U[2020-02-29T00:00:00Z], 3, :year)
     end
 

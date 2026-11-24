@@ -77,9 +77,10 @@ defmodule Ash.Query.Function.Ago do
 
   def datetime_add(%{month: month, day: day} = datetime, amount_to_add, :year) do
     result = %{datetime | year: datetime.year + amount_to_add}
-    # Adjust 29-Feb to 01-March when not a leap year
+    # 29 February clamps to 28 February when not a leap year, as postgres intervals and
+    # `DateTime.shift/2` do (and as `:month` clamps to the end of the month).
     if month == 2 and day == 29 and not Calendar.ISO.leap_year?(result.year) do
-      %{result | month: 3, day: 1}
+      %{result | day: 28}
     else
       result
     end
