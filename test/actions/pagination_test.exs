@@ -7,6 +7,7 @@ defmodule Ash.Actions.PaginationTest do
   use Mimic
 
   require Ash.Query
+  require Ash.Sort
 
   alias Ash.Test.Domain, as: Domain
 
@@ -742,6 +743,16 @@ defmodule Ash.Actions.PaginationTest do
       assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
         Ash.read!(User, action: :keyset, page: [limit: 1, after: keyset])
       end)
+    end
+
+    test "keyset pages work when sorted by an expression with no known type" do
+      sort = [{Ash.Sort.expr_sort(name), :asc}]
+
+      page = User |> Ash.Query.sort(sort) |> Ash.read!(action: :keyset, page: [limit: 3])
+      assert Enum.map(page.results, & &1.name) == ["0", "1", "2"]
+
+      next = Ash.page!(page, :next)
+      assert Enum.map(next.results, & &1.name) == ["3", "4", "5"]
     end
 
     test "a keyset page sorted by values with no JSON form raises without a signing secret" do

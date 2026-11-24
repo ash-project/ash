@@ -479,8 +479,11 @@ defmodule Ash.Page.Keyset do
           _ -> :error
         end
 
+      # The type of the field can't be determined, e.g. an expression sort with
+      # no type. JSON only decodes to plain data, so the value is passed through,
+      # and cast by the filter like a value in a client-supplied filter.
       :error ->
-        :error
+        {:ok, value}
     end
   end
 
@@ -563,8 +566,7 @@ defmodule Ash.Page.Keyset do
   defp encode_json_value(_resource, _field, nil), do: {:ok, nil}
 
   defp encode_json_value(resource, field, value) do
-    with {type, constraints} <- field_type(resource, field),
-         {:ok, dumped} <- Ash.Type.dump_to_embedded(type, value, constraints),
+    with {:ok, dumped} <- dump_json_value(resource, field, value),
          {:ok, json} <- Jason.encode(dumped) do
       {:ok, Jason.Fragment.new(json)}
     else
@@ -572,6 +574,15 @@ defmodule Ash.Page.Keyset do
     end
   rescue
     _ -> :error
+  end
+
+  # A field whose type can't be determined, e.g. an expression sort with no type,
+  # has its value encoded as is, and is passed through as is when decoded
+  defp dump_json_value(resource, field, value) do
+    case field_type(resource, field) do
+      {type, constraints} -> Ash.Type.dump_to_embedded(type, value, constraints)
+      :error -> {:ok, value}
+    end
   end
 
   defp field_name(%{name: name}), do: name
