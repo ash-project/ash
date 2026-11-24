@@ -1217,7 +1217,7 @@ defmodule Ash.Test.SignalsTest do
         send(test_pid, {:emitter_messages, Enum.filter(messages, &signal_message?/1)})
       end)
 
-      assert_receive {:emitter_messages, []}, 10000
+      assert_receive {:emitter_messages, []}, 10_000
       refute_signal_emitted(Signals, :post_created)
     end
   end
