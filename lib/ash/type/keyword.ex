@@ -272,23 +272,16 @@ defmodule Ash.Type.Keyword do
 
   defp fetch_dump_field(value, key), do: Keyword.fetch(value, key)
 
+  # Only selects the declared keys. Field values are cast by `apply_constraints/2`
+  # (input) or `cast_keyword_fields/3` (storage), never here: this runs on
+  # untrusted input, which must not reach a field type's storage casting.
   defp try_map_to_keyword(map, constraints) do
     constraints[:fields]
     |> Kernel.||([])
-    |> Enum.flat_map(fn {key, field_constraints} ->
+    |> Enum.flat_map(fn {key, _field_constraints} ->
       case Ash.Type.CompositeTypeHelpers.fetch_field(map, key) do
-        {:ok, value} ->
-          if type = field_constraints[:type] do
-            case Ash.Type.cast_stored(type, value, field_constraints[:constraints] || []) do
-              {:ok, cast_value} -> [{key, cast_value}]
-              _ -> []
-            end
-          else
-            [{key, value}]
-          end
-
-        :error ->
-          []
+        {:ok, value} -> [{key, value}]
+        :error -> []
       end
     end)
   end

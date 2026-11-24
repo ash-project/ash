@@ -472,6 +472,55 @@ defmodule Type.KeywordTest do
     assert length(errors) > 1
   end
 
+  describe "cast_input does not use the storage casting of field types" do
+    defmodule EmbeddedMeta do
+      @moduledoc false
+      use Ash.Resource, data_layer: :embedded
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*, update: :*]
+      end
+
+      attributes do
+        attribute :name, :string, public?: true
+        attribute :role, :string, public?: false
+      end
+
+      validations do
+        validate string_length(:name, max: 3)
+      end
+    end
+
+    test "a capture string is not turned into a function" do
+      assert {:error, _} =
+               cast_and_constrain(%{"cb" => "&IO.puts/1"}, cb: [type: :function])
+    end
+
+    test "a binary is not decoded as an erlang term" do
+      payload = :erlang.term_to_binary(%Ash.CiString{string: "pwn"})
+
+      assert {:ok, [blob: ^payload]} =
+               cast_and_constrain(%{"blob" => payload}, blob: [type: :term])
+    end
+
+    test "embedded fields are built through their create action" do
+      assert {:error, _} =
+               cast_and_constrain(
+                 %{"meta" => %{"name" => "too long", "role" => "admin"}},
+                 meta: [type: EmbeddedMeta]
+               )
+    end
+
+    defp cast_and_constrain(input, fields) do
+      {:ok, constraints} = Ash.Type.init(:keyword, fields: fields)
+
+      with {:ok, value} <- Ash.Type.cast_input(:keyword, input, constraints) do
+        Ash.Type.apply_constraints(:keyword, value, constraints)
+      end
+    end
+  end
+
   describe "cast_stored" do
     test "casts atom field values from stored strings to atoms" do
       constraints = [
