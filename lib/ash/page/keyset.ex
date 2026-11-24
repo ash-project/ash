@@ -539,19 +539,21 @@ defmodule Ash.Page.Keyset do
     |> Enum.zip(values)
     |> Enum.reduce_while({:ok, []}, fn {{field, _direction}, value}, {:ok, acc} ->
       case encode_json_value(resource, field, value) do
-        {:ok, decoded} -> {:cont, {:ok, [decoded | acc]}}
+        {:ok, json} -> {:cont, {:ok, [json | acc]}}
         :error -> {:halt, {:error, {field_name(field), field_type_name(resource, field)}}}
       end
     end)
     |> case do
-      {:ok, decoded} -> {:ok, Jason.encode!(Enum.reverse(decoded))}
+      # Each value was already encoded on its own, so the array is built from those
+      # encodings rather than encoding again, which could fail
+      {:ok, jsons} -> {:ok, "[" <> Enum.join(Enum.reverse(jsons), ",") <> "]"}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  # Returns the value as it will be decoded from the keyset, after checking that it
-  # casts back to a value equal to the original
-  defp encode_json_value(_resource, _field, nil), do: {:ok, nil}
+  # Returns the value encoded as JSON, after checking that it decodes and casts
+  # back to a value equal to the original
+  defp encode_json_value(_resource, _field, nil), do: {:ok, "null"}
 
   defp encode_json_value(resource, field, value) do
     with {type, constraints} <- field_type(resource, field),
@@ -560,7 +562,7 @@ defmodule Ash.Page.Keyset do
          {:ok, decoded} <- Jason.decode(json),
          {:ok, casted} <- cast_value(resource, field, decoded, :json),
          true <- Ash.Type.equal?(type, value, casted, constraints) do
-      {:ok, decoded}
+      {:ok, json}
     else
       _ -> :error
     end
