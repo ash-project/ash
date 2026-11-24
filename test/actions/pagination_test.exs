@@ -769,6 +769,20 @@ defmodule Ash.Actions.PaginationTest do
       assert %{__metadata__: %{keyset: nil}} = Enum.find(results, &(&1.name == "term"))
     end
 
+    test "an untyped expression sort with no JSON form names the expression" do
+      Ash.create!(Ash.Changeset.for_create(User, :create, %{name: "term", data: {:a, 1}}))
+
+      assert_raise(
+        Ash.Error.Unknown,
+        ~r/sorted by the expression `data`.*give the sort a type/s,
+        fn ->
+          User
+          |> Ash.Query.sort([{Ash.Sort.expr_sort(data), :asc}])
+          |> Ash.read!(action: :keyset, page: [limit: 1])
+        end
+      )
+    end
+
     test "a keyset page sorted by values with no JSON form pages with a signing secret" do
       put_keyset_signing_secret("secret")
 

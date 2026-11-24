@@ -119,11 +119,23 @@ defmodule Ash.Page.Keyset do
     Enum.each(results, fn
       %{__metadata__: %{keyset: nil}} = record ->
         case encode(record, resource, sort, nil) do
+          {:error, {field, :unknown}} ->
+            raise ArgumentError, """
+            Cannot build a keyset for #{inspect(resource)} sorted by #{field}.
+
+            The value of #{field} couldn't be encoded as JSON, and its type couldn't be
+            determined, so it couldn't be dumped with `Ash.Type.dump_to_embedded/3` first.
+            Either give the sort a type, e.g. `Ash.Sort.expr_sort(expression, :string)`, or
+            set `config :ash, :keyset_signing_secret`, which encodes keysets as signed terms.
+
+            See https://hexdocs.pm/ash/pagination.html for more.
+            """
+
           {:error, {field, type}} ->
             raise ArgumentError, """
-            Cannot build a keyset for #{inspect(resource)} sorted by #{inspect(field)}.
+            Cannot build a keyset for #{inspect(resource)} sorted by #{field}.
 
-            The value of #{inspect(field)} (of type #{inspect(type)}) couldn't be encoded as JSON
+            The value of #{field} (of type #{inspect(type)}) couldn't be encoded as JSON
             with `Ash.Type.dump_to_embedded/3`. Either make the type's `dump_to_embedded/2`
             return a value that can be encoded as JSON, or set
             `config :ash, :keyset_signing_secret`, which encodes keysets as signed terms.
@@ -552,7 +564,7 @@ defmodule Ash.Page.Keyset do
     |> Enum.reduce_while({:ok, []}, fn {{field, _direction}, value}, {:ok, acc} ->
       case encode_json_value(resource, field, value) do
         {:ok, fragment} -> {:cont, {:ok, [fragment | acc]}}
-        :error -> {:halt, {:error, {field_name(field), field_type_name(resource, field)}}}
+        :error -> {:halt, {:error, {describe_field(field), field_type_name(resource, field)}}}
       end
     end)
     |> case do
@@ -585,8 +597,20 @@ defmodule Ash.Page.Keyset do
     end
   end
 
-  defp field_name(%{name: name}), do: name
-  defp field_name(field), do: field
+  # Anonymous sorts, like `Ash.Sort.expr_sort/2`, only have generated names such as
+  # `:__calc__0`, so they are described by their expression instead
+  defp describe_field(%Ash.Query.Calculation{calc_name: calc_name}) when not is_nil(calc_name),
+    do: inspect(calc_name)
+
+  defp describe_field(%Ash.Query.Calculation{name: name, opts: opts}) do
+    case Keyword.fetch(opts || [], :expr) do
+      {:ok, expr} -> "the expression `#{inspect(expr)}`"
+      :error -> inspect(name)
+    end
+  end
+
+  defp describe_field(%{name: name}), do: inspect(name)
+  defp describe_field(field), do: inspect(field)
 
   defp field_type_name(resource, field) do
     case field_type(resource, field) do
