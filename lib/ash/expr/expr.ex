@@ -228,6 +228,15 @@ defmodule Ash.Expr do
       # Anchor relative-time expressions to a temporal query/changeset's `as_of`
       # (threaded via `context`). Idempotent with `add_calc_context_to_filter`'s
       # rewrite — once replaced with a DateTime there is no `now()` left to map.
+      %{__struct__: module} = function
+      when module in [
+             Ash.Query.Function.LocalAgo,
+             Ash.Query.Function.LocalFromNow,
+             Ash.Query.Function.LocalNow,
+             Ash.Query.Function.LocalToday
+           ] ->
+        Ash.Query.Function.LocalNow.put_as_of(function, fill_template_as_of(opts))
+
       %{__struct__: Ash.Query.Function.Now} = now ->
         fill_template_as_of(opts) || now
 

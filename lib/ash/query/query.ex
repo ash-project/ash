@@ -3110,10 +3110,11 @@ defmodule Ash.Query do
   @doc """
   Pins the query to a point in time, for time-travel reads of temporal resources.
 
-  Any `now/0`, `ago/2` and `from_now/2` expressions in the query are anchored to
-  this instant, and (for temporal resources) only rows valid at this instant are
-  returned. Accepts a `DateTime`, the atom `:now` (resolved to the current time at
-  execution — equivalent to no time-travel), or `nil`. Defaults to "now" when unset.
+  Relative time expressions such as `now/0`, `ago/2` and `from_now/2` are anchored to
+  this instant. The same applies to `local_now/1`, `local_today/1`, `local_ago/2`,
+  `local_ago/3`, `local_from_now/2` and `local_from_now/3`. For temporal resources,
+  only rows valid at this instant are returned. Accepts a `DateTime`, `:now` to use
+  the time at execution, or `nil`. Defaults to the current time when unset.
 
   See the `temporal` section of `Ash.Resource.Dsl`.
   """

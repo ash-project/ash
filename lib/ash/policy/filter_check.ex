@@ -169,6 +169,10 @@ defmodule Ash.Policy.FilterCheck do
           %Ash.Query.Function.Today{} -> true
           %Ash.Query.Function.Ago{} -> true
           %Ash.Query.Function.FromNow{} -> true
+          %Ash.Query.Function.LocalAgo{} -> true
+          %Ash.Query.Function.LocalFromNow{} -> true
+          %Ash.Query.Function.LocalNow{} -> true
+          %Ash.Query.Function.LocalToday{} -> true
           _ -> false
         end)
       end

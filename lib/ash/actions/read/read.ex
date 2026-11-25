@@ -2413,6 +2413,15 @@ defmodule Ash.Actions.Read do
       # Anchor relative-time expressions to the query's `as_of` (temporal reads).
       # `as_of` rides in `opts[:as_of]` (optional — `nil` leaves wall-clock behavior),
       # threaded by `add_calc_context_to_query` and by data layers at their call sites.
+      %module{} = function, cache
+      when module in [
+             Ash.Query.Function.LocalAgo,
+             Ash.Query.Function.LocalFromNow,
+             Ash.Query.Function.LocalNow,
+             Ash.Query.Function.LocalToday
+           ] ->
+        {Ash.Query.Function.LocalNow.put_as_of(function, opts[:as_of]), cache}
+
       %Ash.Query.Function.Now{} = now, cache ->
         {opts[:as_of] || now, cache}
 
