@@ -4479,6 +4479,8 @@ defmodule Ash.Actions.Read do
          query,
          calculations_to_add
        ) do
+    as_of = Ash.Temporal.resolve_read_as_of(query.as_of)
+
     calculations_to_add
     |> Enum.reduce_while({:ok, [], %{}}, fn calculation, {:ok, calculations, cache} ->
       if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
@@ -4526,7 +4528,8 @@ defmodule Ash.Actions.Read do
                 [
                   expand?: true,
                   parent_stack: parent_stack_from_context(query.context),
-                  source_context: query.context
+                  source_context: query.context,
+                  as_of: as_of
                 ],
                 cache
               )

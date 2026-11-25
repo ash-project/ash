@@ -67,4 +67,16 @@ defmodule Ash.Test.TemporalRelativeTimeTest do
                |> Ash.read!()
     end
   end
+
+  describe "loaded calculations" do
+    test "that reference the row are anchored to as_of" do
+      assert [%{now_for_row: @as_of}] =
+               Event |> Ash.Query.load(:now_for_row) |> as_of() |> Ash.read!()
+    end
+
+    test "that use a custom expression are anchored to as_of" do
+      assert [%{local_now: @local_as_of, local_today: ~D[2026-06-15]}] =
+               Event |> Ash.Query.load([:local_now, :local_today]) |> as_of() |> Ash.read!()
+    end
+  end
 end
