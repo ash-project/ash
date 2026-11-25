@@ -43,6 +43,12 @@ defmodule Ash.Resource.Relationships.HasOne do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A to-one relationship from a source resource to a destination.
+  Use this definition to inspect the destination and how it is loaded.
+
+  See [Relationships](/documentation/topics/resources/relationships.md).
+  """
   @type t :: %__MODULE__{
           type: :has_one,
           cardinality: :one,

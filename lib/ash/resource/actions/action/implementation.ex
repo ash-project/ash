@@ -46,6 +46,13 @@ defmodule Ash.Resource.Actions.Implementation do
 
     defstruct [:actor, :tenant, :as_of, :authorize?, :domain, :tracer, source_context: %{}]
 
+    @typedoc """
+    Execution context passed to `c:Ash.Resource.Actions.Implementation.run/3`.
+
+    Use `:actor`, `:tenant`, and `:authorize?` to inspect the caller's context.
+    Pass `scope: context` when invoking a nested action to carry over the
+    actor, tenant, and shared context.
+    """
     @type t :: %__MODULE__{
             actor: term,
             tenant: term,
@@ -57,12 +64,31 @@ defmodule Ash.Resource.Actions.Implementation do
           }
   end
 
+  @doc """
+  Runs the generic action with its prepared input.
+
+  Read declared arguments with `Ash.ActionInput.get_argument/2`. `opts`
+  comes from the implementation configured in the resource's `run`
+  declaration. `context` carries action information such as the actor and
+  tenant. Return `:ok` for an action without a return value, `{:ok, value}`
+  for an action with a declared return type, or `{:error, error}` on failure.
+  Use `{:ok, value, notifications}` to return a result with notifications.
+  """
   @callback run(Ash.ActionInput.t(), opts :: Keyword.t(), Context.t()) ::
               :ok
               | {:ok, term()}
               | {:ok, term(), [Ash.Notifier.Notification.t()]}
               | {:error, term()}
 
+  @doc """
+  Declares a generic action implementation.
+
+  Implement `c:run/3` and register the module with `run` inside the action.
+  To supply implementation options, use `run {MyApp.RunReport, format: :csv}`.
+  The `use` macro takes no configuration options.
+
+  See [Generic actions](/documentation/topics/actions/generic-actions.md).
+  """
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Actions.Implementation

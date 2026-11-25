@@ -349,6 +349,15 @@ defmodule Ash.Resource.Info do
     global_changes ++ Map.get(action || %{}, :changes, [])
   end
 
+  @doc """
+  Returns the resource-wide preparations that apply to the given action type.
+
+  The type defaults to `:read`. Pass `:action` for generic actions.
+  Each preparation is included when its `:on` list contains that type.
+
+  See [Preparations](/documentation/topics/resources/preparations.md) for how
+  to define resource-wide and action-specific preparations.
+  """
   @spec preparations(Spark.Dsl.t() | Ash.Resource.t(), action_type :: :read | :action) ::
           list(Ash.Resource.Preparation.t())
   def preparations(resource, type \\ :read) do
@@ -450,10 +459,26 @@ defmodule Ash.Resource.Info do
       )
   end
 
+  @doc """
+  Returns the resource attributes that must have a value on the finished record.
+
+  Includes attributes with `allow_nil?: false` that the data layer does not
+  generate. Values may come from inputs, defaults, or changes. Use
+  `attributes_to_require/2` to inspect the requirements for a specific action.
+  """
   def attributes_to_require(resource) do
     Extension.get_persisted(resource, :attributes_to_require)
   end
 
+  @doc """
+  Returns the attribute definitions checked for required values by a named action.
+
+  The list accounts for the action's accepted and required attributes, arguments
+  of the same name, and `:allow_nil_input`. Read and generic actions return an
+  empty list. An unknown action returns `nil`.
+
+  See `attributes_to_require/1` for requirements on the finished record.
+  """
   def attributes_to_require(resource, action_name) do
     Extension.get_persisted(resource, {:attributes_to_require, action_name})
   end
@@ -849,6 +874,12 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:attributes])
   end
 
+  @doc """
+  Returns a `MapSet` of the resource's attribute names.
+
+  Use `attributes/1` when you need the attribute definitions and
+  `public_attributes/1` when you need only public attributes.
+  """
   @spec attribute_names(Spark.Dsl.t() | Ash.Resource.t()) :: MapSet.t()
   def attribute_names(resource) do
     Extension.get_persisted(resource, :attribute_names)
@@ -974,6 +1005,25 @@ defmodule Ash.Resource.Info do
     end
   end
 
+  @doc """
+  Returns the destination resource of a relationship or relationship path.
+
+  Pass one name or a list of names to follow in order. An empty path returns
+  the starting resource. A missing relationship at any point returns `nil`.
+
+  ## Examples
+
+      Ash.Resource.Info.related(MyApp.Post, :author)
+      # => MyApp.User
+
+      Ash.Resource.Info.related(MyApp.Post, [:author, :organization])
+      # => MyApp.Organization
+
+  ## See also
+
+  - `relationship/2` for the relationship definition
+  - [Relationships](/documentation/topics/resources/relationships.md)
+  """
   @spec related(Spark.Dsl.t() | Ash.Resource.t(), atom() | String.t() | [atom() | String.t()]) ::
           Ash.Resource.t() | nil
   def related(resource, relationship) when not is_list(relationship) do
@@ -989,11 +1039,23 @@ defmodule Ash.Resource.Info do
     end
   end
 
+  @doc """
+  Returns a `MapSet` of the attributes configured with `always_select?: true`.
+
+  Ash keeps these attributes in a query even when the query selects a
+  subset of fields. See `Ash.Query.select/3`.
+  """
   @spec always_selected_attribute_names(Spark.Dsl.t() | Ash.Resource.t()) :: MapSet.t()
   def always_selected_attribute_names(resource) do
     Extension.get_persisted(resource, :always_selected_attribute_names)
   end
 
+  @doc """
+  Returns a `MapSet` of the attributes configured with `select_by_default?: true`.
+
+  This is the default selection when no explicit field list has been provided.
+  See `Ash.Query.ensure_selected/2` to request additional fields.
+  """
   @spec selected_by_default_attribute_names(Spark.Dsl.t() | Ash.Resource.t()) :: MapSet.t()
   def selected_by_default_attribute_names(resource) do
     Extension.get_persisted(resource, :selected_by_default_attribute_names)

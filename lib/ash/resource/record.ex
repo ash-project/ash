@@ -10,5 +10,9 @@ defmodule Ash.Resource.Record do
   and will also act as a place for shared functionality for
   instances of resources in the future.
   """
+  @typedoc """
+  An instance of a resource returned from an action. Its struct module
+  is the resource module, such as `MyApp.Post`.
+  """
   @type t :: struct()
 end

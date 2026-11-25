@@ -37,6 +37,12 @@ defmodule Ash.Resource.Actions.Update do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  The definition of an update action. It describes accepted attributes,
+  arguments, changes, and whether the action requires atomic execution.
+
+  See [Update actions](/documentation/topics/actions/update-actions.md).
+  """
   @type t :: %__MODULE__{
           type: :update,
           name: atom,

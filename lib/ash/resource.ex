@@ -9,6 +9,13 @@ defmodule Ash.Resource do
   [Resource DSL documentation](dsl-ash-resource.html)
   """
 
+  @typedoc """
+  A module that defines an Ash resource with `use Ash.Resource`.
+
+  For example, pass `MyApp.Post` as the resource to `Ash.read/2` or to
+  `Ash.Resource.Info.attributes/1`. A record returned from an action on
+  that resource has type `t:Ash.Resource.Record.t/0`.
+  """
   @type t :: module
 
   if String.to_integer(System.otp_release()) < 29 do
@@ -452,6 +459,18 @@ defmodule Ash.Resource do
     end
   end
 
+  @doc """
+  Deep merges a map into a record's metadata and returns the updated record.
+
+  Metadata lives in `__metadata__` on the returned record. For example, attach
+  import information for use by the caller:
+
+      post = Ash.Resource.set_metadata(post, %{import: %{source: "feed"}})
+      Ash.Resource.get_metadata(post, [:import, :source])
+      # => "feed"
+
+  See `put_metadata/3` to merge a single key.
+  """
   @spec set_metadata(Ash.Resource.Record.t(), map) :: Ash.Resource.Record.t()
   def set_metadata(record, map) do
     %{record | __metadata__: Ash.Helpers.deep_merge_maps(record.__metadata__, map)}
@@ -464,6 +483,17 @@ defmodule Ash.Resource do
 
   def set_meta(struct, _), do: struct
 
+  @doc """
+  Merges a single metadata entry into a record and returns the updated record.
+
+  Map values merge with existing maps at the same key. For example:
+
+      post = Ash.Resource.put_metadata(post, :source, "feed")
+      Ash.Resource.get_metadata(post, :source)
+      # => "feed"
+
+  See `set_metadata/2` to merge multiple entries.
+  """
   @spec put_metadata(Ash.Resource.Record.t(), atom, term) :: Ash.Resource.Record.t()
   def put_metadata(record, key, term) do
     set_metadata(record, %{key => term})
@@ -741,6 +771,17 @@ defmodule Ash.Resource do
     Ash.Type.loaded?(type, value, path, constraints, opts)
   end
 
+  @doc """
+  Reads a key or nested key path from a record's metadata.
+
+  Pass an atom for a top-level entry or a list of keys to look up a nested
+  entry. A missing key returns `nil`.
+
+      Ash.Resource.get_metadata(post, :source)
+      Ash.Resource.get_metadata(post, [:import, :source])
+
+  See `set_metadata/2` and `put_metadata/3` to add metadata.
+  """
   @spec get_metadata(Ash.Resource.Record.t(), atom | list(atom)) :: term
   def get_metadata(record, key_or_path) do
     get_in(record.__metadata__ || %{}, List.wrap(key_or_path))

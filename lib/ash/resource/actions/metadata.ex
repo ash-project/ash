@@ -14,8 +14,19 @@ defmodule Ash.Resource.Actions.Metadata do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  The declaration of a typed metadata field associated with an action's
+  result.
+
+  See [Actions](/documentation/topics/actions/actions.md).
+  """
   @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
+  @doc """
+  Returns the DSL option schema for `metadata` declarations on resource actions.
+
+  See [Actions](/documentation/topics/actions/actions.md) for usage.
+  """
   def schema do
     [
       name: [

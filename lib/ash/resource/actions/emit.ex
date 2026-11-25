@@ -16,6 +16,11 @@ defmodule Ash.Resource.Actions.Emit do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A declaration of a signal to emit from a successful action.
+
+  See [Signals](/documentation/topics/resources/signals.md).
+  """
   @type t :: %__MODULE__{
           signal_module: Ash.Signals.t(),
           signal: atom(),

@@ -16,6 +16,10 @@ defmodule Ash.Resource.Pipeline do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A named group of changes, validations, and preparations that actions
+  can reference with `pipe_through`.
+  """
   @type t :: %__MODULE__{
           name: atom(),
           description: String.t() | nil,
@@ -37,5 +41,10 @@ defmodule Ash.Resource.Pipeline do
     ]
   ]
 
+  @doc """
+  Returns the DSL option schema for named `pipeline` declarations.
+
+  See [Defining pipelines](/documentation/topics/actions/actions.md#defining-pipelines).
+  """
   def schema, do: @schema
 end

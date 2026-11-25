@@ -7,6 +7,9 @@ defmodule Ash.Resource.ManualRead do
   A module to implement manual read actions.
   """
 
+  @typedoc """
+  The actor, tenant, authorization setting, and domain for the manual read.
+  """
   @type context :: %{
           optional(:actor) => term,
           optional(:tenant) => term,
@@ -15,10 +18,23 @@ defmodule Ash.Resource.ManualRead do
           optional(any) => any
         }
 
+  @typedoc """
+  Additional information to return with read results.
+
+  Set `:full_count` to the total number of matching records when providing
+  the count for pagination.
+  """
   @type extra_info :: %{
           optional(:full_count) => non_neg_integer()
         }
 
+  @doc """
+  Loads the relationships requested by the query on records already read.
+
+  This callback is optional. Ash uses its standard relationship loader
+  when omitted. If `lazy?` is true, preserve values already loaded where
+  applicable. Return the records with their requested relationships loaded.
+  """
   @callback load_relationships(
               query :: Ash.Query.t(),
               results :: list(Ash.Resource.Record.t()),
@@ -30,6 +46,15 @@ defmodule Ash.Resource.ManualRead do
               | {:ok, list(Ash.Resource.Record.t()), extra_info()}
               | {:error, term}
 
+  @doc """
+  Runs the manual read and returns a list of resource records.
+
+  The Ash query contains the requested filters, sort, and pagination. The
+  integrated data layer also provides its own query representation when
+  applicable. Use `Ash.Query.apply_to/3` if you need to apply a query to
+  records held in memory. Return `{:ok, records}`, `{:ok, records, extra_info}`
+  to supply a count, or `{:error, error}` on failure.
+  """
   @callback read(
               query :: Ash.Query.t(),
               data_layer_query :: term,
@@ -83,6 +108,15 @@ defmodule Ash.Resource.ManualRead do
     )
   end
 
+  @doc """
+  Declares the module as a manual read action implementation.
+
+  Implement `c:read/4` and register the module in the resource's read action
+  with `manual MyApp.CustomRead`. The `use` macro takes no configuration
+  options. Supply callback options with `manual {MyApp.CustomRead, opts}`.
+
+  See [Manual actions](/documentation/topics/actions/manual-actions.md).
+  """
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualRead

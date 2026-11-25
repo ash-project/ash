@@ -142,6 +142,35 @@ defmodule Ash.Sort do
     end
   end
 
+  @doc """
+  Parses one sort field and direction for a resource.
+
+  Pass a field name, a field and direction tuple, or a string such as
+  `"-published_at"`. An unprefixed name sorts in ascending order. Returns
+  `{:ok, {field, direction}}` or `{:error, error}`.
+
+  ## Arguments
+
+  - `handler` optionally resolves a string field name after the direction prefix
+    is stripped. See `parse_input/3` for the handler's return values.
+  - `public_only?` defaults to `true`. Pass `false` for trusted application
+    sorts that can refer to private fields.
+
+  ## Examples
+
+  With public `:title` and `:published_at` attributes on `MyApp.Post`:
+
+      Ash.Sort.parse_sort(MyApp.Post, "-published_at")
+      # => {:ok, {:published_at, :desc}}
+
+      Ash.Sort.parse_sort(MyApp.Post, "title")
+      # => {:ok, {:title, :asc}}
+
+  ## See also
+
+  - `parse_input/3` for parsing a complete sort statement
+  - `Ash.Query.sort_input/3` for applying a client-supplied sort to a query
+  """
   def parse_sort(resource, sort, handler \\ nil, public_only? \\ true)
 
   def parse_sort(resource, {field, {input, direction}}, handler, public_only?)

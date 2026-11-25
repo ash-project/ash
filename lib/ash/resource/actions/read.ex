@@ -28,6 +28,12 @@ defmodule Ash.Resource.Actions.Read do
             type: :read,
             __spark_metadata__: nil
 
+  @typedoc """
+  The definition of a read action. It describes its arguments, filters,
+  preparations, and optional pagination settings.
+
+  See [Read actions](/documentation/topics/actions/read-actions.md).
+  """
   @type t :: %__MODULE__{
           arguments: [Ash.Resource.Actions.Argument.t()],
           description: String.t() | nil,
@@ -179,6 +185,12 @@ defmodule Ash.Resource.Actions.Read do
       __spark_metadata__: nil
     ]
 
+    @typedoc """
+    Pagination settings for a read action, including enabled strategies,
+    page size settings, and whether users can request a total count.
+
+    See [Pagination](/documentation/topics/advanced/pagination.livemd).
+    """
     @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
     def transform(pagination) do
@@ -229,5 +241,11 @@ defmodule Ash.Resource.Actions.Read do
 
   @doc false
   def opt_schema, do: @opt_schema
+
+  @doc """
+  Returns the DSL option schema for the `pagination` section of a read action.
+
+  See [Pagination](/documentation/topics/advanced/pagination.livemd) for usage.
+  """
   def pagination_schema, do: @pagination_schema
 end

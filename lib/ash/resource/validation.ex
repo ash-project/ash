@@ -33,6 +33,12 @@ defmodule Ash.Resource.Validation do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A validation declaration from the resource DSL. It records the validation
+  implementation and configuration, including any conditions for running it.
+
+  See [Validations](/documentation/topics/resources/validations.md).
+  """
   @type t :: %__MODULE__{
           validation: {atom(), list(atom())},
           module: atom(),
@@ -45,6 +51,11 @@ defmodule Ash.Resource.Validation do
         }
 
   @type path :: [atom | integer]
+  @typedoc """
+  A validation implementation module or a `{module, opts}` tuple.
+
+  The implementation receives the options after `c:init/1` normalizes them.
+  """
   @type ref :: {module(), Keyword.t()} | module()
 
   defmodule Context do
@@ -53,6 +64,11 @@ defmodule Ash.Resource.Validation do
     """
     defstruct [:actor, :tenant, :authorize?, :tracer, :message, bulk?: false, source_context: %{}]
 
+    @typedoc """
+    Action information passed to validation callbacks. `:message` holds a
+    configured error message override, when present. `:bulk?` indicates
+    that the validation is running in a bulk action.
+    """
     @type t :: %__MODULE__{
             actor: Ash.Resource.Record.t() | nil,
             message: String.t() | nil,
@@ -64,16 +80,53 @@ defmodule Ash.Resource.Validation do
           }
   end
 
+  @doc """
+  Validates and normalizes options from a validation declaration.
+
+  Return `{:ok, opts}` to pass the resulting options to the validation or
+  `{:error, message}` to reject the configuration. The default accepts the
+  supplied options unchanged.
+  """
   @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
+  @doc """
+  Lists the kinds of action input the validation accepts.
+
+  The default is `[Ash.Changeset]`. Return `Ash.Query` or `Ash.ActionInput`
+  in the list when the implementation also handles reads or generic actions.
+  """
   @callback supports(opts :: Keyword.t()) :: [Ash.Changeset | Ash.Query | Ash.ActionInput]
+  @doc """
+  Checks an action input and returns `:ok` or `{:error, error}`.
+
+  Use the subject's argument or attribute accessors to read values and
+  return an Ash error that identifies the invalid field when applicable.
+  `opts` contains the validation's configured options. See `c:atomic/3`
+  for checks that need to run as part of an atomic update.
+  """
   @callback validate(
               changeset_query_or_input :: Ash.Changeset.t() | Ash.ActionInput.t(),
               opts :: Keyword.t(),
               context :: Context.t()
             ) ::
               :ok | {:error, term}
+  @doc """
+  Describes a validation failure for the supplied configuration.
+
+  Return an error message string or a keyword list with `:message` and
+  `:vars` for an interpolated error message.
+  """
   @callback describe(opts :: Keyword.t()) ::
               String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
+  @doc """
+  Describes checks that can be evaluated as part of an atomic write.
+
+  Return `:ok` when there is no check to apply, or return one or more
+  `{:atomic, fields, condition, error}` tuples. When the condition is true,
+  Ash evaluates the error expression. Use the field names involved in the
+  check or `:*` for any field. Return `{:not_atomic, reason}` when the check
+  cannot be expressed atomically, or `{:error, error}` when validation fails
+  while building the atomic check.
+  """
   @callback atomic(
               changeset_query_or_input :: Ash.Changeset.t() | Ash.ActionInput.t(),
               opts :: Keyword.t(),
@@ -113,8 +166,24 @@ defmodule Ash.Resource.Validation do
             ) ::
               boolean
 
+  @doc """
+  Reports whether the validation supports `c:atomic/3`.
+
+  `use Ash.Resource.Validation` detects an implementation by default. A
+  validation can override this callback to report its own capability.
+  """
   @callback atomic?() :: boolean
+  @doc """
+  Reports whether a validation provides a single-input validation callback.
+
+  `use Ash.Resource.Validation` defines this callback automatically.
+  """
   @callback has_validate?() :: boolean
+  @doc """
+  Reports whether the module implements `c:batch_validate/3`.
+
+  `use Ash.Resource.Validation` defines this callback automatically.
+  """
   @callback has_batch_validate?() :: boolean
 
   @doc """
@@ -193,6 +262,16 @@ defmodule Ash.Resource.Validation do
 
   @action_schema Keyword.delete(@schema, :on)
 
+  @doc """
+  Sets up a module-based resource validation.
+
+  Implement `c:validate/3`, `c:batch_validate/3`, or `c:atomic/3` for the
+  execution paths you support. The default `c:supports/1` accepts changesets.
+  Pass configuration in the resource with `validate {module, opts}`.
+  The `use` macro takes no configuration options.
+
+  See [Validations](/documentation/topics/resources/validations.md).
+  """
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Validation

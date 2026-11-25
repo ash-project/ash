@@ -40,6 +40,17 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.RelateActor, opts}
   end
 
+  @doc """
+  Logs information about the action at the debug level.
+
+  For regular changes, the log includes inputs, cast attributes and arguments,
+  and the action result. For an atomic change, it logs the changeset being
+  built. Pass a label to identify these entries in the log.
+
+      change debug_log("publishing post")
+
+  Use with inputs and results that are appropriate to log.
+  """
   @spec debug_log(label :: String.t() | nil) :: Ash.Resource.Change.ref()
   def debug_log(label \\ nil) do
     {Ash.Resource.Change.DebugLog, label: label}

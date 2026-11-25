@@ -46,6 +46,13 @@ defmodule Ash.Resource.Attribute do
     end
   end
 
+  @typedoc """
+  A resource attribute definition. The `:type` and `:constraints` describe
+  its values. Flags such as `:public?` and `:writable?` describe how it can
+  be exposed and changed. Inspect one with `Ash.Resource.Info.attribute/2`.
+
+  See [Attributes](/documentation/topics/resources/attributes.md).
+  """
   @type t :: %__MODULE__{
           name: atom(),
           constraints: Keyword.t(),
