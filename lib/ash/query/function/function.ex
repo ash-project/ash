@@ -200,7 +200,7 @@ defmodule Ash.Query.Function do
             {:halt, :error}
           end
         else
-          case Ash.Query.Type.try_cast(arg, type, constraints) do
+          case Ash.Query.Type.try_cast(arg, type, signature_constraints(type, constraints)) do
             {:ok, value} when not exact? or value == arg -> {:cont, {:ok, [value | args]}}
             _ -> {:halt, :error}
           end
@@ -214,7 +214,7 @@ defmodule Ash.Query.Function do
             {:halt, :error}
           end
         else
-          case Ash.Query.Type.try_cast(arg, type, []) do
+          case Ash.Query.Type.try_cast(arg, type, signature_constraints(type, [])) do
             {:ok, value} when not exact? or value == arg -> {:cont, {:ok, [value | args]}}
             _ -> {:halt, :error}
           end
@@ -227,6 +227,37 @@ defmodule Ash.Query.Function do
       _ ->
         nil
     end
+  end
+
+  # The types in a signature are not initialized with `Ash.Type.init/2` the way a
+  # resource initializes an attribute's type. A NewType's constraints are only
+  # applied when it is initialized: without that, `:utc_datetime_usec` is cast as
+  # a plain `:datetime`, to the second. Any other type declared without
+  # constraints is cast as it always was, since initializing costs more than the
+  # cast and the in-memory filter casts once per record.
+  defp signature_constraints(type, constraints) when is_list(constraints) do
+    if constraints != [] or new_type?(type) do
+      case Ash.Type.init(type, constraints) do
+        {:ok, initialized} -> initialized
+        {:error, _error} -> constraints
+      end
+    else
+      constraints
+    end
+  end
+
+  defp signature_constraints(_type, constraints), do: constraints
+
+  # `:number` is only a type to `Ash.Query.Type`, and looking for a module of
+  # that name on every cast is slow.
+  defp new_type?(:number), do: false
+  defp new_type?({:array, type}), do: new_type?(type)
+
+  # Asks the same question as `Ash.Type.NewType.new_type?/1` without reading the
+  # module's attributes, which costs more than casting a value does.
+  defp new_type?(type) do
+    type = Ash.Type.get_type(type)
+    is_atom(type) and Code.ensure_loaded?(type) and function_exported?(type, :subtype_of, 0)
   end
 
   @doc """
