@@ -579,6 +579,24 @@ defmodule Ash.Expr do
     end
   end
 
+  def walk_template(
+        %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} =
+          custom_expression,
+        mapper
+      ) do
+    simple_expression =
+      case simple_expression do
+        {:ok, simple_expression} -> {:ok, walk_template(simple_expression, mapper)}
+        other -> other
+      end
+
+    %{
+      custom_expression
+      | expression: walk_template(expression, mapper),
+        simple_expression: simple_expression
+    }
+  end
+
   def walk_template(%Ash.Query.Calculation{opts: opts} = calc, mapper) do
     case mapper.(calc) do
       ^calc ->
