@@ -228,36 +228,14 @@ defmodule Ash.Expr do
       # Anchor relative-time expressions to a temporal query/changeset's `as_of`
       # (threaded via `context`). Idempotent with `add_calc_context_to_filter`'s
       # rewrite — once replaced with a DateTime there is no `now()` left to map.
-      %{__struct__: Ash.Query.Function.Now} = now ->
-        fill_template_as_of(opts) || now
-
-      %{__struct__: Ash.Query.Function.Ago, arguments: [factor, interval]} = ago
-      when is_integer(factor) ->
-        case fill_template_as_of(opts) do
-          nil -> ago
-          as_of -> Ash.Query.Function.Ago.datetime_add(as_of, -factor, interval)
-        end
-
-      %{__struct__: Ash.Query.Function.FromNow, arguments: [factor, interval]} = from_now
-      when is_integer(factor) ->
-        case fill_template_as_of(opts) do
-          nil -> from_now
-          as_of -> Ash.Query.Function.Ago.datetime_add(as_of, factor, interval)
-        end
-
-      %{__struct__: Ash.Query.Function.Ago, arguments: [duration]} = ago
-      when is_struct(duration, Duration) ->
-        case fill_template_as_of(opts) do
-          nil -> ago
-          as_of -> Ash.Query.Function.Ago.datetime_add(as_of, Duration.negate(duration))
-        end
-
-      # A date rather than a datetime, so it anchors by taking the date of `as_of`.
-      %{__struct__: Ash.Query.Function.Today} = today ->
-        case fill_template_as_of(opts) do
-          nil -> today
-          as_of -> DateTime.to_date(as_of)
-        end
+      %{__struct__: module} = relative_time
+      when module in [
+             Ash.Query.Function.Now,
+             Ash.Query.Function.Today,
+             Ash.Query.Function.Ago,
+             Ash.Query.Function.FromNow
+           ] ->
+        Ash.Temporal.anchor_relative_time(relative_time, fill_template_as_of(opts))
 
       {:_actor, :_primary_key} ->
         actor = opts[:actor]

@@ -164,13 +164,7 @@ defmodule Ash.Policy.FilterCheck do
       end
 
       defp references_relative_time?(expr) do
-        Ash.Expr.template_references?(expr, fn
-          %Ash.Query.Function.Now{} -> true
-          %Ash.Query.Function.Today{} -> true
-          %Ash.Query.Function.Ago{} -> true
-          %Ash.Query.Function.FromNow{} -> true
-          _ -> false
-        end)
+        Ash.Expr.template_references?(expr, &Ash.Temporal.relative_time_function?/1)
       end
 
       defp defer_to_filter(true), do: {:ok, true}
