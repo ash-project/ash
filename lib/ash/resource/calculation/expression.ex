@@ -42,14 +42,14 @@ defmodule Ash.Resource.Calculation.Expression do
   def calculate([], _, _), do: []
 
   def calculate([%resource{} | _] = records, opts, context) do
-    expression =
-      Ash.Expr.fill_template(
-        opts[:expr],
-        actor: context.actor,
-        tenant: context.tenant,
-        args: context.arguments,
-        context: context.source_context || %{}
-      )
+    fill_opts = [
+      actor: context.actor,
+      tenant: context.tenant,
+      args: context.arguments,
+      context: context.source_context || %{}
+    ]
+
+    expression = Ash.Expr.fill_template(opts[:expr], fill_opts)
 
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, values} ->
       case Ash.Filter.hydrate_refs(expression, %{
@@ -58,6 +58,10 @@ defmodule Ash.Resource.Calculation.Expression do
              eval?: true
            }) do
         {:ok, expression} ->
+          # `now()`, `ago()` and the other relative time functions only exist as structs once
+          # hydrated, so this second pass is what anchors them to the query's `as_of`.
+          expression = Ash.Expr.fill_template(expression, fill_opts)
+
           case Ash.Expr.eval_hydrated(expression,
                  record: record,
                  resource: resource,
