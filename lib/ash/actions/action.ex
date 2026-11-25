@@ -178,6 +178,16 @@ defmodule Ash.Actions.Action do
 
   defp maybe_load(other, _input, _domain, _opts), do: other
 
+  defp rollback(input, error) do
+    case Enum.find(
+           [input.resource | input.action.touches_resources],
+           &Ash.DataLayer.in_transaction?/1
+         ) do
+      nil -> {:error, error}
+      resource -> Ash.DataLayer.rollback(resource, error)
+    end
+  end
+
   defp run_with_transaction(domain, input, module, run_opts, context, opts) do
     # Run before_transaction hooks first
     case Ash.ActionInput.run_before_transaction_hooks(input) do
@@ -202,11 +212,11 @@ defmodule Ash.Actions.Action do
                       {:ok, result, notifications}
 
                     {:error, error} ->
-                      Ash.DataLayer.rollback(resources, error)
+                      rollback(input, error)
                   end
 
                 {:error, error} ->
-                  Ash.DataLayer.rollback(resources, error)
+                  rollback(input, error)
               end
             end,
             nil,
@@ -408,11 +418,7 @@ defmodule Ash.Actions.Action do
     # Run before_action hooks
     case Ash.ActionInput.run_before_actions(input) do
       {:error, error} ->
-        if in_transaction? do
-          Ash.DataLayer.rollback([input.resource], error)
-        else
-          {:error, error}
-        end
+        if in_transaction?, do: rollback(input, error), else: {:error, error}
 
       {input, %{notifications: before_action_notifications}} ->
         # Run the actual action
@@ -424,11 +430,7 @@ defmodule Ash.Actions.Action do
                 {:ok, result, all_notifications}
 
               {:error, error} ->
-                if in_transaction? do
-                  Ash.DataLayer.rollback([input.resource], error)
-                else
-                  {:error, error}
-                end
+                if in_transaction?, do: rollback(input, error), else: {:error, error}
             end
 
           {:ok, result} ->
@@ -443,11 +445,7 @@ defmodule Ash.Actions.Action do
                 {:ok, result, all_notifications}
               else
                 {:error, error} ->
-                  if in_transaction? do
-                    Ash.DataLayer.rollback([input.resource], error)
-                  else
-                    {:error, error}
-                  end
+                  if in_transaction?, do: rollback(input, error), else: {:error, error}
               end
             else
               raise_invalid_generic_action_return!(input, {:ok, result})
@@ -464,19 +462,11 @@ defmodule Ash.Actions.Action do
               {:ok, result, all_notifications}
             else
               {:error, error} ->
-                if in_transaction? do
-                  Ash.DataLayer.rollback([input.resource], error)
-                else
-                  {:error, error}
-                end
+                if in_transaction?, do: rollback(input, error), else: {:error, error}
             end
 
           {:error, error} ->
-            if in_transaction? do
-              Ash.DataLayer.rollback([input.resource], error)
-            else
-              {:error, error}
-            end
+            if in_transaction?, do: rollback(input, error), else: {:error, error}
 
           other ->
             raise_invalid_generic_action_return!(input, other)

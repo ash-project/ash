@@ -121,6 +121,22 @@ defmodule Ash.DataLayer.MnesiaTest do
     end
   end
 
+  defmodule FailingGenericAction do
+    use Ash.Resource, domain: Domain
+
+    actions do
+      action :create_user_then_fail do
+        transaction? true
+        touches_resources [Ash.DataLayer.MnesiaTest.MnesiaTestUser]
+
+        run fn _input, _context ->
+          Ash.create!(Ash.DataLayer.MnesiaTest.MnesiaTestUser, %{name: "rolled back"})
+          {:error, "failed after writing"}
+        end
+      end
+    end
+  end
+
   defmodule MnesiaLockTestNote do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
@@ -555,6 +571,32 @@ defmodule Ash.DataLayer.MnesiaTest do
                notifications: nil,
                error_count: 0
              } = resp
+    end
+  end
+
+  describe "a generic action on a resource with no data layer" do
+    defp create_user_then_fail do
+      FailingGenericAction
+      |> Ash.ActionInput.for_action(:create_user_then_fail, %{})
+      |> Ash.run_action()
+    end
+
+    test "rolls back what it wrote when it fails" do
+      assert {:error, error} = create_user_then_fail()
+      assert Exception.message(error) =~ "failed after writing"
+      assert [] = Ash.read!(MnesiaTestUser)
+    end
+
+    test "rolls back the enclosing transaction when it fails inside one" do
+      # Every resource it touches is already in a transaction, so it opens none itself.
+      assert {:error, error} =
+               Ash.DataLayer.transaction(MnesiaTestUser, fn ->
+                 Ash.create!(MnesiaTestUser, %{name: "before"})
+                 create_user_then_fail()
+               end)
+
+      assert Exception.message(Ash.Error.to_error_class(error)) =~ "failed after writing"
+      assert [] = Ash.read!(MnesiaTestUser)
     end
   end
 
