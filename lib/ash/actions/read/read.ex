@@ -5365,6 +5365,14 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def prepare_for_aggregate(query, pre_authorization_query, opts) do
+    # An in-memory data layer evaluates the filter as it is handed to it, so
+    # `now()`, `ago()` and the other relative time functions are anchored to `as_of` here.
+    calc_context_opts = [
+      parent_stack: parent_stack_from_context(query.context),
+      source_context: query.context,
+      as_of: Ash.Temporal.resolve_read_as_of(query.as_of)
+    ]
+
     with {:ok, sort} <-
            add_calc_context_to_sort(
              query.sort,
@@ -5374,8 +5382,7 @@ defmodule Ash.Actions.Read do
              opts[:tracer],
              query.resource,
              query.domain,
-             parent_stack: parent_stack_from_context(query.context),
-             source_context: query.context
+             calc_context_opts
            ),
          query <- %{
            query
@@ -5388,8 +5395,7 @@ defmodule Ash.Actions.Read do
                  opts[:tracer],
                  query.domain,
                  query.resource,
-                 parent_stack: parent_stack_from_context(query.context),
-                 source_context: query.context
+                 calc_context_opts
                ),
              sort: sort
          },

@@ -67,6 +67,13 @@ defmodule Ash.DataLayer.EtsTemporalTest do
                |> Ash.count!()
     end
 
+    test "an aggregate anchors now() in its filter to the as_of instant" do
+      query = Ash.Query.filter(EtsVersioned, now() < ^~U[2021-01-01 00:00:00Z])
+
+      assert 1 = Ash.count!(query, as_of: ~U[2020-06-01 00:00:00Z])
+      assert 0 = Ash.count!(query)
+    end
+
     test "an aggregate over the resource with no as_of sees current state" do
       assert 1 = Ash.count!(EtsVersioned)
       assert ["open"] = Ash.list!(EtsVersioned, :name)
