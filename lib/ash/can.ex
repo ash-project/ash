@@ -1719,6 +1719,7 @@ defmodule Ash.Can do
         case Ash.DataLayer.run_query(data_layer_query, resource) do
           {:ok, [_ | _]} -> {:ok, true}
           {:ok, []} -> {:ok, false}
+          {:error, :no_rollback, error} -> {:error, error}
           {:error, error} -> {:error, error}
         end
 

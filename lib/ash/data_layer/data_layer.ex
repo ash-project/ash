@@ -188,7 +188,7 @@ defmodule Ash.DataLayer do
               list(Ash.Query.Aggregate.t()),
               Ash.Resource.t()
             ) ::
-              {:ok, map} | {:error, term}
+              {:ok, map} | {:error, term} | {:error, :no_rollback, term}
   @callback run_aggregate_query_with_lateral_join(
               data_layer_query(),
               list(Ash.Query.Aggregate.t()),
@@ -196,14 +196,14 @@ defmodule Ash.DataLayer do
               destination_resource :: Ash.Resource.t(),
               list(lateral_join_link())
             ) ::
-              {:ok, list(Ash.Resource.t())} | {:error, term}
+              {:ok, list(Ash.Resource.t())} | {:error, term} | {:error, :no_rollback, term}
   @callback run_query_with_lateral_join(
               data_layer_query(),
               [Ash.Resource.Record.t()],
               source_resource :: Ash.Resource.t(),
               list(lateral_join_link())
             ) ::
-              {:ok, list(Ash.Resource.Record.t())} | {:error, term}
+              {:ok, list(Ash.Resource.Record.t())} | {:error, term} | {:error, :no_rollback, term}
 
   @callback return_query(data_layer_query(), Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
@@ -1582,15 +1582,21 @@ defmodule Ash.DataLayer do
         ) ::
           {:ok, map()} | {:error, term}
   def run_aggregate_query(data_layer_module, query, aggregates, resource) do
-    Ash.BehaviourHelpers.call_and_validate_return(
-      data_layer_module,
+    data_layer_module
+    |> Ash.BehaviourHelpers.call_and_validate_return(
       :run_aggregate_query,
       [query, aggregates, resource],
-      [{:ok, :_}, {:error, :_}],
+      [{:ok, :_}, {:error, :_}, {:error, :no_rollback, :_}],
       behaviour: __MODULE__,
       callback_name: "run_aggregate_query/3"
     )
+    |> unwrap_no_rollback()
   end
+
+  # Aggregate and lateral join queries never roll back the surrounding transaction on
+  # error, so `{:error, :no_rollback, error}` means the same thing as `{:error, error}`.
+  defp unwrap_no_rollback({:error, :no_rollback, error}), do: {:error, error}
+  defp unwrap_no_rollback(result), do: result
 
   @spec run_query(data_layer_query(), central_resource :: Ash.Resource.t()) ::
           {:ok, list(Ash.Resource.Record.t())} | {:error, term} | {:error, :no_rollback, term}
@@ -1677,13 +1683,14 @@ defmodule Ash.DataLayer do
         path
       ])
 
-    if match?({:ok, _}, result) or match?({:error, _}, result) do
-      result
+    if match?({:ok, _}, result) or match?({:error, _}, result) or
+         match?({:error, :no_rollback, _}, result) do
+      unwrap_no_rollback(result)
     else
       raise Ash.Error.Framework.InvalidReturnType,
         message: """
         Invalid value returned from #{inspect(data_layer_module)}.run_aggregate_query_with_lateral_join/5.
-        The callback #{inspect(__MODULE__)}.run_aggregate_query_with_lateral_join/5 expects {:ok, list} or {:error, term}.
+        The callback #{inspect(__MODULE__)}.run_aggregate_query_with_lateral_join/5 expects {:ok, list}, {:error, term}, or {:error, :no_rollback, term}.
         """
     end
   end
@@ -1718,14 +1725,15 @@ defmodule Ash.DataLayer do
         destination_resource,
         path
       ) do
-    Ash.BehaviourHelpers.call_and_validate_return(
-      data_layer_module,
+    data_layer_module
+    |> Ash.BehaviourHelpers.call_and_validate_return(
       :run_query_with_lateral_join,
       [query, root_data, destination_resource, path],
-      [{:ok, :_}, {:error, :_}],
+      [{:ok, :_}, {:error, :_}, {:error, :no_rollback, :_}],
       behaviour: __MODULE__,
       callback_name: "run_query_with_lateral_join/4"
     )
+    |> unwrap_no_rollback()
   end
 
   def in_transaction?(resource) do

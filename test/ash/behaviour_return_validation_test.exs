@@ -309,4 +309,145 @@ defmodule Ash.BehaviourReturnValidationTest do
       end
     end
   end
+
+  # A data layer may return `{:error, :no_rollback, error}` from any query callback (AshPostgres
+  # does when an `error/2` expression raises, e.g. with `authorize_with: :error`). Counts,
+  # aggregates and lateral join queries must turn it into an error instead of raising.
+  describe "Ash.DataLayer {:error, :no_rollback, error}" do
+    defmodule NoRollbackEts do
+      @moduledoc false
+      @behaviour Ash.DataLayer
+
+      @overridden [
+        :can?,
+        :run_aggregate_query,
+        :run_aggregate_query_with_lateral_join,
+        :run_query_with_lateral_join
+      ]
+
+      # Run inline, so counts aren't raced against the rows query in a task.
+      def can?(_resource, :async_engine), do: false
+      def can?(resource, feature), do: Ash.DataLayer.Ets.can?(resource, feature)
+
+      # Each test names the callback that fails; the others run against ETS as usual.
+      def run_aggregate_query(query, aggregates, resource) do
+        maybe_fail(:run_aggregate_query, [query, aggregates, resource])
+      end
+
+      def run_aggregate_query_with_lateral_join(query, aggregates, root, resource, path) do
+        maybe_fail(:run_aggregate_query_with_lateral_join, [
+          query,
+          aggregates,
+          root,
+          resource,
+          path
+        ])
+      end
+
+      def run_query_with_lateral_join(query, root, resource, path) do
+        maybe_fail(:run_query_with_lateral_join, [query, root, resource, path])
+      end
+
+      defp maybe_fail(callback, args) do
+        if Process.get(:no_rollback_callback) == callback do
+          {:error, :no_rollback, Ash.Error.Forbidden.exception([])}
+        else
+          apply(Ash.DataLayer.Ets, callback, args)
+        end
+      end
+
+      for {name, arity} <- Ash.DataLayer.Ets.__info__(:functions),
+          name not in [:spark_dsl_config, :explain | @overridden] and
+            not String.starts_with?(Atom.to_string(name), "__") do
+        args = Macro.generate_arguments(arity, __MODULE__)
+        defdelegate unquote(name)(unquote_splicing(args)), to: Ash.DataLayer.Ets
+      end
+    end
+
+    defmodule NoRollbackPost do
+      @moduledoc false
+      use Ash.Resource, domain: Domain, data_layer: NoRollbackEts
+
+      actions do
+        defaults [:read, create: [:author_id]]
+
+        read :paginated do
+          pagination offset?: true, countable: true, required?: false
+        end
+      end
+
+      attributes do
+        uuid_primary_key :id
+      end
+
+      relationships do
+        belongs_to :author, Ash.BehaviourReturnValidationTest.NoRollbackAuthor, public?: true
+      end
+    end
+
+    defmodule NoRollbackAuthor do
+      @moduledoc false
+      use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+      actions do
+        defaults [:read, :create]
+      end
+
+      attributes do
+        uuid_primary_key :id
+      end
+
+      relationships do
+        has_many :posts, NoRollbackPost, public?: true
+      end
+    end
+
+    setup do
+      authors =
+        for _ <- 1..2 do
+          author = Ash.create!(NoRollbackAuthor, %{})
+          Ash.create!(NoRollbackPost, %{author_id: author.id})
+          author
+        end
+
+      %{authors: authors}
+    end
+
+    test "a page count that returns :no_rollback is an error" do
+      Process.put(:no_rollback_callback, :run_aggregate_query)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               NoRollbackPost
+               |> Ash.Query.for_read(:paginated)
+               |> Ash.read(page: [limit: 1, count: true])
+    end
+
+    test "an aggregate query that returns :no_rollback is an error" do
+      Process.put(:no_rollback_callback, :run_aggregate_query)
+      assert {:error, %Ash.Error.Forbidden{}} = Ash.count(NoRollbackPost)
+    end
+
+    # A limited load for more than one record runs as a lateral join.
+    test "a lateral join query that returns :no_rollback is an error", %{authors: authors} do
+      Process.put(:no_rollback_callback, :run_query_with_lateral_join)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Ash.load(authors, posts: Ash.Query.limit(NoRollbackPost, 1))
+    end
+
+    # Relationship page counts come from aggregates on the parent, so no load reaches this
+    # callback; call the wrapper directly.
+    test "a lateral join aggregate query that returns :no_rollback is an error" do
+      Process.put(:no_rollback_callback, :run_aggregate_query_with_lateral_join)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Ash.DataLayer.run_aggregate_query_with_lateral_join(
+                 nil,
+                 [],
+                 [],
+                 NoRollbackPost,
+                 []
+               )
+    end
+  end
 end
