@@ -6,14 +6,6 @@ SPDX-License-Identifier: MIT
 
 # Temporal Resources
 
-> ### Experimental {: .warning}
->
-> Temporal resources are experimental, and the API may change. In production they need
-> `ash_postgres` running on **PostgreSQL 18+**. It's what gives us SQL:2011 application-time
-> period tables: `PRIMARY KEY (... WITHOUT OVERLAPS)` and `PERIOD` foreign keys. This guide is
-> written against PostgreSQL for that reason. `Ash.DataLayer.Ets` supports temporal resources
-> too, in memory.
-
 Your standard resource only knows what's true right now. Update a row, and whatever it said
 before is gone. A *temporal* resource keeps all of it. Every row is valid for a *period*, a
 half-open range `[from, to)`, and a single record is spread across many rows, one for each
