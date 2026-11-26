@@ -31,7 +31,7 @@ defmodule Ash.DataLayer.Ets do
       transaction_group: [
         type: :atom,
         doc:
-          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. Reads take no locks. A write locks the record it writes, and the identity values it takes, until its transaction ends, waiting for a lock another transaction holds and failing only when its wait would deadlock, and a write made outside any transaction runs in one of its own. The resource's identities are enforced when it writes, so they need no `pre_check_with`. A transaction's timeout is checked at each table it reads or writes and when it commits."
+          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. Reads take no locks. A write locks the record it writes, and the identity values it takes, until its transaction ends, waiting for a lock another transaction holds and failing only when its wait would deadlock, and a write made outside any transaction runs in one of its own. The resource's identities are enforced when it writes, so they need no `pre_check_with`. A value a destroy or an update gives up stays taken until its transaction commits, so a create of the value meanwhile is refused, as Ash's identity check refuses a value a committed record holds. A transaction's timeout is checked at each table it reads or writes and when it commits."
       ],
       table: [
         type: :atom,
@@ -194,7 +194,7 @@ defmodule Ash.DataLayer.Ets do
       :exit, {:timeout, _} -> :timeout
     end
 
-    # One lock of a transaction goes; the others stay until it ends.
+    # One lock of a transaction goes, held or asked for; the others stay until it ends.
     def unlock(table, item, id) do
       case Process.whereis(__MODULE__) do
         nil -> :ok
@@ -202,6 +202,16 @@ defmodule Ash.DataLayer.Ets do
       end
     catch
       :exit, _ -> :ok
+    end
+
+    # The processes whose transactions, other than the given one, hold a lock of a table.
+    def holders(table, id) do
+      case Process.whereis(__MODULE__) do
+        nil -> []
+        pid -> GenServer.call(pid, {:holders, table, id})
+      end
+    catch
+      :exit, _ -> []
     end
 
     # A transaction's locks and waiting request all go when it ends.
@@ -241,12 +251,23 @@ defmodule Ash.DataLayer.Ets do
 
     def handle_call({:unlock, table, item, id}, _from, state) do
       case state.tables do
-        %{^table => %{held: %{^item => ^id}} = entry} ->
-          {:reply, :ok, grant(state, table, %{entry | held: Map.delete(entry.held, item)})}
+        %{^table => entry} ->
+          {asked, queue} = Enum.split_with(entry.queue, &match?({_from, ^id, ^item}, &1))
+          held = if entry.held[item] == id, do: Map.delete(entry.held, item), else: entry.held
+          state = if asked == [], do: state, else: put_waiting(state, id, nil)
+          {:reply, :ok, grant(state, table, %{entry | held: held, queue: queue})}
 
         _ ->
           {:reply, :ok, state}
       end
+    end
+
+    def handle_call({:holders, table, id}, _from, state) do
+      held = Map.get(state.tables, table, %{held: %{}}).held
+
+      {:reply,
+       for({_item, holder} <- held, holder != id, uniq: true, do: state.transactions[holder].pid),
+       state}
     end
 
     def handle_call({:release, id}, _from, state), do: {:reply, :ok, release(state, id)}
@@ -347,7 +368,7 @@ defmodule Ash.DataLayer.Ets do
       transactions =
         state.transactions
         |> Map.put_new_lazy(id, fn ->
-          %{monitor: Process.monitor(pid), tables: MapSet.new(), waiting: nil}
+          %{pid: pid, monitor: Process.monitor(pid), tables: MapSet.new(), waiting: nil}
         end)
         |> Map.update!(id, &%{&1 | tables: MapSet.put(&1.tables, table)})
 
@@ -393,10 +414,16 @@ defmodule Ash.DataLayer.Ets do
 
   For a resource in a transaction group, the table is deleted once the transactions of other
   processes holding any of its locks have ended, and writes asking for it meanwhile wait until
-  it is gone.
+  it is gone. The wait lasts as long as those transactions run, unless `:timeout` bounds it;
+  past the timeout the call raises, naming the processes whose transactions hold the table.
+
+  ## Options
+
+    * `:timeout` - how long, in milliseconds, to wait for the transactions holding the table.
+      Defaults to `:infinity`.
   """
   # sobelow_skip ["DOS.ModuleConcat"]
-  def stop(resource, tenant \\ nil) do
+  def stop(resource, tenant \\ nil, opts \\ []) do
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
         tenant
@@ -414,7 +441,7 @@ defmodule Ash.DataLayer.Ets do
       with {:ok, table} <- table_name(resource, tenant, false),
            pid when is_pid(pid) <- Process.whereis(Module.concat(table, TableManager)) do
         if Ash.DataLayer.Ets.Info.transaction_group(resource) do
-          stop_locked(resource, tenant, pid)
+          stop_locked(resource, tenant, pid, Keyword.get(opts, :timeout, :infinity))
         else
           stop_manager(pid)
         end
@@ -427,9 +454,11 @@ defmodule Ash.DataLayer.Ets do
   # A table is stopped under a lock on the whole of it, asked for in turn like any other, so
   # the transactions holding any of its locks end and commit first, and the locks asked for
   # after it wait until the table is gone. The caller's own transaction never waits on itself,
-  # and keeps its other locks.
-  defp stop_locked(resource, tenant, pid) do
+  # and keeps its other locks. A stop whose wait times out gives up its request, so nothing
+  # waits behind it.
+  defp stop_locked(resource, tenant, pid, timeout) do
     group = Ash.DataLayer.Ets.Info.transaction_group(resource)
+    key = lock_key(resource, tenant)
 
     {id, own?} =
       case Process.get({:ash_ets_transaction, group}) do
@@ -437,18 +466,25 @@ defmodule Ash.DataLayer.Ets do
         nil -> {System.unique_integer([:monotonic, :positive]), false}
       end
 
-    case LockManager.lock(lock_key(resource, tenant), :table, id, :infinity) do
+    release = fn ->
+      if own?, do: LockManager.unlock(key, :table, id), else: LockManager.release(id)
+    end
+
+    case LockManager.lock(key, :table, id, timeout) do
       :ok ->
         stop_manager(pid)
-
-        if own?,
-          do: LockManager.unlock(lock_key(resource, tenant), :table, id),
-          else: LockManager.release(id)
-
+        release.()
         :ok
 
       :deadlock ->
         {:error, deadlock_error(resource)}
+
+      :timeout ->
+        holders = LockManager.holders(key, id)
+        release.()
+
+        raise "the table of #{inspect(resource)} was not stopped within #{timeout}ms: " <>
+                "the transactions of #{inspect(holders)} hold it"
     end
   end
 

@@ -1654,6 +1654,39 @@ defmodule Ash.DataLayer.EtsTest do
       assert [%{id: ^id}] = Ash.read!(EtsTransactionRight)
     end
 
+    test "a stop past its timeout raises naming the transaction that holds the table, and leaves nothing waiting behind it" do
+      parent = self()
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionRight, fn ->
+            Ash.create!(EtsTransactionRight, %{})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+
+      message =
+        "the table of #{inspect(EtsTransactionRight)} was not stopped within 100ms: " <>
+          "the transactions of #{inspect([holder.pid])} hold it"
+
+      assert_raise RuntimeError, message, fn ->
+        Ash.DataLayer.Ets.stop(EtsTransactionRight, nil, timeout: 100)
+      end
+
+      assert {:ok, _} =
+               Task.await(Task.async(fn -> Ash.create(EtsTransactionRight, %{}) end), 1000)
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+      assert [_, _] = Ash.read!(EtsTransactionRight)
+    end
+
     test "writers of one identity value wait for each other, and writers of other values do not" do
       parent = self()
 
