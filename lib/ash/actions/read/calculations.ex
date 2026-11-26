@@ -28,6 +28,9 @@ defmodule Ash.Actions.Read.Calculations do
         opts
       )
 
+    as_of = Ash.Temporal.resolve_read_as_of(opts[:as_of])
+    source_context = source_context(opts[:context], as_of)
+
     with {:calc,
           %{
             arguments: calc_arguments,
@@ -77,7 +80,7 @@ defmodule Ash.Actions.Read.Calculations do
           arguments: arguments,
           type: type,
           constraints: constraints,
-          source_context: opts[:context] || %{}
+          source_context: source_context
         }
 
       if reuse_values? && Ash.Resource.Calculation.has_expression?(module) do
@@ -91,6 +94,17 @@ defmodule Ash.Actions.Read.Calculations do
         with {:ok, expr} <- expr,
              {:ok, expr} <-
                Ash.Filter.hydrate_refs(expr, %{resource: resource}) do
+          # `now()`, `ago()` and the other relative time functions only exist as structs once
+          # hydrated. The data layer is handed this expression as it is, so they are anchored
+          # to `as_of` here rather than left to the fill that evaluating in Elixir does.
+          expr =
+            Ash.Expr.fill_template(expr,
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              args: arguments,
+              context: source_context
+            )
+
           if is_nil(primary_key) && requires_primary_key?(expr) do
             {:error,
              Ash.Error.Query.CalculationRequiresPrimaryKey.exception(
@@ -212,6 +226,7 @@ defmodule Ash.Actions.Read.Calculations do
                      reuse_values?: reuse_values?,
                      tracer: opts[:tracer],
                      resource: opts[:resource],
+                     as_of: as_of,
                      context: opts[:context] || %{}
                    ) do
                 {:ok, record} -> {:ok, get_calculation_value(record, resource, calculation)}
@@ -230,6 +245,7 @@ defmodule Ash.Actions.Read.Calculations do
                  reuse_values?: reuse_values?,
                  tracer: opts[:tracer],
                  resource: opts[:resource],
+                 as_of: as_of,
                  context: opts[:context] || %{}
                ) do
             {:ok, record} -> {:ok, get_calculation_value(record, resource, calculation)}
@@ -272,6 +288,14 @@ defmodule Ash.Actions.Read.Calculations do
       {:calc, nil} ->
         {:error, "No such calculation"}
     end
+  end
+
+  # Carries `as_of` the way `Ash.Query.as_of/2` does, so a calculation finds it where it
+  # would when loaded by a query read as of that instant.
+  defp source_context(context, nil), do: context || %{}
+
+  defp source_context(context, as_of) do
+    Ash.Helpers.deep_merge_maps(context || %{}, %{as_of: as_of, shared: %{as_of: as_of}})
   end
 
   defp requires_primary_key?(expr) do
