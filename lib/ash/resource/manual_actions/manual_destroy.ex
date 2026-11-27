@@ -69,6 +69,15 @@ defmodule Ash.Resource.ManualDestroy do
           }
   end
 
+  @doc """
+  Destroys one record using the prepared changeset.
+
+  The record to destroy is in `changeset.data`. Return that record on success.
+  Ash calls this after before-action hooks and before after-action hooks.
+  Return `{:ok, record}`, `{:ok, record, notifications}` to include
+  notifications, or `{:error, error}`. `opts` comes from the resource's
+  `manual {module, opts}` declaration.
+  """
   @callback destroy(
               changeset :: Ash.Changeset.t(),
               opts :: Keyword.t(),
@@ -78,6 +87,18 @@ defmodule Ash.Resource.ManualDestroy do
               | {:ok, Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
               | {:error, term}
 
+  @doc """
+  Destroys a batch of records when Ash invokes the manual bulk implementation.
+
+  Return a list of results and notifications. Include successful records
+  as `{:ok, record}` when the caller requests records. Use `{:error, error}`
+  for a failed operation and `{:notifications, notifications}` for
+  batch-level notifications. `context` is the action's `BulkContext`
+  with the return flags and batch size.
+
+  This callback is optional. Implement `c:destroy/3` for calls that operate
+  on one record at a time.
+  """
   @callback bulk_destroy(
               changesets :: Enumerable.t(Ash.Changeset.t()),
               opts :: Keyword.t(),
@@ -143,6 +164,15 @@ defmodule Ash.Resource.ManualDestroy do
   defp valid_bulk_destroy_result?({:notifications, list}) when is_list(list), do: true
   defp valid_bulk_destroy_result?(_), do: false
 
+  @doc """
+  Declares the module as a manual destroy action implementation.
+
+  Implement `c:destroy/3`, then add `manual MyApp.CustomDestroy` to the action
+  in the resource. To pass options, use `manual {MyApp.CustomDestroy, opts}`.
+  The `use` macro takes no configuration options.
+
+  See [Manual actions](/documentation/topics/actions/manual-actions.md).
+  """
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualDestroy

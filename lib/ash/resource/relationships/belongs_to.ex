@@ -42,6 +42,12 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A to-one relationship whose source attribute refers to an attribute
+  on the destination resource.
+
+  See [Relationships](/documentation/topics/resources/relationships.md).
+  """
   @type t :: %__MODULE__{
           type: :belongs_to,
           cardinality: :one,

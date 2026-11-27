@@ -104,6 +104,33 @@ defmodule Ash.Scope do
 
   Extensions should not use this option, only end users.
   """
+  @doc """
+  Extracts action options from a scope or callback context as a keyword list.
+
+  Calls the `Ash.Scope.ToOpts` callbacks for `:actor`, `:tenant`, `:context`, `:tracer`
+  and `:authorize?`. Includes each value returned as `{:ok, value}`. A callback that
+  returns `:error` or `{:ok, nil}` omits its option, with one exception. An actor returned
+  as `{:ok, nil}` becomes `actor: nil`, which explicitly sets an anonymous actor.
+
+  ## Overrides
+
+  Pass a keyword list to replace extracted values or add action-specific options.
+  An override replaces the entire value for its key, including maps such as `:context`.
+  Pass `[]` or omit the argument to use the extracted values as-is.
+
+  ## Examples
+
+      iex> Ash.Scope.to_opts(%{actor: nil, tenant: "org_42"})
+      [actor: nil, tenant: "org_42"]
+
+      iex> Ash.Scope.to_opts(%{tenant: "org_42"}, tenant: "org_73", action: :publish)
+      [tenant: "org_73", action: :publish]
+
+  ## See also
+
+  - `Ash.Scope` for passing a scope directly with the `:scope` option
+  - `Ash.Scope.ToOpts` for defining how to extract options from a scope
+  """
   def to_opts(scope, overrides \\ []) do
     [
       actor: Ash.Scope.ToOpts.get_actor(scope),
@@ -125,6 +152,25 @@ defmodule Ash.Scope do
   @type t :: Ash.Scope.ToOpts.t()
 
   defprotocol ToOpts do
+    @moduledoc """
+    Extracts Ash action options from an application scope.
+
+    Implement this protocol for a struct you want to pass as `:scope`. Each
+    callback returns `{:ok, value}` to supply an option or `:error` to omit it.
+    Ash implements this protocol for its action callback contexts, so you can
+    pass a context as the scope of another action to carry over shared values.
+
+    For plain maps, Ash reads `:actor`, `:tenant`, `:tracer` and `:authorize?`
+    directly. The extracted context contains the shared data from `:shared` or
+    `context[:shared]`. If both are present, top-level shared keys take precedence.
+
+    ## See also
+
+    - `Ash.Scope` for an example implementation and instructions for passing scopes
+    - `Ash.Scope.to_opts/2` for converting a scope to a keyword list
+    - [Action context](/documentation/topics/actions/actions.md#context) for sharing data with nested actions
+    """
+
     @type t :: term()
 
     @doc "Extracts the actor from the scope"

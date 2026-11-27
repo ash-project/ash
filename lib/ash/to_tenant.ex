@@ -27,6 +27,21 @@ defprotocol Ash.ToTenant do
 
   @type t :: term()
 
+  @doc """
+  Returns the tenant identifier for the given value and target resource.
+
+  Use the `resource` argument when the same value needs to produce different identifiers
+  for different resources. The identifier should match the value that the resource
+  expects for its configured multitenancy strategy.
+
+  ## Examples
+
+      iex> Ash.ToTenant.to_tenant("org_42", MyApp.Post)
+      "org_42"
+
+      iex> Ash.ToTenant.to_tenant(42, MyApp.Post)
+      42
+  """
   @spec to_tenant(t, Ash.Resource.t()) :: term()
   def to_tenant(value, resource)
 end

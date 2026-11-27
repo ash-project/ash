@@ -23,7 +23,18 @@ defmodule Ash.Resource.Change do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A change declaration from the resource DSL. It records the implementation,
+  the action types it applies to, and any `:where` conditions.
+
+  See [Changes](/documentation/topics/resources/changes.md).
+  """
   @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
+  @typedoc """
+  A change implementation module or a `{module, opts}` tuple.
+
+  The implementation receives the options after `c:init/1` normalizes them.
+  """
   @type ref :: {module(), Keyword.t()} | module()
 
   @doc false
@@ -300,6 +311,11 @@ defmodule Ash.Resource.Change do
     """
     defstruct [:actor, :tenant, :authorize?, :tracer, bulk?: false, source_context: %{}]
 
+    @typedoc """
+    Action information passed to change callbacks. `:source_context` is the
+    context of the subject the change is running on. Pass `scope: context` to
+    a nested action to carry over the actor, tenant, and shared context.
+    """
     @type t :: %__MODULE__{
             actor: Ash.Resource.Record.t() | nil,
             tenant: term(),
@@ -312,7 +328,28 @@ defmodule Ash.Resource.Change do
 
   @type context :: Context.t()
 
+  @doc """
+  Validates and normalizes the options in a resource's change declaration.
+
+  Return `{:ok, opts}` to pass those options to the change callbacks or
+  `{:error, error}` to reject the configuration. The default accepts the
+  supplied options unchanged.
+  """
   @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
+  @doc """
+  Returns the changeset to use for the action.
+
+  Use `Ash.Changeset` functions to change attributes, manage relationships,
+  or register hooks. `opts` are the change's configured options and `context`
+  contains action information such as the actor and tenant.
+
+      @impl true
+      def change(changeset, _opts, _context) do
+        Ash.Changeset.change_attribute(changeset, :status, :published)
+      end
+
+  See `c:atomic/3` for changes that must also work in an atomic update.
+  """
   @callback change(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: Context.t()) ::
               Ash.Changeset.t()
 
@@ -433,12 +470,38 @@ defmodule Ash.Resource.Change do
               | :ok
               | {:error, term()}
 
+  @doc """
+  Reports whether the change can use `c:atomic/3`.
+
+  `use Ash.Resource.Change` generates this from the callbacks the module defines.
+  """
   @callback atomic?() :: boolean
 
+  @doc """
+  Reports whether Ash can call `c:change/3` on this module.
+
+  `use Ash.Resource.Change` also generates a single-record implementation
+  when the module implements only `c:batch_change/3` for non-atomic changes.
+  """
   @callback has_change?() :: boolean
 
+  @doc """
+  Reports whether the module implements `c:batch_change/3`.
+
+  `use Ash.Resource.Change` defines this callback automatically.
+  """
   @callback has_batch_change?() :: boolean
+  @doc """
+  Reports whether the module implements `c:after_batch/3`.
+
+  `use Ash.Resource.Change` defines this callback automatically.
+  """
   @callback has_after_batch?() :: boolean
+  @doc """
+  Reports whether the module implements `c:before_batch/3`.
+
+  `use Ash.Resource.Change` defines this callback automatically.
+  """
   @callback has_before_batch?() :: boolean
 
   @doc """
@@ -464,6 +527,16 @@ defmodule Ash.Resource.Change do
                       atomic: 3,
                       temporal_safe?: 1
 
+  @doc """
+  Sets up a module-based resource change.
+
+  Implement `c:change/3`, `c:batch_change/3`, or `c:atomic/3`. Declare the
+  module with `change MyApp.Publish` or pass change-specific options with
+  `change {MyApp.Publish, status: :published}`. The `use` macro takes no
+  configuration options.
+
+  See [Changes](/documentation/topics/resources/changes.md).
+  """
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Change

@@ -124,6 +124,12 @@ defmodule Ash.Resource.Aggregate do
     ]
   ]
 
+  @typedoc """
+  A named aggregate definition. Its kind, relationship path or target
+  resource, and field specify how to derive a value from other records.
+
+  See [Aggregates](/documentation/topics/resources/aggregates.md).
+  """
   @type t :: %__MODULE__{
           name: atom(),
           relationship_path: list(atom()),

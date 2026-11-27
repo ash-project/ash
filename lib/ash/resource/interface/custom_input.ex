@@ -21,8 +21,20 @@ defmodule Ash.Resource.Interface.CustomInput do
     defstruct [:to, :using, __spark_metadata__: nil]
   end
 
+  @typedoc """
+  An additional input declared by a code interface. Its optional
+  transformation maps the supplied value into inputs for the underlying
+  resource operation.
+
+  See [Code interfaces](/documentation/topics/resources/code-interfaces.md).
+  """
   @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
+  @doc """
+  Returns the DSL option schema for `custom_input` declarations in code interfaces.
+
+  See [Code interfaces](/documentation/topics/resources/code-interfaces.md) for usage.
+  """
   def schema do
     [
       name: [

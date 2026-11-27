@@ -93,8 +93,19 @@ defmodule Ash.Resource.Identity do
     ]
   ]
 
+  @doc """
+  Returns the DSL option schema for `identity` declarations.
+
+  See [Identities](/documentation/topics/resources/identities.md) for usage.
+  """
   def schema, do: @schema
 
+  @typedoc """
+  A named uniqueness rule for a resource. The `:keys` identify the fields
+  whose combined values are unique within the identity's scope.
+
+  See [Identities](/documentation/topics/resources/identities.md).
+  """
   @type t :: %__MODULE__{
           name: atom(),
           keys: list(atom()),

@@ -41,6 +41,13 @@ defmodule Ash.Resource.Relationships.HasMany do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A to-many relationship from a source to a destination resource.
+  Its definition can specify matching attributes, a manual loader, or a
+  path through other relationships.
+
+  See [Relationships](/documentation/topics/resources/relationships.md).
+  """
   @type t :: %__MODULE__{
           type: :has_many,
           cardinality: :many,
@@ -108,6 +115,12 @@ defmodule Ash.Resource.Relationships.HasMany do
   @doc false
   def opt_schema, do: @opt_schema
 
+  @doc """
+  Normalizes a manual relationship loader to `{module, opts}`.
+
+  A bare module receives an empty options list. The module implements
+  `Ash.Resource.ManualRelationship`.
+  """
   def manual({module, opts}) when is_atom(module) and is_list(opts),
     do: {:ok, {module, opts}}
 

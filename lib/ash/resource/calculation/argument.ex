@@ -12,6 +12,12 @@ defmodule Ash.Resource.Calculation.Argument do
             type: nil,
             __spark_metadata__: nil
 
+  @typedoc """
+  The declaration of an argument to a resource calculation, including its
+  name, type, constraints, and default.
+
+  See [Calculations](/documentation/topics/resources/calculations.md).
+  """
   @type t :: %__MODULE__{
           allow_nil?: boolean,
           allow_expr?: boolean,
@@ -56,5 +62,10 @@ defmodule Ash.Resource.Calculation.Argument do
     ]
   ]
 
+  @doc """
+  Returns the DSL option schema for arguments declared on a calculation.
+
+  See [Calculations](/documentation/topics/resources/calculations.md) for usage.
+  """
   def schema, do: @schema
 end

@@ -8,6 +8,10 @@ defmodule Ash.Resource.Actions.PipeThrough do
             where: [],
             __spark_metadata__: nil
 
+  @typedoc """
+  A reference to one or more named pipelines. `:where` contains the
+  validations that must pass for the pipeline to apply.
+  """
   @type t :: %__MODULE__{
           names: [atom()],
           where: [Ash.Resource.Validation.ref()],
@@ -32,5 +36,10 @@ defmodule Ash.Resource.Actions.PipeThrough do
     ]
   ]
 
+  @doc """
+  Returns the DSL option schema for `pipe_through` declarations.
+
+  See [Using pipelines in actions](/documentation/topics/actions/actions.md#using-pipelines-in-actions).
+  """
   def schema, do: @schema
 end

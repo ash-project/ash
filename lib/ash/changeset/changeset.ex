@@ -780,6 +780,15 @@ defmodule Ash.Changeset do
     select(changeset, select, replace?: true)
   end
 
+  @doc """
+  Returns whether the changeset selects or loads a field for the returned record.
+
+  With no explicit selection, resource attributes are selected. With an explicit
+  selection, the primary key remains selected. A field being loaded also counts
+  as selected.
+
+  See `select/3` to control the selected fields and `load/3` to request loads.
+  """
   def selecting?(changeset, field) do
     case changeset.select do
       nil ->
@@ -2675,6 +2684,26 @@ defmodule Ash.Changeset do
     end)
   end
 
+  @doc """
+  Sets an attribute with an expression evaluated during a create action.
+
+  On an update changeset this delegates to `atomic_update/4`. Create expressions
+  can refer to values being written with `Ash.Expr.atomic_ref/1`. They cannot
+  reference related records. For example, in a resource change that imports
+  `Ash.Expr`:
+
+      Ash.Changeset.atomic_set(changeset, :created_at, expr(now()))
+
+  ## Options
+
+  - `:fallback_to_no_cast?` uses the expression as given if the type cannot
+    cast it atomically.
+  - `:return_not_atomic?` returns `{:not_atomic, reason}` when an atomic cast
+    is unsupported and fallback is disabled. By default, Ash adds an error to
+    the changeset.
+
+  Both options default to `false`. See `atomic_set/2` for applying multiple sets.
+  """
   @spec atomic_set(t(), atom(), {:atomic, Ash.Expr.t()} | Ash.Expr.t()) :: t()
   def atomic_set(changeset, key, value, opts \\ [])
 
@@ -5643,6 +5672,22 @@ defmodule Ash.Changeset do
     set_context(changeset, %{key => value})
   end
 
+  @doc """
+  Sets the tenant for a create, update or destroy changeset.
+
+  Pass a tenant identifier or a value that implements `Ash.ToTenant`. The
+  conversion uses the changeset's resource. When building a changeset for an
+  action, you can also pass `:tenant` in the builder's options so it is
+  available to changes and validations as they run.
+
+  ## Examples
+
+      changeset = Ash.Changeset.set_tenant(changeset, "org_42")
+      Ash.update(changeset)
+
+  See [Multitenancy](/documentation/topics/advanced/multitenancy.md) for resource
+  configuration and tenant examples.
+  """
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(changeset, tenant) do
     %{changeset | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, changeset.resource)}
@@ -5683,6 +5728,16 @@ defmodule Ash.Changeset do
     end
   end
 
+  @doc """
+  Sets the changeset's action timeout in milliseconds.
+
+  If `timeout` is `nil`, the changeset uses the supplied fallback. When both
+  values are `nil`, the timeout is left unset on the changeset and the action
+  can use its configured timeout.
+
+  See [Timeouts](/documentation/topics/advanced/timeouts.md) for configuration
+  and supported data layers.
+  """
   @spec timeout(t(), nil | pos_integer, nil | pos_integer) :: t()
   def timeout(changeset, timeout, default \\ nil) do
     %{changeset | timeout: timeout || default}

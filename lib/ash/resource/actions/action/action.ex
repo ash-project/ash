@@ -26,6 +26,13 @@ defmodule Ash.Resource.Actions.Action do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  The definition of a generic action. `:arguments` describe its accepted inputs,
+  `:run` identifies the implementation and `:returns` describes the return
+  value, when one is declared.
+
+  See [Generic actions](/documentation/topics/actions/generic-actions.md).
+  """
   @type t :: %__MODULE__{
           type: :action,
           name: atom,

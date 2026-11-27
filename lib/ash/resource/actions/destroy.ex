@@ -36,6 +36,12 @@ defmodule Ash.Resource.Actions.Destroy do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  The definition of a destroy action. The `:soft?` setting indicates a
+  soft destroy, which updates the record to represent deletion.
+
+  See [Destroy actions](/documentation/topics/actions/destroy-actions.md).
+  """
   @type t :: %__MODULE__{
           type: :destroy,
           name: atom,

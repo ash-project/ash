@@ -16,8 +16,19 @@ defmodule Ash.Resource.Actions.Argument do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A named input accepted by an action. Its type, constraints, and default
+  control how the input is prepared before execution.
+
+  See [Actions](/documentation/topics/actions/actions.md).
+  """
   @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
+  @doc """
+  Returns the DSL option schema for `argument` declarations on resource actions.
+
+  See [Actions](/documentation/topics/actions/actions.md) for usage.
+  """
   def schema do
     [
       name: [

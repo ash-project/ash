@@ -81,6 +81,15 @@ defmodule Ash.Resource.ManualCreate do
           }
   end
 
+  @doc """
+  Creates one record using the prepared changeset.
+
+  Use the changeset's cast attributes and arguments to build the new record.
+  Ash calls this after before-action hooks and before after-action hooks.
+  Return `{:ok, record}`, `{:ok, record, %{notifications: notifications}}` to include
+  notifications, or `{:error, error}`. `opts` comes from the resource's
+  `manual {module, opts}` declaration.
+  """
   @callback create(
               changeset :: Ash.Changeset.t(),
               opts :: Keyword.t(),
@@ -90,6 +99,18 @@ defmodule Ash.Resource.ManualCreate do
               | {:ok, Ash.Resource.Record.t(), %{notifications: [Ash.Notifier.Notification.t()]}}
               | {:error, term}
 
+  @doc """
+  Creates a batch of records when Ash invokes the manual bulk implementation.
+
+  Return a list of results and notifications. Include successful records
+  as `{:ok, record}` when the caller requests records. Use `{:error, error}`
+  for a failed operation and `{:notifications, notifications}` for
+  batch-level notifications. `context` is the action's `BulkContext`
+  with the return flags and batch size.
+
+  This callback is optional. Implement `c:create/3` for calls that operate
+  on one record at a time.
+  """
   @callback bulk_create(
               changesets :: Enumerable.t(Ash.Changeset.t()),
               opts :: Keyword.t(),
@@ -155,6 +176,15 @@ defmodule Ash.Resource.ManualCreate do
   defp valid_bulk_create_result?({:notifications, list}) when is_list(list), do: true
   defp valid_bulk_create_result?(_), do: false
 
+  @doc """
+  Declares the module as a manual create action implementation.
+
+  Implement `c:create/3`, then add `manual MyApp.CustomCreate` to the action
+  in the resource. To pass options, use `manual {MyApp.CustomCreate, opts}`.
+  The `use` macro takes no configuration options.
+
+  See [Manual actions](/documentation/topics/actions/manual-actions.md).
+  """
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualCreate

@@ -37,6 +37,12 @@ defmodule Ash.Resource.Actions.Create do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  The definition of a create action. It describes accepted attributes,
+  arguments, changes, and upsert settings.
+
+  See [Create actions](/documentation/topics/actions/create-actions.md).
+  """
   @type t :: %__MODULE__{
           type: :create,
           name: atom,

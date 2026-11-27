@@ -186,6 +186,18 @@ defmodule Ash.Resource.Calculation do
         }
 
   @type ref :: {module(), Keyword.t()} | module()
+
+  @doc """
+  Sets up a module-based calculation.
+
+  Defines defaults for `c:init/1`, `c:describe/1`, `c:load/3` and
+  `c:strict_loads?/0`, and imports `Ash.Expr`. Implement `c:calculate/3`,
+  `c:expression/2`, or both. The macro takes no configuration options. Pass
+  calculation-specific options in the resource as `{module, opts}`.
+
+  See [Calculations](/documentation/topics/resources/calculations.md) for how
+  to register and load a module-based calculation.
+  """
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Calculation
@@ -226,11 +238,58 @@ defmodule Ash.Resource.Calculation do
 
   @type opts :: Keyword.t()
 
+  @doc """
+  Validates or normalizes the options provided when declaring the calculation.
+
+  Return `{:ok, opts}` with the options the calculation should use, or
+  `{:error, error}` to reject the configuration. The default returns the
+  supplied options unchanged. These options configure the implementation.
+  Arguments supplied when loading a calculation are in `context.arguments`.
+  """
   @callback init(opts :: opts) :: {:ok, opts} | {:error, term}
+
+  @doc """
+  Returns a string describing the calculation with its configured options.
+
+  The default includes the module name and inspected options.
+  """
   @callback describe(opts :: opts) :: String.t()
 
+  @doc """
+  Computes a value for each input record, in the same order as the records.
+
+  Return the list of values directly or as `{:ok, values}`. Return
+  `{:error, error}` if the calculation fails or `:unknown` if the values
+  cannot be determined. Declare the fields the calculation reads in
+  `c:load/3` and access calculation arguments through `context.arguments`.
+
+  ## Examples
+
+      @impl true
+      def calculate(records, _opts, _context) do
+        Enum.map(records, &String.upcase(&1.title))
+      end
+
+  This implementation expects `:title` to be loaded and to contain a string.
+  """
   @callback calculate(records :: [Ash.Resource.Record.t()], opts :: opts, context :: Context.t()) ::
               {:ok, [term]} | [term] | {:error, term} | :unknown
+
+  @doc """
+  Returns an Ash expression defining the calculation.
+
+  Use `Ash.Expr.expr/1` to build the expression. Ash can evaluate the
+  expression in a supporting data layer, including when the calculation is
+  used in a filter or sort.
+
+  ## Examples
+
+      @impl true
+      def expression(_opts, _context), do: expr(first_name <> " " <> last_name)
+
+  See [Expressions](/documentation/topics/reference/expressions.md) for
+  supported expression syntax.
+  """
   @callback expression(opts :: opts, context :: Context.t()) :: any
   @doc """
   A load statement to be applied when the calculation is used.
@@ -238,11 +297,50 @@ defmodule Ash.Resource.Calculation do
   """
   @callback load(query :: Ash.Query.t(), opts :: opts, context :: Context.t()) ::
               atom | [atom] | Keyword.t()
+
+  @doc """
+  Controls field selection when Ash loads the calculation's dependencies.
+
+  The default is `true`. Ash uses strict loads for the calculation, including
+  nested relationships. Declare the attributes the calculation reads in
+  `c:load/3` or in the calculation's resource DSL `:load` option. For example,
+  `[author: [:name]]` requests the author's name as a dependency.
+
+  Return `false` to use normal field selection on dependency loads. For
+  example, returning `[:author]` from `c:load/3` then loads the author's
+  default selection of attributes.
+
+  ## Examples
+
+      @impl true
+      def load(_query, _opts, _context), do: [:author]
+
+      @impl true
+      def strict_loads?, do: false
+
+  ## See also
+
+  - `c:load/3` for declaring calculation dependencies
+  - `Ash.Query.load/3` for how the `:strict?` load option works
+  - [Calculations](/documentation/topics/resources/calculations.md)
+  """
   @callback strict_loads?() :: boolean()
+
+  @doc """
+  Reports whether the calculation module implements `c:expression/2`.
+
+  `use Ash.Resource.Calculation` defines this callback automatically.
+  """
   @callback has_expression?() :: boolean()
 
   @optional_callbacks expression: 2, calculate: 3
 
+  @doc """
+  Returns the option schema for calculation definitions in the resource DSL.
+
+  See `d:Ash.Resource.Dsl.calculations.calculate` for the supported options
+  when declaring a calculation.
+  """
   def schema, do: @schema
 
   @doc false

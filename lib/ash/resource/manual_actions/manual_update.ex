@@ -65,6 +65,15 @@ defmodule Ash.Resource.ManualUpdate do
           }
   end
 
+  @doc """
+  Updates one record using the prepared changeset.
+
+  The original record is in `changeset.data`. Use the changeset's new values to perform the update.
+  Ash calls this after before-action hooks and before after-action hooks.
+  Return `{:ok, record}`, `{:ok, record, %{notifications: notifications}}` to include
+  notifications, or `{:error, error}`. `opts` comes from the resource's
+  `manual {module, opts}` declaration.
+  """
   @callback update(
               changeset :: Ash.Changeset.t(),
               opts :: Keyword.t(),
@@ -74,6 +83,18 @@ defmodule Ash.Resource.ManualUpdate do
               | {:ok, Ash.Resource.Record.t(), %{notifications: [Ash.Notifier.Notification.t()]}}
               | {:error, term}
 
+  @doc """
+  Updates a batch of records when Ash invokes the manual bulk implementation.
+
+  Return a list of results and notifications. Include successful records
+  as `{:ok, record}` when the caller requests records. Use `{:error, error}`
+  for a failed operation and `{:notifications, notifications}` for
+  batch-level notifications. `context` is the action's `BulkContext`
+  with the return flags and batch size.
+
+  This callback is optional. Implement `c:update/3` for calls that operate
+  on one record at a time.
+  """
   @callback bulk_update(
               changesets :: Enumerable.t(Ash.Changeset.t()),
               opts :: Keyword.t(),
@@ -139,6 +160,15 @@ defmodule Ash.Resource.ManualUpdate do
   defp valid_bulk_update_result?({:notifications, list}) when is_list(list), do: true
   defp valid_bulk_update_result?(_), do: false
 
+  @doc """
+  Declares the module as a manual update action implementation.
+
+  Implement `c:update/3`, then add `manual MyApp.CustomUpdate` to the action
+  in the resource. To pass options, use `manual {MyApp.CustomUpdate, opts}`.
+  The `use` macro takes no configuration options.
+
+  See [Manual actions](/documentation/topics/actions/manual-actions.md).
+  """
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualUpdate

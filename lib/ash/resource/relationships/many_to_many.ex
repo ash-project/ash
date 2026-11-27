@@ -38,6 +38,12 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A to-many relationship that connects source records to destination
+  records through a join resource. `:through` identifies that resource.
+
+  See [Relationships](/documentation/topics/resources/relationships.md).
+  """
   @type t :: %__MODULE__{
           type: :many_to_many,
           cardinality: :many,

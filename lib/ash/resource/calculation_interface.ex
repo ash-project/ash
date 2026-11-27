@@ -16,6 +16,12 @@ defmodule Ash.Resource.CalculationInterface do
     __spark_metadata__: nil
   ]
 
+  @typedoc """
+  A code interface definition for evaluating a named calculation.
+  The definition records the generated function name and its inputs.
+
+  See [Code interfaces](/documentation/topics/resources/code-interfaces.md).
+  """
   @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
   @schema [
@@ -48,6 +54,11 @@ defmodule Ash.Resource.CalculationInterface do
     ]
   ]
 
+  @doc """
+  Returns the DSL option schema for `define_calculation` declarations in a code interface.
+
+  See [Code interfaces](/documentation/topics/resources/code-interfaces.md) for usage.
+  """
   def schema, do: @schema
 
   def transform(%{name: name, calculation: nil} = interface) do
