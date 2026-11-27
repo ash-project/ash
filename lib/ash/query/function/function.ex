@@ -76,7 +76,7 @@ defmodule Ash.Query.Function do
   def new(mod, args) do
     args = List.wrap(args)
 
-    case mod.args() do
+    case initialized_args(mod) do
       :var_args ->
         # Varargs is special, and should only be used in rare circumstances (like this one)
         # no type casting or help can be provided for these functions.
@@ -159,11 +159,27 @@ defmodule Ash.Query.Function do
     end
   end
 
+  @doc false
+  # The signatures of `mod` that its arguments are cast to: its `args/0` with their types
+  # initialized. `use Ash.Query.Function` works them out when the module is compiled if
+  # `args/0` is a literal, and otherwise they are worked out here. See
+  # `Ash.Query.Signatures.initialize/1`.
+  def initialized_args(mod) do
+    case Code.ensure_loaded?(mod) && function_exported?(mod, :__initialized_args__, 0) &&
+           mod.__initialized_args__() do
+      args when args in [false, :runtime] -> Ash.Query.Signatures.initialize(mod.args())
+      args -> args
+    end
+  end
+
   @doc """
   Casts `args` to a single declared signature, returning the cast list or `nil`.
 
   With `exact?: true`, a value only fits a declared type if casting leaves it
   unchanged, so signatures are matched on the type the value already has.
+
+  The constraints of a declared type are used as they are given. A function's
+  signatures have theirs initialized with `Ash.Type.init/2` before they are cast to.
   """
   def try_cast_arguments(configured_args, args, opts \\ []) do
     exact? = Keyword.get(opts, :exact?, false)
@@ -200,7 +216,7 @@ defmodule Ash.Query.Function do
             {:halt, :error}
           end
         else
-          case Ash.Query.Type.try_cast(arg, type, signature_constraints(type, constraints)) do
+          case Ash.Query.Type.try_cast(arg, type, constraints) do
             {:ok, value} when not exact? or value == arg -> {:cont, {:ok, [value | args]}}
             _ -> {:halt, :error}
           end
@@ -214,7 +230,7 @@ defmodule Ash.Query.Function do
             {:halt, :error}
           end
         else
-          case Ash.Query.Type.try_cast(arg, type, signature_constraints(type, [])) do
+          case Ash.Query.Type.try_cast(arg, type, []) do
             {:ok, value} when not exact? or value == arg -> {:cont, {:ok, [value | args]}}
             _ -> {:halt, :error}
           end
@@ -227,37 +243,6 @@ defmodule Ash.Query.Function do
       _ ->
         nil
     end
-  end
-
-  # The types in a signature are not initialized with `Ash.Type.init/2` the way a
-  # resource initializes an attribute's type. A NewType's constraints are only
-  # applied when it is initialized: without that, `:utc_datetime_usec` is cast as
-  # a plain `:datetime`, to the second. Any other type declared without
-  # constraints is cast as it always was, since initializing costs more than the
-  # cast and the in-memory filter casts once per record.
-  defp signature_constraints(type, constraints) when is_list(constraints) do
-    if constraints != [] or new_type?(type) do
-      case Ash.Type.init(type, constraints) do
-        {:ok, initialized} -> initialized
-        {:error, _error} -> constraints
-      end
-    else
-      constraints
-    end
-  end
-
-  defp signature_constraints(_type, constraints), do: constraints
-
-  # `:number` is only a type to `Ash.Query.Type`, and looking for a module of
-  # that name on every cast is slow.
-  defp new_type?(:number), do: false
-  defp new_type?({:array, type}), do: new_type?(type)
-
-  # Asks the same question as `Ash.Type.NewType.new_type?/1` without reading the
-  # module's attributes, which costs more than casting a value does.
-  defp new_type?(type) do
-    type = Ash.Type.get_type(type)
-    is_atom(type) and Code.ensure_loaded?(type) and function_exported?(type, :subtype_of, 0)
   end
 
   @doc """
@@ -349,6 +334,7 @@ defmodule Ash.Query.Function do
     |> Kernel.||(%{})
     |> Map.keys()
     |> Enum.filter(&is_list/1)
+    |> Ash.Query.Signatures.initialize()
   end
 
   defp cast_error(mod, configured_args, args) do

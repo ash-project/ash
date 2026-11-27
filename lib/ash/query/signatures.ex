@@ -12,6 +12,9 @@ defmodule Ash.Query.Signatures do
   # compiled, as `__signatures__/0`, whenever those are defined as literals. Otherwise
   # `__signatures__/0` returns `:runtime`, and they are worked out when used. Operator
   # overloads declared by `:known_types` depend on the application, and are added at runtime.
+  #
+  # A function's arguments are cast to the types in its `args/0`. Those are worked out the
+  # same way, as `__initialized_args__/0`: see `initialize/1`.
 
   @type row ::
           {match_types :: list | atom, cast_as_types :: list | nil, returns :: term,
@@ -39,6 +42,57 @@ defmodule Ash.Query.Signatures do
       :erlang.function_exported(module, :args, 0) -> own(module.args(), module.returns())
       true -> own([:any], [:any])
     end
+  end
+
+  @doc false
+  # The signatures a function's arguments are cast to: `args/0`, with each concrete type
+  # paired with its constraints as `Ash.Type.init/2` initializes them, the way a resource
+  # initializes the type of an attribute. A NewType's constraints are only applied when it
+  # is initialized: without that, `:utc_datetime_usec` is cast as a plain `:datetime`, to
+  # the second. A type that cannot be initialized is left as it was declared.
+  @spec initialize(term) :: term
+  def initialize(signatures) when is_list(signatures) do
+    Enum.map(signatures, fn
+      signature when is_list(signature) -> Enum.map(signature, &initialize_type/1)
+      other -> other
+    end)
+  end
+
+  def initialize(other), do: other
+
+  @doc false
+  # The quoted form of `initialize/1` for a module to return from a function, or `:runtime`
+  # when the constraints hold something that cannot be written into a module, such as a
+  # function.
+  @spec quoted_initialize(term) :: Macro.t()
+  def quoted_initialize(signatures) do
+    signatures |> initialize() |> Macro.escape()
+  rescue
+    _ -> :runtime
+  end
+
+  # `:number` is only a type to `Ash.Query.Type`.
+  defp initialize_type(:number), do: :number
+
+  defp initialize_type({type, constraints} = declared)
+       when type != :array and is_list(constraints),
+       do: initialized(type, constraints, declared)
+
+  defp initialize_type(declared) do
+    if concrete_type?(declared) do
+      initialized(declared, [], declared)
+    else
+      declared
+    end
+  end
+
+  defp initialized(type, constraints, declared) do
+    case Ash.Type.init(type, constraints) do
+      {:ok, constraints} -> {type, constraints}
+      _ -> declared
+    end
+  rescue
+    _ -> declared
   end
 
   @doc false
@@ -95,11 +149,55 @@ defmodule Ash.Query.Signatures do
         _ -> :runtime
       end
 
+    {initialized_args, types} =
+      if Module.defines?(env.module, {:args, 0}, :def) do
+        case literal(env.module, {:args, 0}) do
+          {:ok, args} -> {quoted_initialize(args), type_modules(args)}
+          :error -> {:runtime, []}
+        end
+      else
+        {nil, []}
+      end
+
+    # The initialized constraints come from the types. A call to each type from the body of
+    # the module is a compile-time dependency, so the module is compiled again when one of
+    # them changes.
+    type_dependencies =
+      for type <- types do
+        quote do
+          _ = unquote(type).module_info(:module)
+        end
+      end
+
     quote do
       @doc false
       def __signatures__, do: unquote(Macro.escape(signatures))
+
+      if unquote(not is_nil(initialized_args)) do
+        unquote_splicing(type_dependencies)
+
+        @doc false
+        def __initialized_args__, do: unquote(initialized_args)
+      end
     end
   end
+
+  # The modules of the concrete types declared in a function's signatures.
+  defp type_modules(signatures) when is_list(signatures) do
+    signatures
+    |> List.flatten()
+    |> Enum.filter(&concrete_type?/1)
+    |> Enum.map(&type_module/1)
+    |> Enum.filter(&(is_atom(&1) and Code.ensure_loaded?(&1)))
+    |> Enum.uniq()
+  end
+
+  defp type_modules(_), do: []
+
+  defp type_module({:array, type}), do: type_module(type)
+  defp type_module({type, constraints}) when is_list(constraints), do: type_module(type)
+  defp type_module(type) when is_atom(type), do: Ash.Type.get_type(type)
+  defp type_module(_), do: nil
 
   defp literal_types(module) do
     cond do

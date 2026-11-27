@@ -96,6 +96,22 @@ defmodule Ash.CustomExpression do
     end
   end
 
+  @doc false
+  # The signatures of a custom expression that its arguments are cast to: its `arguments/0`
+  # with their types initialized. `use Ash.CustomExpression` works them out when the module
+  # is compiled. See `Ash.Query.Signatures.initialize/1`.
+  @spec initialized_arguments(module()) :: list(list())
+  def initialized_arguments(module) do
+    case function_exported?(module, :__initialized_arguments__, 0) &&
+           module.__initialized_arguments__() do
+      arguments when arguments in [false, :runtime] ->
+        Ash.Query.Signatures.initialize(module.arguments())
+
+      arguments ->
+        arguments
+    end
+  end
+
   @callback name() :: atom
 
   @callback arguments() :: list(list(Ash.Type.t() | {Ash.Type.t(), Keyword.t()}))
@@ -116,6 +132,11 @@ defmodule Ash.CustomExpression do
 
       def predicate?, do: unquote(!!opts[:predicate?])
       def arguments, do: unquote(opts[:arguments])
+
+      @doc false
+      def __initialized_arguments__,
+        do: unquote(Ash.Query.Signatures.quoted_initialize(opts[:arguments]))
+
       def name, do: unquote(opts[:name])
     end
   end
