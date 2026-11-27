@@ -2413,40 +2413,14 @@ defmodule Ash.Actions.Read do
       # Anchor relative-time expressions to the query's `as_of` (temporal reads).
       # `as_of` rides in `opts[:as_of]` (optional — `nil` leaves wall-clock behavior),
       # threaded by `add_calc_context_to_query` and by data layers at their call sites.
-      %Ash.Query.Function.Now{} = now, cache ->
-        {opts[:as_of] || now, cache}
-
-      %Ash.Query.Function.Ago{arguments: [factor, interval]} = ago, cache
-      when is_integer(factor) ->
-        if as_of = opts[:as_of] do
-          {Ash.Query.Function.Ago.datetime_add(as_of, -factor, interval), cache}
-        else
-          {ago, cache}
-        end
-
-      %Ash.Query.Function.FromNow{arguments: [factor, interval]} = from_now, cache
-      when is_integer(factor) ->
-        if as_of = opts[:as_of] do
-          {Ash.Query.Function.Ago.datetime_add(as_of, factor, interval), cache}
-        else
-          {from_now, cache}
-        end
-
-      %Ash.Query.Function.Ago{arguments: [duration]} = ago, cache
-      when is_struct(duration, Duration) ->
-        if as_of = opts[:as_of] do
-          {Ash.Query.Function.Ago.datetime_add(as_of, Duration.negate(duration)), cache}
-        else
-          {ago, cache}
-        end
-
-      # A date rather than a datetime, so it anchors by taking the date of `as_of`.
-      %Ash.Query.Function.Today{} = today, cache ->
-        if as_of = opts[:as_of] do
-          {DateTime.to_date(as_of), cache}
-        else
-          {today, cache}
-        end
+      %{__struct__: module} = relative_time, cache
+      when module in [
+             Ash.Query.Function.Now,
+             Ash.Query.Function.Today,
+             Ash.Query.Function.Ago,
+             Ash.Query.Function.FromNow
+           ] ->
+        {Ash.Temporal.anchor_relative_time(relative_time, opts[:as_of]), cache}
 
       %Ash.Query.Parent{} = parent, cache ->
         if List.wrap(opts[:parent_stack]) != [] do
@@ -4479,6 +4453,8 @@ defmodule Ash.Actions.Read do
          query,
          calculations_to_add
        ) do
+    as_of = Ash.Temporal.resolve_read_as_of(query.as_of)
+
     calculations_to_add
     |> Enum.reduce_while({:ok, [], %{}}, fn calculation, {:ok, calculations, cache} ->
       if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
@@ -4526,7 +4502,8 @@ defmodule Ash.Actions.Read do
                 [
                   expand?: true,
                   parent_stack: parent_stack_from_context(query.context),
-                  source_context: query.context
+                  source_context: query.context,
+                  as_of: as_of
                 ],
                 cache
               )

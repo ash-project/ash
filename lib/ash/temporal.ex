@@ -280,4 +280,67 @@ defmodule Ash.Temporal do
   defp raw_instant(%Ash.Range{lower: nil}), do: :error
   defp raw_instant(%Ash.Range{lower: lower}), do: raw_instant(lower)
   defp raw_instant(_as_of), do: :error
+
+  @relative_time_functions [
+    Ash.Query.Function.Now,
+    Ash.Query.Function.Today,
+    Ash.Query.Function.Ago,
+    Ash.Query.Function.FromNow
+  ]
+
+  @doc false
+  @spec relative_time_function?(term()) :: boolean()
+  def relative_time_function?(%{__struct__: module}), do: module in @relative_time_functions
+  def relative_time_function?(_), do: false
+
+  @doc false
+  @spec anchor_relative_time(term(), DateTime.t() | nil) :: term()
+  def anchor_relative_time(expr, nil), do: expr
+
+  def anchor_relative_time(%{__struct__: Ash.Query.Function.Now}, as_of), do: as_of
+
+  # A date rather than a datetime, so it anchors by taking the date of `as_of`.
+  def anchor_relative_time(%{__struct__: Ash.Query.Function.Today}, as_of),
+    do: DateTime.to_date(as_of)
+
+  def anchor_relative_time(%{__struct__: module, arguments: [duration]}, as_of)
+      when module in [Ash.Query.Function.Ago, Ash.Query.Function.FromNow] and
+             is_struct(duration, Duration) do
+    Ash.Query.Function.Ago.datetime_add(as_of, signed(module, duration))
+  end
+
+  def anchor_relative_time(%{__struct__: module, arguments: [factor, interval]}, as_of)
+      when module in [Ash.Query.Function.Ago, Ash.Query.Function.FromNow] and
+             is_integer(factor) do
+    Ash.Query.Function.Ago.datetime_add(as_of, signed(module, factor), interval)
+  end
+
+  # The amount or duration is not known yet (a reference, say), so the function stays an
+  # expression: `datetime_add` from `as_of`, which is what `datetime_add(now(), amount,
+  # interval)` or `datetime_add(now(), duration)` already becomes under an `as_of`.
+  def anchor_relative_time(%{__struct__: module, arguments: [factor, interval]}, as_of)
+      when module in [Ash.Query.Function.Ago, Ash.Query.Function.FromNow] do
+    {:ok, datetime_add} =
+      Ash.Query.Function.DateTimeAdd.new([as_of, signed(module, factor), interval])
+
+    datetime_add
+  end
+
+  def anchor_relative_time(%{__struct__: module, arguments: [duration]}, as_of)
+      when module in [Ash.Query.Function.Ago, Ash.Query.Function.FromNow] do
+    {:ok, datetime_add} = Ash.Query.Function.DateTimeAdd.new([as_of, signed(module, duration)])
+
+    datetime_add
+  end
+
+  def anchor_relative_time(expr, _as_of), do: expr
+
+  defp signed(Ash.Query.Function.FromNow, amount), do: amount
+  defp signed(Ash.Query.Function.Ago, %Duration{} = duration), do: Duration.negate(duration)
+  defp signed(Ash.Query.Function.Ago, factor) when is_integer(factor), do: -factor
+
+  defp signed(Ash.Query.Function.Ago, factor) do
+    {:ok, negated} = Ash.Query.Function.Minus.new([factor])
+    negated
+  end
 end

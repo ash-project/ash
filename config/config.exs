@@ -38,7 +38,7 @@ config :ash, :ash_domains, [
 config :ash, :show_keysets_for_all_actions?, false
 config :ash, :policies, no_filter_static_forbidden_reads?: false
 
-config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance]
+config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance, Ash.Test.Expressions.AtZone]
 
 config :ash, :keep_read_action_loads_when_loading?, false
 config :ash, :read_action_after_action_hooks_in_order?, true

@@ -111,10 +111,17 @@ from the same moment.
 
 ### `now()` is anchored to `as_of`
 
-Inside filters, calculations and validations, `now()`, `ago()` and `from_now()` mean the
-query's `as_of`, **not** the wall clock. That's what keeps time travel consistent with itself.
+Inside filters, calculations and validations, `now()`, `today()`, `ago()` and `from_now()` mean
+the query's `as_of`, **not** the wall clock. That's what keeps time travel consistent with itself.
 Evaluate `expr(activated_at < now())` as of last year, and it compares against *last year*.
 `now()` is also worked out once for the whole operation, rather than again for every expression.
+
+That holds inside a
+[custom expression](/documentation/topics/reference/expressions.md#custom-expressions) too:
+given one that converts a datetime to a time zone, `at_zone(now(), time_zone)` is the local time
+at `as_of`. When `ago()` or `from_now()` takes its amount or duration from a record, as in
+`ago(grace_days, :day)`, it becomes a `datetime_add` from `as_of`. In SQL that keeps the
+precision of `as_of`; evaluated in Elixir, a read can cut it to whole seconds.
 
 ## Writing
 
