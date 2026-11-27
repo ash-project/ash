@@ -390,6 +390,8 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def run_aggregate_query(%{domain: domain} = query, aggregates, resource) do
+    as_of = query.context[:private][:as_of]
+
     case run_query(query, resource) do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
@@ -416,7 +418,7 @@ defmodule Ash.DataLayer.Ets do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
 
-                case load_aggregate_field(matches, field, resource, domain, context) do
+                case load_aggregate_field(matches, field, resource, domain, context, as_of) do
                   {:ok, matches} ->
                     value =
                       aggregate_value(matches, kind, field, uniq?, include_nil?, default_value)
@@ -445,8 +447,9 @@ defmodule Ash.DataLayer.Ets do
   end
 
   # Records come straight from the table, so calculation and aggregate fields
-  # have to be loaded before their values can be aggregated.
-  defp load_aggregate_field(records, field, resource, domain, context) do
+  # have to be loaded before their values can be aggregated. They carry no `as_of`
+  # of their own, so the load is given the one the query was read at.
+  defp load_aggregate_field(records, field, resource, domain, context, as_of) do
     if is_atom(field) and not is_nil(Ash.Resource.Info.attribute(resource, field)) do
       {:ok, records}
     else
@@ -454,6 +457,7 @@ defmodule Ash.DataLayer.Ets do
         domain: domain,
         tenant: context[:tenant],
         actor: context[:actor],
+        as_of: as_of,
         authorize?: false
       )
     end
