@@ -4731,7 +4731,7 @@ defmodule Ash.Filter do
     with module when not is_nil(module) <- Enum.find(@custom_expressions, &(&1.name() == name)),
          args when not is_nil(args) <-
            Enum.find_value(
-             module.arguments(),
+             Ash.CustomExpression.initialized_arguments(module),
              &Ash.Query.Function.try_cast_arguments(&1, args)
            ) do
       {module, args}

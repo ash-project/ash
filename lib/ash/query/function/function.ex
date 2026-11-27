@@ -76,7 +76,7 @@ defmodule Ash.Query.Function do
   def new(mod, args) do
     args = List.wrap(args)
 
-    case mod.args() do
+    case initialized_args(mod) do
       :var_args ->
         # Varargs is special, and should only be used in rare circumstances (like this one)
         # no type casting or help can be provided for these functions.
@@ -159,11 +159,27 @@ defmodule Ash.Query.Function do
     end
   end
 
+  @doc false
+  # The signatures of `mod` that its arguments are cast to: its `args/0` with their types
+  # initialized. `use Ash.Query.Function` works them out when the module is compiled if
+  # `args/0` is a literal, and otherwise they are worked out here. See
+  # `Ash.Query.Signatures.initialize/1`.
+  def initialized_args(mod) do
+    case Code.ensure_loaded?(mod) && function_exported?(mod, :__initialized_args__, 0) &&
+           mod.__initialized_args__() do
+      args when args in [false, :runtime] -> Ash.Query.Signatures.initialize(mod.args())
+      args -> args
+    end
+  end
+
   @doc """
   Casts `args` to a single declared signature, returning the cast list or `nil`.
 
   With `exact?: true`, a value only fits a declared type if casting leaves it
   unchanged, so signatures are matched on the type the value already has.
+
+  The constraints of a declared type are used as they are given. A function's
+  signatures have theirs initialized with `Ash.Type.init/2` before they are cast to.
   """
   def try_cast_arguments(configured_args, args, opts \\ []) do
     exact? = Keyword.get(opts, :exact?, false)
@@ -318,6 +334,7 @@ defmodule Ash.Query.Function do
     |> Kernel.||(%{})
     |> Map.keys()
     |> Enum.filter(&is_list/1)
+    |> Ash.Query.Signatures.initialize()
   end
 
   defp cast_error(mod, configured_args, args) do

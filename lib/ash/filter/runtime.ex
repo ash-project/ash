@@ -854,7 +854,7 @@ defmodule Ash.Filter.Runtime do
             with {:ok, args} <-
                    resolve_exprs(args, record, parent, resource, unknown_on_unknown_refs?),
                  {:args, args} when not is_nil(args) <-
-                   {:args, try_cast_arguments(mod.args(), args)},
+                   {:args, try_cast_arguments(Ash.Query.Function.initialized_args(mod), args)},
                  {:known, val} <-
                    evaluate(
                      %{pred | arguments: args},
