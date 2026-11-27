@@ -127,6 +127,74 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 - `date_add/2-3` | add an interval to a date, i.e `date_add(^date, 3, :day)`, or a `Duration`: `date_add(^date, ^Duration.new!(day: 3))`
 - `start_of_day/1-2` | Converts a date or a datetime to the correspond start of its day (at 00:00 time).
 
+### Local time in a time zone
+
+Ash's datetime functions work in UTC. To get the wall-clock time or calendar date in a time zone, for example to ask whether something happens "today" for a venue, or to compare with a `:date` or `:naive_datetime` attribute, convert the datetime with a [custom expression](#custom-expressions). Time zone support differs between data layers (SQLite has none), so this is yours to define rather than something Ash ships:
+
+```elixir
+defmodule MyApp.Expressions.AtZone do
+  use Ash.CustomExpression,
+    name: :at_zone,
+    # Declared with a precision so that a datetime you pass in, such as
+    # `^DateTime.utc_now()`, keeps its microseconds. A bare `:datetime` argument
+    # is cast to the second.
+    arguments: [[{:datetime, precision: :microsecond}, :string]]
+
+  # For `timestamp` columns holding UTC, which is how AshPostgres stores datetimes
+  # unless your repo sets `use_timestamptz?`. For `timestamptz` columns use
+  # `timezone(?, ?::timestamptz)` instead.
+  def expression(AshPostgres.DataLayer, [datetime, time_zone]) do
+    {:ok, expr(fragment("timezone(?, timezone('UTC', ?::timestamp))", ^time_zone, ^datetime))}
+  end
+
+  def expression(data_layer, [datetime, time_zone])
+      when data_layer in [Ash.DataLayer.Ets, Ash.DataLayer.Simple] do
+    {:ok, expr(fragment(&__MODULE__.at_zone/2, ^datetime, ^time_zone))}
+  end
+
+  def expression(_data_layer, _args), do: :unknown
+
+  def at_zone(nil, _time_zone), do: nil
+  def at_zone(_datetime, nil), do: nil
+
+  def at_zone(datetime, time_zone) do
+    case DateTime.shift_zone(datetime, time_zone) do
+      {:ok, shifted} -> DateTime.to_naive(shifted)
+      {:error, :time_zone_not_found} -> nil
+    end
+  end
+end
+```
+
+Register it under `config :ash, :custom_expressions` and recompile Ash, as described in [custom expressions](#custom-expressions).
+
+It composes with the functions above:
+
+```elixir
+# the wall-clock time and the calendar date, in each record's time zone
+calculate :local_now, :naive_datetime, expr(at_zone(now(), time_zone))
+calculate :local_today, :date, expr(type(at_zone(now(), time_zone), :date))
+
+# a stored datetime, as its venue saw it
+calculate :local_starts_at, :naive_datetime, expr(at_zone(starts_at, venue.time_zone))
+
+# does it start today, by the venue's calendar?
+filter expr(
+         type(at_zone(starts_at, venue.time_zone), :date) ==
+           type(at_zone(now(), venue.time_zone), :date)
+       )
+
+# a week ago, as a local wall-clock time (`local_deadline` is a `:naive_datetime` attribute)
+filter expr(local_deadline > at_zone(ago(7, :day), time_zone))
+```
+
+A few things to know:
+
+- The result is a wall-clock time with no time zone. Compare it with `:naive_datetime` values, and cast it with `type(..., :date)` before comparing it with a `:date`: compared directly, `==` with a date only matches at exactly midnight in SQL, and never matches when evaluated in Elixir. Comparing it with a UTC datetime attribute is not an error, and it is not meaningful either.
+- Elixir needs a time zone database to run the conversion in memory, which happens in policies, validations and `Ash.calculate/3` even when your data layer is SQL. Configure one, for example `config :elixir, :time_zone_database, Tz.TimeZoneDatabase`. Without one, the function above raises.
+- Postgres accepts more time zone names than Elixir does (abbreviations and offsets like `"UTC+8"`, which it reads as eight hours *behind* UTC). Store IANA names such as `"America/New_York"` and validate them when they are written.
+- Decide what an unknown time zone means. The Elixir function above returns `nil` for one; Postgres raises, and that fails the whole query.
+
 ## Primitives
 
 - `cond` - `cond` is transformed to a series of `if` expressions under the hood
