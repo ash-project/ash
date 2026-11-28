@@ -21,6 +21,7 @@ defmodule Ash.Resource.Validation do
   """
   defstruct [
     :validation,
+    :error_expr,
     :module,
     :opts,
     :only_when_valid?,
@@ -34,7 +35,8 @@ defmodule Ash.Resource.Validation do
   ]
 
   @type t :: %__MODULE__{
-          validation: {atom(), list(atom())},
+          validation: {atom(), list(atom())} | Ash.Expr.t(),
+          error_expr: Ash.Expr.t() | nil,
           module: atom(),
           opts: list(atom()),
           only_when_valid?: boolean(),
@@ -141,12 +143,19 @@ defmodule Ash.Resource.Validation do
   @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
                     Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 2}}
 
+  @validation_or_expr_type {:or, [@validation_type, :any]}
+
   @schema [
     validation: [
-      type: @validation_type,
+      type: @validation_or_expr_type,
       required: true,
       doc:
         "The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context."
+    ],
+    error_expr: [
+      type: :any,
+      required: false,
+      doc: "The expression used to produce an error for an expression-based validation."
     ],
     where: [
       type: {:wrap_list, @validation_type},
@@ -282,6 +291,33 @@ defmodule Ash.Resource.Validation do
          module: module,
          opts: opts
      }}
+  end
+
+  def transform(%{validation: expression, error_expr: error_expr} = validation) do
+    cond do
+      !Ash.Expr.expr?(expression) ->
+        {:error, "expected a validation module/function or an expression"}
+
+      is_nil(error_expr) ->
+        {:error, "`error_expr` is required when using an expression validation"}
+
+      !Ash.Expr.expr?(error_expr) ->
+        {:error, "`error_expr` must be an Ash expression"}
+
+      true ->
+        opts = [
+          condition: expression,
+          error_expr: error_expr
+        ]
+
+        {:ok,
+         %{
+           validation
+           | validation: {Ash.Resource.Validation.Expression, opts},
+             module: Ash.Resource.Validation.Expression,
+             opts: opts
+         }}
+    end
   end
 
   @doc false

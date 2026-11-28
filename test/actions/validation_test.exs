@@ -87,6 +87,89 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
   end
 
+  defmodule ExpressionValidationProfile do
+    @moduledoc false
+
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept(:*)
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+
+      attribute :age, :integer do
+        public?(true)
+      end
+    end
+
+    validations do
+      validate(expr(age < 18),
+        error_expr:
+          expr(
+            error(^Ash.Error.Changes.InvalidAttribute, %{
+              field: :age,
+              value: age,
+              message: "must be at least 18",
+              vars: %{}
+            })
+          )
+      )
+    end
+  end
+
+  describe "expression validations" do
+    test "fails on update when the expression is true" do
+      profile =
+        ExpressionValidationProfile
+        |> Ash.Changeset.for_create(:create, %{age: 18})
+        |> Ash.create!()
+
+      assert_raise Ash.Error.Invalid, ~r/must be at least 18/, fn ->
+        profile
+        |> Ash.Changeset.for_update(:update, %{age: 17})
+        |> Ash.update!()
+      end
+    end
+
+    test "fails when the expression is true" do
+      assert_raise Ash.Error.Invalid, ~r/must be at least 18/, fn ->
+        ExpressionValidationProfile
+        |> Ash.Changeset.for_create(:create, %{age: 17})
+        |> Ash.create!()
+      end
+    end
+
+    test "passes when the expression is false" do
+      assert %ExpressionValidationProfile{age: 18} =
+               ExpressionValidationProfile
+               |> Ash.Changeset.for_create(:create, %{age: 18})
+               |> Ash.create!()
+    end
+
+    test "passes on update when the expression is false" do
+      profile =
+        ExpressionValidationProfile
+        |> Ash.Changeset.for_create(:create, %{age: 18})
+        |> Ash.create!()
+
+      updated =
+        profile
+        |> Ash.Changeset.for_update(:update, %{age: 19})
+        |> Ash.update!()
+
+      assert updated.age == 19
+    end
+  end
+
   test "validations run on create" do
     assert_raise(Ash.Error.Invalid, ~r/bio, date: must be absent/, fn ->
       Profile
