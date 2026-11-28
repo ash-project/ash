@@ -55,4 +55,4 @@ For creates, The identity is checked unless your are performing an `upsert`, and
 
 ## Pre Checking
 
-`pre_check?` behaves the same as `eager_check?`, but it runs just prior to the action being committed. Useful for data layers that don't support transactions/unique constraints, or manual resources with identities. `Ash.DataLayer.Ets` will require you to set `pre_check?` since the ETS data layer has no built in support for unique constraints. The domain can be manually specified with `pre_check_with: DomainName`.
+`pre_check?` behaves the same as `eager_check?`, but it runs just prior to the action being committed. Useful for data layers that don't support transactions/unique constraints, or manual resources with identities. `Ash.DataLayer.Ets` will require you to set `pre_check?` unless the resource names a `transaction_group`, since the ETS data layer enforces identities itself only for resources in a transaction group. The domain can be manually specified with `pre_check_with: DomainName`.

@@ -710,6 +710,1006 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsTransactionAccount do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :accounts
+    end
+
+    actions do
+      defaults [:read, :destroy]
+
+      create :create do
+        primary? true
+        accept [:email]
+      end
+
+      create :create_then_fail do
+        accept [:email]
+
+        change after_action(fn _changeset, _record, _context ->
+                 raise "after the write"
+               end)
+      end
+
+      create :create_slowly do
+        accept [:email]
+
+        change after_action(fn _changeset, record, _context ->
+                 Process.sleep(50)
+                 {:ok, record}
+               end)
+      end
+
+      create :create_then_read_late do
+        accept [:email]
+
+        change after_action(fn _changeset, record, _context ->
+                 Process.sleep(100)
+                 Ash.read!(Ash.DataLayer.EtsTest.EtsTransactionAccount)
+                 Process.sleep(1_000)
+                 {:ok, record}
+               end)
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :email, :string, public?: true
+    end
+
+    identities do
+      identity :unique_email, [:email], pre_check_with: Domain
+    end
+  end
+
+  defmodule EtsPrivateTransactionAccount do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+      transaction_group :accounts
+    end
+
+    actions do
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
+  defmodule EtsTransactionLeft do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :sides
+    end
+
+    actions do
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
+  defmodule EtsTransactionRight do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :sides
+    end
+
+    actions do
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
+  defmodule EtsTransactionNote do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :sides
+    end
+
+    actions do
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :body, :string, public?: true
+    end
+  end
+
+  defmodule EtsTransactionHandle do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :sides
+    end
+
+    actions do
+      defaults [:read, :destroy, create: [:handle]]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :handle, :ci_string, public?: true
+    end
+
+    identities do
+      identity :unique_handle, [:handle]
+    end
+  end
+
+  defmodule EtsTransactionMember do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :members
+    end
+
+    multitenancy do
+      strategy :attribute
+      attribute :organization
+    end
+
+    actions do
+      defaults [:read, create: [:email]]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :organization, :string, public?: true
+      attribute :email, :string, public?: true
+    end
+
+    identities do
+      identity :unique_email, [:email]
+    end
+  end
+
+  defmodule EtsTransactionSeat do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :members
+    end
+
+    actions do
+      defaults [:read, create: [:email, :active]]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :email, :string, public?: true
+      attribute :active, :boolean, public?: true
+    end
+
+    identities do
+      identity :unique_active_email, [:email], where: expr(active == true)
+    end
+  end
+
+  defmodule EtsTransactionEntry do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :accounts
+    end
+
+    actions do
+      defaults [:read]
+
+      create :create do
+        primary? true
+        accept [:id, :email]
+      end
+
+      create :create_outside_transaction do
+        accept [:id, :email]
+        transaction? false
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id, writable?: true, public?: true
+      attribute :email, :string, public?: true
+    end
+  end
+
+  defmodule EtsTransactionTag do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :sides
+    end
+
+    actions do
+      defaults [:read, :destroy, create: [:name]]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    identities do
+      identity :unique_name, [:name], pre_check_with: Domain
+    end
+  end
+
+  defmodule EtsTransactionTenant do
+    defstruct [:id]
+
+    defimpl Ash.ToTenant do
+      def to_tenant(%{id: id}, _resource), do: "org_#{id}"
+    end
+  end
+
+  defmodule EtsTransactionPrintableTenant do
+    defstruct [:id]
+
+    defimpl Ash.ToTenant do
+      def to_tenant(%{id: id}, _resource), do: "org_#{id}"
+    end
+
+    defimpl String.Chars do
+      def to_string(%{id: id}), do: "printed_#{id}"
+    end
+  end
+
+  defmodule EtsTransactionTenantAccount do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      transaction_group :tenant_accounts
+    end
+
+    multitenancy do
+      strategy :context
+    end
+
+    actions do
+      defaults [:read, create: [:email]]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :email, :string, public?: true
+    end
+
+    identities do
+      identity :unique_email, [:email], pre_check_with: Domain
+    end
+  end
+
+  describe "transactions on a shared table" do
+    setup do
+      on_exit(fn ->
+        for resource <- [
+              EtsTransactionAccount,
+              EtsTransactionEntry,
+              EtsTransactionLeft,
+              EtsTransactionRight,
+              EtsTransactionNote,
+              EtsTransactionTag,
+              EtsTransactionHandle,
+              EtsTransactionMember,
+              EtsTransactionSeat,
+              EtsSharedTableTestEvent
+            ] do
+          Ash.DataLayer.Ets.stop(resource)
+        end
+
+        Ash.DataLayer.Ets.stop(EtsTransactionTenantAccount, "org_1")
+      end)
+    end
+
+    test "a resource that names a transaction group has them, private or not" do
+      assert Ash.DataLayer.data_layer_can?(EtsTransactionAccount, :transact)
+      assert Ash.DataLayer.data_layer_can?(EtsPrivateTransactionAccount, :transact)
+      refute Ash.DataLayer.data_layer_can?(EtsSharedTableTestEvent, :transact)
+    end
+
+    test "another process reads only what a transaction has committed, without waiting for it, in a transaction or not" do
+      parent = self()
+
+      writer =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionAccount, fn ->
+            Ash.create!(EtsTransactionAccount, %{email: "uncommitted@example.com"})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+      assert [] = Ash.read!(EtsTransactionAccount)
+
+      assert {:ok, []} =
+               Ash.transaction(EtsTransactionAccount, fn -> Ash.read!(EtsTransactionAccount) end)
+
+      send(writer.pid, :commit)
+      assert {:ok, :committed} = Task.await(writer)
+      assert [_] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a transaction reads what it wrote before it commits" do
+      assert {:ok, [%{email: "mine@example.com"}]} =
+               Ash.transaction(EtsTransactionAccount, fn ->
+                 Ash.create!(EtsTransactionAccount, %{email: "mine@example.com"})
+                 Ash.read!(EtsTransactionAccount)
+               end)
+    end
+
+    test "a private table's transaction leaves nothing behind when it rolls back" do
+      assert {:error, _} =
+               Ash.transaction(EtsPrivateTransactionAccount, fn ->
+                 Ash.create!(EtsPrivateTransactionAccount, %{})
+                 Ash.DataLayer.rollback(EtsPrivateTransactionAccount, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsPrivateTransactionAccount)
+    end
+
+    test "a transaction and a destroy wait, in turn, for another transaction holding the record they write" do
+      parent = self()
+      note = Ash.create!(EtsTransactionNote, %{body: "first"})
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionRight, fn ->
+            Ash.update!(note, %{body: "second"})
+            send(parent, :holds)
+
+            receive do
+              :finish -> :holder_finished
+            end
+          end)
+        end)
+
+      assert_receive :holds
+
+      waiter =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionLeft, fn ->
+            Ash.update!(note, %{body: "third"})
+            :waiter_finished
+          end)
+        end)
+
+      refute Task.yield(waiter, 100)
+      destroyer = Task.async(fn -> Ash.destroy(note) end)
+      refute Task.yield(destroyer, 100)
+
+      send(holder.pid, :finish)
+      assert {:ok, :holder_finished} = Task.await(holder)
+      assert {:ok, :waiter_finished} = Task.await(waiter)
+      assert :ok = Task.await(destroyer)
+      assert [] = Ash.read!(EtsTransactionNote)
+    end
+
+    test "transactions writing different records of one table do not wait for each other" do
+      parent = self()
+      note = Ash.create!(EtsTransactionNote, %{body: "first"})
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionRight, fn ->
+            Ash.update!(note, %{body: "second"})
+            send(parent, :holds)
+
+            receive do
+              :finish -> :holder_finished
+            end
+          end)
+        end)
+
+      assert_receive :holds
+
+      other =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionLeft, fn ->
+            Ash.create!(EtsTransactionNote, %{body: "other"})
+          end)
+        end)
+
+      assert {:ok, {:ok, %{body: "other"}}} = Task.yield(other, 1_000)
+
+      send(holder.pid, :finish)
+      assert {:ok, :holder_finished} = Task.await(holder)
+    end
+
+    test "of two transactions waiting for each other, one fails with a deadlock and the other completes" do
+      parent = self()
+      [one, two] = [Ash.UUID.generate(), Ash.UUID.generate()]
+
+      first =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionEntry, fn ->
+            Ash.create!(EtsTransactionEntry, %{id: one})
+            send(parent, :first_holds)
+
+            receive do
+              :cross -> Ash.create!(EtsTransactionEntry, %{id: two})
+            end
+
+            :first_finished
+          end)
+        end)
+
+      assert_receive :first_holds
+
+      second =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionEntry, fn ->
+            Ash.create!(EtsTransactionEntry, %{id: two})
+            send(parent, :second_holds)
+
+            receive do
+              :cross -> Ash.create!(EtsTransactionEntry, %{id: one})
+            end
+
+            :second_finished
+          end)
+        end)
+
+      assert_receive :second_holds
+      send(first.pid, :cross)
+      refute Task.yield(first, 100)
+      send(second.pid, :cross)
+
+      assert {:error, %Ash.Error.Unknown.UnknownError{error: "deadlock detected" <> _}} =
+               Task.await(second)
+
+      assert {:ok, :first_finished} = Task.await(first)
+      assert [_, _] = Ash.read!(EtsTransactionEntry)
+    end
+
+    test "a bulk create stores no two records of one identity from its own batch" do
+      result =
+        Ash.bulk_create(
+          [%{email: "same@example.com"}, %{email: "same@example.com"}],
+          EtsTransactionAccount,
+          :create,
+          return_errors?: true
+        )
+
+      assert result.status == :error
+      assert [] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "an action that runs past its timeout leaves none of its writes" do
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.Timeout{}]}} =
+               Ash.create(EtsTransactionAccount, %{email: "late@example.com"},
+                 action: :create_slowly,
+                 timeout: 10
+               )
+
+      assert [] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "simultaneous creates of one identity value keep one record" do
+      results =
+        at_once(20, fn _ -> Ash.create(EtsTransactionAccount, %{email: "same@example.com"}) end)
+
+      assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+      assert Enum.count(results, &match?({:error, %Ash.Error.Invalid{}}, &1)) == 19
+      assert [_] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a rollback leaves none of the transaction's writes" do
+      assert {:error, _} =
+               Ash.transaction(EtsTransactionAccount, fn ->
+                 Ash.create!(EtsTransactionAccount, %{email: "kept@example.com"})
+                 Ash.DataLayer.rollback(EtsTransactionAccount, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "an action that raises after its write leaves no record" do
+      result =
+        try do
+          Ash.create(EtsTransactionAccount, %{email: "gone@example.com"},
+            action: :create_then_fail
+          )
+        rescue
+          error -> {:raised, error}
+        end
+
+      refute match?({:ok, _}, result)
+      assert [] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a rollback through one resource of a group leaves none of the group's writes" do
+      assert {:error, _} =
+               Ash.transaction([EtsTransactionLeft, EtsTransactionRight], fn ->
+                 Ash.create!(EtsTransactionLeft, %{})
+                 Ash.create!(EtsTransactionRight, %{})
+                 Ash.DataLayer.rollback(EtsTransactionRight, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionLeft)
+      assert [] = Ash.read!(EtsTransactionRight)
+    end
+
+    test "another group's transaction inside one keeps what it committed when the outer rolls back" do
+      assert {:error, _} =
+               Ash.transaction(EtsTransactionLeft, fn ->
+                 Ash.create!(EtsTransactionLeft, %{})
+                 Ash.create!(EtsTransactionAccount, %{email: "committed@example.com"})
+                 Ash.DataLayer.rollback(EtsTransactionLeft, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionLeft)
+      assert [_] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a rollback leaves what was written to a table outside any transaction" do
+      assert {:error, _} =
+               Ash.transaction(EtsTransactionLeft, fn ->
+                 Ash.create!(EtsTransactionLeft, %{})
+                 Ash.create!(EtsSharedTableTestEvent, %{name: "outside"})
+                 Ash.DataLayer.rollback(EtsTransactionLeft, :rolled_back)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionLeft)
+      assert [_] = Ash.read!(EtsSharedTableTestEvent)
+    end
+
+    test "a tenant that Ash.ToTenant converts transacts" do
+      assert {:ok, _} =
+               Ash.create(EtsTransactionTenantAccount, %{email: "a@example.com"},
+                 tenant: %EtsTransactionTenant{id: 1}
+               )
+
+      assert [_] = Ash.read!(EtsTransactionTenantAccount, tenant: "org_1")
+    end
+
+    test "callers naming one tenant differently wait for one identity value" do
+      parent = self()
+
+      first =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionTenantAccount, fn ->
+            Ash.create!(EtsTransactionTenantAccount, %{email: "same@example.com"},
+              tenant: %EtsTransactionPrintableTenant{id: 1}
+            )
+
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+
+      second =
+        Task.async(fn ->
+          Ash.create(EtsTransactionTenantAccount, %{email: "same@example.com"}, tenant: "org_1")
+        end)
+
+      refute Task.yield(second, 300)
+
+      send(first.pid, :commit)
+      assert {:ok, :committed} = Task.await(first)
+      assert {:error, %Ash.Error.Invalid{}} = Task.await(second)
+      assert [_] = Ash.read!(EtsTransactionTenantAccount, tenant: "org_1")
+    end
+
+    test "a write outside any transaction waits for the transaction holding its record" do
+      parent = self()
+      id = Ash.UUID.generate()
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionEntry, fn ->
+            Ash.create!(EtsTransactionEntry, %{id: id, email: "inside@example.com"})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+
+      outside =
+        Task.async(fn ->
+          Ash.create(EtsTransactionEntry, %{id: id, email: "outside@example.com"},
+            action: :create_outside_transaction
+          )
+        end)
+
+      refute Task.yield(outside, 100)
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+      assert {:error, _} = Task.await(outside)
+      assert [%{email: "inside@example.com"}] = Ash.read!(EtsTransactionEntry)
+    end
+
+    test "a create nested in a transaction is refused an identity another transaction stored first" do
+      parent = self()
+
+      first =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionLeft, fn ->
+            Ash.create!(EtsTransactionLeft, %{})
+
+            EtsTransactionTag
+            |> Ash.Changeset.for_create(:create, %{name: "elixir"})
+            |> Ash.Changeset.before_action(fn changeset ->
+              send(parent, :pre_checked)
+
+              receive do
+                :insert -> changeset
+              end
+            end)
+            |> Ash.create()
+          end)
+        end)
+
+      assert_receive :pre_checked
+
+      assert {:ok, _} = Ash.create(EtsTransactionTag, %{name: "elixir"})
+
+      send(first.pid, :insert)
+
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [%Ash.Error.Changes.InvalidChanges{message: "has already been taken"}]
+              }} = Task.await(first)
+
+      assert [_] = Ash.read!(EtsTransactionTag)
+    end
+
+    test "an action past its timeout stops at the next table it reads" do
+      {micros, result} =
+        :timer.tc(fn ->
+          Ash.create(EtsTransactionAccount, %{email: "late@example.com"},
+            action: :create_then_read_late,
+            timeout: 50
+          )
+        end)
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.Timeout{}]}} = result
+      assert micros < 1_000_000
+      assert [] = Ash.read!(EtsTransactionAccount)
+    end
+
+    test "a transaction past its timeout while waiting for a record returns a timeout" do
+      parent = self()
+      note = Ash.create!(EtsTransactionNote, %{body: "first"})
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionRight, fn ->
+            Ash.update!(note, %{body: "second"})
+            send(parent, :holds)
+
+            receive do
+              :finish -> :holder_finished
+            end
+          end)
+        end)
+
+      assert_receive :holds
+
+      assert {:error, %Ash.Error.Invalid.Timeout{}} =
+               Ash.transaction(EtsTransactionLeft, fn -> Ash.update(note, %{body: "late"}) end,
+                 timeout: 200
+               )
+
+      send(holder.pid, :finish)
+      assert {:ok, :holder_finished} = Task.await(holder)
+    end
+
+    test "a transaction whose table its own process stops commits none of its writes" do
+      assert {:error, _} =
+               Ash.transaction([EtsTransactionLeft, EtsTransactionRight], fn ->
+                 Ash.create!(EtsTransactionLeft, %{})
+                 Ash.create!(EtsTransactionRight, %{})
+                 Ash.DataLayer.Ets.stop(EtsTransactionRight)
+               end)
+
+      assert [] = Ash.read!(EtsTransactionLeft)
+    end
+
+    test "a stop waits for the transaction holding its table, and a write asking for the table meanwhile runs once it is gone" do
+      parent = self()
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction([EtsTransactionLeft, EtsTransactionRight], fn ->
+            Ash.create!(EtsTransactionLeft, %{})
+            Ash.create!(EtsTransactionRight, %{})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+
+      stopper = Task.async(fn -> Ash.DataLayer.Ets.stop(EtsTransactionRight) end)
+      refute Task.yield(stopper, 100)
+
+      later = Task.async(fn -> Ash.create(EtsTransactionRight, %{}) end)
+      refute Task.yield(later, 100)
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+      assert :ok = Task.await(stopper)
+      assert {:ok, %{id: id}} = Task.await(later)
+      assert [_] = Ash.read!(EtsTransactionLeft)
+      assert [%{id: ^id}] = Ash.read!(EtsTransactionRight)
+    end
+
+    test "a stop past its timeout raises naming the transaction that holds the table, and leaves nothing waiting behind it" do
+      parent = self()
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionRight, fn ->
+            Ash.create!(EtsTransactionRight, %{})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+
+      message =
+        "the table of #{inspect(EtsTransactionRight)} was not stopped within 100ms: " <>
+          "the transactions of #{inspect([holder.pid])} hold it"
+
+      assert_raise RuntimeError, message, fn ->
+        Ash.DataLayer.Ets.stop(EtsTransactionRight, nil, timeout: 100)
+      end
+
+      assert {:ok, _} =
+               Task.await(Task.async(fn -> Ash.create(EtsTransactionRight, %{}) end), 1000)
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+      assert [_, _] = Ash.read!(EtsTransactionRight)
+    end
+
+    test "a stop raises when a transaction holding its table waits for the caller's own transaction" do
+      parent = self()
+      note = Ash.create!(EtsTransactionNote, %{body: "first"})
+
+      assert {:ok, waiter} =
+               Ash.transaction(EtsTransactionLeft, fn ->
+                 Ash.update!(note, %{body: "held"})
+
+                 waiter =
+                   Task.async(fn ->
+                     Ash.transaction(EtsTransactionRight, fn ->
+                       Ash.create!(EtsTransactionRight, %{})
+                       send(parent, :written)
+                       Ash.update!(note, %{body: "waited"})
+                       :waiter_finished
+                     end)
+                   end)
+
+                 assert_receive :written
+                 refute Task.yield(waiter, 100)
+
+                 message =
+                   "the table of #{inspect(EtsTransactionRight)} was not stopped: " <>
+                     "the transactions holding it wait for the caller's own transaction"
+
+                 assert_raise RuntimeError, message, fn ->
+                   Ash.DataLayer.Ets.stop(EtsTransactionRight)
+                 end
+
+                 waiter
+               end)
+
+      assert {:ok, :waiter_finished} = Task.await(waiter)
+      assert [%{body: "waited"}] = Ash.read!(EtsTransactionNote)
+      assert [_] = Ash.read!(EtsTransactionRight)
+    end
+
+    test "writers of one identity value wait for each other, and writers of other values do not" do
+      parent = self()
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionTag, fn ->
+            Ash.create!(EtsTransactionTag, %{name: "elixir"})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+
+      other = Task.async(fn -> Ash.create(EtsTransactionTag, %{name: "erlang"}) end)
+      assert {:ok, {:ok, _}} = Task.yield(other, 1_000)
+
+      same = Task.async(fn -> Ash.create(EtsTransactionTag, %{name: "elixir"}) end)
+      refute Task.yield(same, 100)
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [%Ash.Error.Changes.InvalidChanges{message: "has already been taken"}]
+              }} = Task.await(same)
+
+      assert [_, _] = Ash.read!(EtsTransactionTag)
+    end
+
+    test "an identity holds without a pre-check, comparing values as their type does" do
+      parent = self()
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionHandle, fn ->
+            Ash.create!(EtsTransactionHandle, %{handle: "Elixir"})
+            send(parent, :written)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :written
+
+      other = Task.async(fn -> Ash.create(EtsTransactionHandle, %{handle: "elixir"}) end)
+      refute Task.yield(other, 100)
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [%Ash.Error.Changes.InvalidChanges{message: "has already been taken"}]
+              }} = Task.await(other)
+
+      assert [_] = Ash.read!(EtsTransactionHandle)
+    end
+
+    test "a create is refused a value until the destroy that frees it commits" do
+      parent = self()
+      handle = Ash.create!(EtsTransactionHandle, %{handle: "elixir"})
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionHandle, fn ->
+            Ash.destroy!(handle)
+            send(parent, :destroyed)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :destroyed
+
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [%Ash.Error.Changes.InvalidChanges{message: "has already been taken"}]
+              }} = Ash.create(EtsTransactionHandle, %{handle: "Elixir"})
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+      assert {:ok, _} = Ash.create(EtsTransactionHandle, %{handle: "Elixir"})
+      assert [_] = Ash.read!(EtsTransactionHandle)
+    end
+
+    test "an identity of an attribute-multitenant resource holds one value per tenant" do
+      assert {:ok, _} = Ash.create(EtsTransactionMember, %{email: "a@example.com"}, tenant: "one")
+      assert {:ok, _} = Ash.create(EtsTransactionMember, %{email: "a@example.com"}, tenant: "two")
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Ash.create(EtsTransactionMember, %{email: "a@example.com"}, tenant: "one")
+    end
+
+    test "an identity with a where holds one value among the records it admits" do
+      assert {:ok, _} = Ash.create(EtsTransactionSeat, %{email: "a@example.com", active: false})
+      assert {:ok, _} = Ash.create(EtsTransactionSeat, %{email: "a@example.com", active: true})
+      assert {:ok, _} = Ash.create(EtsTransactionSeat, %{email: "a@example.com", active: false})
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Ash.create(EtsTransactionSeat, %{email: "a@example.com", active: true})
+    end
+
+    test "a bulk update leaves out a record that stopped matching while it waited" do
+      parent = self()
+      note = Ash.create!(EtsTransactionNote, %{body: "open"})
+
+      holder =
+        Task.async(fn ->
+          Ash.transaction(EtsTransactionNote, fn ->
+            Ash.update!(note, %{body: "closed"})
+            send(parent, :closed)
+
+            receive do
+              :commit -> :committed
+            end
+          end)
+        end)
+
+      assert_receive :closed
+
+      updater =
+        Task.async(fn ->
+          EtsTransactionNote
+          |> Ash.Query.filter(body == "open")
+          |> Ash.bulk_update(:update, %{body: "seen"},
+            strategy: :atomic,
+            return_records?: true,
+            return_errors?: true
+          )
+        end)
+
+      refute Task.yield(updater, 100)
+
+      send(holder.pid, :commit)
+      assert {:ok, :committed} = Task.await(holder)
+      assert %Ash.BulkResult{status: :success, records: []} = Task.await(updater)
+      assert [%{body: "closed"}] = Ash.read!(EtsTransactionNote)
+    end
+  end
+
+  # Runs `fun` for 1..count in as many processes released together, giving each three
+  # seconds; one still running then is reported as `:still_running`.
+  defp at_once(count, fun) do
+    tasks =
+      for n <- 1..count do
+        Task.async(fn ->
+          receive do
+            :go -> fun.(n)
+          end
+        end)
+      end
+
+    Enum.each(tasks, &send(&1.pid, :go))
+
+    tasks
+    |> Task.yield_many(3_000)
+    |> Enum.map(fn
+      {_task, {:ok, result}} ->
+        result
+
+      {task, nil} ->
+        Task.shutdown(task, :brutal_kill)
+        :still_running
+    end)
+  end
+
   defp cast_user!({pkey, attrs}) do
     {:ok, user} = Ash.DataLayer.Ets.cast_record(attrs, EtsTestUser)
     {pkey, user}

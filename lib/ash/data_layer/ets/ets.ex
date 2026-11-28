@@ -28,6 +28,11 @@ defmodule Ash.DataLayer.Ets do
         doc:
           "Sets the ets table protection to private, and scopes it to only this process. The table name will not be used directly if this is true, to allow multiple processes to use this resource separately."
       ],
+      transaction_group: [
+        type: :atom,
+        doc:
+          "Runs the resource's actions in transactions shared with every resource that names the same group, as resources sharing a repo share a transaction. A transaction's writes reach the tables when it commits, so other processes read only what was committed, and a rollback through any resource of the group leaves the tables as they were. Reads take no locks. A write locks the record it writes, and the identity values it takes, until its transaction ends, waiting for a lock another transaction holds and failing only when its wait would deadlock, and a write made outside any transaction runs in one of its own. The resource's identities are enforced when it writes, so they need no `pre_check_with`. A value a destroy or an update gives up stays taken until its transaction commits, so a create of the value meanwhile is refused, as Ash's identity check refuses a value a committed record holds. A transaction's timeout is checked at each table it reads or writes and when it commits."
+      ],
       table: [
         type: :atom,
         doc: """
@@ -40,13 +45,14 @@ defmodule Ash.DataLayer.Ets do
   @moduledoc """
   An ETS (Erlang Term Storage) backed Ash Datalayer, for testing and lightweight usage.
 
-  Remember, this does not have support for transactions! This is not recommended for production
-  use, especially in multi-user applications. It can, however, be great for prototyping.
+  Remember, this has no support for transactions unless the resource names a
+  `transaction_group` in its `ets` section. This is not recommended for production use,
+  especially in multi-user applications. It can, however, be great for prototyping.
   """
 
   use Spark.Dsl.Extension,
     sections: [@ets],
-    verifiers: [Ash.DataLayer.Verifiers.RequirePreCheckWith]
+    verifiers: [Ash.DataLayer.Ets.Verifiers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
   alias Ash.Error.Invalid.InvalidPrimaryKey
@@ -164,6 +170,221 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  defmodule LockManager do
+    @moduledoc false
+    use GenServer
+
+    # The locks of the transactions writing shared tables, held in one process that sees every
+    # wait. A lock names a table, by its name and tenant, and either one item of it (a record's
+    # primary key or an identity's value) or the whole table. An item conflicts with itself and
+    # with the whole table, which conflicts with every item. A transaction is granted what it
+    # holds already, and every item of a table it holds whole. A request is granted when it
+    # conflicts with nothing another transaction holds or asked for before it, so conflicting
+    # requests are granted in the order they arrive, each waiting for as long as its transaction
+    # may run, and one is refused only when its wait would deadlock.
+    def lock(table, item, id, timeout) do
+      manager =
+        case GenServer.start(__MODULE__, nil, name: __MODULE__) do
+          {:ok, pid} -> pid
+          {:error, {:already_started, pid}} -> pid
+        end
+
+      GenServer.call(manager, {:lock, table, item, id}, timeout)
+    catch
+      :exit, {:timeout, _} -> :timeout
+    end
+
+    # One lock of a transaction goes, held or asked for; the others stay until it ends.
+    def unlock(table, item, id) do
+      case Process.whereis(__MODULE__) do
+        nil -> :ok
+        pid -> GenServer.call(pid, {:unlock, table, item, id})
+      end
+    catch
+      :exit, _ -> :ok
+    end
+
+    # The processes whose transactions, other than the given one, hold a lock of a table.
+    def holders(table, id) do
+      case Process.whereis(__MODULE__) do
+        nil -> []
+        pid -> GenServer.call(pid, {:holders, table, id})
+      end
+    catch
+      :exit, _ -> []
+    end
+
+    # A transaction's locks and waiting request all go when it ends.
+    def release(id) do
+      case Process.whereis(__MODULE__) do
+        nil -> :ok
+        pid -> GenServer.call(pid, {:release, id})
+      end
+    catch
+      :exit, _ -> :ok
+    end
+
+    def init(nil), do: {:ok, %{tables: %{}, transactions: %{}}}
+
+    def handle_call({:lock, table, item, id}, {pid, _} = from, state) do
+      state = track(state, id, pid, table)
+      entry = Map.get(state.tables, table, %{held: %{}, queue: []})
+
+      case blockers(entry, id, item, entry.queue) do
+        [] ->
+          {:reply, :ok, put_entry(state, table, %{entry | held: Map.put(entry.held, item, id)})}
+
+        # Waiting closes a cycle when a transaction this one would wait for already waits,
+        # through the transactions it waits for, on this one. The BEAM detects no such cycle
+        # among waiting processes, so this is PostgreSQL's deadlock detection: the request that
+        # would close a cycle of waits is refused
+        # (https://github.com/postgres/postgres/blob/master/src/backend/storage/lmgr/README).
+        blockers ->
+          if waits_on?(state, blockers, id, MapSet.new()) do
+            {:reply, :deadlock, state}
+          else
+            entry = %{entry | queue: entry.queue ++ [{from, id, item}]}
+            {:noreply, state |> put_entry(table, entry) |> put_waiting(id, table)}
+          end
+      end
+    end
+
+    def handle_call({:unlock, table, item, id}, _from, state) do
+      case state.tables do
+        %{^table => entry} ->
+          {asked, queue} = Enum.split_with(entry.queue, &match?({_from, ^id, ^item}, &1))
+          held = if entry.held[item] == id, do: Map.delete(entry.held, item), else: entry.held
+          state = if asked == [], do: state, else: put_waiting(state, id, nil)
+          {:reply, :ok, grant(state, table, %{entry | held: held, queue: queue})}
+
+        _ ->
+          {:reply, :ok, state}
+      end
+    end
+
+    def handle_call({:holders, table, id}, _from, state) do
+      held = Map.get(state.tables, table, %{held: %{}}).held
+
+      {:reply,
+       for({_item, holder} <- held, holder != id, uniq: true, do: state.transactions[holder].pid),
+       state}
+    end
+
+    def handle_call({:release, id}, _from, state), do: {:reply, :ok, release(state, id)}
+
+    def handle_info({:DOWN, monitor, :process, _, _}, state) do
+      case Enum.find(state.transactions, fn {_id, transaction} ->
+             transaction.monitor == monitor
+           end) do
+        {id, _transaction} -> {:noreply, release(state, id)}
+        nil -> {:noreply, state}
+      end
+    end
+
+    def handle_info(_, state), do: {:noreply, state}
+
+    defp release(state, id) do
+      case Map.pop(state.transactions, id) do
+        {nil, _transactions} ->
+          state
+
+        {%{monitor: monitor, tables: tables}, transactions} ->
+          Process.demonitor(monitor, [:flush])
+
+          Enum.reduce(tables, %{state | transactions: transactions}, fn table, state ->
+            case state.tables do
+              %{^table => entry} ->
+                grant(state, table, %{
+                  held: Map.reject(entry.held, fn {_item, holder} -> holder == id end),
+                  queue: Enum.reject(entry.queue, fn {_from, waiter, _item} -> waiter == id end)
+                })
+
+              _ ->
+                state
+            end
+          end)
+      end
+    end
+
+    # Grants, in the order they arrived, the waiting requests that conflict with nothing held
+    # or asked for before them.
+    defp grant(state, table, entry) do
+      {entry, granted} =
+        Enum.reduce(entry.queue, {%{entry | queue: []}, []}, fn {from, waiter, item} = request,
+                                                                {entry, granted} ->
+          case blockers(entry, waiter, item, entry.queue) do
+            [] -> {%{entry | held: Map.put(entry.held, item, waiter)}, [{from, waiter} | granted]}
+            _ -> {%{entry | queue: entry.queue ++ [request]}, granted}
+          end
+        end)
+
+      Enum.reduce(granted, put_entry(state, table, entry), fn {from, waiter}, state ->
+        GenServer.reply(from, :ok)
+        put_waiting(state, waiter, nil)
+      end)
+    end
+
+    # The transactions a request waits for: those holding a lock it conflicts with, and those
+    # asking before it for one.
+    defp blockers(entry, id, item, ahead) do
+      if entry.held[:table] == id or entry.held[item] == id do
+        []
+      else
+        held =
+          for {other, holder} <- entry.held, holder != id, conflicts?(item, other), do: holder
+
+        asked =
+          for {_from, waiter, other} <- ahead, waiter != id, conflicts?(item, other), do: waiter
+
+        Enum.uniq(held ++ asked)
+      end
+    end
+
+    defp conflicts?(:table, _item), do: true
+    defp conflicts?(_item, :table), do: true
+    defp conflicts?(item, other), do: item == other
+
+    defp waits_on?(state, transactions, id, seen) do
+      Enum.any?(transactions, fn
+        ^id ->
+          true
+
+        other ->
+          with false <- MapSet.member?(seen, other),
+               %{waiting: table} when not is_nil(table) <- state.transactions[other] do
+            entry = state.tables[table]
+
+            {ahead, [{_from, ^other, item} | _]} =
+              Enum.split_while(entry.queue, fn {_from, waiter, _item} -> waiter != other end)
+
+            waits_on?(state, blockers(entry, other, item, ahead), id, MapSet.put(seen, other))
+          else
+            _ -> false
+          end
+      end)
+    end
+
+    defp track(state, id, pid, table) do
+      transactions =
+        state.transactions
+        |> Map.put_new_lazy(id, fn ->
+          %{pid: pid, monitor: Process.monitor(pid), tables: MapSet.new(), waiting: nil}
+        end)
+        |> Map.update!(id, &%{&1 | tables: MapSet.put(&1.tables, table)})
+
+      %{state | transactions: transactions}
+    end
+
+    defp put_entry(state, table, %{held: held, queue: []}) when held == %{},
+      do: %{state | tables: Map.delete(state.tables, table)}
+
+    defp put_entry(state, table, entry),
+      do: %{state | tables: Map.put(state.tables, table, entry)}
+
+    defp put_waiting(state, id, table),
+      do: %{state | transactions: Map.update!(state.transactions, id, &%{&1 | waiting: table})}
+  end
+
   @doc false
   # Tenant values are routinely derived from user input, and atoms are never garbage
   # collected, so we only intern a new table name when we are actually going to create
@@ -188,9 +409,33 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  @doc "Stops the storage for a given resource/tenant (deleting all of the data)"
+  @stop_opts [
+    timeout: [
+      type: :timeout,
+      default: :infinity,
+      doc: "How long, in milliseconds, to wait for the transactions holding the table."
+    ]
+  ]
+
+  @doc """
+  Stops the storage for a given resource/tenant (deleting all of the data).
+
+  For a resource in a transaction group, the table is deleted once the transactions of other
+  processes holding any of its locks have ended, and writes asking for it meanwhile wait until
+  it is gone. The wait lasts as long as those transactions run, unless `:timeout` bounds it.
+
+  Returns `:ok`, or raises: past the timeout, naming the processes whose transactions hold the
+  table, and when one of those transactions waits for the caller's own transaction, since the
+  wait would never end.
+
+  ## Options
+
+  #{Spark.Options.docs(@stop_opts)}
+  """
   # sobelow_skip ["DOS.ModuleConcat"]
-  def stop(resource, tenant \\ nil) do
+  def stop(resource, tenant \\ nil, opts \\ []) do
+    opts = Spark.Options.validate!(opts, @stop_opts)
+
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
         tenant
@@ -205,25 +450,64 @@ defmodule Ash.DataLayer.Ets do
           ETS.Set.delete(table)
       end
     else
-      case table_name(resource, tenant, false) do
-        :no_table ->
-          :ok
-
-        {:ok, table} ->
-          case Process.whereis(Module.concat(table, TableManager)) do
-            nil ->
-              :ok
-
-            pid ->
-              # Wait for the manager to exit, so its table is gone by the time this returns
-              ref = Process.monitor(pid)
-              Process.exit(pid, :shutdown)
-
-              receive do
-                {:DOWN, ^ref, :process, _, _} -> :ok
-              end
-          end
+      with {:ok, table} <- table_name(resource, tenant, false),
+           pid when is_pid(pid) <- Process.whereis(Module.concat(table, TableManager)) do
+        if Ash.DataLayer.Ets.Info.transaction_group(resource) do
+          stop_locked(resource, tenant, pid, opts[:timeout])
+        else
+          stop_manager(pid)
+        end
+      else
+        _no_table -> :ok
       end
+    end
+  end
+
+  # A table is stopped under a lock on the whole of it, asked for in turn like any other, so
+  # the transactions holding any of its locks end and commit first, and the locks asked for
+  # after it wait until the table is gone. The caller's own transaction never waits on itself,
+  # and keeps its other locks. A stop whose wait times out gives up its request, so nothing
+  # waits behind it, and one whose wait would deadlock is never queued.
+  defp stop_locked(resource, tenant, pid, timeout) do
+    group = Ash.DataLayer.Ets.Info.transaction_group(resource)
+    key = lock_key(resource, tenant)
+
+    {id, own?} =
+      case Process.get({:ash_ets_transaction, group}) do
+        %{id: id} -> {id, true}
+        nil -> {System.unique_integer([:monotonic, :positive]), false}
+      end
+
+    release = fn ->
+      if own?, do: LockManager.unlock(key, :table, id), else: LockManager.release(id)
+    end
+
+    case LockManager.lock(key, :table, id, timeout) do
+      :ok ->
+        stop_manager(pid)
+        release.()
+        :ok
+
+      :deadlock ->
+        raise "the table of #{inspect(resource)} was not stopped: " <>
+                "the transactions holding it wait for the caller's own transaction"
+
+      :timeout ->
+        holders = LockManager.holders(key, id)
+        release.()
+
+        raise "the table of #{inspect(resource)} was not stopped within #{timeout}ms: " <>
+                "the transactions of #{inspect(holders)} hold it"
+    end
+  end
+
+  # Waits for the manager to exit, so its table is gone by the time this returns.
+  defp stop_manager(pid) do
+    ref = Process.monitor(pid)
+    Process.exit(pid, :shutdown)
+
+    receive do
+      {:DOWN, ^ref, :process, _, _} -> :ok
     end
   end
 
@@ -276,7 +560,11 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :distinct), do: true
-  def can?(_, :transact), do: false
+
+  # A resource's actions take `transaction?` from this when the resource compiles.
+  def can?(resource, :transact),
+    do: not is_nil(Ash.DataLayer.Ets.Info.transaction_group(resource))
+
   def can?(_, {:filter_expr, _}), do: true
 
   case Application.compile_env(:ash, :no_join_mnesia_ets) || false do
@@ -307,6 +595,311 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:atomic, :create}), do: true
   def can?(_, :through_relationship), do: true
   def can?(_, _), do: false
+
+  # A transaction is its group's, as a database transaction is its repo's: every resource of
+  # the group runs inside it. It reads committed data, as AshPostgres's transactions read in
+  # PostgreSQL. Its writes wait in its store until it commits, as Mnesia keeps a transaction's
+  # writes in its store
+  # (https://github.com/erlang/otp/blob/master/lib/mnesia/src/mnesia.erl, write_to_store):
+  # its own reads see them over the tables (add_written and add_match there), every other
+  # process reads only what was committed, and a rollback or a timeout leaves the tables as
+  # they were. Its reads take no locks. Each write locks what it writes, the record and the
+  # identity values it takes, until the transaction ends; a lock another
+  # transaction holds is waited for, and a transaction fails only when waiting would deadlock.
+  # Its timeout is checked at each table it reads or writes and when it commits.
+  @doc false
+  @impl true
+  def transaction(resource, func, timeout, reason) do
+    group = Ash.DataLayer.Ets.Info.transaction_group(resource)
+
+    transaction = %{
+      id: System.unique_integer([:monotonic, :positive]),
+      deadline: deadline(timeout),
+      timeout: timeout,
+      name: name(reason, resource)
+    }
+
+    Process.put({:ash_ets_transaction, group}, transaction)
+
+    try do
+      result = func.()
+      store = Process.get({:ash_ets_store, group}, %{})
+
+      cond do
+        past?(transaction.deadline) ->
+          {:error, timeout_error(transaction)}
+
+        # A commit lands one table at a time, so it starts only once every table is there.
+        Enum.any?(Map.keys(store), &(:ets.info(&1, :id) == :undefined)) ->
+          {:error, "a table written in the transaction was stopped before it committed"}
+
+        true ->
+          for {tid, ops} <- store do
+            for {key, :delete} <- ops, do: :ets.delete(tid, key)
+            :ets.insert(tid, for({_key, {:write, object}} <- ops, do: object))
+          end
+
+          {:ok, result}
+      end
+    catch
+      {{:ash_ets_rollback, ^group}, value} -> {:error, value}
+    after
+      release(group)
+      Process.delete({:ash_ets_store, group})
+      Process.delete({:ash_ets_transaction, group})
+    end
+  end
+
+  @doc false
+  @impl true
+  def rollback(resource, value) do
+    throw({{:ash_ets_rollback, Ash.DataLayer.Ets.Info.transaction_group(resource)}, value})
+  end
+
+  @doc false
+  @impl true
+  def in_transaction?(resource) do
+    Process.get({:ash_ets_transaction, Ash.DataLayer.Ets.Info.transaction_group(resource)}) !=
+      nil
+  end
+
+  # A write to a group's shared table made outside any transaction runs in one of its own, so
+  # it waits for the transactions holding what it writes and lands before or after them. An
+  # update or destroy of a tenant with no table has no transaction to wait for.
+  defp transact_write(resource, tenant, create?, func) do
+    if shared_table?(resource) and not is_nil(Ash.DataLayer.Ets.Info.transaction_group(resource)) and
+         not in_transaction?(resource) and
+         (create? or match?({:ok, _}, wrap_or_create_table(resource, tenant, false))) do
+      case transaction(resource, func, :infinity, %{tenant: tenant}) do
+        {:ok, result} -> result
+        {:error, error} -> {:error, error}
+      end
+    else
+      func.()
+    end
+  end
+
+  # A table's locks name it by its name and, for a resource with context multitenancy, its
+  # tenant, so locking a tenant's table creates nothing.
+  defp lock_key(resource, tenant) do
+    tenant =
+      if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+        tenant
+      end
+
+    {Ash.DataLayer.Ets.Info.table(resource), tenant}
+  end
+
+  # Locks one item of a table for the transaction open in this process, which holds it until
+  # it ends. Refused for a deadlock or past its deadline, the transaction rolls back. A private
+  # table, which no other process reaches, needs no lock.
+  defp lock_item(resource, tenant, item) do
+    check_deadline(resource)
+    group = Ash.DataLayer.Ets.Info.transaction_group(resource)
+
+    with %{} = transaction <- Process.get({:ash_ets_transaction, group}),
+         false <- Ash.DataLayer.Ets.Info.private?(resource) do
+      case LockManager.lock(
+             lock_key(resource, tenant),
+             item,
+             transaction.id,
+             remaining(transaction.deadline)
+           ) do
+        :ok -> :ok
+        :timeout -> rollback(resource, timeout_error(transaction))
+        :deadlock -> rollback(resource, deadlock_error(resource))
+      end
+    else
+      _ -> :ok
+    end
+  end
+
+  # A write locks the record it writes by its primary key, which a temporal record's versions
+  # share. A record of a resource with no primary key is created under a key no other record
+  # has, and is never written again.
+  defp lock_record(resource, tenant, record) do
+    if Ash.Resource.Info.primary_key(resource) != [],
+      do: lock_item(resource, tenant, {:record, primary_key(resource, record)}),
+      else: :ok
+  end
+
+  # The table a write writes, found once the write holds its locks, so a write that waited for
+  # a stop finds the table the stop left. The open transaction's writes to it wait in its store.
+  defp written_table(resource, tenant, create?) do
+    group = Ash.DataLayer.Ets.Info.transaction_group(resource)
+
+    with {:ok, table} <- wrap_or_create_table(resource, tenant, create?) do
+      if Process.get({:ash_ets_transaction, group}), do: hold(table.table, group)
+      {:ok, table}
+    end
+  end
+
+  # Past its deadline, a transaction rolls back at the next table it reads or writes.
+  defp check_deadline(resource) do
+    case Process.get({:ash_ets_transaction, Ash.DataLayer.Ets.Info.transaction_group(resource)}) do
+      %{deadline: deadline} = transaction ->
+        if past?(deadline), do: rollback(resource, timeout_error(transaction)), else: :ok
+
+      nil ->
+        :ok
+    end
+  end
+
+  defp hold(tid, group) do
+    if !Process.put({:ash_ets_held, tid}, group) do
+      Process.put({:ash_ets_held_tables, group}, [
+        tid | Process.get({:ash_ets_held_tables, group}, [])
+      ])
+    end
+
+    :ok
+  end
+
+  defp release(group) do
+    for tid <- Process.get({:ash_ets_held_tables, group}, []),
+        do: Process.delete({:ash_ets_held, tid})
+
+    Process.delete({:ash_ets_held_tables, group})
+    %{id: id} = Process.get({:ash_ets_transaction, group})
+    LockManager.release(id)
+  end
+
+  defp deadlock_error(resource),
+    do: "deadlock detected while waiting for a lock of #{inspect(resource)}"
+
+  defp timeout_error(transaction),
+    do: Ash.Error.Invalid.Timeout.exception(timeout: transaction.timeout, name: transaction.name)
+
+  defp deadline(timeout) when is_integer(timeout),
+    do: System.monotonic_time(:millisecond) + timeout
+
+  defp deadline(_), do: :infinity
+
+  defp remaining(:infinity), do: :infinity
+  defp remaining(deadline), do: max(deadline - System.monotonic_time(:millisecond), 0)
+
+  defp past?(:infinity), do: false
+  defp past?(deadline), do: System.monotonic_time(:millisecond) > deadline
+
+  defp name(%{metadata: %{resource: resource, action: action}}, _) when is_atom(action),
+    do: "#{inspect(resource)}.#{action}"
+
+  defp name(_, resource), do: inspect(resource)
+
+  defp shared_table?(resource) do
+    Ash.Resource.Info.data_layer(resource) == __MODULE__ and
+      not Ash.DataLayer.Ets.Info.private?(resource)
+  end
+
+  # The writes of the open transaction that writes a table, waiting in its store until it
+  # commits, which keeps them by table. A table no open transaction writes is read and written
+  # directly.
+  defp store_of(table) do
+    with group when not is_nil(group) <- Process.get({:ash_ets_held, table.table}),
+         do: {group, Map.get(Process.get({:ash_ets_store, group}, %{}), table.table, %{})}
+  end
+
+  defp write_to_store(table, group, ops) do
+    store = Process.get({:ash_ets_store, group}, %{})
+    Process.put({:ash_ets_store, group}, Map.update(store, table.table, ops, &Map.merge(&1, ops)))
+  end
+
+  # A transaction reads what it wrote over what the table holds, as Mnesia's add_written.
+  defp get_object(table, key) do
+    with {_group, ops} <- store_of(table),
+         {:ok, op} <- Map.fetch(ops, key) do
+      case op do
+        {:write, object} -> {:ok, object}
+        :delete -> {:ok, nil}
+      end
+    else
+      _ -> ETS.Set.get(table, key)
+    end
+  end
+
+  defp all_objects(table) do
+    with {:ok, objects} <- ETS.Set.to_list(table), do: {:ok, merge(objects, table)}
+  end
+
+  # The match spec runs over what the transaction wrote too, as Mnesia's add_written_match.
+  defp select_objects(table, spec) do
+    case store_of(table) do
+      {_group, ops} when ops != %{} ->
+        heads = for {head, guards, _body} <- spec, do: {head, guards, [:"$_"]}
+
+        with {:ok, objects} <- ETS.Set.select(table, heads) do
+          {:ok, :ets.match_spec_run(merge(objects, table), :ets.match_spec_compile(spec))}
+        end
+
+      _ ->
+        ETS.Set.select(table, spec)
+    end
+  end
+
+  # A scan sees what the transaction wrote over what the table holds, in key order, as
+  # Mnesia's add_match keeps an ordered set's.
+  defp merge(objects, table) do
+    case store_of(table) do
+      {_group, ops} when ops != %{} ->
+        objects
+        |> Enum.reject(&Map.has_key?(ops, elem(&1, 0)))
+        |> Enum.concat(for {_key, {:write, object}} <- ops, do: object)
+        |> Enum.sort_by(&elem(&1, 0))
+
+      _ ->
+        objects
+    end
+  end
+
+  # Inserted only when no object holds the key, the transaction's own writes counted.
+  defp insert_new_object(table, {key, _} = object) do
+    case store_of(table) do
+      nil ->
+        :ets.insert_new(table.table, object)
+
+      {group, ops} ->
+        taken =
+          case Map.fetch(ops, key) do
+            {:ok, {:write, _}} -> true
+            {:ok, :delete} -> false
+            :error -> :ets.member(table.table, key)
+          end
+
+        if taken do
+          false
+        else
+          write_to_store(table, group, %{key => {:write, object}})
+          true
+        end
+    end
+  end
+
+  defp put_objects(table, objects) do
+    case store_of(table) do
+      nil ->
+        ETS.Set.put(table, objects)
+
+      {group, _ops} ->
+        write_to_store(
+          table,
+          group,
+          Map.new(List.wrap(objects), fn {key, _} = object -> {key, {:write, object}} end)
+        )
+
+        {:ok, table}
+    end
+  end
+
+  defp delete_object(table, key) do
+    case store_of(table) do
+      nil ->
+        ETS.Set.delete(table, key)
+
+      {group, _ops} ->
+        write_to_store(table, group, %{key => :delete})
+        {:ok, table}
+    end
+  end
 
   @doc false
   @impl true
@@ -1325,18 +1918,13 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp get_records(resource, [], _parent, tenant) do
-    case wrap_or_create_table(resource, tenant, false) do
-      :no_table ->
-        {:ok, []}
-
-      {:ok, table} ->
-        with {:ok, record_tuples} <- ETS.Set.to_list(table),
-             records <- Enum.map(record_tuples, &elem(&1, 1)) do
-          cast_records(records, resource)
-        end
-
-      {:error, error} ->
-        {:error, error}
+    with :ok <- check_deadline(resource),
+         {:ok, table} <- wrap_or_create_table(resource, tenant, false),
+         {:ok, record_tuples} <- all_objects(table) do
+      cast_records(Enum.map(record_tuples, &elem(&1, 1)), resource)
+    else
+      :no_table -> {:ok, []}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -1684,9 +2272,13 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def upsert(resource, changeset, keys, identity \\ nil) do
-    do_upsert(resource, changeset, keys, identity)
+    transact_write(resource, changeset.tenant, true, fn ->
+      do_upsert(resource, changeset, keys, identity)
+    end)
   end
 
+  # An upsert locks the value it looks its record up by, its identity's or its primary key's,
+  # before the lookup that decides whether it creates or updates.
   defp do_upsert(resource, changeset, keys, identity, from_bulk_create? \\ false) do
     pkey = Ash.Resource.Info.primary_key(resource)
     keys = keys || pkey
@@ -1695,18 +2287,26 @@ defmodule Ash.DataLayer.Ets do
          Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
       create(resource, changeset, from_bulk_create?)
     else
-      key_filters =
+      values =
         Enum.map(keys, fn key ->
-          value =
-            Ash.Changeset.get_attribute(changeset, key) || Map.get(changeset.params, key) ||
-              Map.get(changeset.params, to_string(key))
-
           {key,
-           if is_nil(value) do
-             [is_nil: true]
-           else
-             value
-           end}
+           Ash.Changeset.get_attribute(changeset, key) || Map.get(changeset.params, key) ||
+             Map.get(changeset.params, to_string(key))}
+        end)
+
+      lock_item(
+        resource,
+        changeset.tenant,
+        if(identity,
+          do: identity_lock(resource, identity, values),
+          else: {:record, Map.new(values)}
+        )
+      )
+
+      key_filters =
+        Enum.map(values, fn
+          {key, nil} -> {key, [is_nil: true]}
+          pair -> pair
         end)
 
       query =
@@ -1880,108 +2480,138 @@ defmodule Ash.DataLayer.Ets do
     stream = Enum.to_list(stream)
     log_bulk_create(resource, stream, options)
 
-    if options[:upsert?] do
-      # This is not optimized, but that's okay for now
-      stream
-      |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
-        changeset =
-          Ash.Changeset.set_context(changeset, %{
-            private: %{
-              upsert_fields: options[:upsert_fields] || [],
-              touch_update_defaults?: Map.get(options, :touch_update_defaults?, true)
-            }
-          })
+    transact_write(resource, options.tenant, true, fn ->
+      if options[:upsert?] do
+        # This is not optimized, but that's okay for now
+        stream
+        |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
+          changeset =
+            Ash.Changeset.set_context(changeset, %{
+              private: %{
+                upsert_fields: options[:upsert_fields] || [],
+                touch_update_defaults?: Map.get(options, :touch_update_defaults?, true)
+              }
+            })
 
-        case do_upsert(
-               resource,
-               changeset,
-               options.upsert_keys,
-               options.identity,
-               true
-             ) do
-          {:ok, result} ->
-            if Ash.Resource.get_metadata(result, :upsert_skipped) do
-              {:cont, {:ok, results}}
-            else
-              result = Ash.Actions.Helpers.Bulk.put_metadata(result, changeset)
+          case do_upsert(
+                 resource,
+                 changeset,
+                 options.upsert_keys,
+                 options.identity,
+                 true
+               ) do
+            {:ok, result} ->
+              if Ash.Resource.get_metadata(result, :upsert_skipped) do
+                {:cont, {:ok, results}}
+              else
+                result = Ash.Actions.Helpers.Bulk.put_metadata(result, changeset)
 
-              {:cont, {:ok, [result | results]}}
-            end
+                {:cont, {:ok, [result | results]}}
+              end
 
-          {:error, error} ->
-            {:halt, {:error, error}}
-        end
-      end)
-      |> case do
-        {:ok, result} -> {:ok, Enum.reverse(result)}
-        other -> other
-      end
-    else
-      with {:ok, table} <- wrap_or_create_table(resource, options.tenant),
-           {:ok, stored} <- stored_index(table, resource) do
-        Enum.reduce_while(stream, {:ok, [], stored}, fn changeset, {:ok, results, known} ->
-          with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
-               {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
-               {:ok, record} <- apply_atomics(changeset, resource, record),
-               {:ok, record} <- establish_period(record, resource, changeset),
-               record <- unload_relationships(resource, record),
-               :ok <- check_non_empty(resource, record),
-               :ok <- check_non_overlapping(resource, record, known) do
-            {:cont,
-             {:ok,
-              [
-                {create_key(resource, record, valid_pkey), changeset.context.bulk_create.index,
-                 changeset.context.bulk_create.ref, record}
-                | results
-              ], remember_period(known, resource, record)}}
-          else
             {:error, error} ->
               {:halt, {:error, error}}
           end
         end)
         |> case do
-          {:ok, records, _known} ->
-            case put_or_insert_new_batch(table, records, resource, options.return_records?) do
-              :ok ->
-                :ok
-
-              {:ok, records} ->
-                records
-                |> Enum.reduce([], fn record, records ->
-                  [set_loaded(record) | records]
-                end)
-                |> then(&{:ok, &1})
-
+          {:ok, result} -> {:ok, Enum.reverse(result)}
+          other -> other
+        end
+      else
+        # Every record of the batch is locked before the stored periods are read, so the read
+        # stays true for the whole batch.
+        with {:ok, prepared} <-
+               Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, prepared} ->
+                 with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
+                      {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+                      {:ok, record} <- apply_atomics(changeset, resource, record),
+                      {:ok, record} <- establish_period(record, resource, changeset),
+                      record <- unload_relationships(resource, record),
+                      :ok <- check_non_empty(resource, record),
+                      :ok <- lock_record(resource, options.tenant, record) do
+                   {:cont, {:ok, [{changeset, valid_pkey, record} | prepared]}}
+                 else
+                   {:error, error} -> {:halt, {:error, error}}
+                 end
+               end),
+             {:ok, table} <- written_table(resource, options.tenant, true),
+             {:ok, stored} <- stored_index(table, resource) do
+          prepared
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, [], stored}, fn {changeset, valid_pkey, record},
+                                                     {:ok, results, known} ->
+            with :ok <-
+                   enforce_identities(
+                     resource,
+                     nil,
+                     record,
+                     [earlier: Enum.map(results, &elem(&1, 3))] ++ identity_opts(changeset)
+                   ),
+                 :ok <- check_non_overlapping(resource, record, known) do
+              {:cont,
+               {:ok,
+                [
+                  {create_key(resource, record, valid_pkey), changeset.context.bulk_create.index,
+                   changeset.context.bulk_create.ref, record}
+                  | results
+                ], remember_period(known, resource, record)}}
+            else
               {:error, error} ->
-                {:error, error}
+                {:halt, {:error, error}}
             end
+          end)
+          |> case do
+            {:ok, records, _known} ->
+              case put_or_insert_new_batch(table, records, resource, options.return_records?) do
+                :ok ->
+                  :ok
 
-          {:error, error} ->
-            {:error, error}
+                {:ok, records} ->
+                  records
+                  |> Enum.reduce([], fn record, records ->
+                    [set_loaded(record) | records]
+                  end)
+                  |> then(&{:ok, &1})
+
+                {:error, error} ->
+                  {:error, error}
+              end
+
+            {:error, error} ->
+              {:error, error}
+          end
         end
       end
-    end
+    end)
   end
 
   @doc false
   @impl true
   def create(resource, changeset, from_bulk_create? \\ false) do
-    with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
-         {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
-         _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
-         {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
-         {:ok, record} <- apply_atomics(changeset, resource, record),
-         {:ok, record} <- establish_period(record, resource, changeset),
-         record <- unload_relationships(resource, record),
-         :ok <- check_non_empty(resource, record),
-         {:ok, stored} <- stored_periods(table, resource, record),
-         :ok <- check_non_overlapping(resource, record, stored),
-         {:ok, record} <-
-           put_or_insert_new(table, {create_key(resource, record, valid_pkey), record}, resource) do
-      {:ok, set_loaded(record)}
-    else
-      {:error, error} -> {:error, error}
-    end
+    transact_write(resource, changeset.tenant, true, fn ->
+      with {:ok, valid_pkey} <- get_valid_pkey(resource, changeset),
+           _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
+           {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+           {:ok, record} <- apply_atomics(changeset, resource, record),
+           {:ok, record} <- establish_period(record, resource, changeset),
+           record <- unload_relationships(resource, record),
+           :ok <- check_non_empty(resource, record),
+           :ok <- lock_record(resource, changeset.tenant, record),
+           {:ok, table} <- written_table(resource, changeset.tenant, true),
+           :ok <- enforce_identities(resource, nil, record, identity_opts(changeset)),
+           {:ok, stored} <- stored_periods(table, resource, record),
+           :ok <- check_non_overlapping(resource, record, stored),
+           {:ok, record} <-
+             put_or_insert_new(
+               table,
+               {create_key(resource, record, valid_pkey), record},
+               resource
+             ) do
+        {:ok, set_loaded(record)}
+      else
+        {:error, error} -> {:error, error}
+      end
+    end)
   end
 
   defp apply_atomics(%{create_atomics: create_atomics} = changeset, resource, record)
@@ -2030,7 +2660,134 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  # Not a lock: the look and the write are separate, so concurrent creates can both land.
+  # A resource in a transaction group has its identities checked at the write, against the
+  # stored records as Ash's identity check reads them, so the check and the write it guards are
+  # one step, which a check at read cannot be while reads take no locks. A write locks each
+  # identity value it takes, so writes taking one value run one after another, and is refused
+  # when a stored record holds the value. A value the record held before the write is not
+  # checked again. A bulk create also checks the records before it in its batch, and an upsert
+  # leaves its own identity to the lookup that decides it.
+  defp enforce_identities(resource, before, written, opts) do
+    if Ash.DataLayer.Ets.Info.transaction_group(resource) do
+      resource
+      |> Ash.Resource.Info.identities()
+      |> Enum.reject(&(&1.name == opts[:upsert_identity]))
+      |> Enum.reduce_while(:ok, fn identity, :ok ->
+        values = identity_values(resource, identity, written, opts)
+
+        with false <- is_nil(values),
+             false <-
+               not is_nil(before) and identity_values(resource, identity, before, opts) == values,
+             :ok <- lock_item(resource, opts[:tenant], identity_lock(resource, identity, values)),
+             {:ok, false} <- identity_taken?(resource, identity, values, written, opts) do
+          {:cont, :ok}
+        else
+          {:ok, true} ->
+            {:halt,
+             {:error,
+              Ash.Error.Changes.InvalidChanges.exception(
+                fields: identity.field_names || identity.keys,
+                message: identity.message || "has already been taken"
+              )}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+
+          true ->
+            {:cont, :ok}
+        end
+      end)
+    else
+      :ok
+    end
+  end
+
+  # What a record holds an identity by, as Ash defines an identity: its keys, with the tenant
+  # attribute among them under attribute multitenancy unless the identity spans tenants (as
+  # Ash.Actions.Create puts it among an upsert's keys), on a record the resource's base filter
+  # and the identity's `where` admit, with no nil key where the identity keeps nils distinct.
+  # `nil` when the identity does not count the record.
+  defp identity_values(resource, identity, record, opts) do
+    if Enum.any?(identity.keys, &Ash.Resource.Info.calculation(resource, &1)) do
+      raise ArgumentError, "Cannot check an identity based on calculated fields."
+    end
+
+    keys =
+      if !identity.all_tenants? and
+           Ash.Resource.Info.multitenancy_strategy(resource) == :attribute,
+         do: Enum.uniq([Ash.Resource.Info.multitenancy_attribute(resource) | identity.keys]),
+         else: identity.keys
+
+    values = Enum.map(keys, &{&1, Map.get(record, &1)})
+    filter = resource |> Ash.Query.do_filter(identity.where) |> Map.get(:filter)
+
+    with false <- identity.nils_distinct? and Enum.any?(values, &is_nil(elem(&1, 1))),
+         {:ok, [_]} <- filter_matches([record], filter, opts[:domain], opts[:tenant], nil) do
+      values
+    else
+      _ -> nil
+    end
+  end
+
+  # An identity value's lock names it in its types' comparable form, the form Ash compares and
+  # keys values by (`Ash.Type.to_simple_equality_comparable/2`). A key whose type has none
+  # locks the identity whole.
+  defp identity_lock(resource, identity, values) do
+    comparable =
+      Enum.map(values, fn {key, value} ->
+        type = Ash.Resource.Info.attribute(resource, key).type
+
+        if Ash.Type.simple_equality_comparable?(type),
+          do: {:ok, Ash.Type.to_simple_equality_comparable(type, value)}
+      end)
+
+    if Enum.all?(comparable),
+      do: {:identity, identity.name, Enum.map(comparable, &elem(&1, 1))},
+      else: {:identity, identity.name}
+  end
+
+  # Whether a record other than the one written holds the value, its other versions included.
+  defp identity_taken?(resource, identity, values, written, opts) do
+    filter =
+      resource
+      |> Ash.Query.do_filter(
+        Enum.map(values, fn
+          {key, nil} -> {key, [is_nil: true]}
+          pair -> pair
+        end)
+      )
+      |> Ash.Query.do_filter(identity.where)
+      |> then(fn query ->
+        case Ash.Resource.Info.primary_key(resource) do
+          [] -> query
+          _ -> Ash.Query.do_filter(query, not: Map.to_list(primary_key(resource, written)))
+        end
+      end)
+      |> Map.get(:filter)
+
+    tenant = if !identity.all_tenants?, do: opts[:tenant]
+
+    with {:ok, stored} <-
+           resource
+           |> resource_to_query(opts[:domain])
+           |> Map.merge(%{filter: filter, tenant: tenant, as_of: opts[:as_of], limit: 1})
+           |> run_query(resource),
+         {:ok, batch} <- filter_matches(opts[:earlier] || [], filter, opts[:domain], tenant, nil) do
+      {:ok, stored != [] or batch != []}
+    end
+  end
+
+  defp identity_opts(changeset) do
+    [
+      tenant: changeset.tenant,
+      domain: changeset.domain,
+      as_of: changeset.as_of,
+      upsert_identity: changeset.context[:private][:upsert_identity]
+    ]
+  end
+
+  # Outside a transaction group the look and the write are separate, so concurrent creates can
+  # both land; a group's create holds its record's lock across both.
   defp check_non_overlapping(resource, record, known) do
     with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
          %Ash.Range{} = period_value <- Map.get(record, period),
@@ -2061,7 +2818,7 @@ defmodule Ash.DataLayer.Ets do
         primary_key = primary_key(resource, record)
 
         with {:ok, periods} <-
-               ETS.Set.select(table, [{{Map.put(primary_key, period, :"$1"), :_}, [], [:"$1"]}]) do
+               select_objects(table, [{{Map.put(primary_key, period, :"$1"), :_}, [], [:"$1"]}]) do
           {:ok, %{primary_key => periods}}
         end
     end
@@ -2074,7 +2831,7 @@ defmodule Ash.DataLayer.Ets do
         {:ok, %{}}
 
       period ->
-        with {:ok, keys} <- ETS.Set.select(table, [{{:"$1", :_}, [], [:"$1"]}]) do
+        with {:ok, keys} <- select_objects(table, [{{:"$1", :_}, [], [:"$1"]}]) do
           {:ok, Enum.group_by(keys, &Map.drop(&1, [period]), &Map.get(&1, period))}
         end
     end
@@ -2124,8 +2881,8 @@ defmodule Ash.DataLayer.Ets do
 
     case dump_to_native(record, attributes) do
       {:ok, casted} ->
-        if :ets.insert_new(table.table, {pkey, casted}) do
-          {_key, record} = ETS.Set.get!(table, pkey)
+        if insert_new_object(table, {pkey, casted}) do
+          {:ok, {_key, record}} = get_object(table, pkey)
           cast_record(record, resource)
         else
           {:error, pkey_already_taken_error(resource)}
@@ -2158,11 +2915,11 @@ defmodule Ash.DataLayer.Ets do
     end)
     |> case do
       {:ok, batch, indices} ->
-        case ETS.Set.put(table, batch) do
+        case put_objects(table, batch) do
           {:ok, set} ->
             if return_records? do
               Enum.reduce_while(indices, {:ok, []}, fn {pkey, index, ref}, {:ok, acc} ->
-                {_key, record} = ETS.Set.get!(set, pkey)
+                {:ok, {_key, record}} = get_object(set, pkey)
 
                 case cast_record(record, resource) do
                   {:ok, casted} ->
@@ -2277,18 +3034,29 @@ defmodule Ash.DataLayer.Ets do
         results
         |> once_per_record(resource, changeset)
         |> Enum.reduce_while(acc, fn result, acc ->
-          result_changeset = %{changeset | data: result}
+          transact_write(resource, query.tenant, false, fn ->
+            case still_matching(resource, changeset, query, result) do
+              {:ok, nil} ->
+                :skipped
 
-          case destroy(query.resource, result_changeset) do
-            :ok ->
+              {:ok, current} ->
+                result_changeset = %{changeset | data: current}
+
+                with :ok <- destroy(query.resource, result_changeset),
+                     do: {:ok, Ash.Actions.Helpers.Bulk.put_metadata(current, result_changeset)}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          end)
+          |> case do
+            :skipped ->
+              {:cont, acc}
+
+            {:ok, result} ->
               case acc do
-                :ok ->
-                  {:cont, :ok}
-
-                {:ok, results} ->
-                  result = Ash.Actions.Helpers.Bulk.put_metadata(result, result_changeset)
-
-                  {:cont, {:ok, [result | results]}}
+                :ok -> {:cont, :ok}
+                {:ok, results} -> {:cont, {:ok, [result | results]}}
               end
 
             {:error, error} ->
@@ -2303,6 +3071,40 @@ defmodule Ash.DataLayer.Ets do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  # A record a bulk write matched before its lock was held is read again once it is, and left
+  # out when it is gone or no longer matches the query, as an update reads the stored record
+  # again and checks the changeset's filter against it at the write.
+  defp still_matching(resource, changeset, query, record) do
+    with %{} <-
+           Process.get({:ash_ets_transaction, Ash.DataLayer.Ets.Info.transaction_group(resource)}),
+         :ok <- lock_record(resource, query.tenant, record),
+         {:ok, table} <- written_table(resource, query.tenant, false),
+         pkey =
+           holding_key(
+             table,
+             resource,
+             record,
+             supersession(resource, changeset),
+             match?(%Ash.Range{}, changeset.as_of)
+           ),
+         {:ok, {_key, stored}} when is_map(stored) <- get_object(table, pkey),
+         {:ok, stored} <- cast_record(stored, resource),
+         {:ok, matched} <-
+           filter_matches(
+             [stored],
+             query.filter,
+             changeset.domain,
+             query.tenant,
+             changeset.context[:private][:actor]
+           ) do
+      {:ok, List.first(matched)}
+    else
+      nil -> {:ok, record}
+      {:error, error} -> {:error, error}
+      _gone -> {:ok, nil}
     end
   end
 
@@ -2321,20 +3123,24 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def destroy(resource, %{data: record, filter: filter} = changeset) do
-    do_destroy(
-      resource,
-      record,
-      changeset.tenant,
-      filter,
-      changeset.domain,
-      changeset.context[:private][:actor],
-      supersession(resource, changeset),
-      match?(%Ash.Range{}, changeset.as_of)
-    )
+    transact_write(resource, changeset.tenant, false, fn ->
+      do_destroy(
+        resource,
+        record,
+        changeset.tenant,
+        filter,
+        changeset.domain,
+        changeset.context[:private][:actor],
+        supersession(resource, changeset),
+        match?(%Ash.Range{}, changeset.as_of)
+      )
+    end)
   end
 
   defp do_destroy(resource, record, tenant, filter, domain, actor, supersede, range?) do
-    case wrap_or_create_table(resource, tenant, false) do
+    :ok = lock_record(resource, tenant, record)
+
+    case written_table(resource, tenant, false) do
       {:ok, table} ->
         do_destroy(table, resource, record, tenant, filter, domain, actor, supersede, range?)
 
@@ -2355,7 +3161,7 @@ defmodule Ash.DataLayer.Ets do
     pkey = holding_key(table, resource, record, supersede, range?)
 
     if has_filter?(filter) do
-      case ETS.Set.get(table, pkey) do
+      case get_object(table, pkey) do
         {:ok, {_key, record}} when is_map(record) ->
           with {:ok, record} <- cast_record(record, resource),
                {:ok, [_]} <- filter_matches([record], filter, domain, tenant, actor) do
@@ -2402,7 +3208,7 @@ defmodule Ash.DataLayer.Ets do
     do: retire(table, pkey, resource, supersede)
 
   defp retire(table, pkey, resource, supersede) do
-    case {supersede, ETS.Set.get(table, pkey)} do
+    case {supersede, get_object(table, pkey)} do
       {{period, %Ash.Range{} = written}, {:ok, {_key, stored}}} when is_map(stored) ->
         close_version(table, pkey, stored, resource, period, written)
 
@@ -2411,7 +3217,7 @@ defmodule Ash.DataLayer.Ets do
         {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
 
       _ ->
-        with {:ok, _} <- ETS.Set.delete(table, pkey), do: :ok
+        with {:ok, _} <- delete_object(table, pkey), do: :ok
     end
   end
 
@@ -2419,7 +3225,7 @@ defmodule Ash.DataLayer.Ets do
     Enum.reduce_while(versions, :ok, fn version, :ok ->
       key = Map.put(primary_key, period, version)
 
-      with {:ok, {_key, stored}} <- ETS.Set.get(table, key),
+      with {:ok, {_key, stored}} <- get_object(table, key),
            :ok <- close_version(table, key, stored, resource, period, overlap(version, written)) do
         {:cont, :ok}
       else
@@ -2436,14 +3242,15 @@ defmodule Ash.DataLayer.Ets do
     with {:ok, closed} <- close_at(prior, written.lower, resource, period),
          {:ok, resumed} <- resume_after(prior, written, resource, period),
          {:ok, versions} <- carved(resource, pkey, period, stored, [closed, resumed]),
-         {:ok, table} <- ETS.Set.delete(table, pkey),
+         {:ok, table} <- delete_object(table, pkey),
          {:ok, _} <- put_versions(table, versions) do
       :ok
     end
   end
 
   defp put_versions(table, []), do: {:ok, table}
-  defp put_versions(table, versions), do: ETS.Set.put(table, versions)
+
+  defp put_versions(table, versions), do: put_objects(table, versions)
 
   # An instant ends validity for good; a range hands back what lies beyond its upper bound.
   defp resume_after(_prior, %Ash.Range{upper: nil}, _resource, _period), do: {:ok, nil}
@@ -2538,32 +3345,45 @@ defmodule Ash.DataLayer.Ets do
 
     log_update_query(resource, query, changeset)
 
+    query =
+      Map.update!(query, :filter, fn filter ->
+        if is_nil(changeset.filter) do
+          filter
+        else
+          filter = filter || %Ash.Filter{resource: changeset.resource}
+          Ash.Filter.add_to_filter!(filter, changeset.filter)
+        end
+      end)
+
     query
-    |> Map.update!(:filter, fn filter ->
-      if is_nil(changeset.filter) do
-        filter
-      else
-        filter = filter || %Ash.Filter{resource: changeset.resource}
-        Ash.Filter.add_to_filter!(filter, changeset.filter)
-      end
-    end)
     |> run_query(resource)
     |> case do
       {:ok, results} ->
         Enum.reduce_while(results, acc, fn result, acc ->
           if touches_portion?(resource, result, changeset.as_of) do
-            result_changeset = %{changeset | data: result}
+            transact_write(resource, query.tenant, false, fn ->
+              case still_matching(resource, changeset, query, result) do
+                {:ok, nil} ->
+                  :skipped
 
-            case update(query.resource, result_changeset, nil, true) do
+                {:ok, current} ->
+                  result_changeset = %{changeset | data: current}
+
+                  with {:ok, result} <- update(query.resource, result_changeset, nil, true),
+                       do: {:ok, Ash.Actions.Helpers.Bulk.put_metadata(result, result_changeset)}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+            end)
+            |> case do
+              :skipped ->
+                {:cont, acc}
+
               {:ok, result} ->
-                result = Ash.Actions.Helpers.Bulk.put_metadata(result, result_changeset)
-
                 case acc do
-                  :ok ->
-                    {:cont, :ok}
-
-                  {:ok, results} ->
-                    {:cont, {:ok, [result | results]}}
+                  :ok -> {:cont, :ok}
+                  {:ok, results} -> {:cont, {:ok, [result | results]}}
                 end
 
               {:error, error} ->
@@ -2605,50 +3425,44 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def update(resource, changeset, pkey \\ nil, from_bulk? \\ false) do
-    supersede = supersession(resource, changeset)
-    range? = match?(%Ash.Range{}, changeset.as_of)
+    transact_write(resource, changeset.tenant, false, fn ->
+      supersede = supersession(resource, changeset)
+      range? = match?(%Ash.Range{}, changeset.as_of)
 
-    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant, false),
-         pkey = pkey || holding_key(table, resource, changeset.data, supersede, range?),
-         _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
-         {:ok, record} <-
-           do_update(
-             table,
-             {pkey, changeset.attributes, changeset.atomics, changeset.filter},
-             changeset.domain,
-             changeset.tenant,
-             resource,
-             changeset.context[:private][:actor],
-             supersede
-           ),
-         {:ok, record} <- cast_record(record, resource),
-         record <- retain_fields(record, changeset) do
-      new_pkey = pkey_map(resource, record)
+      with :ok <- lock_record(resource, changeset.tenant, changeset.data),
+           {:ok, table} <- written_table(resource, changeset.tenant, false),
+           pkey = pkey || holding_key(table, resource, changeset.data, supersede, range?),
+           _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
+           {:ok, record} <- do_update(table, pkey, changeset, resource, supersede),
+           {:ok, record} <- cast_record(record, resource),
+           record <- retain_fields(record, changeset) do
+        new_pkey = pkey_map(resource, record)
 
-      # A supersession has already retired the old key, so it must not be destroyed.
-      if is_nil(supersede) && new_pkey != pkey do
-        case destroy(resource, changeset) do
-          :ok ->
-            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+        # A supersession has already retired the old key, so it must not be destroyed.
+        if is_nil(supersede) && new_pkey != pkey do
+          case destroy(resource, changeset) do
+            :ok ->
+              {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
-          {:error, error} ->
-            {:error, error}
+            {:error, error} ->
+              {:error, error}
+          end
+        else
+          {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
         end
       else
-        {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
-      end
-    else
-      # Nothing has ever been written for this tenant, so the record cannot exist.
-      :no_table ->
-        {:error,
-         Ash.Error.Changes.StaleRecord.exception(
-           resource: resource,
-           filter: changeset.filter
-         )}
+        # Nothing has ever been written for this tenant, so the record cannot exist.
+        :no_table ->
+          {:error,
+           Ash.Error.Changes.StaleRecord.exception(
+             resource: resource,
+             filter: changeset.filter
+           )}
 
-      {:error, error} ->
-        {:error, error}
-    end
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
   end
 
   # `nil` writes in place: no period, or a period with no now to supersede at.
@@ -2685,7 +3499,7 @@ defmodule Ash.DataLayer.Ets do
     case Map.get(pkey, period) do
       %Ash.Range{} = held ->
         Ash.Range.contains?(held, instant) and
-          match?({:ok, {_key, stored}} when is_map(stored), ETS.Set.get(table, pkey))
+          match?({:ok, {_key, stored}} when is_map(stored), get_object(table, pkey))
 
       _ ->
         false
@@ -2734,37 +3548,37 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp do_update(
-         table,
-         {pkey, record, atomics, changeset_filter},
-         domain,
-         tenant,
-         resource,
-         actor,
-         supersede
-       ) do
+  defp do_update(table, pkey, changeset, resource, supersede) do
     attributes = resource |> Ash.Resource.Info.attributes()
+    %{domain: domain, tenant: tenant, filter: changeset_filter} = changeset
+    actor = changeset.context[:private][:actor]
 
-    case dump_to_native(record, attributes) do
+    case dump_to_native(changeset.attributes, attributes) do
       {:ok, casted} ->
-        case ETS.Set.get(table, pkey) do
+        case get_object(table, pkey) do
           {:ok, {_key, record}} when is_map(record) ->
             with {:ok, casted_record} <- cast_record(record, resource),
                  {:ok, [casted_record]} <-
-                   filter_matches([casted_record], changeset_filter, domain, tenant, actor) do
-              case atomics do
-                empty when empty in [nil, []] ->
-                  data = Map.merge(record, casted)
+                   filter_matches([casted_record], changeset_filter, domain, tenant, actor),
+                 {:ok, dumped_atomics} <-
+                   (case changeset.atomics do
+                      empty when empty in [nil, []] ->
+                        {:ok, %{}}
 
-                  write_version(table, pkey, record, data, resource, supersede)
-
-                atomics ->
-                  with {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_record),
-                       {:ok, dumped_atomics} <- dump_atomics(atomics, attributes) do
-                    data = record |> Map.merge(casted) |> Map.merge(dumped_atomics)
-                    write_version(table, pkey, record, data, resource, supersede)
-                  end
-              end
+                      atomics ->
+                        with {:ok, atomics} <-
+                               make_atomics(atomics, resource, domain, casted_record),
+                             do: dump_atomics(atomics, attributes)
+                    end),
+                 data = record |> Map.merge(casted) |> Map.merge(dumped_atomics),
+                 {:ok, written} <-
+                   if(Ash.DataLayer.Ets.Info.transaction_group(resource),
+                     do: cast_record(data, resource),
+                     else: {:ok, nil}
+                   ),
+                 :ok <-
+                   enforce_identities(resource, casted_record, written, identity_opts(changeset)) do
+              write_version(table, pkey, record, data, resource, supersede)
             else
               {:error, error} ->
                 {:error, error}
@@ -2807,7 +3621,7 @@ defmodule Ash.DataLayer.Ets do
          {:ok, {_key, opened_data} = opened} <-
            version(resource, pkey, period, data, opening),
          {:ok, kept} <- carved(resource, pkey, period, prior_data, [closed, resumed]),
-         {:ok, table} <- ETS.Set.delete(table, pkey),
+         {:ok, table} <- delete_object(table, pkey),
          {:ok, _table} <- put_versions(table, kept ++ [opened]) do
       {:ok, opened_data}
     end
@@ -2907,10 +3721,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp put_data(table, pkey, data) do
-    case ETS.Set.put(
-           table,
-           {pkey, data}
-         ) do
+    case put_objects(table, {pkey, data}) do
       {:ok, _set} ->
         {:ok, data}
 
@@ -2979,7 +3790,7 @@ defmodule Ash.DataLayer.Ets do
   # Returns `:no_table` when `create?` is false and no table has been created yet.
   # Callers must treat that as "the table exists but is empty", rather than creating
   # one, so that reads against unknown tenants allocate nothing. See `table_name/3`.
-  defp wrap_or_create_table(resource, tenant, create? \\ true) do
+  defp wrap_or_create_table(resource, tenant, create?) do
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
         tenant
