@@ -1498,6 +1498,43 @@ defmodule Ash.DataLayer.EtsTest do
       assert [_, _] = Ash.read!(EtsTransactionRight)
     end
 
+    test "a stop raises when a transaction holding its table waits for the caller's own transaction" do
+      parent = self()
+      note = Ash.create!(EtsTransactionNote, %{body: "first"})
+
+      assert {:ok, waiter} =
+               Ash.transaction(EtsTransactionLeft, fn ->
+                 Ash.update!(note, %{body: "held"})
+
+                 waiter =
+                   Task.async(fn ->
+                     Ash.transaction(EtsTransactionRight, fn ->
+                       Ash.create!(EtsTransactionRight, %{})
+                       send(parent, :written)
+                       Ash.update!(note, %{body: "waited"})
+                       :waiter_finished
+                     end)
+                   end)
+
+                 assert_receive :written
+                 refute Task.yield(waiter, 100)
+
+                 message =
+                   "the table of #{inspect(EtsTransactionRight)} was not stopped: " <>
+                     "the transactions holding it wait for the caller's own transaction"
+
+                 assert_raise RuntimeError, message, fn ->
+                   Ash.DataLayer.Ets.stop(EtsTransactionRight)
+                 end
+
+                 waiter
+               end)
+
+      assert {:ok, :waiter_finished} = Task.await(waiter)
+      assert [%{body: "waited"}] = Ash.read!(EtsTransactionNote)
+      assert [_] = Ash.read!(EtsTransactionRight)
+    end
+
     test "writers of one identity value wait for each other, and writers of other values do not" do
       parent = self()
 

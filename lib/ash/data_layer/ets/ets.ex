@@ -409,21 +409,33 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
+  @stop_opts [
+    timeout: [
+      type: :timeout,
+      default: :infinity,
+      doc: "How long, in milliseconds, to wait for the transactions holding the table."
+    ]
+  ]
+
   @doc """
   Stops the storage for a given resource/tenant (deleting all of the data).
 
   For a resource in a transaction group, the table is deleted once the transactions of other
   processes holding any of its locks have ended, and writes asking for it meanwhile wait until
-  it is gone. The wait lasts as long as those transactions run, unless `:timeout` bounds it;
-  past the timeout the call raises, naming the processes whose transactions hold the table.
+  it is gone. The wait lasts as long as those transactions run, unless `:timeout` bounds it.
+
+  Returns `:ok`, or raises: past the timeout, naming the processes whose transactions hold the
+  table, and when one of those transactions waits for the caller's own transaction, since the
+  wait would never end.
 
   ## Options
 
-    * `:timeout` - how long, in milliseconds, to wait for the transactions holding the table.
-      Defaults to `:infinity`.
+  #{Spark.Options.docs(@stop_opts)}
   """
   # sobelow_skip ["DOS.ModuleConcat"]
   def stop(resource, tenant \\ nil, opts \\ []) do
+    opts = Spark.Options.validate!(opts, @stop_opts)
+
     tenant =
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
         tenant
@@ -441,7 +453,7 @@ defmodule Ash.DataLayer.Ets do
       with {:ok, table} <- table_name(resource, tenant, false),
            pid when is_pid(pid) <- Process.whereis(Module.concat(table, TableManager)) do
         if Ash.DataLayer.Ets.Info.transaction_group(resource) do
-          stop_locked(resource, tenant, pid, Keyword.get(opts, :timeout, :infinity))
+          stop_locked(resource, tenant, pid, opts[:timeout])
         else
           stop_manager(pid)
         end
@@ -455,7 +467,7 @@ defmodule Ash.DataLayer.Ets do
   # the transactions holding any of its locks end and commit first, and the locks asked for
   # after it wait until the table is gone. The caller's own transaction never waits on itself,
   # and keeps its other locks. A stop whose wait times out gives up its request, so nothing
-  # waits behind it.
+  # waits behind it, and one whose wait would deadlock is never queued.
   defp stop_locked(resource, tenant, pid, timeout) do
     group = Ash.DataLayer.Ets.Info.transaction_group(resource)
     key = lock_key(resource, tenant)
@@ -477,7 +489,8 @@ defmodule Ash.DataLayer.Ets do
         :ok
 
       :deadlock ->
-        {:error, deadlock_error(resource)}
+        raise "the table of #{inspect(resource)} was not stopped: " <>
+                "the transactions holding it wait for the caller's own transaction"
 
       :timeout ->
         holders = LockManager.holders(key, id)
